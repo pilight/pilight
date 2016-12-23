@@ -38,9 +38,7 @@ static pthread_mutex_t logqueue_lock;
 static pthread_mutexattr_t logqueue_attr;
 static int pthinitialized = 0;
 
-static struct logqueue_t *logqueue;
-static struct logqueue_t *logqueue_head;
-static int logqueuenr = 0;
+static struct logqueue_t *logqueue = NULL;
 
 static char *logfile = NULL;
 static int filelog = 1;
@@ -62,9 +60,6 @@ void logwrite(char *line) {
 	if(logfile != NULL) {
 		if((stat(logfile, &sb)) == 0) {
 			if(sb.st_nlink != 0 && sb.st_size > LOG_MAX_SIZE) {
-				if(lf != NULL) {
-					fclose(lf);
-				}
 				char tmp[strlen(logfile)+5];
 				strcpy(tmp, logfile);
 				strcat(tmp, ".old");
@@ -88,24 +83,28 @@ int log_gc(void) {
 	}
 	
 	stop = 1;
+	init = 0;
+	shelllog = 0;
+	filelog = 0;
 
 	/* Flush log queue to pilight.err file */
 	pthread_mutex_lock(&logqueue_lock);
 	while(logqueue) {
 		struct logqueue_t *tmp = logqueue;
-		
+
 		logwrite(tmp->buffer);
-		
+
 		logqueue = logqueue->next;
+
 		FREE(tmp->buffer);
 		FREE(tmp);
-		logqueuenr--;
 	}
 	pthread_mutex_unlock(&logqueue_lock);
-	
+
 	if(logfile != NULL) {
 		FREE(logfile);
 	}
+	
 	return 1;
 }
 
@@ -118,7 +117,7 @@ static void loginitlock(void) {
 	}	
 }
 
-void logprintf(int prio, const char *str, ...) {
+void _logprintf(int prio, char *file, int line, const char *str, ...) {
 	struct timeval tv;
 	struct tm tm;
 	va_list ap, apcpy;
@@ -139,17 +138,17 @@ void logprintf(int prio, const char *str, ...) {
 			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
 #endif
 		}
-		len = snprintf(NULL, 0, "[%s:%03u]", fmt, (unsigned int)tv.tv_usec);
+		len = snprintf(NULL, 0, "(%s #%d) [%s:%03u]", file, line, fmt, (unsigned int)tv.tv_usec);
 		
 		/* len + loglevel */
 		if(len+9 > bufsize) {
-			if((buffer = realloc(buffer, len+10)) == NULL) {
+			if((buffer = REALLOC(buffer, len+10)) == NULL) {
 				printf("out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			bufsize = len+10+1;
 		}
-		pos += snprintf(buffer, bufsize, "[%s:%03u] ", fmt, (unsigned int)tv.tv_usec);
+		pos += snprintf(buffer, bufsize, "(%s #%d) [%s:%03u] ", file, line, fmt, (unsigned int)tv.tv_usec);
 
 		switch(prio) {
 			case LOG_WARNING:
@@ -183,7 +182,7 @@ void logprintf(int prio, const char *str, ...) {
 		} else {
 			va_end(apcpy);
 			if(len+pos+3 > bufsize) {
-				if((buffer = realloc(buffer, len+pos+3)) == NULL) {
+				if((buffer = REALLOC(buffer, len+pos+3)) == NULL) {
 					printf("out of memory\n");
 					exit(EXIT_FAILURE);
 				}
@@ -203,8 +202,9 @@ void logprintf(int prio, const char *str, ...) {
 			MessageBox(NULL, buffer, "pilight :: error", MB_OK);
 		}
 #endif
-		if(prio < LOG_DEBUG && stop == 0) {
+		if(prio < LOG_DEBUG && stop == 0 && filelog == 1) {
 			if(init == 0) {
+				pthread_mutex_lock(&logqueue_lock);
 				struct logqueue_t *node = MALLOC(sizeof(struct logqueue_t));
 				if(node == NULL) {
 					OUT_OF_MEMORY
@@ -212,19 +212,22 @@ void logprintf(int prio, const char *str, ...) {
 				if((node->buffer = MALLOC(pos+1)) == NULL) {
 					OUT_OF_MEMORY
 				}
+
 				strcpy(node->buffer, buffer);
 				node->next = NULL;
 
 				loginitlock();
-				pthread_mutex_lock(&logqueue_lock);
-				if(logqueuenr == 0) {
-					logqueue = node;
-					logqueue_head = node;
+				struct logqueue_t *tmp = logqueue;
+				if(tmp != NULL) {
+					while(tmp->next != NULL) {
+						tmp = tmp->next;
+					}
+					tmp->next = node;
+					node = tmp;
 				} else {
-					logqueue_head->next = node;
-					logqueue_head = node;
+					node->next = logqueue;
+					logqueue = node;
 				}
-				logqueuenr++;
 				pthread_mutex_unlock(&logqueue_lock);
 			} else {
 				struct reason_log_t *node = MALLOC(sizeof(struct reason_log_t));
@@ -238,15 +241,16 @@ void logprintf(int prio, const char *str, ...) {
 				eventpool_trigger(REASON_LOG, reason_log_free, node);
 			}
 		}
-		FREE(buffer);
+		if(buffer != NULL) {
+			FREE(buffer);
+		}
 		
 		errno = errcpy;
 	}
 }
 
-void *logprocess(void *param) {
-	struct threadpool_tasks_t *task = param;
-	struct reason_log_t *data = task->userdata;
+void *logprocess(int reason, void *param) {
+	struct reason_log_t *data = param;
 
 	logwrite(data->buffer);
 
@@ -255,6 +259,7 @@ void *logprocess(void *param) {
 
 void log_init(void) {
 	init = 1;
+	stop = 0;
 
 	loginitlock();
 	eventpool_callback(REASON_LOG, logprocess);
@@ -273,7 +278,6 @@ void log_init(void) {
 		logqueue = logqueue->next;
 		FREE(tmp->buffer);
 		FREE(tmp);
-		logqueuenr--;
 	}
 	pthread_mutex_unlock(&logqueue_lock);
 }

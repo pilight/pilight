@@ -365,7 +365,7 @@ void OnNotification(OpenZWave::Notification const *_notification, void *_context
 	}
 }
 
-static unsigned short zwaveHwInit(void *(*callback)(void *)) {
+static unsigned short zwaveHwInit(void) {
 	char *logfile = NULL;
 	int free_log_file = 0;
 	const char *setting = "log-file";

@@ -19,6 +19,7 @@
 	#include <pthread.h>
 #endif
 
+#include "libs/libuv/uv.h"
 #include "libs/pilight/core/threadpool.h"
 #include "libs/pilight/core/timerpool.h"
 #include "libs/pilight/core/eventpool.h"
@@ -39,9 +40,14 @@
 #define SEND				3
 #define SUCCESS			4
 
-#ifdef _WIN32
-pthread_t thr_user_input;
-#endif
+static uv_tty_t *tty_req = NULL;
+static uv_signal_t *signal_req = NULL;
+
+typedef struct data_t {
+	int steps;
+	char *buffer;
+	size_t buflen;
+} data_t;
 
 typedef struct pname_t {
 	char *name;
@@ -60,8 +66,6 @@ static struct pname_t *pname = NULL;
 
 static struct ssdp_list_t *ssdp_list = NULL;
 static int ssdp_list_size = 0;
-
-static int status = CONNECT;
 static unsigned short connected = 0;
 static unsigned short connecting = 0;
 static unsigned short found = 0;
@@ -69,7 +73,10 @@ static char *instance = NULL;
 static struct JsonNode *code = NULL;
 static char *uuid = NULL;
 
-int main_gc(void) {
+static void signal_cb(uv_signal_t *, int);
+static void on_write(uv_write_t *req, int status);
+
+static int main_gc(void) {
 	if(code != NULL) {
 		json_delete(code);
 		code = NULL;
@@ -83,155 +90,164 @@ int main_gc(void) {
 		FREE(tmp);
 	}
 
+	if(instance != NULL) {
+		FREE(instance);
+	}
+	if(uuid != NULL) {
+		FREE(uuid);
+	}
+
 	protocol_gc();
 	timer_thread_gc();
 	eventpool_gc();
 
 	log_shell_disable();
 	log_gc();
-	FREE(progname);
 
-	return 0;
-}
-
-static int client_callback(struct eventpool_fd_t *node, int event) {
-	switch(event) {
-		case EV_CONNECT_SUCCESS: {
-			switch(status) {
-				case CONNECT: {
-					connected = 1;
-					socket_write(node->fd, "{\"action\":\"identify\"}");
-					eventpool_fd_enable_write(node);
-					status = VALIDATE;
-				} break;
-			}
-		} break;
-		case EV_WRITE: {
-			switch(status) {
-				case VALIDATE:
-					eventpool_fd_enable_read(node);
-				break;
-				case SEND: {
-					struct JsonNode *json = json_mkobject();
-					json_append_member(json, "action", json_mkstring("send"));
-					if(uuid != NULL) {
-						json_append_member(code, "uuid", json_mkstring(uuid));
-					}
-					json_append_member(json, "code", code);
-
-					char *output = json_stringify(json, NULL);
-					socket_write(node->fd, output);
-					json_free(output);
-					json_delete(json);
-					code = NULL;
-
-					status = SUCCESS;
-					eventpool_fd_enable_read(node);
-				} break;
-			}
-		} break;
-		case EV_READ: {
-			switch(status) {
-				case VALIDATE: {
-					int x = socket_recv(node->fd, &node->buffer, &node->len);
-					if(x == -1) {
-						return -1;
-					} else if(x == 0) {
-						eventpool_fd_enable_read(node);
-						return 0;
-					} else {
-						if(strcmp(node->buffer, "{\"status\":\"success\"}") == 0) {
-							status = SEND;
-							eventpool_fd_enable_write(node);
-						}
-						FREE(node->buffer);
-						node->len = 0;
-					}
-					FREE(node->buffer);
-				} break;
-				case SUCCESS: {
-					int x = socket_recv(node->fd, &node->buffer, &node->len);
-					if(x == -1) {
-						return -1;
-					} else if(x == 0) {
-						eventpool_fd_enable_read(node);
-						return 0;
-					} else {
-						if(strcmp(node->buffer, "{\"status\":\"success\"}") != 0) {
-							logprintf(LOG_ERR, "failed to send codes");
-						}
-						FREE(node->buffer);
-						node->len = 0;
-					}
-					return -1;
-				} break;
-			}
-		} break;
-		case EV_DISCONNECTED: {
-#ifndef _WIN32
-			kill(getpid(), SIGINT);
-#else
-			GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
-#endif
-		} break;
+	if(progname != NULL) {
+		FREE(progname);
+		progname = NULL;
 	}
+
 	return 0;
 }
 
-void *timeout(void *param) {
+static void timeout_cb(uv_timer_t *param) {
 	if(connected == 0) {
-#ifndef _WIN32
-		signal(SIGALRM, SIG_IGN);
-#endif
 		logprintf(LOG_ERR, "could not connect to the pilight instance");
-
-#ifndef _WIN32
-		kill(getpid(), SIGINT);
-#else
-		GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
-#endif
+		signal_cb(NULL, SIGINT);
 	}
-	return NULL;
 }
 
-void *ssdp_not_found(void *param) {
+static void ssdp_not_found(uv_timer_t *param) {
 	if(found == 0) {
-#ifndef _WIN32
-		signal(SIGALRM, SIG_IGN);
-#endif
 		logprintf(LOG_ERR, "could not find pilight instance: %s", instance);
-
-#ifndef _WIN32
-		kill(getpid(), SIGINT);
-#else
-		GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
-#endif
+		signal_cb(NULL, SIGINT);
 	}
-	return NULL;
 }
 
-static void *ssdp_reseek(void *param) {
-	if(found == 0 && connecting == 0) {
-		struct timeval tv;
-		tv.tv_sec = 3;
-		tv.tv_usec = 0;
-		threadpool_add_scheduled_work("ssdp seek", ssdp_reseek, tv, NULL);
-		ssdp_seek();
+static void alloc_cb(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
+	buf->len = len;
+	if((buf->base = malloc(len)) == NULL) {
+		OUT_OF_MEMORY
 	}
-	return NULL;
+	memset(buf->base, 0, len);
+}
+
+static void on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *rbuf) {
+  if(nread == -1) {
+    logprintf(LOG_ERR, "socket read failed");
+    return;
+  }
+	struct data_t *data = stream->data;
+	switch(data->steps) {
+		case VALIDATE: {
+			if(strncmp(rbuf->base, "{\"status\":\"success\"}", 20) == 0) {
+				data->steps = SUCCESS;
+
+				struct JsonNode *json = json_mkobject();
+				json_append_member(json, "action", json_mkstring("send"));
+				if(uuid != NULL) {
+					json_append_member(code, "uuid", json_mkstring(uuid));
+				}
+				json_append_member(json, "code", code);
+
+				uv_write_t *write_req = MALLOC(sizeof(uv_write_t));
+				write_req->data = data;
+				char out[BUFFER_SIZE];
+				uv_buf_t wbuf = uv_buf_init(out, BUFFER_SIZE);
+
+				wbuf.base = json_stringify(json, NULL);
+				wbuf.len = strlen(wbuf.base);
+				
+				uv_write(write_req, stream, &wbuf, 1, on_write);
+				json_delete(json);
+				json_free(wbuf.base);
+				code = NULL;
+			}
+			free(rbuf->base);
+		} break;
+		case SUCCESS: {
+			if(strncmp(rbuf->base, "{\"status\":\"success\"}", 20) != 0) {
+				logprintf(LOG_ERR, "failed to send codes");
+			}
+			signal_cb(NULL, SIGINT);
+			free(rbuf->base);
+			FREE(data);
+		} break;
+	}
+}
+
+
+static void on_write(uv_write_t *req, int status) {
+	struct data_t *data = req->data;
+	req->handle->data = data;
+	uv_read_start(req->handle, alloc_cb, on_read);
+	FREE(req);
+}
+
+static void on_connect(uv_connect_t *req, int status) {
+  if(status != 0) {
+    logprintf(LOG_ERR, "socket connect failed");
+    return;
+	}
+
+	uv_write_t *write_req = MALLOC(sizeof(uv_write_t));
+	char out[BUFFER_SIZE];
+	uv_buf_t buf = uv_buf_init(out, BUFFER_SIZE);
+	
+	connected = 1;
+
+	buf.len = sprintf(buf.base, "{\"action\":\"identify\"}");	
+
+	struct data_t *data = NULL;
+	if((data = MALLOC(sizeof(struct data_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+	data->steps = VALIDATE;
+	data->buffer = NULL;
+	data->buflen = 0;
+	write_req->data = data;
+	uv_write(write_req, req->handle, &buf, 1, on_write);
+
+	FREE(req);
+}
+
+static void connect_to_server(char *server, int port) {
+	struct sockaddr_in addr;
+	uv_tcp_t *client_req = NULL;
+	uv_connect_t *connect_req = NULL;	
+	uv_timer_t *socket_timeout_req = NULL;
+	
+	if((client_req = MALLOC(sizeof(uv_tcp_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	if((connect_req = MALLOC(sizeof(uv_connect_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	if((socket_timeout_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	int steps = CONNECT;
+	connect_req->data = &steps;
+
+	uv_tcp_init(uv_default_loop(), client_req);
+	uv_ip4_addr(server, port, &addr);
+	uv_tcp_connect(connect_req, client_req, (const struct sockaddr *)&addr, on_connect);
+
+	uv_timer_init(uv_default_loop(), socket_timeout_req);
+	uv_timer_start(socket_timeout_req, timeout_cb, 1000, 0);	
 }
 
 static int select_server(int server) {
-	struct timeval tv;	
 	struct ssdp_list_t *tmp = ssdp_list;
 	int i = 0;
 	while(tmp) {
 		if((ssdp_list_size-i) == server) {
-			socket_connect1(tmp->server, tmp->port, client_callback);
-			tv.tv_sec = 1;
-			tv.tv_usec = 0;
-			threadpool_add_scheduled_work("socket timeout", timeout, tv, NULL);
-			connecting = 1;
+			connect_to_server(tmp->server, tmp->port);
 			return 0;
 		}
 		i++;
@@ -239,63 +255,8 @@ static int select_server(int server) {
 	}
 	return -1;
 }
-
-#ifndef _WIN32
-static int user_input(struct eventpool_fd_t *node, int event) {
-	switch(event) {
-		case EV_CONNECT_SUCCESS: {
-			long arg = fcntl(node->fd, F_GETFL, NULL);
-			fcntl(node->fd, F_SETFL, arg | O_NONBLOCK);
-			eventpool_fd_enable_read(node);
-		} break;
-		case EV_READ: {
-			char buf[BUFFER_SIZE];
-			memset(buf, '\0', BUFFER_SIZE);
-			int c = 0;
-			if((c = read(node->fd, buf, BUFFER_SIZE)) > 0) {
-				buf[c-1] = '\0';
-				if(isNumeric(buf) == 0) {
-					return select_server(atoi(buf));
-				}
-			}
-			eventpool_fd_enable_read(node);
-		}
-	}
-	return 0;
-}
-#else
-static void *user_input(void *param) {
-	int i = 0;
-	char buffer[1024];
-	while(1) {
-		i = 0;
-		while(1) {
-			if(_kbhit()) {
-				buffer[i] = _getch();
-				printf("%c", buffer[i]);
-				if(buffer[i] == 13) {
-					buffer[i] = '\0';
-					break;
-				}
-				i++;
-				if(i > 1023) {
-					i = 0;
-				}
-			}
-			SleepEx(10, TRUE);
-		}
-		if(select_server(atoi(buffer)) == 0) {
-			break;
-		}
-	}
-	return NULL;
-}
-#endif
-
-static void *ssdp_found(void *param) {
-	struct threadpool_tasks_t *task = param;
-	struct reason_ssdp_received_t *data = task->userdata;
-	struct timeval tv;
+static void *ssdp_found(int reason, void *param) {
+	struct reason_ssdp_received_t *data = param;
 	struct ssdp_list_t *node = NULL;
 	int match = 0;
 
@@ -329,15 +290,46 @@ static void *ssdp_found(void *param) {
 		} else {
 			if(strcmp(data->name, instance) == 0) {
 				found = 1;
-				connecting = 1;
-				socket_connect1(data->ip, data->port, client_callback);
-				tv.tv_sec = 1;
-				tv.tv_usec = 0;
-				threadpool_add_scheduled_work("socket timeout", timeout, tv, NULL);
+				connect_to_server(data->ip, data->port);
 			}
 		}
 	}
 	return NULL;
+}
+
+static void read_cb(uv_stream_t *stream, ssize_t len, const uv_buf_t *buf) {
+	buf->base[len-1] = '\0';
+
+#ifdef _WIN32
+	/* Remove windows vertical tab */
+	if(buf->base[len-2] == 13) {
+		buf->base[len-2] = '\0';
+	}
+#endif
+
+	if(isNumeric(buf->base) == 0) {
+		select_server(atoi(buf->base));
+	}
+	free(buf->base);
+}
+
+void signal_cb(uv_signal_t *handle, int signum) {
+	if(instance == NULL && tty_req != NULL) {
+		uv_read_stop((uv_stream_t *)tty_req);
+		tty_req = NULL;
+	}
+	uv_stop(uv_default_loop());
+	main_gc();
+}
+
+void close_cb(uv_handle_t *handle) {
+	FREE(handle);
+}
+
+static void walk_cb(uv_handle_t *handle, void *arg) {
+	if(!uv_is_closing(handle)) {
+		uv_close(handle, close_cb);
+	}
 }
 
 static void sort_list(void) {
@@ -376,15 +368,29 @@ static void sort_list(void) {
 	}
 }
 
-int main(int argc, char **argv) {
-	atomicinit();
-	gc_attach(main_gc);
-	gc_catch();
+static void main_loop(int onclose) {
+	if(onclose == 1) {
+		signal_cb(NULL, SIGINT);
+	}
+	uv_run(uv_default_loop(), UV_RUN_DEFAULT);	
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
 
+	if(onclose == 1) {
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			usleep(10);
+		}
+	}
+}
+
+int main(int argc, char **argv) {
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
+
+	log_init();
 	log_file_disable();
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
-
+	
 	pilight.process = PROCESS_CLIENT;
 
 	if((progname = MALLOC(13)) == NULL) {
@@ -392,13 +398,17 @@ int main(int argc, char **argv) {
 	}
 	strcpy(progname, "pilight-send");
 
-	struct options_t *options = NULL;
-	struct timeval tv;
+	if((signal_req = MALLOC(sizeof(uv_signal_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
 
-	int sockfd = 0;
+	uv_signal_init(uv_default_loop(), signal_req);
+	uv_signal_start(signal_req, signal_cb, SIGINT);	
+
+	struct options_t *options = NULL;
+
 	int raw[MAXPULSESTREAMLENGTH-1];
 	char *args = NULL, *recvBuff = NULL;
-
 	char *protobuffer = NULL;
 	int match = 0;
 
@@ -431,7 +441,7 @@ int main(int argc, char **argv) {
 			case 'p':
 				if(strlen(args) == 0) {
 					logprintf(LOG_INFO, "options '-p' and '--protocol' require an argument");
-					exit(EXIT_FAILURE);
+					goto close;
 				} else {
 					if((protobuffer = REALLOC(protobuffer, strlen(args)+1)) == NULL) {
 						OUT_OF_MEMORY
@@ -520,7 +530,7 @@ int main(int argc, char **argv) {
 			} else {
 				help = 1;
 			}
-		break;
+			break;
 		}
 	}
 
@@ -620,57 +630,58 @@ int main(int argc, char **argv) {
 		tmp = tmp->next;
 	}
 
-	options_delete(options);
-	options_gc();
-
-	threadpool_init(1, 1, 10);
-	eventpool_init(EVENTPOOL_THREADED);
+	eventpool_init(EVENTPOOL_NO_THREADS);
 	eventpool_callback(REASON_SSDP_RECEIVED, ssdp_found);
-	tv.tv_sec = 0;
-	tv.tv_usec = 0;
-	timer_thread_start();
 
 	memset(raw, 0, MAXPULSESTREAMLENGTH-1);
 	protocol->raw = raw;
 	char message[255];
 	if(protocol->createCode(code, message) == 0) {
 		if(server != NULL && port > 0) {
-			socket_connect1(server, port, client_callback);
-			tv.tv_sec = 1;
-			threadpool_add_scheduled_work("socket timeout", timeout, tv, NULL);
+			connect_to_server(server, port);
 		} else {
 			ssdp_seek();
-			tv.tv_sec = 3;
-			threadpool_add_scheduled_work("ssdp seek", ssdp_reseek, tv, NULL);
+			uv_timer_t *ssdp_reseek_req = NULL;
+			if((ssdp_reseek_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+				OUT_OF_MEMORY
+			}
+
+			uv_timer_init(uv_default_loop(), ssdp_reseek_req);
+			uv_timer_start(ssdp_reseek_req, (void (*)(uv_timer_t *))ssdp_seek, 3000, 3000);
 			if(instance == NULL) {
 				printf("[%2s] %15s:%-5s %-16s\n", "#", "server", "port", "name");
-				printf("To which server do you want to send?:\r");
+				printf("To which server do you want to connect?:\r");
 				fflush(stdout);
+
+				if((tty_req = MALLOC(sizeof(uv_tty_t))) == NULL) {
+					OUT_OF_MEMORY
+				}
+				
+				uv_tty_init(uv_default_loop(), tty_req, 0, 1);
+				uv_read_start((uv_stream_t *)tty_req, alloc_cb, read_cb);
 			} else {
-				tv.tv_sec = 1;
-				threadpool_add_scheduled_work("ssdp seek", ssdp_not_found, tv, NULL);
+				uv_timer_t *ssdp_not_found_req = NULL;
+				if((ssdp_not_found_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+					OUT_OF_MEMORY
+				}
+
+				uv_timer_init(uv_default_loop(), ssdp_not_found_req);
+				uv_timer_start(ssdp_not_found_req, ssdp_not_found, 1000, 0);
 			}
 		}
 
-#ifdef _WIN32
-		pthread_create(&thr_user_input, NULL, user_input, NULL);
-#else
-		eventpool_fd_add("stdin", fileno(stdin), user_input, NULL, NULL);
-#endif
-		eventpool_process(NULL);
 
-		if(server != NULL) {
-			FREE(server);
-		}
+		main_loop(0);
+
+		FREE(progname);
 	}
 
 close:
-	if(instance != NULL) {
-		FREE(instance);
-	}
-	if(sockfd > 0) {
-		socket_close(sockfd);
-	}
+	options_delete(options);
+	options_gc();
+
+	main_loop(1);
+
 	if(recvBuff != NULL) {
 		FREE(recvBuff);
 	}
@@ -680,18 +691,6 @@ close:
 	if(protobuffer != NULL) {
 		FREE(protobuffer);
 	}
-	if(uuid != NULL) {
-		FREE(uuid);
-	}
-
-	struct ssdp_list_t *tmp1 = NULL;
-	while(ssdp_list) {
-		tmp1 = ssdp_list;
-		ssdp_list = ssdp_list->next;
-		FREE(tmp1);
-	}
-
-	main_gc();
 
 	return EXIT_SUCCESS;
 }

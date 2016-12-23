@@ -6,7 +6,7 @@
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(__sun)
 
 #include <stdlib.h>
 #include <sys/ioctl.h>

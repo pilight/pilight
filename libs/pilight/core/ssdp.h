@@ -11,5 +11,6 @@
 
 void ssdp_start(void);
 void ssdp_seek(void);
+void ssdp_gc(void);
 
 #endif

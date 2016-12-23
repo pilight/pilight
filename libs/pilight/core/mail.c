@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <errno.h>
@@ -17,7 +16,6 @@
 #include <math.h>
 #include <string.h>
 #include <sys/types.h>
-#include <sys/time.h>
 #ifdef _WIN32
 	#if _WIN32_WINNT < 0x0501
 		#undef _WIN32_WINNT
@@ -34,10 +32,12 @@
 	#include <netinet/tcp.h>
 	#include <netdb.h>
 	#include <arpa/inet.h>
+	#include <unistd.h>
 #endif
 
 #include "ssl.h"
 #include "eventpool.h"
+#include "../../libuv/uv.h"
 #include "../../mbedtls/mbedtls/ssl.h"
 
 #include "network.h"
@@ -50,24 +50,25 @@
 #define AUTHPLAIN			1
 #define STARTTLS			2
 
-#define SMTP_STEP_SEND_HELLO		0
-#define SMTP_STEP_RECV_HELLO		1
-#define SMTP_STEP_SEND_STARTTLS	2
-#define SMTP_STEP_RECV_STARTTLS	3
-#define SMTP_STEP_SEND_AUTH			4
-#define SMTP_STEP_RECV_AUTH			5
-#define SMTP_STEP_SEND_FROM			6
-#define SMTP_STEP_RECV_FROM			7
-#define SMTP_STEP_SEND_TO				8
-#define SMTP_STEP_RECV_TO				9
-#define SMTP_STEP_SEND_DATA			10
-#define SMTP_STEP_RECV_DATA			11
-#define SMTP_STEP_SEND_BODY			12
-#define SMTP_STEP_RECV_BODY			13
-#define SMTP_STEP_SEND_RESET		14
-#define SMTP_STEP_RECV_RESET		15
-#define SMTP_STEP_SEND_QUIT			16
-#define SMTP_STEP_RECV_QUIT			17
+#define SMTP_STEP_RECV_WELCOME	0
+#define SMTP_STEP_SEND_HELLO		1
+#define SMTP_STEP_RECV_HELLO		2
+#define SMTP_STEP_SEND_STARTTLS	3
+#define SMTP_STEP_RECV_STARTTLS	4
+#define SMTP_STEP_SEND_AUTH			5
+#define SMTP_STEP_RECV_AUTH			6
+#define SMTP_STEP_SEND_FROM			7
+#define SMTP_STEP_RECV_FROM			8
+#define SMTP_STEP_SEND_TO				9
+#define SMTP_STEP_RECV_TO				10
+#define SMTP_STEP_SEND_DATA			11
+#define SMTP_STEP_RECV_DATA			12
+#define SMTP_STEP_SEND_BODY			13
+#define SMTP_STEP_RECV_BODY			14
+#define SMTP_STEP_SEND_RESET		15
+#define SMTP_STEP_RECV_RESET		16
+#define SMTP_STEP_SEND_QUIT			17
+#define SMTP_STEP_RECV_QUIT			18
 #define SMTP_STEP_END						99
 
 typedef struct request_t {
@@ -81,488 +82,396 @@ typedef struct request_t {
 	int step;
 	int authtype;
 	int reading;
+	int sending;
 	int bytes_read;
 	void (*callback)(int);
 
 	struct mail_t *mail;
 
-	int is_ssl;
-	int handshake;
 	mbedtls_ssl_context ssl;
 } request_t;
 
-static int client_send(struct eventpool_fd_t *node) {
-	int ret = 0;
-	int is_ssl = 0;
-	if(node->userdata != NULL) {
-		struct request_t *c = (struct request_t *)node->userdata;
-		is_ssl = c->is_ssl;
+static void close_cb(uv_handle_t *handle) {
+	FREE(handle);
+}
+
+static void abort_cb(uv_poll_t *req) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct request_t *request = custom_poll_data->data;
+
+	if(request != NULL && request->callback != NULL) {
+		request->callback(-1);
 	}
-
-	if(is_ssl == 0) {
-		if(node->data.socket.port > 0 && strlen(node->data.socket.ip) > 0) {
-			ret = (int)sendto(node->fd, node->send_iobuf.buf, node->send_iobuf.len, 0,
-					(struct sockaddr *)&node->data.socket.addr, sizeof(node->data.socket.addr));
-		} else {
-			ret = (int)send(node->fd, node->send_iobuf.buf, node->send_iobuf.len, 0);
-		}
-		return ret;
-	} else {
-		char buffer[BUFFER_SIZE];
-		struct request_t *c = (struct request_t *)node->userdata;
-		int len = WEBSERVER_CHUNK_SIZE;
-		if(node->send_iobuf.len < len) {
-			len = node->send_iobuf.len;
-		}
-
-		if(c->handshake == 0) {
-			if((ret = mbedtls_ssl_handshake(&c->ssl)) < 0) {
-				if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-					mbedtls_strerror(ret, (char *)&buffer, BUFFER_SIZE);
-					logprintf(LOG_ERR, "mbedtls_ssl_handshake failed: %s", buffer);
-					if(c->callback != NULL) {
-						c->callback(-1);
-					}
-					return -1;
-				} else {
-					return 0;
-				}
-			}
-			c->handshake = 1;
-		}
-
-		ret = mbedtls_ssl_write(&c->ssl, (unsigned char *)node->send_iobuf.buf, len);
-		if(ret <= 0) {
-			if(ret == MBEDTLS_ERR_NET_CONN_RESET) {
-				mbedtls_strerror(ret, (char *)&buffer, BUFFER_SIZE);
-				logprintf(LOG_NOTICE, "mbedtls_ssl_write failed: %s", buffer);
-				if(c->callback != NULL) {
-					c->callback(-1);
-				}
-				return -1;
-			}
-			if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-				mbedtls_strerror(ret, (char *)&buffer, BUFFER_SIZE);
-				logprintf(LOG_NOTICE, "mbedtls_ssl_write failed: %s", buffer);
-				if(c->callback != NULL) {
-					c->callback(-1);
-				}
-				return -1;
-			}
-			return 0;
-		} else {
-			return ret;
-		}
+	if(!uv_is_closing((uv_handle_t *)req)) {
+		uv_close((uv_handle_t *)req, close_cb);
+	}
+	if(custom_poll_data != NULL) {
+		uv_custom_poll_free(custom_poll_data);
+	}
+	if(request != NULL) {
+		FREE(request);
 	}
 }
 
-static int client_callback(struct eventpool_fd_t *node, int event) {
+static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct request_t *request = custom_poll_data->data;
 	char buffer[BUFFER_SIZE], testme[256], ch = 0;
-	int bytes = 0, val = 0, n = 0;
+	int val = 0, n = 0;
 	memset(&buffer, '\0', BUFFER_SIZE);
 
-	struct request_t *request = (struct request_t *)node->userdata;
-	switch(event) {
-		case EV_CONNECT_SUCCESS: {
-			if(request->is_ssl == 1) {
-				int ret = 0;
-				if((ret = mbedtls_ssl_setup(&request->ssl, &ssl_client_conf)) != 0) {
-						mbedtls_strerror(ret, (char *)&buffer, BUFFER_SIZE);
-						logprintf(LOG_ERR, "mbedtls_ssl_setup failed: %s", buffer);
-						if(request->callback != NULL) {
-							request->callback(-1);
-						}
-						return -1;
-					}
+	if(*nread > 0) {
+		buf[*nread-1] = '\0';
+	}
 
-				mbedtls_ssl_session_reset(&request->ssl);
-				mbedtls_ssl_set_bio(&request->ssl, &node->fd, mbedtls_net_send, mbedtls_net_recv, NULL);
+	switch(request->step) {
+		case SMTP_STEP_RECV_WELCOME: {
+			if(strncmp(buf, "220", 3) != 0) {
+				abort_cb(req);
+				return;
 			}
-			eventpool_fd_enable_write(node);
+			request->bytes_read = 0;
+			*nread = 0;
+			request->step = SMTP_STEP_SEND_HELLO;
+			uv_custom_write(req);
 		} break;
-		case EV_READ: {
-			if(request->is_ssl == 1) {
-				bytes = mbedtls_ssl_read(&request->ssl, (unsigned char *)buffer, BUFFER_SIZE);
-
-				if(bytes == MBEDTLS_ERR_SSL_WANT_READ || bytes == MBEDTLS_ERR_SSL_WANT_WRITE) {
-					eventpool_fd_enable_read(node);
-					return 0;
+		case SMTP_STEP_RECV_HELLO: {
+			char **array = NULL;
+			int i = 0;
+			n = explode(buf, "\r\n", &array);
+			for(i=0;i<n;i++) {
+				if(sscanf(array[i], "%d%c%[^\r\n]", &val, &ch, testme) == 0) {
+					continue;
 				}
-				if(bytes == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY || bytes <= 0) {
-					mbedtls_strerror(bytes, (char *)&buffer, BUFFER_SIZE);
-					logprintf(LOG_ERR, "mbedtls_ssl_read failed: %s", buffer);
-					if(request->callback != NULL) {
-						request->callback(-1);
-					}
-					return -1;
-				}
-
-				buffer[bytes] = '\0';
-			} else {
-				if((bytes = recv(node->fd, buffer, BUFFER_SIZE, 0)) <= 0) {
-					if(request->callback != NULL) {
-						request->callback(-1);
-					}
-					return -1;
-				}
-			}
-
-			if(request->reading == 1) {
-				if((request->content = REALLOC(request->content, request->bytes_read+bytes+1)) == NULL) {
-					OUT_OF_MEMORY
-				}
-				strncpy(&request->content[request->bytes_read], buffer, request->bytes_read+bytes);
-				request->bytes_read += bytes;
-			}
-			request->reading = 1;
-
-			if(pilight.debuglevel >= 2) {
-				fprintf(stderr, "SMTP: %s\n", buffer);
-			}
-			switch(request->step) {
-				case SMTP_STEP_RECV_HELLO: {
-					char **array = NULL;
-					int i = 0;
-					n = explode(request->content, "\r\n", &array);
-					for(i=0;i<n;i++) {
-						if(sscanf(array[i], "%d%c%[^\r\n]", &val, &ch, testme) == 0) {
-							continue;
-						}
-						if(val == 250) {
-							if(strncmp(testme, "AUTH", 4) == 0) {
-								if(strstr(testme, "PLAIN") != NULL || strstr(testme, "plain") != NULL) {
-									request->authtype = AUTHPLAIN;
-								}
-							}
-							if(strncmp(testme, "STARTTLS", 8) == 0) {
-								request->authtype = STARTTLS;
-							}
-						}
-						/*
-						 * The 250 list often contains several lines.
-						 * Each line starts with "250-..." except the last.
-						 * The last line is "250 ..." without the minus sign.
-						 */
-						if(val == 250 && ch == 32) {
-							request->reading = 0;
-							request->bytes_read = 0;
-							if(request->authtype == UNSUPPORTED) {
-								logprintf(LOG_NOTICE, "SMTP: no supported authentication method");
-								array_free(&array, n);
-								if(request->callback != NULL) {
-									request->callback(-1);
-								}
-								return -1;
-							}
-							if(request->authtype == STARTTLS) {
-								request->step = SMTP_STEP_SEND_STARTTLS;
-							} else {
-								request->step = SMTP_STEP_SEND_AUTH;
-							}
-							eventpool_fd_enable_write(node);
-							break;
+				if(val == 250) {
+					if(strncmp(testme, "AUTH", 4) == 0) {
+						if(strstr(testme, "PLAIN") != NULL || strstr(testme, "plain") != NULL) {
+							request->authtype = AUTHPLAIN;
 						}
 					}
-					if(request->reading == 1) {
-						eventpool_fd_enable_read(node);
+					if(strncmp(testme, "STARTTLS", 8) == 0) {
+						request->authtype = STARTTLS;
 					}
+				}
+
+				if(val == 501 && ch == 32) {
 					array_free(&array, n);
-				} break;
-				case SMTP_STEP_RECV_STARTTLS: {
-					if(strncmp(buffer, "220", 3) == 0) {
-						request->is_ssl = 1;
-
-						int ret = 0;
-						if((ret = mbedtls_ssl_setup(&request->ssl, &ssl_client_conf)) != 0) {
-							mbedtls_strerror(ret, (char *)&buffer, BUFFER_SIZE);
-							logprintf(LOG_ERR, "mbedtls_ssl_setup failed: %s", buffer);
-							request->callback(-1);
-							return -1;
-						}
-
-						mbedtls_ssl_session_reset(&request->ssl);
-						mbedtls_ssl_set_bio(&request->ssl, &node->fd, mbedtls_net_send, mbedtls_net_recv, NULL);
-
-						request->step = SMTP_STEP_SEND_HELLO;
-						request->bytes_read = 0;
-						eventpool_fd_enable_write(node);
-					}
-				} break;
-				case SMTP_STEP_RECV_AUTH: {
-					if(strncmp(buffer, "235", 3) == 0) {
-						request->step = SMTP_STEP_SEND_FROM;
-					}
-					if(strncmp(buffer, "451", 3) == 0) {
-						logprintf(LOG_NOTICE, "SMTP: protocol violation while authenticating");
-						if(request->callback != NULL) {
-							request->callback(-1);
-						}
-						return -1;
-					}
-					if(strncmp(buffer, "501", 3) == 0) {
-						logprintf(LOG_NOTICE, "SMTP: cannot decode response");
-						if(request->callback != NULL) {
-							request->callback(-1);
-						}
-						return -1;
-					}
-					if(strncmp(buffer, "535", 3) == 0) {
-						logprintf(LOG_NOTICE, "SMTP: authentication failed: wrong user/password");
-						if(request->callback != NULL) {
-							request->callback(-1);
-						}
-						return -1;
-					}
+					abort_cb(req);
+					logprintf(LOG_NOTICE, "SMTP: EHLO error");
+					return;
+				}
+				if(val == 250 && ch == 32) {
+					request->reading = 0;
 					request->bytes_read = 0;
-					request->step = SMTP_STEP_SEND_FROM;
-					eventpool_fd_enable_write(node);
-				} break;
-				case SMTP_STEP_RECV_FROM: {
-					if(strncmp(buffer, "250", 3) != 0) {
-						if(request->callback != NULL) {
-							request->callback(-1);
-						}
-						return -1;
+					if(request->authtype == UNSUPPORTED) {
+						logprintf(LOG_NOTICE, "SMTP: no supported authentication method");
+						array_free(&array, n);
+						abort_cb(req);
+						return;
 					}
-					request->bytes_read = 0;
-					request->step = SMTP_STEP_SEND_TO;
-					eventpool_fd_enable_write(node);
-				} break;
-				case SMTP_STEP_RECV_TO: {
-					if(strncmp(buffer, "250", 3) != 0) {
-						if(request->callback != NULL) {
-							request->callback(-1);
-						}
-						return -1;
+					if(request->authtype == STARTTLS) {
+						request->step = SMTP_STEP_SEND_STARTTLS;
+					} else {
+						request->step = SMTP_STEP_SEND_AUTH;
 					}
-					request->bytes_read = 0;
-					request->step = SMTP_STEP_SEND_DATA;
-					eventpool_fd_enable_write(node);
-				} break;
-				case SMTP_STEP_RECV_DATA: {
-					if(strncmp(buffer, "354", 3) != 0) {
-						if(request->callback != NULL) {
-							request->callback(-1);
-						}
-						return -1;
-					}
-					request->bytes_read = 0;
-					request->step = SMTP_STEP_SEND_BODY;
-					eventpool_fd_enable_write(node);
-				} break;
-				case SMTP_STEP_RECV_BODY: {
-					if(strncmp(buffer, "250", 3) != 0) {
-						if(request->callback != NULL) {
-							request->callback(-1);
-						}
-						return -1;
-					}
-					request->bytes_read = 0;
-					request->step = SMTP_STEP_SEND_RESET;
-					eventpool_fd_enable_write(node);
-				} break;
-				case SMTP_STEP_RECV_RESET: {
-					if(strncmp(buffer, "250", 3) != 0) {
-						if(request->callback != NULL) {
-							request->callback(-1);
-						}
-						return -1;
-					}
-					request->bytes_read = 0;
-					request->step = SMTP_STEP_SEND_QUIT;
-					eventpool_fd_enable_write(node);
-				} break;
-				case SMTP_STEP_RECV_QUIT: {
-					logprintf(LOG_INFO, "SMTP: successfully send mail");
-					if(request->callback != NULL) {
-						request->callback(0);
-					}
-					return -1;
-				} break;
+					uv_custom_write(req);
+					break;
+				}
 			}
+			array_free(&array, n);
+			if(request->reading == 1) {
+				uv_custom_read(req);
+				return;
+			}
+			*nread = 0;
 		} break;
-		case EV_WRITE: {
-			switch(request->step) {
-				case SMTP_STEP_SEND_HELLO: {
-					request->content_len = strlen("EHLO ")+strlen(USERAGENT)+3;
-					if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
-						OUT_OF_MEMORY
-					}
-					request->content_len = (size_t)snprintf(request->content, request->content_len, "EHLO %s\r\n", USERAGENT);
-					eventpool_fd_write(node->fd, request->content, request->content_len);
-					request->step = SMTP_STEP_RECV_HELLO;
-					eventpool_fd_enable_read(node);
-					if(pilight.debuglevel >= 2) {
-						fprintf(stderr, "SMTP: %s\n", request->content);
-					}
-				} break;
-				case SMTP_STEP_SEND_STARTTLS: {
-					request->content_len = strlen("STARTTLS\r\n");
-					if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
-						OUT_OF_MEMORY
-					}
-					strncpy(request->content, "STARTTLS\r\n", request->content_len);
-					eventpool_fd_write(node->fd, request->content, request->content_len);
-					request->step = SMTP_STEP_RECV_STARTTLS;
-					eventpool_fd_enable_read(node);
-					if(pilight.debuglevel >= 2) {
-						fprintf(stderr, "SMTP: %s\n", request->content);
-					}
-				} break;
-				case SMTP_STEP_SEND_AUTH: {
-					request->content_len = strlen(request->login)+strlen(request->pass)+2;
-					char *authstr = MALLOC(request->content_len), *hash = NULL;
-					if(authstr == NULL) {
-						OUT_OF_MEMORY
-					}
-					memset(authstr, '\0', request->content_len);
-					strncpy(&authstr[1], request->login, strlen(request->login));
-					strncpy(&authstr[2+strlen(request->login)], request->pass, request->content_len-strlen(request->login)-2);
-					hash = base64encode(authstr, request->content_len);
-					FREE(authstr);
-
-					request->content_len = strlen("AUTH PLAIN ")+strlen(hash)+3;
-					if((request->content = REALLOC(request->content, request->content_len+4)) == NULL) {
-						OUT_OF_MEMORY
-					}
-					memset(request->content, '\0', request->content_len);
-					request->content_len = snprintf(request->content, request->content_len, "AUTH PLAIN %s\r\n", hash);
-					FREE(hash);
-
-					eventpool_fd_write(node->fd, request->content, request->content_len);
-					request->step = SMTP_STEP_RECV_AUTH;
-					eventpool_fd_enable_read(node);
-					if(pilight.debuglevel >= 2) {
-						fprintf(stderr, "SMTP: AUTH PLAIN XXX\n");
-					}
-				} break;
-				case SMTP_STEP_SEND_FROM: {
-					request->content_len = strlen("MAIL FROM: <>\r\n")+strlen(request->mail->from)+1;
-					if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
-						OUT_OF_MEMORY
-					}
-					request->content_len = (size_t)snprintf(request->content, request->content_len, "MAIL FROM: <%s>\r\n", request->mail->from);
-					eventpool_fd_write(node->fd, request->content, request->content_len);
-					request->step = SMTP_STEP_RECV_FROM;
-					eventpool_fd_enable_read(node);
-					if(pilight.debuglevel >= 2) {
-						fprintf(stderr, "SMTP: %s\n", request->content);
-					}
-				} break;
-				case SMTP_STEP_SEND_TO: {
-					request->content_len = strlen("RCPT TO: <>\r\n")+strlen(request->mail->to)+1;
-					if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
-						OUT_OF_MEMORY
-					}
-					request->content_len = (size_t)snprintf(request->content, request->content_len, "RCPT TO: <%s>\r\n", request->mail->to);
-					eventpool_fd_write(node->fd, request->content, request->content_len);
-					request->step = SMTP_STEP_RECV_TO;
-					eventpool_fd_enable_read(node);
-					if(pilight.debuglevel >= 2) {
-						fprintf(stderr, "SMTP: %s\n", request->content);
-					}
-				} break;
-				case SMTP_STEP_SEND_DATA: {
-					request->content_len = strlen("DATA\r\n");
-					if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
-						OUT_OF_MEMORY
-					}
-					strncpy(request->content, "DATA\r\n", request->content_len);
-					eventpool_fd_write(node->fd, request->content, request->content_len);
-					request->step = SMTP_STEP_RECV_DATA;
-					eventpool_fd_enable_read(node);
-					if(pilight.debuglevel >= 2) {
-						fprintf(stderr, "SMTP: %s\n", request->content);
-					}
-				} break;
-				case SMTP_STEP_SEND_BODY: {
-					request->content_len = 255;
-					request->content_len += strlen(request->mail->to);
-					request->content_len += strlen(request->mail->from);
-					request->content_len += strlen(request->mail->subject);
-					request->content_len += strlen(request->mail->message);
-
-					if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
-						OUT_OF_MEMORY
-					}
-					request->content_len = (size_t)snprintf(request->content, request->content_len,
-						"Subject: %s\r\n"
-						"From: <%s>\r\n"
-						"To: <%s>\r\n"
-						"Content-Type: text/plain\r\n"
-						"Mime-Version: 1.0\r\n"
-						"X-Mailer: Emoticode smtp_send\r\n"
-						"Content-Transfer-Encoding: 7bit\r\n\r\n"
-						"%s"
-						"\r\n.\r\n",
-						request->mail->subject, request->mail->from, request->mail->to, request->mail->message);
-
-						eventpool_fd_write(node->fd, request->content, request->content_len);
-						request->step = SMTP_STEP_RECV_BODY;
-						eventpool_fd_enable_read(node);
-					if(pilight.debuglevel >= 2) {
-						fprintf(stderr, "SMTP: %s\n", request->content);
-					}
-				} break;
-				case SMTP_STEP_SEND_RESET: {
-					request->content_len = strlen("RSET\r\n");
-					if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
-						OUT_OF_MEMORY
-					}
-					strncpy(request->content, "RSET\r\n", request->content_len);
-					eventpool_fd_write(node->fd, request->content, request->content_len);
-					request->step = SMTP_STEP_RECV_RESET;
-					eventpool_fd_enable_read(node);
-					if(pilight.debuglevel >= 2) {
-						fprintf(stderr, "SMTP: %s\n", request->content);
-					}
-				} break;
-				case SMTP_STEP_SEND_QUIT: {
-					request->content_len = strlen("QUIT\r\n");
-					if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
-						OUT_OF_MEMORY
-					}
-					strncpy(request->content, "QUIT\r\n", request->content_len);
-					eventpool_fd_write(node->fd, request->content, request->content_len);
-					request->step = SMTP_STEP_RECV_QUIT;
-					eventpool_fd_enable_read(node);
-					if(pilight.debuglevel >= 2) {
-						fprintf(stderr, "SMTP: %s\n", request->content);
-					}
-				} break;
+		case SMTP_STEP_RECV_AUTH: {
+			if(strncmp(buf, "235", 3) == 0) {
+				request->step = SMTP_STEP_SEND_FROM;
 			}
+			if(strncmp(buf, "451", 3) == 0) {
+				logprintf(LOG_NOTICE, "SMTP: protocol violation while authenticating");
+				abort_cb(req);
+				return;
+			}
+			if(strncmp(buf, "501", 3) == 0) {
+				logprintf(LOG_NOTICE, "SMTP: improperly base64 encoded user/password");
+				abort_cb(req);
+				return;
+			}
+			if(strncmp(buf, "535", 3) == 0) {
+				logprintf(LOG_NOTICE, "SMTP: authentication failed: wrong user/password");
+				abort_cb(req);
+				return;
+			}
+			*nread = 0;
+			request->step = SMTP_STEP_SEND_FROM;
+			uv_custom_write(req);
 		} break;
-		case EV_DISCONNECTED: {
-			if(request->is_ssl == 1) {
-				mbedtls_ssl_free(&request->ssl);
+		case SMTP_STEP_RECV_FROM: {
+			if(strncmp(buf, "250", 3) != 0) {
+				abort_cb(req);
+				return;
 			}
-			if(request->content != NULL) {
-				FREE(request->content);
+			request->bytes_read = 0;
+			*nread = 0;
+			request->step = SMTP_STEP_SEND_TO;
+			uv_custom_write(req);
+		} break;
+		case SMTP_STEP_RECV_TO: {
+			if(strncmp(buf, "250", 3) != 0) {
+				abort_cb(req);
+				return;
 			}
-			if(request->mail != NULL) {
-				if(request->mail->subject != NULL) {
-					FREE(request->mail->subject);
-				}
-				if(request->mail->message != NULL) {
-					FREE(request->mail->message);
-				}
-				if(request->mail->to != NULL) {
-					FREE(request->mail->to);
-				}
-				if(request->mail->from != NULL) {
-					FREE(request->mail->from);
-				}
-				FREE(request->mail);
+			request->bytes_read = 0;
+			*nread = 0;
+			request->step = SMTP_STEP_SEND_DATA;
+			uv_custom_write(req);
+		} break;
+		case SMTP_STEP_RECV_DATA: {
+			if(strncmp(buf, "354", 3) != 0) {
+				abort_cb(req);
+				return;
 			}
+			request->bytes_read = 0;
+			*nread = 0;
+			request->step = SMTP_STEP_SEND_BODY;
+			uv_custom_write(req);
+		} break;
+		case SMTP_STEP_RECV_BODY: {
+			if(strncmp(buf, "250", 3) != 0) {
+				abort_cb(req);
+				return;
+			}
+			request->bytes_read = 0;
+			*nread = 0;
+			request->step = SMTP_STEP_SEND_RESET;
+			uv_custom_write(req);
+		} break;
+		case SMTP_STEP_RECV_RESET: {
+			if(strncmp(buf, "250", 3) != 0) {
+				abort_cb(req);
+				return;
+			}
+			request->bytes_read = 0;
+			*nread = 0;
+			request->step = SMTP_STEP_SEND_QUIT;
+			uv_custom_write(req);
+		} break;
+		case SMTP_STEP_RECV_QUIT: {
+			logprintf(LOG_INFO, "SMTP: successfully send mail");
+			if(request->callback != NULL) {
+				request->callback(0);
+			}
+			if(!uv_is_closing((uv_handle_t *)req)) {
+				uv_close((uv_handle_t *)req, close_cb);
+			}
+			uv_custom_poll_free(custom_poll_data);
 			FREE(request);
-			eventpool_fd_remove(node);
+			return;
+		} break;
+		case SMTP_STEP_RECV_STARTTLS: {
+			if(strncmp(buf, "220", 3) == 0) {
+				custom_poll_data->is_ssl = 1;
+
+				request->bytes_read = 0;
+				*nread = 0;
+				request->step = SMTP_STEP_SEND_HELLO;
+				uv_custom_write(req);
+			}
 		} break;
 	}
-	return 0;
 }
 
-int sendmail(char *host, char *login, char *pass, unsigned short port, struct mail_t *mail, void (*callback)(int)) {
+static void push_data(uv_poll_t *req, int step) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct request_t *request = custom_poll_data->data;
+
+	iobuf_append(&custom_poll_data->send_iobuf, (void *)request->content, request->content_len);
+
+	if(request->content != NULL) {
+		FREE(request->content);
+	}
+	request->content_len = 0;
+	request->step = step;
+	request->reading = 1;
+
+	uv_custom_write(req);
+	uv_custom_read(req);	
+}
+
+static void write_cb(uv_poll_t *req) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct request_t *request = custom_poll_data->data;
+
+	switch(request->step) {
+		case SMTP_STEP_RECV_WELCOME: {
+			push_data(req, SMTP_STEP_RECV_WELCOME);
+		} break;
+		case SMTP_STEP_SEND_HELLO: {
+			request->content_len = strlen("EHLO ")+strlen(USERAGENT)+3;
+			if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
+				OUT_OF_MEMORY
+			}
+			request->content_len = (size_t)snprintf(request->content, request->content_len, "EHLO %s\r\n", USERAGENT);
+			if(pilight.debuglevel >= 2) {
+				fprintf(stderr, "SMTP: %s\n", request->content);
+			}
+
+			push_data(req, SMTP_STEP_RECV_HELLO);
+		} break;
+		case SMTP_STEP_SEND_AUTH: {
+			request->content_len = strlen(request->login)+strlen(request->pass)+2;
+			char *authstr = MALLOC(request->content_len), *hash = NULL;
+			if(authstr == NULL) {
+				OUT_OF_MEMORY
+			}
+			memset(authstr, '\0', request->content_len);
+			strncpy(&authstr[1], request->login, strlen(request->login));
+			strncpy(&authstr[2+strlen(request->login)], request->pass, request->content_len-strlen(request->login)-2);
+			hash = base64encode(authstr, request->content_len);
+			FREE(authstr);
+
+			request->content_len = strlen("AUTH PLAIN ")+strlen(hash)+3;
+			if((request->content = REALLOC(request->content, request->content_len+4)) == NULL) {
+				OUT_OF_MEMORY
+			}
+			memset(request->content, '\0', request->content_len);
+			request->content_len = snprintf(request->content, request->content_len, "AUTH PLAIN %s\r\n", hash);
+			FREE(hash);
+
+			if(pilight.debuglevel >= 2) {
+				fprintf(stderr, "SMTP: AUTH PLAIN XXX\n");
+			}
+			push_data(req, SMTP_STEP_RECV_AUTH);
+		} break;
+		case SMTP_STEP_SEND_FROM: {
+			request->content_len = strlen("MAIL FROM: <>\r\n")+strlen(request->mail->from)+1;
+			if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
+				OUT_OF_MEMORY
+			}
+			request->content_len = (size_t)snprintf(request->content, request->content_len, "MAIL FROM: <%s>\r\n", request->mail->from);
+
+			if(pilight.debuglevel >= 2) {
+				fprintf(stderr, "SMTP: %s\n", request->content);
+			}
+			push_data(req, SMTP_STEP_RECV_FROM);
+		} break;
+		case SMTP_STEP_SEND_TO: {
+			request->content_len = strlen("RCPT TO: <>\r\n")+strlen(request->mail->to)+1;
+			if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
+				OUT_OF_MEMORY
+			}
+			request->content_len = (size_t)snprintf(request->content, request->content_len, "RCPT TO: <%s>\r\n", request->mail->to);
+			if(pilight.debuglevel >= 2) {
+				fprintf(stderr, "SMTP: %s\n", request->content);
+			}
+
+			push_data(req, SMTP_STEP_RECV_TO);
+		} break;
+		case SMTP_STEP_SEND_DATA: {
+			request->content_len = strlen("DATA\r\n");
+			if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
+				OUT_OF_MEMORY
+			}
+			strncpy(request->content, "DATA\r\n", request->content_len);
+			if(pilight.debuglevel >= 2) {
+				fprintf(stderr, "SMTP: %s\n", request->content);
+			}
+
+			push_data(req, SMTP_STEP_RECV_DATA);
+		} break;
+		case SMTP_STEP_SEND_BODY: {
+			request->content_len = 255;
+			request->content_len += strlen(request->mail->to);
+			request->content_len += strlen(request->mail->from);
+			request->content_len += strlen(request->mail->subject);
+			request->content_len += strlen(request->mail->message);
+
+			if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
+				OUT_OF_MEMORY
+			}
+			request->content_len = (size_t)snprintf(request->content, request->content_len,
+				"Subject: %s\r\n"
+				"From: <%s>\r\n"
+				"To: <%s>\r\n"
+				"Content-Type: text/plain\r\n"
+				"Mime-Version: 1.0\r\n"
+				"X-Mailer: Emoticode smtp_send\r\n"
+				"Content-Transfer-Encoding: 7bit\r\n\r\n"
+				"%s"
+				"\r\n.\r\n",
+				request->mail->subject, request->mail->from, request->mail->to, request->mail->message);
+
+			if(pilight.debuglevel >= 2) {
+				fprintf(stderr, "SMTP: %s\n", request->content);
+			}
+
+			push_data(req, SMTP_STEP_RECV_BODY);
+		} break;
+		case SMTP_STEP_SEND_RESET: {
+			request->content_len = strlen("RSET\r\n");
+			if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
+				OUT_OF_MEMORY
+			}
+			strncpy(request->content, "RSET\r\n", request->content_len);
+			if(pilight.debuglevel >= 2) {
+				fprintf(stderr, "SMTP: %s\n", request->content);
+			}
+
+			push_data(req, SMTP_STEP_RECV_RESET);
+		} break;
+		case SMTP_STEP_SEND_QUIT: {
+			request->content_len = strlen("QUIT\r\n");
+			if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
+				OUT_OF_MEMORY
+			}
+			strncpy(request->content, "QUIT\r\n", request->content_len);
+			if(pilight.debuglevel >= 2) {
+				fprintf(stderr, "SMTP: %s\n", request->content);
+			}
+
+			push_data(req, SMTP_STEP_RECV_QUIT);
+		} break;
+		case SMTP_STEP_SEND_STARTTLS: {
+			request->content_len = strlen("STARTTLS\r\n");
+			if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
+				OUT_OF_MEMORY
+			}
+			strncpy(request->content, "STARTTLS\r\n", request->content_len);
+			if(pilight.debuglevel >= 2) {
+				fprintf(stderr, "SMTP: %s\n", request->content);
+			}
+
+			push_data(req, SMTP_STEP_RECV_STARTTLS);
+		} break;
+	}
+}
+
+int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ssl, struct mail_t *mail, void (*callback)(int)) {
 	struct request_t *request = NULL;
+	struct uv_custom_poll_t *custom_poll_data = NULL;
+	struct sockaddr_in addr;
+	char ip[INET_ADDRSTRLEN+1], *p = ip;
+	int r = 0, sockfd = 0;
+
+	if(mail->from == NULL) {
+		logprintf(LOG_ERR, "SMTP: sender not set");
+		return -1;
+	}
+	if(mail->subject == NULL) {
+		logprintf(LOG_ERR, "SMTP: subject not set");
+		return -1;
+	}
+	if(mail->message == NULL) {
+		logprintf(LOG_ERR, "SMTP: message not set");
+		return -1;
+	}
+	if(mail->to == NULL) {
+		logprintf(LOG_ERR, "SMTP: recipient not set");
+		return -1;
+	}
+	
 	if((request = MALLOC(sizeof(struct request_t))) == NULL) {
 		OUT_OF_MEMORY
 	}
@@ -575,32 +484,84 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 	request->authtype = UNSUPPORTED;
 	request->callback = callback;
 
-	switch(port) {
-		case 465:
-			request->is_ssl = 1;
-		break;
-		case 25:
-		case 587:
-			request->is_ssl = 0;
-		break;
-		default:
-			logprintf(LOG_ERR, "port %d is not a valid SMTP port", port);
-			FREE(request);
-			if(request->callback != NULL) {
-				request->callback(-1);
-			}
-			return -1;
-		break;
+#ifdef _WIN32
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "WSAStartup");
+		exit(EXIT_FAILURE);
 	}
-	if(request->is_ssl == 1 && ssl_client_init_status() == -1) {
-		logprintf(LOG_ERR, "secure e-mails require a properly initialized SSL library");
-		FREE(request);
-		if(request->callback != NULL) {
-			request->callback(-1);
-		}
-		return -1;
+#endif
+
+	r = host2ip(host, p);
+	if(r != 0) {
+		logprintf(LOG_ERR, "host2ip");
+		goto freeuv;
+	}
+	r = uv_ip4_addr(ip, port, &addr);
+	if(r != 0) {
+		logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
+		goto freeuv;
 	}
 
-	eventpool_socket_add("mail", host, port, AF_INET, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_CLIENT, client_callback, client_send, request);
+	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+		logprintf(LOG_ERR, "socket: %s", strerror(errno));
+		goto free;
+	}
+
+#ifdef _WIN32
+	unsigned long on = 1;
+	ioctlsocket(sockfd, FIONBIO, &on);
+#else
+	long arg = fcntl(sockfd, F_GETFL, NULL);
+	fcntl(sockfd, F_SETFL, arg | O_NONBLOCK);
+#endif
+
+	if(connect(sockfd, (const struct sockaddr *)&addr, sizeof(struct sockaddr)) < 0) {
+#ifdef _WIN32
+		if(!(WSAGetLastError() == WSAEWOULDBLOCK || WSAGetLastError() == WSAEISCONN)) {
+#else
+		if(!(errno == EINPROGRESS || errno == EISCONN)) {
+#endif
+			logprintf(LOG_ERR, "connect: %s", strerror(errno));
+			goto free;
+		}
+	}
+
+	uv_poll_t *poll_req = NULL;
+	if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	uv_custom_poll_init(&custom_poll_data, poll_req, (void *)request);
+
+	custom_poll_data->is_ssl = is_ssl;
+
+	if(custom_poll_data->is_ssl == 1 && ssl_client_init_status() == -1) {
+		logprintf(LOG_ERR, "secure e-mails require a properly initialized SSL library");
+		abort_cb(poll_req);
+		return -1;
+	}
+	custom_poll_data->write_cb = write_cb;
+	custom_poll_data->read_cb = read_cb;
+
+	r = uv_poll_init_socket(uv_default_loop(), poll_req, sockfd);
+	if(r != 0) {
+		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
+		FREE(poll_req);
+		goto freeuv;
+	}
+
+	request->step = SMTP_STEP_RECV_WELCOME;
+	write_cb(poll_req);
+
 	return 0;
+
+freeuv:
+	FREE(request);
+free:
+	if(sockfd > 0) {
+		close(sockfd);
+	}
+	return -1;
 }

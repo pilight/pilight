@@ -174,7 +174,7 @@ static void *thread(void *param) {
 	return NULL;
 }
 
-static void *addDevice(void *param) {
+static void *addDevice(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 
 	struct timeval tv;

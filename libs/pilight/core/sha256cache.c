@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 
@@ -62,7 +61,7 @@ int sha256cache_rm(char *name) {
 	sha256cache_remove_node(&sha256cache, name);
 
 	logprintf(LOG_DEBUG, "removed %s from cache", name);
-	return 1;
+	return 0;
 }
 
 int sha256cache_add(char *name) {

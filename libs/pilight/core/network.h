@@ -14,7 +14,6 @@
 	#include <ifaddrs.h>
 	#include <sys/socket.h>
 #endif
-#include <pthread.h>
 #include <stdint.h>
 
 #include "pilight.h"

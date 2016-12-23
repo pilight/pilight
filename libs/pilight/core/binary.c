@@ -19,21 +19,21 @@
  */
 
 #define BITS_LSB_FIRST_TO_VALUE(bits, s, e, result)	\
-	typeof(result) mask = 1;			\
+	unsigned long long mask = 1;			\
 	result = 0;					\
 	for(; s<=e; mask <<= 1)				\
 		if(bits[s++] != 0)			\
 			result |= mask
 
 #define BITS_MSB_FIRST_TO_VALUE(bits, s, e, result)	\
-	typeof(result) mask = 1;			\
+	unsigned long long mask = 1;			\
 	result = 0;					\
-	for(; s<=e; mask <<= 1)				\
+	for(; e > 0 && s<=e; mask <<= 1)				\
 		if(bits[e--] != 0)			\
 			result |= mask
 
 #define VALUE_TO_BITS_MSB_FIRST(value, bits, length)	\
-	typeof(value) mask = value;			\
+	unsigned long long mask = value;			\
 	do bits++; while (mask >>= 1);			\
 	int *start = bits;				\
 	do *--start = value & 1; while (value >>= 1);	\
@@ -78,7 +78,7 @@ int decToBinRev(int dec, int *binary) { // stores dec as binary[lsb .. msb] and 
 }
 
 unsigned long long binToDecRevUl(const int *binary, unsigned int s, unsigned int e) {
-	unsigned long long result;
+	unsigned long long result = 0;
 	BITS_MSB_FIRST_TO_VALUE(binary, s, e, result);
 	return result;
 }

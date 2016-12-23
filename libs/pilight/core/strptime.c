@@ -29,7 +29,12 @@
 
 #include <ctype.h>
 #include <string.h>
+#undef __XSI_VISIBLE
 #include <time.h>
+
+#ifdef _WIN32
+	#define strncasecmp(x,y,z) _strnicmp(x,y,z)
+#endif
 
 /*
  * We do not implement alternate representations. However, we always

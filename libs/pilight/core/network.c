@@ -6,6 +6,10 @@
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
+#ifdef __sun
+	#define BSD_COMP
+	#define SIOCGIFHWADDR SIOCGIFADDR
+#endif		
 #ifndef __FreeBSD__
 	#define _GNU_SOURCE
 #endif
@@ -13,7 +17,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include <libgen.h>
 #ifdef _WIN32
 	#if _WIN32_WINNT < 0x0501
 		#undef _WIN32_WINNT
@@ -37,19 +40,16 @@
 	#include <ifaddrs.h>
 	#include <pwd.h>
 	#include <sys/ioctl.h>
+	#include <unistd.h>
 #endif
-#include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
 #ifndef __USE_XOPEN
 	#define __USE_XOPEN
 #endif
-#include <sys/time.h>
 #include <time.h>
-#include <pthread.h>
 #ifdef __FreeBSD__
 	#include <net/if_dl.h>
 #endif
@@ -73,6 +73,9 @@ int inetdevs(char ***array) {
 	if(GetAdaptersInfo(pAdapterInfo, &buflen) == ERROR_BUFFER_OVERFLOW) {
 		FREE(pAdapterInfo);
 		pAdapterInfo = MALLOC(buflen);
+		if(pAdapterInfo == NULL) {
+			OUT_OF_MEMORY;
+		}
 	}
 
 	if(GetAdaptersInfo(pAdapterInfo, &buflen) == NO_ERROR) {
@@ -128,6 +131,7 @@ int inetdevs(char ***array) {
 		    strstr(ifa->ifa_name, "vbox") == NULL &&
 				strstr(ifa->ifa_name, "dummy") == NULL &&
 				strstr(ifa->ifa_name, "tap") == NULL &&
+				strstr(ifa->ifa_name, "bridg") == NULL &&
 				strstr(ifa->ifa_name, "tun") == NULL) &&
 			(family == AF_INET || family == AF_INET6)) {
 			memset(host, '\0', NI_MAXHOST);
@@ -202,7 +206,7 @@ int dev2mac(char *ifname, char **mac) {
 	free(pAdapterInfo);
 #endif
 
-#ifdef linux
+#if defined(linux) || defined(__sun)
 	int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
 	struct ifreq s;
 
@@ -303,6 +307,15 @@ int host2ip(char *host, char *ip) {
 	struct addrinfo hints, *servinfo, *p;
 	struct sockaddr_in *h = NULL;
 
+#ifdef _WIN32
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "WSAStartup");
+		exit(EXIT_FAILURE);
+	}
+#endif	
+	
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
@@ -501,23 +514,29 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 }
 
 void rep_freeifaddrs(struct ifaddrs *ifaddr) {
-	struct ifaddrs *ifa;
+	struct ifaddrs *ifa = NULL;
 	while(ifaddr) {
 		ifa = ifaddr;
 		FREE(ifa->ifa_name);
-		FREE(ifa->ifa_addr);
-		FREE(ifa->ifa_netmask);
+		if(ifa->ifa_addr != NULL) {
+			FREE(ifa->ifa_addr);
+		}
+		if(ifa->ifa_netmask != NULL) {
+			FREE(ifa->ifa_netmask);
+		}
 		ifaddr = ifaddr->ifa_next;
 		FREE(ifa);
 	}
-	FREE(ifaddr);
+	if(ifaddr != NULL) {
+		FREE(ifaddr);
+	}
 }
 #endif
 
 int whitelist_check(char *ip) {
 	char *whitelist = NULL;
 	unsigned int client[4] = {0};
-	int x = 0, i = 0, error = 1;
+	int x = 0, i = 0, error = -1;
 	unsigned int n = 0;
 	char **array = NULL;
 	char wip[16] = {'\0'};
@@ -620,12 +639,13 @@ int whitelist_check(char *ip) {
 
 void whitelist_free(void) {
 	int i = 0;
-	if(whitelist_cache) {
+	if(whitelist_cache != NULL) {
 		for(i=0;i<whitelist_number;i++) {
 			FREE(whitelist_cache[i][0]);
 			FREE(whitelist_cache[i][1]);
 			FREE(whitelist_cache[i]);
 		}
 		FREE(whitelist_cache);
+		whitelist_number = 0;
 	}
 }

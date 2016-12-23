@@ -9,16 +9,25 @@
 #ifndef _THREADPOOL_H_
 #define _THREADPOOL_H_
 
-#include <semaphore.h>
 #include "eventpool.h"
 #include "proc.h"
+
+struct threadpool_data_t {
+	int reason;
+	int priority;
+	char name[255];
+	uv_sem_t *ref;
+	void *userdata;
+	void *(*func)(int, void *);
+	void *(*done)(void *);
+} threadpool_data_t;
 
 struct threadpool_tasks_t {
 	unsigned long id;
 	char *name;
-	void *(*func)(void *);
-	void *(*free)(void *);
-	sem_t *ref;
+	void *(*func)(int, void *);
+	void *(*done)(void *);
+	uv_sem_t *ref;
 	int priority;
 	int reason;
 
@@ -36,15 +45,16 @@ struct threadpool_workers_t {
 	int nr;
 	unsigned long id;
 	int loop;
-	sem_t running;
+	uv_sem_t running;
 	int working;
 	int haswork;
 	struct threadpool_tasks_t task;
 	struct cpu_usage_t cpu_usage;
 
-	pthread_t pth;
-	pthread_mutex_t lock;
-	pthread_mutexattr_t attr;
+	uv_mutex_t lock;
+	uv_thread_t pth;
+	// pthread_mutex_t lock;
+	// pthread_mutexattr_t attr;
 #ifdef _WIN32
 	HANDLE signal;
 #else
@@ -57,7 +67,7 @@ struct threadpool_workers_t {
 int threadpool_free_runs(int);
 void threadpool_remove_task(unsigned long);
 void threadpool_add_worker(void);
-unsigned long threadpool_add_work(int, sem_t *, char *, int, void *(*)(void *), void *(*)(void *), void *);
+unsigned long threadpool_add_work(int, uv_sem_t *, char *, int, void *(*)(void *), void *(*)(void *), void *);
 void threadpool_init(int, int, int);
 void threadpool_reinit(void);
 void threadpool_gc(void);

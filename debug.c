@@ -17,6 +17,7 @@
 #include <math.h>
 #include <string.h>
 
+#include "libs/libuv/uv.h"
 #include "libs/pilight/core/threadpool.h"
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/network.h"
@@ -28,6 +29,8 @@
 #include "libs/pilight/core/gc.h"
 #include "libs/pilight/core/dso.h"
 
+#include "libs/pilight/protocols/protocol.h"
+
 #include "libs/pilight/events/events.h"
 
 #include "libs/pilight/hardware/hardware.h"
@@ -36,7 +39,8 @@
 	#include "libs/wiringx/wiringX.h"
 #endif
 
-static unsigned short main_loop = 1;
+static uv_signal_t *signal_req = NULL;
+static unsigned short loop = 1;
 static unsigned short inner_loop = 1;
 static int doSkip = 0;
 
@@ -49,40 +53,32 @@ static int normalize(int i, int pulselen) {
 
 int main_gc(void) {
 	log_shell_disable();
-	main_loop = 0;
+	loop = 0;
 	inner_loop = 0;
 
-	datetime_gc();
-#ifdef EVENTS
-	events_gc();
-#endif
-	options_gc();
-	socket_gc();
-
-	storage_gc();
+	protocol_gc();
 	hardware_gc();
-	whitelist_free();
+	storage_gc();
 
 #ifndef _WIN32
 	wiringXGC();
 #endif
-	dso_gc();
+	log_shell_disable();
+	eventpool_gc();
 	log_gc();
-	gc_clear();
 
 	FREE(progname);
 
 	return EXIT_SUCCESS;
 }
 
-void *receivePulseTrain(void *param) {
+void *receivePulseTrain(int reason, void *param) {
 	doSkip ^= 1;
 	if(doSkip == 1) {
 		return NULL;
 	}
 
-	struct threadpool_tasks_t *task = param;
-	struct reason_received_pulsetrain_t *data = task->userdata;
+	struct reason_received_pulsetrain_t *data = param;
 
 	int pulselen = 0;
 	int pulse = 0;
@@ -104,7 +100,6 @@ void *receivePulseTrain(void *param) {
 
 			if(data->length > 0) {
 				pulselen = data->pulses[data->length-1]/PULSE_DIV;
-
 				if(pulselen > 25) {
 					for(i=3;i<data->length;i++) {
 						if((data->pulses[i]/pulselen) >= 2) {
@@ -118,18 +113,22 @@ void *receivePulseTrain(void *param) {
 						printf("--[RESULTS]--\n");
 						printf("\n");
 #ifdef _WIN32
-						localtime(&now);
+						memcpy(&tm, localtime(&now), sizeof(struct tm));
 #else
 						localtime_r(&now, &tm);
 #endif
 
 #ifdef _WIN32
-						printf("time:\t\t%s\n", asctime(&tm));
+						printf("time:\t\t%s", asctime(&tm));
 #else
 						char buf[128];
 						char *p = buf;
 						memset(&buf, '\0', sizeof(buf));
+	#ifdef __sun
+						asctime_r(&tm, p, sizeof(buf));
+	#else
 						asctime_r(&tm, p);
+	#endif
 						printf("time:\t\t%s", buf);
 #endif
 						printf("hardware:\t%s\n", hw->id);
@@ -170,7 +169,7 @@ void *receivePulseTrain(void *param) {
 
 	// struct hardware_t *hw = (hardware_t *)param;
 
-	// while(main_loop) {
+	// while(loop) {
 		// memset(&raw, '\0', MAXPULSESTREAMLENGTH);
 		// memset(&pRaw, '\0', MAXPULSESTREAMLENGTH);
 		// memset(&tm, '\0', sizeof(struct tm));
@@ -285,25 +284,57 @@ void *receivePulseTrain(void *param) {
 		// }
 	// }
 
-	// main_loop = 0;
+	// loop = 0;
 
 	// return NULL;
 // }
 
-int main(int argc, char **argv) {
-	atomicinit();
+static void signal_cb(uv_signal_t *handle, int signum) {
+	uv_stop(uv_default_loop());
+	main_gc();
+}
 
-	gc_attach(main_gc);
+static void close_cb(uv_handle_t *handle) {
+	FREE(handle);
+}
 
-	/* Catch all exit signals for gc */
-	gc_catch();
+static void walk_cb(uv_handle_t *handle, void *arg) {
+	if(!uv_is_closing(handle)) {
+		uv_close(handle, close_cb);
+	}
+}
 
+static void main_loop(int onclose) {
+	if(onclose == 1) {
+		signal_cb(NULL, SIGINT);
+	}
+	uv_run(uv_default_loop(), UV_RUN_DEFAULT);	
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+	if(onclose == 1) {
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			usleep(10);
+		}
+	}
+}
+
+int main(int argc, char **argv) {	
 	pilight.process = PROCESS_CLIENT;
 
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
+	
 	if((progname = MALLOC(15)) == NULL) {
 		OUT_OF_MEMORY
 	}
 	strcpy(progname, "pilight-debug");
+
+	if((signal_req = MALLOC(sizeof(uv_signal_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	uv_signal_init(uv_default_loop(), signal_req);
+	uv_signal_start(signal_req, signal_cb, SIGINT);	
 
 #ifndef _WIN32
 	if(geteuid() != 0) {
@@ -313,6 +344,7 @@ int main(int argc, char **argv) {
 	}
 #endif
 
+	log_init();
 	log_shell_enable();
 	log_file_disable();
 	log_level_set(LOG_NOTICE);
@@ -364,6 +396,8 @@ int main(int argc, char **argv) {
 		}
 	}
 	options_delete(options);
+	options_gc();
+	options = NULL;
 
 #ifdef _WIN32
 	if((pid = check_instances(L"pilight-debug")) != -1) {
@@ -383,11 +417,14 @@ int main(int argc, char **argv) {
 	}
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
+	protocol_init();
 	hardware_init();
 	storage_init();
-	if(storage_read(fconfig, CONFIG_HARDWARE | CONFIG_SETTINGS) != 0) {
+	if(storage_read(fconfig, CONFIG_HARDWARE | CONFIG_SETTINGS) != 0) {		
+		FREE(fconfig);
 		goto clear;
 	}
+	FREE(fconfig);	
 
 	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain);
 
@@ -421,11 +458,11 @@ int main(int argc, char **argv) {
 
 	if(hardware_select(ORIGIN_MASTER, NULL, &jrespond) == 0) {
 		jchilds = json_first_child(jrespond);
-		while(jchilds && main_loop == 1) {
+		while(jchilds && loop == 1) {
 			if(hardware_select_struct(ORIGIN_MASTER, jchilds->key, &hardware) == 0) {
 				if(hardware->init != NULL) {
-					if(hardware->init(receivePulseTrain) == EXIT_FAILURE) {
-						if(main_loop == 1) {
+					if(hardware->init() == EXIT_FAILURE) {
+						if(loop == 1) {
 							logprintf(LOG_ERR, "could not initialize %s hardware mode", hardware->id);
 							goto clear;
 						} else {
@@ -434,7 +471,7 @@ int main(int argc, char **argv) {
 					}
 				}
 			}
-			if(main_loop == 0) {
+			if(loop == 0) {
 				break;
 			}
 
@@ -448,12 +485,18 @@ int main(int argc, char **argv) {
 	printf("failed leads. It will keep running until you explicitly stop it.\n");
 	printf("This is done by pressing both the [CTRL] and C buttons on your keyboard.\n");
 
-	eventpool_process(NULL);
+	main_loop(0);
 
 clear:
-	FREE(fconfig);
-	if(main_loop == 1) {
-		main_gc();
+	if(options != NULL) {
+		options_delete(options);
+		options_gc();
+		options = NULL;
 	}
+
+	main_loop(1);
+
+	main_gc();
+
 	return (EXIT_FAILURE);
 }

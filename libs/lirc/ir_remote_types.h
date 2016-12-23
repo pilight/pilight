@@ -23,7 +23,7 @@
 
 #include "lirc.h"
 
-#if defined(__FreeBSD__) || defined(_WIN32)
+#if defined(__FreeBSD__) || defined(_WIN32) || defined(__sun)
 	typedef unsigned long long __u64;
 	typedef unsigned long __u32;
 #endif

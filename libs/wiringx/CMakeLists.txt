@@ -1,6 +1,6 @@
 project(wiringx)
 
-if(WIN32)
+if(WIN32 OR ${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
 	file(GLOB ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/wiringX.c")
 	file(GLOB ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/wiringX.h")
 else()

@@ -33,10 +33,10 @@
 static struct threadpool_tasks_t *threadpool_tasks = NULL;
 static struct threadpool_workers_t *threadpool_workers = NULL;
 
-static pthread_mutex_t tasks_lock;
-static pthread_mutexattr_t tasks_attr;
-static pthread_mutex_t workers_lock;
-static pthread_mutexattr_t workers_attr;
+static uv_mutex_t tasks_lock;
+// static pthread_mutexattr_t tasks_attr;
+static uv_mutex_t workers_lock;
+// static pthread_mutexattr_t workers_attr;
 
 static int nrtasks = 0;
 static int nrworkers = 0;
@@ -86,13 +86,11 @@ static void threadpool_remove_worker(unsigned long id) {
 
 static void *worker(void *param) {
 	struct threadpool_workers_t *node = param;
-	struct timespec timeToWait;
-	struct timeval now;
 	int linger = 0;
 
 	sem_wait(&node->running);
 	while(node->loop == 1) {
-		pthread_mutex_lock(&node->lock);
+		uv_mutex_lock(&node->lock);
 
 		while(node->loop == 1 && __sync_add_and_fetch(&nrtasks, 0) == 0) {
 #ifdef _WIN32
@@ -102,6 +100,8 @@ static void *worker(void *param) {
 			 */
 			WaitForSingleObjectEx(node->signal, 1000L, TRUE);
 #else
+			struct timeval now;
+			struct timespec timeToWait;
 			gettimeofday(&now, NULL);
 			timeToWait.tv_sec = now.tv_sec+1;
 			timeToWait.tv_nsec = 0;	
@@ -114,7 +114,7 @@ static void *worker(void *param) {
 			int l = maxlinger;
 
 			if(linger > l) {
-				pthread_mutex_lock(&workers_lock);
+				uv_mutex_lock(&workers_lock);
 				int mw = minworkers;
 				if(nrworkers > mw) {
 					pthread_detach(node->pth);
@@ -122,19 +122,19 @@ static void *worker(void *param) {
 				} else {
 					linger = 0;
 				}
-				pthread_mutex_unlock(&workers_lock);
+				uv_mutex_unlock(&workers_lock);
 				if(linger > 0) {
 					return NULL;
 				}
 			}
 		}
 		linger = 0;
-		pthread_mutex_unlock(&node->lock);
+		uv_mutex_unlock(&node->lock);
 		if(node->loop == 0) {
 			break;
 		}
 
-		pthread_mutex_lock(&tasks_lock);
+		uv_mutex_lock(&tasks_lock);
 		if(threadpool_tasks != NULL) {
 			struct threadpool_tasks_t copy;
 			memcpy(&copy, threadpool_tasks, sizeof(struct threadpool_tasks_t));
@@ -147,7 +147,7 @@ static void *worker(void *param) {
 			__sync_add_and_fetch(&nrtasks, -1);
 			FREE(tmp->name);
 			FREE(tmp);
-			pthread_mutex_unlock(&tasks_lock);
+			uv_mutex_unlock(&tasks_lock);
 
 			if(pilight.debuglevel >= 2) {
 				fprintf(stderr, "activated worker %d, executing %s\n", node->nr, copy.name);
@@ -156,13 +156,13 @@ static void *worker(void *param) {
 				clock_gettime(CLOCK_MONOTONIC, &copy.timestamp.first);
 			}
 			if(pilight.debuglevel >= 2) {
-				getThreadCPUUsage(node->pth, &node->cpu_usage);
+				// getThreadCPUUsage(node->pth, &node->cpu_usage);
 			}
-			copy.func(&copy);
+			copy.func(copy.reason, &copy);
 
 			if(pilight.debuglevel >= 1) {
 				if(pilight.debuglevel >= 2) {
-					getThreadCPUUsage(node->pth, &node->cpu_usage);
+					// getThreadCPUUsage(node->pth, &node->cpu_usage);
 					fprintf(stderr, "worker %d: %f%% CPU", node->nr, node->cpu_usage.cpu_per);
 				}
 				clock_gettime(CLOCK_MONOTONIC, &copy.timestamp.second);
@@ -174,8 +174,8 @@ static void *worker(void *param) {
 			if(copy.ref == NULL ||
 				 (sem_trywait(copy.ref) == -1 && errno == EAGAIN) ||
 				 node->loop == 0) {
-				if(copy.free != NULL && copy.userdata != NULL && copy.reason != REASON_END) {
-					copy.free(copy.userdata);
+				if(copy.done != NULL && copy.userdata != NULL && copy.reason != REASON_END) {
+					copy.done(copy.userdata);
 				}
 				if(copy.ref != NULL) {
 					FREE(copy.ref);
@@ -183,7 +183,7 @@ static void *worker(void *param) {
 			}
 			FREE(copy.name);
 		} else {
-			pthread_mutex_unlock(&tasks_lock);
+			uv_mutex_unlock(&tasks_lock);
 		}
 	}
 
@@ -224,9 +224,10 @@ void threadpool_add_worker(void) {
 #endif
 	gettimeofday(&tv, NULL);
 
-	pthread_mutexattr_init(&node->attr);
-	pthread_mutexattr_settype(&node->attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&node->lock, &node->attr);
+	// pthread_mutexattr_init(&node->attr);
+	// pthread_mutexattr_settype(&node->attr, PTHREAD_MUTEX_RECURSIVE);
+	// pthread_mutex_init(&node->lock, &node->attr);
+	uv_mutex_init(&node->lock);
 #ifdef _WIN32
 	node->signal = CreateEvent(NULL, FALSE, FALSE, NULL);
 #else
@@ -252,7 +253,7 @@ void threadpool_add_worker(void) {
 	sem_init(&node->running, 0, 1);
 	node->next = NULL;
 
-	pthread_mutex_lock(&workers_lock);
+	uv_mutex_lock(&workers_lock);
 	struct threadpool_workers_t *tmp = threadpool_workers;
 	if(tmp) {
 		int mw = maxworkers;
@@ -284,7 +285,7 @@ void threadpool_add_worker(void) {
 	}
 
 	__sync_add_and_fetch(&nrworkers, 1);
-	pthread_mutex_unlock(&workers_lock);
+	uv_mutex_unlock(&workers_lock);
 }
 
 int threadpool_free_runs(int reason) {
@@ -325,14 +326,14 @@ unsigned long threadpool_add_work(int reason, sem_t *ref, char *name, int priori
 	strcpy(node->name, name);
 	node->func = func;
 	node->ref = ref;
-	node->free = free;
+	node->done = free;
 	id = node->id = (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 	node->priority = priority;
 	node->userdata = userdata;
 	node->reason = reason;
 	node->next = NULL;
 
-	pthread_mutex_lock(&tasks_lock);
+	uv_mutex_lock(&tasks_lock);
 	struct threadpool_tasks_t *tmp = threadpool_tasks;
 	if(tmp != NULL) {
 		while(tmp->next != NULL) {
@@ -345,15 +346,15 @@ unsigned long threadpool_add_work(int reason, sem_t *ref, char *name, int priori
 		threadpool_tasks = node;
 	}
 	__sync_add_and_fetch(&nrtasks, 1);
-	pthread_mutex_unlock(&tasks_lock);
+	uv_mutex_unlock(&tasks_lock);
 
 	if(((double)__sync_add_and_fetch(&nrtasks, 0) / (double)__sync_add_and_fetch(&nrworkers, 0)) >= 10 && maxworkers > nrworkers) {
 		threadpool_add_worker();
 	}
-	pthread_mutex_lock(&workers_lock);
+	uv_mutex_lock(&workers_lock);
 	struct threadpool_workers_t *workers = threadpool_workers;
 	while(workers) {
-		pthread_mutex_unlock(&workers->lock);
+		uv_mutex_unlock(&workers->lock);
 #ifdef _WIN32
 		SetEvent(workers->signal);
 #else
@@ -361,7 +362,7 @@ unsigned long threadpool_add_work(int reason, sem_t *ref, char *name, int priori
 #endif
 		workers = workers->next;
 	}
-	pthread_mutex_unlock(&workers_lock);
+	uv_mutex_unlock(&workers_lock);
 
 	return id;
 }
@@ -391,13 +392,15 @@ void threadpool_init(int min, int max, int linger) {
 	maxlinger = linger;
 	// __sync_add_and_fetch(&acceptwork, 1);
 
-	pthread_mutexattr_init(&tasks_attr);
-	pthread_mutexattr_settype(&tasks_attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&tasks_lock, &tasks_attr);
+	// pthread_mutexattr_init(&tasks_attr);
+	// pthread_mutexattr_settype(&tasks_attr, PTHREAD_MUTEX_RECURSIVE);
+	// pthread_mutex_init(&tasks_lock, &tasks_attr);
+	uv_mutex_init(&tasks_lock);
 
-	pthread_mutexattr_init(&workers_attr);
-	pthread_mutexattr_settype(&workers_attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&workers_lock, &workers_attr);
+	// pthread_mutexattr_init(&workers_attr);
+	// pthread_mutexattr_settype(&workers_attr, PTHREAD_MUTEX_RECURSIVE);
+	// pthread_mutex_init(&workers_lock, &workers_attr);
+	uv_mutex_init(&workers_lock);
 
 	for(i=0;i<min;i++) {
 		threadpool_add_worker();
@@ -444,12 +447,12 @@ unsigned long threadpool_add_scheduled_work(char *name, void *(*task)(void *), s
 }
 
 static void threadpool_workers_gc(void) {
-	pthread_mutex_lock(&workers_lock);
+	uv_mutex_lock(&workers_lock);
 	struct threadpool_workers_t *tmp = threadpool_workers;
 	while(threadpool_workers != NULL) {
 		tmp = threadpool_workers;
 		threadpool_workers->loop = 0;
-		pthread_mutex_unlock(&threadpool_workers->lock);
+		uv_mutex_unlock(&threadpool_workers->lock);
 #ifdef _WIN32
 		SetEvent(threadpool_workers->signal);
 #else
@@ -462,16 +465,16 @@ static void threadpool_workers_gc(void) {
 		FREE(tmp);
 	}
 	nrworkers = 0;
-	pthread_mutex_unlock(&workers_lock);
+	uv_mutex_unlock(&workers_lock);
 }
 
 static void threadpool_tasks_gc(void) {
-	pthread_mutex_lock(&tasks_lock);
+	uv_mutex_lock(&tasks_lock);
 	struct threadpool_tasks_t *tmp1 = threadpool_tasks;
 	while(threadpool_tasks != NULL) {
 		tmp1 = threadpool_tasks;
-		if(tmp1->free != NULL && tmp1->userdata != NULL && tmp1->reason != REASON_END) {
-			tmp1->free(tmp1->userdata);
+		if(tmp1->done != NULL && tmp1->userdata != NULL && tmp1->reason != REASON_END) {
+			tmp1->done(tmp1->userdata);
 		}
 		if(tmp1->ref != NULL) {
 			sem_destroy(tmp1->ref);
@@ -481,7 +484,7 @@ static void threadpool_tasks_gc(void) {
 		FREE(tmp1);
 	}
 	nrtasks = 0;
-	pthread_mutex_unlock(&tasks_lock);
+	uv_mutex_unlock(&tasks_lock);
 }
 
 void threadpool_gc() {

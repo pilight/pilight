@@ -21,10 +21,13 @@
 	#include <ws2tcpip.h>
 	#include <iphlpapi.h>
 	#define MSG_NOSIGNAL 0
+	#define	IP_MAXPACKET	65535	
 #else
 	#include <sys/socket.h>
 	#include <netinet/in.h>
-	#include <netinet/if_ether.h>
+	#ifndef __sun
+		#include <netinet/if_ether.h>
+	#endif
 	#include <netinet/tcp.h>
 	#include <net/route.h>
 	#include <netdb.h>
@@ -44,7 +47,6 @@
 	#include <netdb.h>
 #endif
 #include <pcap.h>
-#include <poll.h>
 #include <ctype.h>
 #include <string.h>
 #include <errno.h>
@@ -62,6 +64,9 @@
 #define ETH_ALEN 			6
 #define BUFFER 				32
 
+pthread_mutex_t lock;
+int lockinit = 0;
+
 typedef struct data_t {
 	pcap_t *handle;
 	int buffer;
@@ -70,7 +75,7 @@ typedef struct data_t {
 	int tries;
 	unsigned long stop;
 	struct arp_list_t *iplist;
-	struct arp_list_t *nodes;
+	struct arp_list_nodes_t *nodes;
 	unsigned char srcmac[ETH_ALEN];
 	char srcip[INET_ADDRSTRLEN];
 	char dstmac[19];
@@ -96,20 +101,32 @@ typedef struct arp_pkt {
 	unsigned char dstip[4];
 } arp_pkt;
 
-void arp_add_host(struct arp_list_t **iplist, const char *ip) {
+void arp_init_list(struct arp_list_t **iplist) {
 	struct arp_list_t *node = MALLOC(sizeof(struct arp_list_t));
 	if(node == NULL) {
 		OUT_OF_MEMORY
 	}
 	memset(node, '\0', sizeof(struct arp_list_t));
+
+	*iplist = node;
+}
+
+void arp_add_host(struct arp_list_t **iplist, const char *ip) {
+	pthread_mutex_lock(&lock);
+	struct arp_list_nodes_t *node = MALLOC(sizeof(struct arp_list_nodes_t));
+	if(node == NULL) {
+		OUT_OF_MEMORY
+	}
+	memset(node, '\0', sizeof(struct arp_list_nodes_t));
 	strncpy(node->dstip, ip, INET_ADDRSTRLEN);
 	node->tries = 0;
 	node->time = 0;
 	node->next = NULL;
 	node->timeout = 250;
 
-	node->next = *iplist;
-	*iplist = node;
+	node->next = (*iplist)->nodes;
+	(*iplist)->nodes = node;
+	pthread_mutex_unlock(&lock);
 }
 
 static void initpacket(char *dstip, char *srcip, unsigned char srcmac[6], char *packet) {
@@ -146,14 +163,14 @@ static void initpacket(char *dstip, char *srcip, unsigned char srcmac[6], char *
 
 static void arp_data_gc(struct data_t *data) {
 	pcap_t *pcap_handle = data->handle;
-	struct arp_list_t *tmp = NULL;
-	while(data->iplist) {
-		tmp = data->iplist;
-		data->iplist = data->iplist->next;
+	struct arp_list_nodes_t *tmp = NULL;
+	while(data->iplist->nodes) {
+		tmp = data->iplist->nodes;
+		data->iplist->nodes = data->iplist->nodes->next;
 		FREE(tmp);
 	}
-	if(data->iplist != NULL) {
-		FREE(data->iplist);
+	if(data->iplist->nodes != NULL) {
+		FREE(data->iplist->nodes);
 	}
 	FREE(data);
 	data = NULL;
@@ -163,14 +180,26 @@ static void arp_data_gc(struct data_t *data) {
 static void *arp_timeout(void *param) {
 	struct threadpool_tasks_t *node = param;
 	struct data_t *data = node->userdata;
-	struct arp_list_t *tmp = data->iplist;
+	struct arp_list_nodes_t *tmp = NULL;
 	struct timeval tv;
 	unsigned long now = 0;
-	int match = 0, match1 = 0;
-
+	int match = 0, match1 = 0;	
+	
+	pthread_mutex_lock(&lock);
 	if(data == NULL) {
+		pthread_mutex_unlock(&lock);
 		return NULL;
 	}
+	if(data->iplist == NULL) {
+		pthread_mutex_unlock(&lock);
+		return NULL;
+	}
+	if(data->iplist->nodes == NULL) {
+		pthread_mutex_unlock(&lock);
+		return NULL;
+	}
+
+	tmp = data->iplist->nodes;
 
 	gettimeofday(&tv, NULL);
 	now = (1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec);
@@ -191,6 +220,7 @@ static void *arp_timeout(void *param) {
 		data->server->stage = EVENTPOOL_STAGE_DISCONNECT;
 		data->server->dowrite = 0;
 		data->server->doflush = 0;
+		pthread_mutex_unlock(&lock);
 		return NULL;
 	}	else if(data->stop == 0) {
 		tv.tv_sec = 1;
@@ -201,6 +231,7 @@ static void *arp_timeout(void *param) {
 		data->server->stage = EVENTPOOL_STAGE_DISCONNECT;
 		data->server->dowrite = 0;
 		data->server->doflush = 0;
+		pthread_mutex_unlock(&lock);
 		return NULL;
 	}
 
@@ -208,21 +239,24 @@ static void *arp_timeout(void *param) {
 		eventpool_fd_enable_write(data->server);
 		data->buffer = 0;
 	}
-	
+	pthread_mutex_unlock(&lock);
 	return NULL;
 }
 
 static int client_callback(struct eventpool_fd_t *node, int event) {
 	struct data_t *data = node->userdata;
-	struct arp_list_t *tmp = NULL;
+	struct arp_list_nodes_t *tmp = NULL;
 	struct timeval tv;
-	pcap_t *pcap_handle = data->handle;
+	pcap_t *pcap_handle = NULL;
 	unsigned long now = 0;
 	int loop = 0;
 
 	gettimeofday(&tv, NULL);
 	now = (1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec);
 
+	pthread_mutex_lock(&lock);
+	pcap_handle = data->handle;
+	
 	switch(event) {
 		case EV_CONNECT_SUCCESS: {
 			eventpool_fd_enable_write(node);
@@ -231,10 +265,15 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 		case EV_WRITE: {
 			unsigned char packet[IP_MAXPACKET];
 			if(data->stop == 1) {
+				pthread_mutex_unlock(&lock);
 				return 0;
 			}
+			if(data->iplist->nodes == NULL) {
+				pthread_mutex_unlock(&lock);
+				return -1;
+			}
 			if(data->nodes == NULL) {
-				data->nodes = data->iplist;
+				data->nodes = data->iplist->nodes;
 			}
 
 			/* Sent the individual arp request in increasing intervals */
@@ -258,7 +297,6 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 				}
 			}
 			data->nodes = data->nodes->next;
-
 			/* Only allows BUFFER bulk request at one time to save CPU resources */
 			if(data->buffer <= BUFFER) {
 				eventpool_fd_enable_write(node);
@@ -304,11 +342,12 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 							data->stop = 1;
 							data->callback(data->dstmac, src);
 						}
+						pthread_mutex_unlock(&lock);
 						return 0;
 					}
 				}
 			}
-			tmp = data->iplist;
+			tmp = data->iplist->nodes;
 			while(tmp) {
 				if(tmp->tries < data->tries) {
 					loop++;
@@ -317,9 +356,11 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 			}
 			if(loop == 0) {
 				data->stop = 1;
+				pthread_mutex_unlock(&lock);
 				return 0;
 			}
 			eventpool_fd_enable_read(node);
+			pthread_mutex_unlock(&lock);
 		} break;
 		case EV_DISCONNECTED: {
 			node->stage = EVENTPOOL_STAGE_DISCONNECTED;
@@ -327,6 +368,8 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 			eventpool_fd_remove(node);
 		} break;
 	}
+
+	pthread_mutex_unlock(&lock);
 	return 0;
 }
 
@@ -336,6 +379,9 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
  */
 int arp_resolv(struct arp_list_t *iplist, char *if_name, char *srcmac, char *dstmac, int tries, void (*callback)(char *, char *)) {
 	if(iplist == NULL) {
+		return -1;
+	}
+	if(iplist->nodes == NULL) {
 		return -1;
 	}
 	pcap_t *pcap_handle = NULL;
@@ -398,6 +444,8 @@ int arp_resolv(struct arp_list_t *iplist, char *if_name, char *srcmac, char *dst
 	}
 
 	struct timeval tv;
+
+	pthread_mutex_lock(&lock);	
 	struct data_t *data = MALLOC(sizeof(struct data_t));
 	if(data == NULL) {
 		OUT_OF_MEMORY
@@ -413,7 +461,12 @@ int arp_resolv(struct arp_list_t *iplist, char *if_name, char *srcmac, char *dst
 	data->nodes = NULL;
 	data->iplist = iplist;
 
-	struct arp_list_t *tmp = data->iplist;
+	if(lockinit == 0) {
+		pthread_mutex_init(&lock, NULL);
+		lockinit = 1;
+	}
+
+	struct arp_list_nodes_t *tmp = data->iplist->nodes;
 	while(tmp) {
 		data->nrips++;
 		tmp = tmp->next;
@@ -423,14 +476,19 @@ int arp_resolv(struct arp_list_t *iplist, char *if_name, char *srcmac, char *dst
 	p = data->srcip;
 	dev2ip(if_name, &p, AF_INET);
 
+#ifdef _WIN32
+	fd = pcap_fileno(pcap_handle);
+#else
 	fd = pcap_get_selectable_fd(pcap_handle);
+#endif
 
 	tv.tv_sec = 1;
 	tv.tv_usec = 0;
 
+	pthread_mutex_unlock(&lock);
 	data->server = eventpool_fd_add("arp", fd, client_callback, NULL, data);
 	threadpool_add_scheduled_work("arp", arp_timeout, tv, data);
-
+	
 	FREE(if_cpy);
 
 	return 0;

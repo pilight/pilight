@@ -73,11 +73,13 @@
 	#include <windows.h>
 	#define MSG_NOSIGNAL 0
 #else
-	#include <sys/cdefs.h>
 	#include <sys/socket.h>
-	#include <sys/time.h>
 	#include <netinet/in.h>
-	#include <netinet/if_ether.h>
+	#ifndef __sun
+		#include <sys/cdefs.h>
+		#include <netinet/if_ether.h>
+	#endif
+	#include <sys/time.h>
 	#include <netinet/tcp.h>
 	#include <net/route.h>
 	#include <netdb.h>

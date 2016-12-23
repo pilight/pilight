@@ -1725,7 +1725,7 @@ void *events_iterate(void *param) {
 	return NULL;
 }
 
-void *events_loop(void *param) {
+void *events_loop(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct reason_config_update_t *data1 = NULL;
 	struct reason_code_received_t *data2 = NULL;

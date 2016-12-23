@@ -20,10 +20,12 @@
 	#define MSG_NOSIGNAL 0
 #else
 	#include <netinet/in.h>
+	#include <pthread.h>
 #endif
 #include <signal.h>
 #include <time.h>
-#include <pthread.h>
+#include "../../mbedtls/mbedtls/ssl.h"
+#include "../../libuv/uv.h"
 #include "eventpool_structs.h"
 
 enum eventpool_threads_t {
@@ -94,7 +96,7 @@ enum eventpool_threads_t {
 #define REASON_END										27
 
 typedef struct eventpool_listener_t {
-	void *(*func)(void *);
+	void *(*func)(int, void *);
 	void *userdata;
 	int reason;
 	struct eventpool_listener_t *next;
@@ -105,8 +107,8 @@ typedef struct eventpool_iobuf_t {
   char *buf;
   size_t len;
   size_t size;
-	pthread_mutex_t lock;
-} iobuf_t;
+	uv_mutex_t lock;
+} eventpool_iobuf_t;
 
 typedef struct eventpool_fd_t {
 	char *name;
@@ -151,7 +153,7 @@ typedef struct eventpool_fd_t {
 } eventpool_fd_t;
 
 int eventpool_nrlisteners(int);
-void eventpool_callback(int, void *(*func)(void *));
+void eventpool_callback(int, void *(*)(int, void *));
 void eventpool_trigger(int, void *(*)(void *), void *);
 
 int eventpool_fd_select(int, struct eventpool_fd_t **);
@@ -170,5 +172,48 @@ void *eventpool_process(void *);
 void eventpool_init(enum eventpool_threads_t);
 enum eventpool_threads_t eventpool_threaded(void);
 int eventpool_gc(void);
+
+/*
+ * NEW
+ */
+
+typedef struct iobuf_t {
+  char *buf;
+  ssize_t len;
+  ssize_t size;
+	uv_mutex_t lock;
+} iobuf_t;
+
+struct uv_custom_poll_t {
+	int is_ssl;
+	int is_server;
+	int doread;
+	int dowrite;
+	int doclose;
+
+	void *data;
+
+	void (*write_cb)(uv_poll_t *);
+	void (*close_cb)(uv_poll_t *);
+	void (*read_cb)(uv_poll_t *, ssize_t *, char *);
+
+	struct {
+		int init;
+		int handshake;
+		mbedtls_ssl_context ctx;
+	} ssl;
+
+  struct iobuf_t recv_iobuf;
+  struct iobuf_t send_iobuf;
+} uv_custom_poll_t;
+ 
+void iobuf_remove(struct iobuf_t *, size_t);
+size_t iobuf_append(struct iobuf_t *, const void *, int);
+void uv_custom_poll_init(struct uv_custom_poll_t **, uv_poll_t *, void *);
+void uv_custom_poll_free(struct uv_custom_poll_t *);
+void uv_custom_poll_cb(uv_poll_t *, int, int);
+int uv_custom_read(uv_poll_t *);
+int uv_custom_write(uv_poll_t *);
+int uv_custom_close(uv_poll_t *);
 
 #endif

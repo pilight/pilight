@@ -46,7 +46,7 @@
 #include "../protocol.h"
 #include "bmp180.h"
 
-#if !defined(__FreeBSD__) && !defined(_WIN32)
+#if !defined(__FreeBSD__) && !defined(_WIN32) && !defined(__sun)
 #include "../../../wiringx//wiringX.h"
 
 #define STEP1		1
@@ -209,7 +209,7 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static void *addDevice(void *param) {
+static void *addDevice(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
@@ -433,7 +433,7 @@ void bmp180Init(void) {
 	options_add(&bmp180->options, 0, "show-pressure", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *) 1, "^[10]{1}$");
 	options_add(&bmp180->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *) 1, "^[10]{1}$");
 
-#if !defined(__FreeBSD__) && !defined(_WIN32)
+#if !defined(__FreeBSD__) && !defined(_WIN32) && !defined(__sun)
 	// bmp180->initDev = &initDev;
 	bmp180->gc = &gc;
 
@@ -441,7 +441,7 @@ void bmp180Init(void) {
 #endif
 }
 
-#if defined(MODULE) && !defined(_WIN32)
+#if defined(MODULE) && !defined(_WIN32) && !defined(__sun)
 void compatibility(struct module_t *module) {
 	module->name = "bmp180";
 	module->version = "3.0";

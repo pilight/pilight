@@ -66,6 +66,7 @@ struct JsonNode
 		} children;
 	};
 	int decimals_;
+	int depth;
 };
 
 /*** Encoding, decoding, and validation ***/

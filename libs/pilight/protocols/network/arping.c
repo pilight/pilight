@@ -62,6 +62,8 @@ typedef struct data_t {
 	char **devs;
 	char ip[INET_ADDRSTRLEN+1];
 
+	struct arp_list_t *iplist;
+
 	int polling;
 	int nrdevs;
 	int interval;
@@ -147,7 +149,6 @@ static void callback(char *a, char *b) {
 static void *thread(void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct data_t *settings = task->userdata;
-	struct arp_list_t *iplist = NULL;
 	struct timeval tv;
 	int i = 0, tries = 0;
 
@@ -170,7 +171,7 @@ static void *thread(void *param) {
 			memset(settings->ip, '\0', INET_ADDRSTRLEN+1);
 			snprintf(settings->ip, sizeof(settings->ip), "%d.%d.%d.%d",
 				settings->srcip[0], settings->srcip[1], settings->srcip[2], i);
-			arp_add_host(&iplist, settings->ip);
+			arp_add_host(&settings->iplist, settings->ip);
 			tries = 5;
 		}
 		iprange += nrips;
@@ -179,7 +180,7 @@ static void *thread(void *param) {
 		}
 	} else {
 		logprintf(LOG_DEBUG, "arping is starting search for network device %s at %s", settings->dstmac, settings->dstip);
-		arp_add_host(&iplist, settings->dstip);
+		arp_add_host(&settings->iplist, settings->dstip);
 		tries = 20;
 	}
 
@@ -188,12 +189,12 @@ static void *thread(void *param) {
 	// srcip = search ip
 	// srcmac = source mac
 
-	arp_resolv(iplist, settings->devs[0], settings->srcmac, settings->dstmac, tries, callback);
+	arp_resolv(settings->iplist, settings->devs[0], settings->srcmac, settings->dstmac, tries, callback);
 
 	return (void *)NULL;
 }
 
-static void *addDevice(void *param) {
+static void *addDevice(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
@@ -310,6 +311,8 @@ static void *addDevice(void *param) {
 	}
 	strcpy(node->name, jdevice->key);
 
+	arp_init_list(&node->iplist);
+	
 	node->next = data;
 	data = node;
 
@@ -326,6 +329,7 @@ static void gc(void) {
 		tmp = data;
 		FREE(tmp->dstmac);
 		FREE(tmp->name);
+		FREE(tmp->iplist);
 		array_free(&tmp->devs, tmp->nrdevs);
 		data = data->next;
 		FREE(tmp);

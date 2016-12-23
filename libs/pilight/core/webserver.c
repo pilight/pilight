@@ -30,10 +30,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <getopt.h>
 #include <string.h>
-#include <sys/time.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <assert.h>
@@ -48,9 +45,11 @@
 	#endif
 	#include <pwd.h>	
 	#include <arpa/inet.h>
+	#define __USE_UNIX98
+	#include <pthread.h>
+	#include <unistd.h>
+	#include <sys/time.h>
 #endif
-#define __USE_UNIX98
-#include <pthread.h>
 
 #include "../storage/storage.h"
 #include "threadpool.h"
@@ -80,8 +79,8 @@
 static int https_port = WEBSERVER_HTTPS_PORT;
 #endif
 
-static struct eventpool_fd_t *http_server = NULL;
-static struct eventpool_fd_t *https_server = NULL;
+uv_poll_t *poll_http_req = NULL;
+uv_poll_t *poll_https_req = NULL;
 
 static int http_port = WEBSERVER_HTTP_PORT;
 static int websockets = WEBGUI_WEBSOCKETS;
@@ -107,10 +106,10 @@ enum {
 	WEBSOCKET_OPCODE_PONG = 0xa
 };
 
-typedef struct websocket_clients_t {
-	struct connection_t *connection;
-	struct websocket_clients_t *next;
-} websocket_clients_t;
+typedef struct webserver_clients_t {
+	uv_poll_t *req;
+	struct webserver_clients_t *next;
+} webserver_clients_t;
 
 typedef struct fcache_t {
 	char *name;
@@ -121,9 +120,15 @@ typedef struct fcache_t {
 
 static struct fcache_t *fcache;
 
-static pthread_mutex_t websocket_lock;
-static pthread_mutexattr_t websocket_attr;
-struct websocket_clients_t *websocket_clients = NULL;
+#ifdef _WIN32
+	static uv_mutex_t webserver_lock;
+#else
+	static pthread_mutex_t webserver_lock;
+	static pthread_mutexattr_t webserver_attr;
+#endif	
+struct webserver_clients_t *webserver_clients = NULL;
+
+static void poll_close_cb(uv_poll_t *req);
 
 static void *reason_socket_received_free(void *param) {
 	struct reason_socket_received_t *data = param;
@@ -138,23 +143,8 @@ static void *reason_webserver_connected_free(void *param) {
 	return NULL;
 }
 
-#ifdef WEBSERVER_HTTPS
-static int initialize_ssl(struct connection_t *conn) {
-	char buffer[BUFFER_SIZE];
-	int ret = 0;
-
-	if((ret = mbedtls_ssl_setup(&conn->ssl, &ssl_server_conf)) != 0) {
-		mbedtls_strerror(ret, (char *)&buffer, BUFFER_SIZE);
-		logprintf(LOG_ERR, "mbedtls_ssl_setup failed: %s", buffer);
-		return -1;
-	}
-
-	return 0;
-}
-#endif
-
 int webserver_gc(void) {
-	struct websocket_clients_t *node = NULL;
+	struct webserver_clients_t *node = NULL;
 
 	loop = 0;
 
@@ -162,15 +152,25 @@ int webserver_gc(void) {
 		FREE(root);
 	}
 
-	while(websocket_clients) {
-		node = websocket_clients;
-		websocket_clients = websocket_clients->next;
-		FREE(node);
+#ifdef _WIN32
+	uv_mutex_lock(&webserver_lock);
+#else
+	pthread_mutex_lock(&webserver_lock);
+#endif
+	while(webserver_clients) {
+		node = webserver_clients->next;
+		poll_close_cb(webserver_clients->req);
+		webserver_clients = node;
 	}
 
-	if(websocket_clients != NULL) {
-		FREE(websocket_clients);
+	if(webserver_clients != NULL) {
+		FREE(webserver_clients);
 	}
+#ifdef _WIN32
+	uv_mutex_unlock(&webserver_lock);
+#else
+	pthread_mutex_unlock(&webserver_lock);
+#endif
 
 	struct fcache_t *tmp = fcache;
 	while(fcache) {
@@ -183,6 +183,16 @@ int webserver_gc(void) {
 	if(fcache != NULL) {
 		FREE(fcache);
 	}
+
+	if(poll_http_req != NULL) {
+		poll_close_cb(poll_http_req);
+	}
+	if(poll_https_req != NULL) {
+		poll_close_cb(poll_https_req);
+	}
+
+	authentication_username = NULL;
+	authentication_password = NULL;
 
 	sha256cache_gc();
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
@@ -203,7 +213,7 @@ void webserver_create_header(char **p, const char *message, char *mimetype, unsi
 
 static void create_404_header(const char *in, char **p) {
 	char mimetype[] = "text/html";
-	webserver_create_header(p, "404 Not Found", mimetype, (unsigned long)(204+strlen((const char *)in)));
+	webserver_create_header(p, "404 Not Found", mimetype, (unsigned long)(202+strlen((const char *)in)));
 	*p += sprintf((char *)*p, "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\x0d\x0a"
 		"<html><head>\x0d\x0a"
 		"<title>404 Not Found</title>\x0d\x0a"
@@ -214,7 +224,7 @@ static void create_404_header(const char *in, char **p) {
 		(const char *)in);
 }
 
-const char *http_get_header(const struct connection_t *conn, const char *s) {
+const char *http_get_header(struct connection_t *conn, const char *s) {
 	int i = 0;
 
 	for(i = 0; i < conn->num_headers; i++) {
@@ -226,33 +236,42 @@ const char *http_get_header(const struct connection_t *conn, const char *s) {
   return NULL;
 }
 
-void send_auth_request(struct connection_t *conn) {
+void send_auth_request(uv_poll_t *req) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct connection_t *conn = custom_poll_data->data;
 	char *a = "HTTP/1.1 401 Unauthorized\r\n"
 		"WWW-Authenticate: Basic realm=\"pilight\"\r\n\r\n";
   conn->status_code = 401;
 
-	eventpool_fd_write(conn->fd, a, strlen(a));
+	iobuf_append(&custom_poll_data->send_iobuf, a, strlen(a));
+	uv_custom_write(req);
 }
 
-int authorize_input(struct connection_t *c, char *username, char *password) {
+int authorize_input(uv_poll_t *req, char *username, char *password) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct connection_t *conn = custom_poll_data->data;
   const char *hdr = NULL;
 	char **array = NULL, *decoded = NULL;
 	int n = 0;
 
-  if(c == NULL) {
+  if(conn == NULL) {
 		return MG_FALSE;
 	}
 
-	if((hdr = http_get_header(c, "Authorization")) == NULL ||
+	if((hdr = http_get_header(conn, "Authorization")) == NULL ||
 	   (strncmp(hdr, "Basic ", 6) != 0 &&
 		 strncmp(hdr, "basic ", 6) != 0)) {
 		return MG_FALSE;
 	}
 
-	char user[strlen(hdr)+1];
+	char *user = MALLOC(strlen(hdr)+1);
+	if(user == NULL) {
+		OUT_OF_MEMORY
+	}
 	strcpy(user, &hdr[6]);
 
 	if((decoded = base64decode(user, strlen(user), NULL)) == NULL) {
+		FREE(user);
 		return MG_FALSE;
 	}
 
@@ -269,25 +288,32 @@ int authorize_input(struct connection_t *c, char *username, char *password) {
 
 		if(strcmp(sha256cache_get_hash(array[1]), password) == 0 && strcmp(array[0], username) == 0) {
 			array_free(&array, n);
+			FREE(user);
 			FREE(decoded);
 			return MG_TRUE;
 		}
 	}
+	FREE(user);
 	FREE(decoded);
 	array_free(&array, n);
 
   return MG_FALSE;
 }
 
-static int auth_handler(struct connection_t *conn) {
+static int auth_handler(uv_poll_t *req) {
+	// struct uv_custom_poll_t *custom_poll_data = req->data;
+	// struct connection_t *conn = custom_poll_data->data;
+
 	if(authentication_username != NULL && authentication_password != NULL) {
-		return authorize_input(conn, authentication_username, authentication_password);
+		return authorize_input(req, authentication_username, authentication_password);
 	} else {
 		return MG_TRUE;
 	}
 }
 
-size_t websocket_write(struct connection_t *conn, int opcode, const char *data, unsigned long long data_len) {
+size_t websocket_write(uv_poll_t *req, int opcode, const char *data, unsigned long long data_len) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	// struct connection_t *conn = custom_poll_data->data;
 	unsigned char *copy = NULL;
 	size_t copy_len = 0;
 	int index = 2;
@@ -322,47 +348,96 @@ size_t websocket_write(struct connection_t *conn, int opcode, const char *data, 
 	copy_len = data_len + index;
 
 	if(copy_len > 0) {
-		eventpool_fd_write(conn->fd, (char *)copy, copy_len);
+		iobuf_append(&custom_poll_data->send_iobuf, (char *)copy, copy_len);
+		uv_custom_write(req);
 	}
 
 	FREE(copy);
 	return data_len;
 }
 
-static void *webserver_send(void *param) {
+static void *webserver_send(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct reason_socket_send_t *data = task->userdata;
 	struct connection_t c;
 	memset(&c, 0, sizeof(struct connection_t));
 
 	if(strcmp(data->type, "websocket") == 0) {
-		c.fd = data->fd;
-		websocket_write(&c, WEBSOCKET_OPCODE_TEXT, data->buffer, strlen(data->buffer));
+#ifdef _WIN32
+		uv_mutex_lock(&webserver_lock);
+#else
+		pthread_mutex_lock(&webserver_lock);
+#endif
+		struct webserver_clients_t *clients = webserver_clients;
+		while(clients) {
+			int fd = 0, r = 0;
+
+			if((r = uv_fileno((uv_handle_t *)clients->req, (uv_os_fd_t *)&fd)) != 0) {
+				logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
+#ifdef _WIN32
+				uv_mutex_unlock(&webserver_lock);
+#else
+				pthread_mutex_unlock(&webserver_lock);
+#endif
+				return NULL;
+			}
+			if(fd == data->fd) {
+				websocket_write(clients->req, WEBSOCKET_OPCODE_TEXT, data->buffer, strlen(data->buffer));
+			}
+			clients = clients->next;
+		}
+#ifdef _WIN32
+		uv_mutex_unlock(&webserver_lock);
+#else
+		pthread_mutex_unlock(&webserver_lock);
+#endif
 	}
 
 	return NULL;
 }
 
-static void write_chunk(struct connection_t *conn, char *buf, int len) {
+static void write_chunk(uv_poll_t *req, char *buf, int len) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	// struct connection_t *conn = custom_poll_data->data;
+
   char chunk_size[50];
   int n = snprintf(chunk_size, sizeof(chunk_size), "%X\r\n", len);
-
-	eventpool_fd_write(conn->fd, chunk_size, n);
-	eventpool_fd_write(conn->fd, buf, len);
-	eventpool_fd_write(conn->fd, "\r\n", 2);
+	
+	iobuf_append(&custom_poll_data->send_iobuf, chunk_size, n);
+	iobuf_append(&custom_poll_data->send_iobuf, buf, len);
+	iobuf_append(&custom_poll_data->send_iobuf, "\r\n", 2);
 }
 
-static size_t send_data(struct connection_t *conn, void *data, unsigned long data_len) {
-	if(conn->flags == 0) {
-		char *a = "HTTP/1.1 200 OK\r\nKeep-Alive: timeout=15, max=100\r\nTransfer-Encoding: chunked\r\n\r\n";
-		eventpool_fd_write(conn->fd, a, strlen(a));
-		conn->flags = 1;
-	}
-	write_chunk(conn, data, data_len);
+static size_t send_data(uv_poll_t *req, char *mimetype, void *data, unsigned long data_len) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	// struct connection_t *conn = custom_poll_data->data;
+	char header[1024], *p = header;
+	memset(header, '\0', 1024);
+
+	webserver_create_header(&p, "200 OK", mimetype, data_len);
+	iobuf_append(&custom_poll_data->send_iobuf, header, (int)(p-header));
+	iobuf_append(&custom_poll_data->send_iobuf, data, (int)data_len);
+
   return 0;
 }
 
-static int parse_rest(struct connection_t *conn) {
+static size_t send_chunked_data(uv_poll_t *req, void *data, unsigned long data_len) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct connection_t *conn = custom_poll_data->data;
+
+	if(conn->flags == 0) {
+		char *a = "HTTP/1.1 200 OK\r\nKeep-Alive: timeout=15, max=100\r\nTransfer-Encoding: chunked\r\n\r\n";
+		iobuf_append(&custom_poll_data->send_iobuf, a, strlen(a));
+		conn->flags = 1;
+	}
+	write_chunk(req, data, data_len);
+  return 0;
+}
+
+static int parse_rest(uv_poll_t *req) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct connection_t *conn = custom_poll_data->data;
+
 	char **array = NULL, **array1 = NULL;
 	struct JsonNode *jobject = json_mkobject();
 	struct JsonNode *jcode = json_mkobject();
@@ -377,11 +452,15 @@ static int parse_rest(struct connection_t *conn) {
 	}
 	if(conn->query_string != NULL) {
 		char *dev = NULL;
-		char decoded[strlen(conn->query_string)+1];
+		char *decoded = MALLOC(strlen(conn->query_string)+1);
+		if(decoded == NULL) {
+			OUT_OF_MEMORY
+		}
 
 		if(urldecode(conn->query_string, decoded) == -1) {
 			char *z = "{\"message\":\"failed\",\"error\":\"cannot decode url\"}";
-			send_data(conn, z, strlen(z));
+			send_data(req, "application/json", z, strlen(z));
+			FREE(decoded);
 			return MG_TRUE;
 		}
 
@@ -415,14 +494,14 @@ static int parse_rest(struct connection_t *conn) {
 						dev = array1[1];
 						if(devices_select(ORIGIN_WEBSERVER, array1[1], NULL) != 0) {
 							char *z = "{\"message\":\"failed\",\"error\":\"device does not exist\"}";
-							send_data(conn, z, strlen(z));
+							send_data(req, "application/json", z, strlen(z));
 							goto clear;
 						}
 					} else if(strncmp(array1[0], "values", 6) == 0) {
 						char name[255], *ptr = name;
 						if(sscanf(array1[0], "values[%254[a-z]]", ptr) != 1) {
 							char *z = "{\"message\":\"failed\",\"error\":\"values should be passed like this \'values[dimlevel]=10\'\"}";
-							send_data(conn, z, strlen(z));
+							send_data(req, "application/json", z, strlen(z));
 							goto clear;
 						} else {
 							if(isNumeric(array1[1]) == 0) {
@@ -441,13 +520,13 @@ static int parse_rest(struct connection_t *conn) {
 			if(type == 0) {
 				if(has_protocol == 0) {
 					char *z = "{\"message\":\"failed\",\"error\":\"no protocol was sent\"}";
-					send_data(conn, z, strlen(z));
+					send_data(req, "application/json", z, strlen(z));
 					goto clear;
 				}
 				if(pilight.send != NULL) {
 					if(pilight.send(jobject, ORIGIN_WEBSERVER) == 0) {
 						char *z = "{\"message\":\"success\"}";
-						send_data(conn, z, strlen(z));
+						send_data(req, "application/json", z, strlen(z));
 						goto clear;
 					}
 				}
@@ -455,7 +534,7 @@ static int parse_rest(struct connection_t *conn) {
 				if(pilight.control != NULL) {
 					if(dev == NULL) {
 						char *z = "{\"message\":\"failed\",\"error\":\"no device was sent\"}";
-						send_data(conn, z, strlen(z));
+						send_data(req, "application/json", z, strlen(z));
 						goto clear;
 					} else {
 						if(strlen(state) > 0) {
@@ -463,7 +542,7 @@ static int parse_rest(struct connection_t *conn) {
 						}
 						if(pilight.control(dev, p, json_first_child(jvalues), ORIGIN_WEBSERVER) == 0) {
 							char *z = "{\"message\":\"success\"}";
-							send_data(conn, z, strlen(z));
+							send_data(req, "application/json", z, strlen(z));
 							goto clear;
 						}
 					}
@@ -472,10 +551,11 @@ static int parse_rest(struct connection_t *conn) {
 			json_delete(jvalues);
 			json_delete(jobject);
 		}
+		FREE(decoded);
 		array_free(&array, a);
 	}
 	char *z = "{\"message\":\"failed\"}";
-	send_data(conn, z, strlen(z));
+	send_data(req, "application/json", z, strlen(z));
 	return MG_TRUE;
 
 clear:
@@ -487,81 +567,60 @@ clear:
 	return MG_TRUE;
 }
 
-static int file_callback(struct eventpool_fd_t *node, int event) {
-	struct connection_t *conn = node->userdata;
-	struct eventpool_fd_t *tmp = NULL;
+static void close_cb(uv_handle_t *handle) {
+	FREE(handle);
+}
+
+static int file_read_cb(int fd, uv_poll_t *req) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct connection_t *conn = custom_poll_data->data;
+	struct timeval timeout;
+	fd_set readset;
 	char buffer[WEBSERVER_CHUNK_SIZE];
-	int bytes = 0;
 
-	switch(event) {
-		case EV_CONNECT_SUCCESS: {
-			eventpool_fd_enable_read(node);
-		} break;
-		case EV_READ: {
-			bytes = read(node->fd, buffer, WEBSERVER_CHUNK_SIZE);
-			if(bytes == 0) {
-				if(conn->flags == 1) {
-					conn->pull = 1;
-					eventpool_fd_write(conn->fd, "0\r\n\r\n", 5);
-				}
-				return -1;
-			}
-			if(bytes < 0) {
-				if(errno == EINTR || errno == EAGAIN) {
-					eventpool_fd_enable_read(node);
-					return 0;
-				}
-				perror("read");
-				return -1;
-			}
+	memset(&buffer, '\0', WEBSERVER_CHUNK_SIZE);
+	memset(&readset, 0, sizeof(fd_set));
+	
+	FD_SET(fd, &readset);
 
-			if(cache == 1) {
-				int match = 0;
-				struct fcache_t *tmp = fcache;
-				while(tmp) {
-					if(strcmp(tmp->name, conn->request) == 0) {
-						match = 1;
-						break;
-					}
-					tmp = tmp->next;
-				}
-				struct fcache_t *node = NULL;
-				if(match == 0) {
-					node = MALLOC(sizeof(struct fcache_t));
-					if(node == NULL) {
-						OUT_OF_MEMORY
-					}
-					node->size = 0;
-					node->bytes = NULL;
-					if((node->name = MALLOC(strlen(conn->request)+1)) == NULL) {
-						OUT_OF_MEMORY
-					}
-					strcpy(node->name, conn->request);
-					node->next = fcache;
-					fcache = node;
-				} else {
-					node = tmp;
-				}
-				if((node->bytes = REALLOC(node->bytes, node->size+bytes)) == NULL) {
-					OUT_OF_MEMORY
-				}
-				memcpy(&node->bytes[node->size], buffer, bytes);
-				node->size += bytes;
-			}
-			send_data(conn, &buffer, bytes);
-			eventpool_fd_enable_read(node);
-		} break;
-		case EV_DISCONNECTED: {
-			if(eventpool_fd_select(conn->fd, &tmp) == 0) {
-				tmp->stage = EVENTPOOL_STAGE_DISCONNECT;
-			}
-			eventpool_fd_remove(node);
-		} break;
+	timeout.tv_sec = 0;
+	timeout.tv_usec = 1000;
+
+	int ret = select(fd+1, &readset, NULL, NULL, &timeout);
+	if(ret >= 0 && errno == EINTR) {
+		conn->fd = -1;
+		close(fd);
+		return -1;
+	} else if((ret == -1 && errno == EINTR) || ret == 0) {
+		return 0;
+	}
+
+	int bytes = read(fd, buffer, WEBSERVER_CHUNK_SIZE);
+	if(bytes > 0) {
+		send_chunked_data(req, &buffer, bytes);
+		uv_custom_write(req);
+
+		return 0;
+	} else if(bytes == 0) {
+		if(conn->flags == 1) {
+			iobuf_append(&custom_poll_data->send_iobuf, "0\r\n\r\n", 5);
+			uv_custom_close(req);
+			uv_custom_write(req);
+		}
+		return 0;
+	} else if(bytes < 0) {
+		logprintf(LOG_ERR, "read: %s", strerror(errno));
+		conn->fd = -1;
+		close(fd);
+		return -1;
 	}
 	return 0;
 }
 
-static int request_handler(struct connection_t *conn) {
+static int request_handler(uv_poll_t *req) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct connection_t *conn = custom_poll_data->data;
+
 	char *ext = NULL;
 	char *mimetype = NULL;
 	char buffer[4096], *p = buffer;
@@ -571,7 +630,7 @@ static int request_handler(struct connection_t *conn) {
 	if(conn->is_websocket == 0) {
 		if(conn->uri != NULL && strlen(conn->uri) > 0) {
 			if(strcmp(conn->uri, "/send") == 0 || strcmp(conn->uri, "/control") == 0) {
-				return parse_rest(conn);
+				return parse_rest(req);
 			} else if(strcmp(conn->uri, "/config") == 0) {
 				char media[15];
 				int internal = CONFIG_USER;
@@ -585,7 +644,7 @@ static int request_handler(struct connection_t *conn) {
 				struct JsonNode *jsend = config_print(internal, media);
 				if(jsend != NULL) {
 					char *output = json_stringify(jsend, NULL);
-					send_data(conn, output, strlen(output));
+					send_data(req, "application/json", output, strlen(output));
 					json_delete(jsend);
 					json_free(output);
 				}
@@ -600,18 +659,18 @@ static int request_handler(struct connection_t *conn) {
 				struct JsonNode *jsend = values_print(media);
 				if(jsend != NULL) {
 					char *output = json_stringify(jsend, NULL);
-					send_data(conn, output, strlen(output));
+					send_data(req, "application/json", output, strlen(output));
 					json_delete(jsend);
 					json_free(output);
 				}
 				jsend = NULL;
 				return MG_TRUE;
 			} else if(strcmp(&conn->uri[(rstrstr(conn->uri, "/")-conn->uri)], "/") == 0) {
-				char indexes[6][255] = {"index.html","index.htm","index.shtml","index.cgi","index.php"};
+				char indexes[2][11] = {"index.html","index.htm"};
 
 				unsigned q = 0;
-				/* Check if the root is terminated by a slash. If not, than add it */
-				for(q=0;q<5;q++) {
+				/* Check if the root is terminated by a slash. If not, then add it */
+				for(q=0;q<(sizeof(indexes)/sizeof(indexes[0]));q++) {
 					size_t l = strlen(root)+strlen(conn->uri)+strlen(indexes[q])+4;
 					if((conn->request = REALLOC(conn->request, l)) == NULL) {
 						OUT_OF_MEMORY
@@ -657,7 +716,7 @@ static int request_handler(struct connection_t *conn) {
 			/* Retrieve the extension of the requested file and create a mimetype accordingly */
 			dot = strrchr(conn->request, '.');
 			if(dot == NULL || dot == conn->request) {
-				mimetype = strdup("text/plain");
+				mimetype = STRDUP("text/plain");
 			} else {
 				if((ext = REALLOC(ext, strlen(dot)+1)) == NULL) {
 					OUT_OF_MEMORY
@@ -666,25 +725,25 @@ static int request_handler(struct connection_t *conn) {
 				strcpy(ext, dot+1);
 
 				if(strcmp(ext, "html") == 0) {
-					mimetype = strdup("text/html");
+					mimetype = STRDUP("text/html");
 				} else if(strcmp(ext, "xml") == 0) {
-					mimetype = strdup("text/xml");
+					mimetype = STRDUP("text/xml");
 				} else if(strcmp(ext, "png") == 0) {
-					mimetype = strdup("image/png");
+					mimetype = STRDUP("image/png");
 				} else if(strcmp(ext, "gif") == 0) {
-					mimetype = strdup("image/gif");
+					mimetype = STRDUP("image/gif");
 				} else if(strcmp(ext, "ico") == 0) {
-					mimetype = strdup("image/x-icon");
+					mimetype = STRDUP("image/x-icon");
 				} else if(strcmp(ext, "jpg") == 0) {
-					mimetype = strdup("image/jpg");
+					mimetype = STRDUP("image/jpg");
 				} else if(strcmp(ext, "css") == 0) {
-					mimetype = strdup("text/css");
+					mimetype = STRDUP("text/css");
 				} else if(strcmp(ext, "js") == 0) {
-					mimetype = strdup("text/javascript");
+					mimetype = STRDUP("text/javascript");
 				} else if(strcmp(ext, "php") == 0) {
-					mimetype = strdup("application/x-httpd-php");
+					mimetype = STRDUP("application/x-httpd-php");
 				} else {
-					mimetype = strdup("text/plain");
+					mimetype = STRDUP("text/plain");
 				}
 			}
 			FREE(ext);
@@ -704,8 +763,9 @@ static int request_handler(struct connection_t *conn) {
 					FREE(mimetype);
 					sprintf(line, "Webserver Warning: POST Content-Length of %d bytes exceeds the limit of %d bytes in Unknown on line 0", MAX_UPLOAD_FILESIZE, atoi(cl));
 					webserver_create_header(&p, "200 OK", "text/plain", strlen(line));
-					eventpool_fd_write(conn->fd, buffer, (int)(p-buffer));
-					eventpool_fd_write(conn->fd, line, (int)strlen(line));
+					iobuf_append(&custom_poll_data->send_iobuf, buffer, (int)(p-buffer));
+					iobuf_append(&custom_poll_data->send_iobuf, line, (int)strlen(line));
+
 					FREE(conn->request);
 					conn->request = NULL;
 					return MG_TRUE;
@@ -723,34 +783,43 @@ static int request_handler(struct connection_t *conn) {
 					tmp = tmp->next;
 				}
 				if(match == 1) {
-					send_data(conn, tmp->bytes, tmp->size);
-					eventpool_fd_write(conn->fd, "0\r\n\r\n", 5);
+					send_chunked_data(req, tmp->bytes, tmp->size);
+					iobuf_append(&custom_poll_data->send_iobuf, "0\r\n\r\n", 5);
 					return MG_TRUE;
 				}
 			}
 			if(match == 0) {
-				int fd = open(conn->request, O_RDWR);
-#ifdef _WIN32
-				unsigned long on = 1;
-				ioctlsocket(fd, FIONBIO, &on);
-#else
-				long arg = fcntl(fd, F_GETFL, NULL);
-				fcntl(fd, F_SETFL, arg | O_NONBLOCK);
-#endif				
-				if(fd < 0) {
+				if((conn->file_fd = open(conn->request, O_RDONLY)) < 0) {
+					logprintf(LOG_ERR, "open: %s", strerror(errno));
 					goto filenotfound;
 				}
+#ifdef _WIN32
+				unsigned long on = 1;
+				ioctlsocket(conn->file_fd, FIONBIO, &on);
+#else
+				long arg = fcntl(conn->file_fd, F_GETFL, NULL);
+				fcntl(conn->file_fd, F_SETFL, arg | O_NONBLOCK);
+#endif
+				FREE(mimetype);
 
-				eventpool_fd_add(conn->request, fd, file_callback, NULL, conn);
+				if(file_read_cb(conn->file_fd, req) == 0) {
+					return MG_MORE;
+				} else {
+					return MG_TRUE;
+				}
 			}
 
 			FREE(mimetype);
 			return MG_MORE;
 		}
-	} else if(websockets == 1) {
-		char input[conn->content_len+1];
+	} else if(websockets == WEBGUI_WEBSOCKETS) {
+		char *input = MALLOC(conn->content_len+1);
+		if(input == NULL) {
+			OUT_OF_MEMORY
+		}
 		strncpy(input, conn->content, conn->content_len);
 		input[conn->content_len] = '\0';
+
 		if(json_validate(input) == true) {
 			struct reason_socket_received_t *data = MALLOC(sizeof(struct reason_socket_received_t));
 			if(data == NULL) {
@@ -762,34 +831,39 @@ static int request_handler(struct connection_t *conn) {
 			}
 			strcpy(data->buffer, input);
 			strcpy(data->type, "websocket");
+
 			eventpool_trigger(REASON_SOCKET_RECEIVED, reason_socket_received_free, data);
 		}
+		FREE(input);
 		return MG_TRUE;
 	}
 
 filenotfound:
 	logprintf(LOG_WARNING, "(webserver) could not read %s", conn->request);
 	create_404_header(conn->uri, &p);
-	FREE(mimetype);
+	FREE(conn->request);
 
-	eventpool_fd_write(conn->fd, buffer, (int)(p-buffer));
+	iobuf_append(&custom_poll_data->send_iobuf, buffer, (int)(p-buffer));
 
 	return MG_TRUE;
 }
 
-static void *broadcast(void *param) {
+static void *broadcast(int reason, void *param) {
 	if(loop == 0) {
 		return NULL;
 	}
 
-	pthread_mutex_lock(&websocket_lock);
-	struct websocket_clients_t *clients = websocket_clients;
-	struct threadpool_tasks_t *task = param;
+#ifdef _WIN32
+	uv_mutex_lock(&webserver_lock);
+#else
+	pthread_mutex_lock(&webserver_lock);
+#endif
+	struct webserver_clients_t *clients = webserver_clients;
 	char out[1025];
-	int i = 0, len = 0;
-	switch(task->reason) {
+	int len = 0, i = 0;
+	switch(reason) {
 		case REASON_CONFIG_UPDATE: {
-			struct reason_config_update_t *data = task->userdata;
+			struct reason_config_update_t *data = param;
 			len += snprintf(out, 1024,
 				"{\"origin\":\"update\",\"type\":%d,\"devices\":[",
 				data->type
@@ -816,17 +890,23 @@ static void *broadcast(void *param) {
 			len -= 1;
 		} break;
 		case REASON_BROADCAST_CORE:
-			strncpy(out, (char *)task->userdata, 1024);
-			len = strlen(task->userdata);
+			strncpy(out, (char *)param, 1024);
+			len = strlen(out);
 		break;
 		default:
 		return NULL;
 	}
+
 	while(clients) {
-		websocket_write(clients->connection, 1, out, len);
+		websocket_write(clients->req, 1, out, len);
 		clients = clients->next;
 	}
-	pthread_mutex_unlock(&websocket_lock);
+#ifdef _WIN32
+	uv_mutex_unlock(&webserver_lock);
+#else
+	pthread_mutex_unlock(&webserver_lock);
+#endif
+
 	return NULL;
 }
 
@@ -945,29 +1025,44 @@ int http_parse_request(char *buffer, struct connection_t *c) {
 	return 0;
 }
 
-static void websocket_client_add(struct connection_t *c) {
-	pthread_mutex_lock(&websocket_lock);
-	struct websocket_clients_t *node = MALLOC(sizeof(struct websocket_clients_t));
+static void webserver_client_add(uv_poll_t *req) {
+	// struct uv_custom_poll_t *custom_poll_data = req->data;
+	// struct connection_t *conn = custom_poll_data->data;
+
+#ifdef _WIN32
+	uv_mutex_lock(&webserver_lock);
+#else
+	pthread_mutex_lock(&webserver_lock);
+#endif
+	struct webserver_clients_t *node = MALLOC(sizeof(struct webserver_clients_t));
 	if(node == NULL) {
 		OUT_OF_MEMORY
 	}
-	node->connection = c;
+	node->req = req;
 
-	node->next = websocket_clients;
-	websocket_clients = node;
-	pthread_mutex_unlock(&websocket_lock);
+	node->next = webserver_clients;
+	webserver_clients = node;
+#ifdef _WIN32
+	uv_mutex_unlock(&webserver_lock);
+#else
+	pthread_mutex_unlock(&webserver_lock);
+#endif
 }
 
-static void websocket_client_remove(struct connection_t *c) {
-	pthread_mutex_lock(&websocket_lock);
-	struct websocket_clients_t *currP, *prevP;
+static void webserver_client_remove(uv_poll_t *req) {
+#ifdef _WIN32
+	uv_mutex_lock(&webserver_lock);
+#else
+	pthread_mutex_lock(&webserver_lock);
+#endif
+	struct webserver_clients_t *currP, *prevP;
 
 	prevP = NULL;
 
-	for(currP = websocket_clients; currP != NULL; prevP = currP, currP = currP->next) {
-		if(currP->connection->fd == c->fd) {
+	for(currP = webserver_clients; currP != NULL; prevP = currP, currP = currP->next) {
+		if(currP->req == req) {
 			if(prevP == NULL) {
-				websocket_clients = currP->next;
+				webserver_clients = currP->next;
 			} else {
 				prevP->next = currP->next;
 			}
@@ -976,10 +1071,16 @@ static void websocket_client_remove(struct connection_t *c) {
 			break;
 		}
 	}
-	pthread_mutex_unlock(&websocket_lock);
+#ifdef _WIN32
+	uv_mutex_unlock(&webserver_lock);
+#else
+	pthread_mutex_unlock(&webserver_lock);
+#endif
 }
 
-static void send_websocket_handshake(struct connection_t *conn, const char *key) {
+static void send_websocket_handshake(uv_poll_t *req, const char *key) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	// struct connection_t *conn = custom_poll_data->data;
   static const char *magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
   unsigned char sha[20];
 	char buf[500], *b64_sha = NULL, *p = (char *)sha;
@@ -998,22 +1099,29 @@ static void send_websocket_handshake(struct connection_t *conn, const char *key)
               "Connection: Upgrade\r\n"
               "Upgrade: websocket\r\n"
               "Sec-WebSocket-Accept: %s\r\n\r\n", b64_sha);
-  eventpool_fd_write(conn->fd, buf, i);
+
+	iobuf_append(&custom_poll_data->send_iobuf, buf, i);
+	uv_custom_write(req);
 	mbedtls_sha1_free(&ctx);
 	FREE(b64_sha);
 }
 
-static void send_websocket_handshake_if_requested(struct connection_t *conn) {
+static void send_websocket_handshake_if_requested(uv_poll_t *req) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct connection_t *conn = custom_poll_data->data;
+
 	const char *ver = http_get_header(conn, "Sec-WebSocket-Version");
 	const char *key = http_get_header(conn, "Sec-WebSocket-Key");
   if(ver != NULL && key != NULL) {
 		conn->is_websocket = 1;
-		websocket_client_add(conn);
-		send_websocket_handshake(conn, key);
+		send_websocket_handshake(req, key);
   }
 }
 
-int websocket_read(struct connection_t *c, unsigned char *buf, int buf_len) {
+int websocket_read(uv_poll_t *req, unsigned char *buf, ssize_t buf_len) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct connection_t *conn = custom_poll_data->data;
+
 	unsigned int i = 0, j = 0;
 	unsigned char mask[4];
 	unsigned int packet_length = 0;
@@ -1042,18 +1150,18 @@ int websocket_read(struct connection_t *c, unsigned char *buf, int buf_len) {
 		case WEBSOCKET_OPCODE_PONG: {
 			struct timeval tv;
 			gettimeofday(&tv, NULL);
-			c->ping = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+			conn->ping = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 		} break;
 		case WEBSOCKET_OPCODE_PING: {
-			websocket_write(c, WEBSOCKET_OPCODE_PONG, NULL, 0);
+			websocket_write(req, WEBSOCKET_OPCODE_PONG, NULL, 0);
 		} break;
 		case WEBSOCKET_OPCODE_CONNECTION_CLOSE:
-			websocket_write(c, WEBSOCKET_OPCODE_CONNECTION_CLOSE, NULL, 0);
+			websocket_write(req, WEBSOCKET_OPCODE_CONNECTION_CLOSE, NULL, 0);
 			return -1;
 		break;
 		case WEBSOCKET_OPCODE_TEXT:
-			c->content_len = packet_length;
-			c->content = (char *)buf;
+			conn->content_len = packet_length;
+			conn->content = (char *)buf;
 			return 0;
 		break;
 	}
@@ -1061,323 +1169,377 @@ int websocket_read(struct connection_t *c, unsigned char *buf, int buf_len) {
 	return packet_length;
 }
 
-static int client_send(struct eventpool_fd_t *node) {
-	int ret = 0;
-	struct connection_t *c = NULL;
-	if(node->userdata != NULL) {
-		c = (struct connection_t *)node->userdata;
+// static void *adhoc_mode(int reason, void *param) {
+	// if(https_server != NULL) {
+		// eventpool_fd_remove(https_server);
+		// logprintf(LOG_INFO, "shut down secure webserver due to adhoc mode");
+		// https_server = NULL;
+	// }
+	// if(http_server != NULL) {
+		// eventpool_fd_remove(http_server);
+		// logprintf(LOG_INFO, "shut down regular webserver due to adhoc mode");
+		// http_server = NULL;
+	// }
+
+	// return NULL;
+// }
+
+// void *webserver_restart(int reason, void *param) {
+	// if(https_server != NULL) {
+		// eventpool_fd_remove(https_server);
+		// https_server = NULL;
+	// }
+	// if(http_server != NULL) {
+		// eventpool_fd_remove(http_server);
+		// http_server = NULL;
+	// }
+
+// #ifdef WEBSERVER_HTTPS
+	// if(https_port > 0) {
+		// if(ssl_server_init_status() == 0) {
+			// https_server = eventpool_socket_add("webserver https", NULL, https_port, AF_INET, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_SERVER, server_callback, client_send, NULL);
+		// } else {
+			// logprintf(LOG_NOTICE, "could not initialize mbedtls library, secure webserver not started");
+		// }
+	// }
+// #endif
+
+	// if(http_port > 0) {
+		// http_server = eventpool_socket_add("webserver http", NULL, http_port, AF_INET, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_SERVER, server_callback, client_send, NULL);
+	// }
+
+	// return NULL;
+// }
+
+static void poll_close_cb(uv_poll_t *req) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct connection_t *conn = custom_poll_data->data;
+	int fd = -1, r = 0;
+	
+	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
+		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
 	}
 
-#ifdef WEBSERVER_HTTPS
-	int is_ssl = 0;
-	if(c != NULL) {
-		is_ssl = c->is_ssl;
+	if(conn != NULL && conn->is_websocket == 1) {
+		websocket_write(req, WEBSOCKET_OPCODE_CONNECTION_CLOSE, NULL, 0);
 	}
-	if(is_ssl == 0) {
-#endif
-		int len = WEBSERVER_CHUNK_SIZE;
-		if(node->send_iobuf.len < len) {
-			len = node->send_iobuf.len;
-		}
-		if(node->data.socket.port > 0 && strlen(node->data.socket.ip) > 0) {
-			ret = (int)sendto(node->fd, node->send_iobuf.buf, len, 0, (struct sockaddr *)&node->data.socket.addr, sizeof(node->data.socket.addr));
-		} else {
-			ret = (int)send(node->fd, node->send_iobuf.buf, len, 0);
-		}
-		if(c != NULL) {
-			if((node->send_iobuf.len-ret) == 0) {
-				c->push = 1;
-			}
-		}
-		return ret;
-#ifdef WEBSERVER_HTTPS
-	} else {
-		char buffer[BUFFER_SIZE];
-		int len = WEBSERVER_CHUNK_SIZE;
-		if(node->send_iobuf.len < len) {
-			len = node->send_iobuf.len;
-		}
-		struct connection_t *c = (struct connection_t *)node->userdata;
 
-		ret = mbedtls_ssl_write(&c->ssl, (unsigned char *)node->send_iobuf.buf, len);
-		if(ret <= 0) {
-			if(ret == MBEDTLS_ERR_NET_CONN_RESET) {
-				mbedtls_strerror(ret, (char *)&buffer, BUFFER_SIZE);
-				logprintf(LOG_NOTICE, "mbedtls_ssl_write failed: %s %d", buffer, node->fd);
-				return -1;
-			}
-			if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-				mbedtls_strerror(ret, (char *)&buffer, BUFFER_SIZE);
-				logprintf(LOG_NOTICE, "mbedtls_ssl_write failed: %s %d", buffer, node->fd);
-				return -1;
-			}
-			return 0;
-		} else {
-			if(c != NULL) {
-				if((node->send_iobuf.len-ret) == 0) {
-					c->push = 1;
-				}
-			}
-			return ret;
+	if(fd > -1) {
+#ifdef _WIN32
+		shutdown(fd, SD_BOTH);
+#else
+		shutdown(fd, SHUT_RDWR);
+#endif
+		close(fd);
+	}
+	if(conn != NULL) {
+		if(conn->fd > 0) {
+			close(conn->fd);
+			conn->fd = -1;
+		}
+		if(conn->request != NULL) {
+			FREE(conn->request);
 		}
 	}
-#endif
+
+	webserver_client_remove(req);
+	uv_poll_stop(req);
+	if(!uv_is_closing((uv_handle_t *)req)) {
+		uv_close((uv_handle_t *)req, close_cb);
+	}
+
+	if(custom_poll_data->data != NULL) {
+		FREE(custom_poll_data->data);
+	}
+	if(req->data != NULL) {
+		uv_custom_poll_free(custom_poll_data);
+		req->data = NULL;
+	}
 }
 
-static int client_callback(struct eventpool_fd_t *node, int event) {
-#ifdef WEBSERVER_HTTPS
+static void client_write_cb(uv_poll_t *req) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct connection_t *c = (struct connection_t *)custom_poll_data->data;
+
+	if(c->file_fd >= 0) {
+		if(file_read_cb(c->file_fd, req) != 0) {
+			uv_custom_close(req);
+		}
+	}
+}
+
+static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct connection_t *c = (struct connection_t *)custom_poll_data->data;
+	int is_websocket = 0;
+
+	if(c != NULL && c->is_websocket == 1) {
+		is_websocket = 1;
+	}
+
+	if(*nread > 0 && is_websocket == 0) {
+		buf[*nread-1] = '\0';
+	}
+
+	if(*nread > 0) {
+		if(c->is_websocket == 0) {
+			http_parse_request(buf, c);
+			send_websocket_handshake_if_requested(req);
+
+			if(auth_handler(req) == MG_FALSE) {
+				send_auth_request(req);
+				uv_custom_close(req);
+				return;
+			}
+		} else {
+			unsigned char *p = (unsigned char *)buf;
+			if(websocket_read(req, p, *nread) == -1) {
+				uv_custom_close(req);
+				return;
+			}
+		}
+		int x = request_handler(req);
+		if(x == MG_TRUE) {
+			if(c->is_websocket == 1) {
+				uv_custom_read(req);
+				*nread = 0;
+				return;
+			}
+
+			uv_custom_close(req);
+			uv_custom_write(req);
+			return;
+		}
+	}
+}
+
+static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	struct sockaddr_in servaddr;
+	struct uv_custom_poll_t *server_poll_data = req->data;
+	struct uv_custom_poll_t *custom_poll_data = NULL;
 	socklen_t socklen = sizeof(servaddr);
-#endif
 	char buffer[BUFFER_SIZE];
-	int bytes = 0;
+	int client = 0, r = 0, fd = 0;
+
 	memset(buffer, '\0', BUFFER_SIZE);
 
-	switch(event) {
-		case EV_CONNECT_SUCCESS:
-			eventpool_fd_enable_read(node);
-			struct connection_t *c = MALLOC(sizeof(struct connection_t));
-			if(c == NULL) {
-				OUT_OF_MEMORY
-			}
-			memset(c, 0, sizeof(struct connection_t));
-			node->userdata = (void *)c;
-			c->request = NULL;
-			c->is_websocket = 0;
-			c->fd = node->fd;
-			c->flags = 0;
-			c->ping = 0;
-			c->push = 0;
-			c->pull = 0;
-#ifdef WEBSERVER_HTTPS
-			c->is_ssl = 0;
-			c->handshake = 0;
-
-			if(getsockname(node->fd, (struct sockaddr *)&servaddr, &socklen) == 0) {
-				if(ntohs(servaddr.sin_port) == https_port) {
-					c->is_ssl = 1;
-				}
-			}
-			if(c->is_ssl == 1) {
-				if(initialize_ssl(c) == -1) {
-					return -1;
-				}
-				mbedtls_ssl_session_reset(&c->ssl);
-				mbedtls_ssl_set_bio(&c->ssl, &node->fd, mbedtls_net_send, mbedtls_net_recv, NULL);
-			}
-#endif
-		break;
-		case EV_READ: {
-			struct connection_t *c = (struct connection_t *)node->userdata;
-#ifdef WEBSERVER_HTTPS
-			if(c->is_ssl == 0) {
-#endif
-				if((bytes = recv(node->fd, buffer, BUFFER_SIZE, 0)) <= 0) {
-					return -1;
-				}
-#ifdef WEBSERVER_HTTPS
-			} else {
-				if(c->handshake == 0) {
-					if((bytes = mbedtls_ssl_handshake(&c->ssl)) < 0) {
-						if(bytes != MBEDTLS_ERR_SSL_WANT_READ && bytes != MBEDTLS_ERR_SSL_WANT_WRITE) {
-							mbedtls_strerror(bytes, (char *)&buffer, BUFFER_SIZE);
-							logprintf(LOG_ERR, "mbedtls_ssl_handshake failed: %s", buffer);
-							return -1;
-						} else {
-							eventpool_fd_enable_read(node);
-							return 0;
-						}
-					}
-					c->handshake = 1;
-				}
-				if((bytes = mbedtls_ssl_read(&c->ssl, (unsigned char *)buffer, BUFFER_SIZE)) < 0) {
-					eventpool_fd_enable_read(node);
-					return 0;
-				} else if(bytes == 0) {
-					return -1;
-				}
-			}
-#endif
-			if(c->is_websocket == 0) {
-				http_parse_request(buffer, c);
-				send_websocket_handshake_if_requested(c);
-				if(auth_handler(c) == MG_FALSE) {
-					send_auth_request(c);
-					return -1;
-				}
-			} else {
-				unsigned char *p = (unsigned char *)buffer;
-				if(websocket_read(c, p, bytes) == -1) {
-					return -1;
-				}
-			}
-			int x = request_handler(c);
-			if(x == MG_MORE) {
-				return 0;
-			}
-			if(x == MG_TRUE) {
-				if(c->is_websocket == 1) {
-					eventpool_fd_enable_read(node);
-					return 0;
-				}
-				return -1;
-			}
-			eventpool_fd_enable_read(node);
-		} break;
-		case EV_DISCONNECTED: {
-			if(node->userdata != NULL) {
-				struct connection_t *c = (struct connection_t *)node->userdata;
-				if(c->is_websocket == 1) {
-					websocket_client_remove(c);
-					websocket_write(c, WEBSOCKET_OPCODE_CONNECTION_CLOSE, NULL, 0);
-				}
-#ifdef WEBSERVER_HTTPS
-				if(c->is_ssl == 1) {
-					mbedtls_ssl_free(&c->ssl);
-				}
-#endif
-				if(c->connection_param != NULL) {
-					FREE(c->connection_param);
-				}
-				if(c->request != NULL) {
-					FREE(c->request);
-				}
-				FREE(node->userdata);
-			}
-			eventpool_fd_remove(node);
-		} break;
+	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
+		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
+		return;
 	}
-	return 0;
+
+	if((client = accept(fd, (struct sockaddr *)&servaddr, (socklen_t *)&socklen)) < 0) {
+		logprintf(LOG_NOTICE, "accept: %s", strerror(errno));
+		return;
+	}
+
+	memset(&buffer, '\0', INET_ADDRSTRLEN+1);
+	inet_ntop(AF_INET, (void *)&(servaddr.sin_addr), buffer, INET_ADDRSTRLEN+1);
+
+	if(whitelist_check(buffer) != 0) {
+		logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", buffer, ntohs(servaddr.sin_port));
+		close(fd);
+	} else {
+		logprintf(LOG_DEBUG, "new client, ip: %s, port: %d", buffer, ntohs(servaddr.sin_port));
+		logprintf(LOG_DEBUG, "client fd: %d", client);
+	}
+
+	struct reason_webserver_connected_t *data = MALLOC(sizeof(struct reason_webserver_connected_t));
+	if(data == NULL) {
+		OUT_OF_MEMORY
+	}
+	data->fd = client;
+
+	eventpool_trigger(REASON_WEBSERVER_CONNECTED, reason_webserver_connected_free, data);
+
+#ifdef _WIN32
+	unsigned long on = 1;
+	ioctlsocket(client, FIONBIO, &on);
+#else
+	long arg = fcntl(client, F_GETFL, NULL);
+	fcntl(client, F_SETFL, arg | O_NONBLOCK);
+#endif
+
+	uv_poll_t *poll_req = NULL;
+	if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+	uv_custom_poll_init(&custom_poll_data, poll_req, NULL);
+
+	custom_poll_data->read_cb = client_read_cb;
+	custom_poll_data->write_cb = client_write_cb;
+	custom_poll_data->close_cb = poll_close_cb;
+
+	r = uv_poll_init_socket(uv_default_loop(), poll_req, client);
+	if(r != 0) {
+		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
+		close(fd);
+		if(custom_poll_data != NULL) {
+			uv_custom_poll_free(custom_poll_data);
+			poll_req->data = NULL;
+		}
+		FREE(poll_req);		
+		return;
+	}
+
+	struct connection_t *c = MALLOC(sizeof(struct connection_t));
+	if(c == NULL) {
+		OUT_OF_MEMORY
+	}
+	memset(c, 0, sizeof(struct connection_t));
+
+	custom_poll_data->data = (void *)c;
+	custom_poll_data->is_server = 0;
+	c->request = NULL;
+	c->is_websocket = 0;
+	c->fd = client;
+	c->flags = 0;
+	c->ping = 0;
+	c->file_fd = -1;
+#ifdef WEBSERVER_HTTPS
+	c->is_ssl = custom_poll_data->is_ssl = server_poll_data->is_ssl;
+	custom_poll_data->is_server = 1;
+#endif
+
+	webserver_client_add(poll_req);
+	uv_custom_read(req);
+	uv_custom_read(poll_req);
 }
 
-static int server_callback(struct eventpool_fd_t *node, int event) {
+static void server_write_cb(uv_poll_t *req) {
 	struct sockaddr_in servaddr;
 	socklen_t socklen = sizeof(servaddr);
-	char buffer[BUFFER_SIZE];
-	int socket_client = 0;
+	int r = 0, fd = 0;
 
-	switch(event) {
-		case EV_LISTEN_SUCCESS: {
-			static struct linger linger = { 0, 0 };
+	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
+		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
+		return;
+	}
+
+	static struct linger linger = { 0, 0 };
 #ifdef _WIN32
-			unsigned int lsize = sizeof(struct linger);
+	unsigned int lsize = sizeof(struct linger);
 #else
-			socklen_t lsize = sizeof(struct linger);
+	socklen_t lsize = sizeof(struct linger);
 #endif
-			setsockopt(node->fd, SOL_SOCKET, SO_LINGER, (void *)&linger, lsize);
+	setsockopt(fd, SOL_SOCKET, SO_LINGER, (void *)&linger, lsize);
 
-			if(getsockname(node->fd, (struct sockaddr *)&servaddr, (socklen_t *)&socklen) == -1) {
-				perror("getsockname");
-			} else {
+	if(getsockname(fd, (struct sockaddr *)&servaddr, (socklen_t *)&socklen) == -1) {
+		perror("getsockname");
+	} else {
 #ifdef WEBSERVER_HTTPS
-				if(node->data.socket.port == https_port) {
-					logprintf(LOG_INFO, "secured webserver started on port: %d", ntohs(servaddr.sin_port));
-				} else {
-#endif
-					logprintf(LOG_INFO, "regular webserver started on port: %d", ntohs(servaddr.sin_port));
-#ifdef WEBSERVER_HTTPS
-				}
-#endif
-			}
-		} break;
-		case EV_READ: {
-			if((socket_client = accept(node->fd, (struct sockaddr *)&servaddr, (socklen_t *)&socklen)) < 0) {
-				logprintf(LOG_NOTICE, "failed to accept client");
-				return -1;
-			}
-
-			memset(&buffer, '\0', INET_ADDRSTRLEN+1);
-			inet_ntop(AF_INET, (void *)&(servaddr.sin_addr), buffer, INET_ADDRSTRLEN+1);
-
-			if(whitelist_check(buffer) != 0) {
-				logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", buffer, ntohs(servaddr.sin_port));
-				eventpool_fd_remove(node);
-			} else {
-				logprintf(LOG_DEBUG, "new client, ip: %s, port: %d", buffer, ntohs(servaddr.sin_port));
-				logprintf(LOG_DEBUG, "client fd: %d", socket_client);
-
-				struct reason_webserver_connected_t *data = MALLOC(sizeof(struct reason_webserver_connected_t));
-				if(data == NULL) {
-					OUT_OF_MEMORY
-				}
-				data->fd = socket_client;
-
-				eventpool_trigger(REASON_WEBSERVER_CONNECTED, reason_webserver_connected_free, data);
-
-				eventpool_fd_add("webserver client", socket_client, client_callback, client_send, NULL);
-			}
-		} break;
-		case EV_BIND_FAILED: {
-			int x = 0;
-			if((x = getpeername(node->fd, (struct sockaddr *)&servaddr, &socklen)) == 0) {
-				logprintf(LOG_ERR, "cannot bind to webserver port %d, address already in use?", ntohs(servaddr.sin_port));
-			} else {
-				logprintf(LOG_ERR, "cannot bind to webserver port, address already in use?");
-			}
-			return -1;
-		} break;
-		case EV_DISCONNECTED: {
-			if(node->userdata != NULL) {
-				struct connection_t *c = (struct connection_t *)node->userdata;
-				if(c->is_websocket == 1) {
-					websocket_write(c, WEBSOCKET_OPCODE_CONNECTION_CLOSE, NULL, 0);
-				}
-			}
-			eventpool_fd_remove(node);
-		} break;
-	}
-	return 0;
-}
-
-static void *adhoc_mode(void *param) {
-	if(https_server != NULL) {
-		eventpool_fd_remove(https_server);
-		logprintf(LOG_INFO, "shut down secure webserver due to adhoc mode");
-		https_server = NULL;
-	}
-	if(http_server != NULL) {
-		eventpool_fd_remove(http_server);
-		logprintf(LOG_INFO, "shut down regular webserver due to adhoc mode");
-		http_server = NULL;
-	}
-
-	return NULL;
-}
-
-void *webserver_restart(void *param) {
-	if(https_server != NULL) {
-		eventpool_fd_remove(https_server);
-		https_server = NULL;
-	}
-	if(http_server != NULL) {
-		eventpool_fd_remove(http_server);
-		http_server = NULL;
-	}
-
-#ifdef WEBSERVER_HTTPS
-	if(https_port > 0) {
-		if(ssl_server_init_status() == 0) {
-			https_server = eventpool_socket_add("webserver https", NULL, https_port, AF_INET, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_SERVER, server_callback, client_send, NULL);
+		if(ntohs(servaddr.sin_port) == https_port) {
+			logprintf(LOG_INFO, "secured webserver started on port: %d (fd %d)", https_port, fd);
 		} else {
-			logprintf(LOG_NOTICE, "could not initialize mbedtls library, secure webserver not started");
+#endif
+			logprintf(LOG_INFO, "regular webserver started on port: %d (fd %d)", ntohs(servaddr.sin_port), fd);
+#ifdef WEBSERVER_HTTPS
 		}
 	}
 #endif
 
-	if(http_port > 0) {
-		http_server = eventpool_socket_add("webserver http", NULL, http_port, AF_INET, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_SERVER, server_callback, client_send, NULL);
+	uv_custom_read(req);	
+}
+
+static int webserver_init(int port, int is_ssl) {
+	struct sockaddr_in addr;
+	struct uv_custom_poll_t *custom_poll_data = NULL;
+	int r = 0, sockfd = 0, socklen = sizeof(addr);
+	
+#ifdef _WIN32
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "WSAStartup");
+		exit(EXIT_FAILURE);
+	}
+#endif
+
+	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+		logprintf(LOG_ERR, "socket: %s", strerror(errno));
+		return -1;
 	}
 
-	return NULL;
+	unsigned long on = 1;
+
+	if((r = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(int))) < 0) {
+		logprintf(LOG_ERR, "setsockopt: %s", strerror(errno));
+		close(sockfd);
+		return -1;
+	}
+
+	memset((char *)&addr, '\0', sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	addr.sin_port = htons(port);	
+	
+	if((r = bind(sockfd, (struct sockaddr *)&addr, sizeof(addr))) < 0) {
+		int x = 0;
+		if((x = getpeername(sockfd, (struct sockaddr *)&addr, (socklen_t *)&socklen)) == 0) {
+			logprintf(LOG_ERR, "cannot bind to webserver port %d, address already in use?", ntohs(addr.sin_port));
+		} else {
+			logprintf(LOG_ERR, "cannot bind to webserver port, address already in use?");
+		}
+		close(sockfd);
+		return -1;
+	}
+
+	if((listen(sockfd, 0)) < 0) {
+		logprintf(LOG_ERR, "listen: %s", strerror(errno));
+		close(sockfd);
+		return -1;	
+	}
+
+	uv_poll_t *poll_req = NULL;
+
+	if(is_ssl == 1) {
+		if((poll_https_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
+			OUT_OF_MEMORY
+		}
+		poll_req = poll_https_req;
+	}	else {
+		if((poll_http_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
+			OUT_OF_MEMORY
+		}
+		poll_req = poll_http_req;
+	}
+
+	uv_custom_poll_init(&custom_poll_data, poll_req, NULL);
+	custom_poll_data->is_ssl = is_ssl;
+	custom_poll_data->is_server = 1;
+
+	custom_poll_data->write_cb = server_write_cb;
+	custom_poll_data->read_cb = server_read_cb;
+
+	r = uv_poll_init_socket(uv_default_loop(), poll_req, sockfd);
+	if(r != 0) {
+		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
+		close(sockfd);
+		if(custom_poll_data != NULL) {
+			uv_custom_poll_free(custom_poll_data);
+			poll_req->data = NULL;
+		};
+		FREE(poll_req);		
+		return -1;
+	}
+
+	server_write_cb(poll_req);
+
+	return 0;
 }
 
 int webserver_start(void) {
 	double itmp = 0.0;
 	int webserver_enabled = 0;
+	loop = 1;
 
-	pthread_mutexattr_init(&websocket_attr);
-	pthread_mutexattr_settype(&websocket_attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&websocket_lock, &websocket_attr);
+#ifdef _WIN32
+	uv_mutex_init(&webserver_lock);
+#else
+	pthread_mutexattr_init(&webserver_attr);
+	pthread_mutexattr_settype(&webserver_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&webserver_lock, &webserver_attr);
+#endif
 
 	if(settings_select_number(ORIGIN_WEBSERVER, "webserver-http-port", &itmp) == 0) { http_port = (int)itmp; }
 	if(settings_select_number(ORIGIN_WEBSERVER, "webgui-websockets", &itmp) == 0) { websockets = (int)itmp; }
@@ -1400,14 +1562,14 @@ int webserver_start(void) {
 
 	eventpool_callback(REASON_CONFIG_UPDATE, broadcast);
 	eventpool_callback(REASON_BROADCAST_CORE, broadcast);
-	eventpool_callback(REASON_ADHOC_CONNECTED, adhoc_mode);
-	eventpool_callback(REASON_ADHOC_DISCONNECTED, webserver_restart);
+	// eventpool_callback(REASON_ADHOC_CONNECTED, adhoc_mode);
+	// eventpool_callback(REASON_ADHOC_DISCONNECTED, webserver_restart);
 	eventpool_callback(REASON_SOCKET_SEND, webserver_send);
 
 #ifdef WEBSERVER_HTTPS
 	if(https_port > 0 && webserver_enabled == 1) {
 		if(ssl_server_init_status() == 0) {
-			https_server = eventpool_socket_add("webserver https", NULL, https_port, AF_INET, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_SERVER, server_callback, client_send, NULL);
+			webserver_init(https_port, 1);
 		} else {
 			logprintf(LOG_NOTICE, "could not initialize mbedtls library, secure webserver not started");
 		}
@@ -1415,7 +1577,7 @@ int webserver_start(void) {
 #endif
 
 	if(http_port > 0 && webserver_enabled == 1) {
-		http_server = eventpool_socket_add("webserver http", NULL, http_port, AF_INET, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_SERVER, server_callback, client_send, NULL);
+		webserver_init(http_port, 0);
 	}
 
 	return 0;

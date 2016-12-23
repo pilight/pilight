@@ -9,16 +9,13 @@
 #ifndef _DATETIME_H_
 #define _DATETIME_H_
 
-#include <sys/time.h>
-
 int datetime_gc(void);
-char *coord2tz(double longitude, double latitude);
-time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seconds, char *tz);
-struct tm *localtztime(char *tz, time_t t);
-int tzoffset(char *tz1, char *tz2);
-int ctzoffset(char *tz);
-int isdst(time_t t, char *tz);
-void datefix(int *year, int *month, int *day, int *hour, int *minute, int *second);
+char *coord2tz(double, double);
+time_t datetime2ts(int, int, int, int, int, int);
+int tzoffset(char *, char *, double *);
+int isdst(time_t, char *);
+void datefix(int *, int *, int *, int *, int *, int *);
 void datetime_init(void);
+int localtime_l(time_t, struct tm *, char *);
 
 #endif

@@ -13,8 +13,8 @@
 	#include <sys/types.h>
 	#include <ifaddrs.h>
 	#include <sys/socket.h>
+	#include <pthread.h>
 #endif
-#include <pthread.h>
 #include <stdint.h>
 
 typedef struct varcont_t {
@@ -33,6 +33,7 @@ extern char *progname;
 
 #ifdef _WIN32
 #define sleep(a) Sleep(a*1000)
+int gettimeofday(struct timeval *tp, struct timezone *tzp);
 int check_instances(const wchar_t *prog);
 int setenv(const char *name, const char *value, int overwrite);
 int unsetenv(const char *name);
@@ -65,7 +66,7 @@ int file_exists(char *fil);
 int path_exists(char *fil);
 char *uniq_space(char *str);
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(_WIN32)
 int findproc(char *name, char *args, int loosely);
 #else
 pid_t findproc(char *name, char *args, int loosely);
@@ -73,7 +74,7 @@ pid_t findproc(char *name, char *args, int loosely);
 
 int vercmp(char *val, char *ref);
 int str_replace(char *search, char *replace, char **str);
-int strcicmp(char const *a, char const *b);
+int stricmp(char const *a, char const *b);
 int file_get_contents(char *file, char **content);
 
 #endif

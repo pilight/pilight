@@ -52,18 +52,20 @@ static struct data_t *data = NULL;
 
 static char source_path[21];
 
+#ifndef _WIN32
 static void *reason_code_received_free(void *param) {
 	struct reason_code_received_t *data = param;
 	FREE(data);
 	return NULL;
 }
+#endif
 
 static void *thread(void *param) {
+
+#ifndef _WIN32
 	struct threadpool_tasks_t *task = param;
 	struct data_t *settings = task->userdata;
 	char *content = NULL;
-
-#ifndef _WIN32
 	struct stat st;
 
 	FILE *fp = NULL;
@@ -133,7 +135,7 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static void *addDevice(void *param) {
+static void *addDevice(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
@@ -203,7 +205,13 @@ static void *addDevice(void *param) {
 	sprintf(node->sensor, "%s28-%s/", source_path, node->id);
 	if((d = opendir(node->sensor))) {
 		while((file = readdir(d)) != NULL) {
+	#ifndef __sun
 			if(file->d_type == DT_REG) {
+	#else
+			struct stat s;
+			stat(file->d_name, &s);
+			if(s.st_mode & S_IFDIR) {
+	#endif
 				if(strcmp(file->d_name, "w1_slave") == 0) {
 					size_t w1slavelen = strlen(node->sensor)+10;
 					if((node->w1slave = REALLOC(node->w1slave, w1slavelen+1)) == NULL) {

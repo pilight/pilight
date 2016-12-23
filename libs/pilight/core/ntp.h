@@ -9,10 +9,8 @@
 #ifndef _NTP_H_
 #define _NTP_H_
 
-void *ntpthread(void *);
-int ntpinterval(void *);
-int getntpdiff(void);
-int ntp_gc(void);
-int isntpsynced(void);
+#include <time.h>
+
+int ntpsync(char *server, void (*callback)(int, time_t));
 
 #endif

@@ -130,7 +130,7 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static void *addDevice(void *param) {
+static void *addDevice(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;

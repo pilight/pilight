@@ -22,6 +22,10 @@
 #include "../../wiringx/wiringX.h"
 #include "IRgpio.h"
 
+#ifndef __useconds_t
+	#define __useconds_t unsigned long
+#endif
+
 static int gpio_ir_in = 0;
 static int gpio_ir_out = 0;
 static int doPause = 0;
@@ -110,7 +114,7 @@ static unsigned short gpioIRHwInit(void *(*callback)(void *)) {
 		logprintf(LOG_ERR, "no gpio-platform configured");
 		return EXIT_FAILURE;
 	}
-	if(wiringXSetup(platform, logprintf) < 0) {
+	if(wiringXSetup(platform, _logprintf) < 0) {
 		return EXIT_FAILURE;
 	}
 	if(gpio_ir_out >= 0) {
@@ -175,12 +179,12 @@ static int gpioIRSend(int *code, int rawlen, int repeats) {
 	return EXIT_SUCCESS;
 }
 
-static void *receiveStop(void *param) {
+static void *receiveStop(int reason, void *param) {
 	doPause = 1;
 	return NULL;
 }
 
-static void *receiveStart(void *param) {
+static void *receiveStart(int reason, void *param) {
 	doPause = 0;
 	return NULL;
 }

@@ -207,10 +207,10 @@ static void *reason_broadcast_free(void *param) {
 	return NULL;
 }
 
-static void *reason_adhoc_config_received_free(void *param) {
-	json_delete(param);
-	return NULL;
-}
+// static void *reason_adhoc_config_received_free(void *param) {
+	// json_delete(param);
+	// return NULL;
+// }
 
 static void receiver_create_message(struct protocol_t *protocol, char *message) {
 	struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
@@ -299,7 +299,7 @@ void receive_parse_code(int *raw, int rawlen, int plslen, int hwtype) {
 	return;
 }
 
-void *receivePulseTrain(void *param) {
+void *receivePulseTrain(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct reason_received_pulsetrain_t *data = task->userdata;
 	struct hardware_t *hw = NULL;
@@ -317,7 +317,7 @@ void *receivePulseTrain(void *param) {
 	return (void *)NULL;
 }
 
-void *send_code(void *param) {
+void *send_code(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct reason_send_code_t *data = task->userdata;
 
@@ -997,7 +997,7 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 }
 
 /* Parse the incoming buffer from the client */
-static void *socket_parse_data(void *param) {
+static void *socket_parse_data(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct reason_socket_received_t *data = task->userdata;
 
@@ -1241,7 +1241,7 @@ static void *socket_parse_data(void *param) {
 	return NULL;
 }
 
-static void *socket_client_disconnected(void *param) {
+static void *socket_client_disconnected(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct reason_socket_disconnected_t *data = task->userdata;
 
@@ -1251,7 +1251,7 @@ static void *socket_client_disconnected(void *param) {
 	return NULL;
 }
 
-void *broadcast(void *param) {
+void *broadcast(int reason, void *param) {
 	pthread_mutex_lock(&sendmutexlock);
 
 	struct threadpool_tasks_t *task = param;
@@ -1411,209 +1411,199 @@ static void *adhoc_reconnect(void *param) {
 	return NULL;
 }
 
-static int clientize(struct eventpool_fd_t *node, int event) {
-	struct timeval tv;
-	struct ssdp_data_t *ssdp_data = node->userdata;
+// static int clientize(struct eventpool_fd_t *node, int event) {
+	// struct timeval tv;
+	// struct ssdp_data_t *ssdp_data = node->userdata;
 
-	adhoc_data->reading = 0;
-	switch(event) {
-		case EV_CONNECT_SUCCESS: {
-			adhoc_data->connected = 1;
-			eventpool_fd_enable_write(node);
-		} break;
-		case EV_READ: {
-			switch(adhoc_data->steps) {
-				case 1: {
-					char c = 0;
-					/* Connection lost */
-#ifdef _WIN32
-					if(recv(node->fd, &c, 1, MSG_PEEK) == 0) {
-#else
-					if(recv(node->fd, &c, 1, MSG_PEEK | MSG_DONTWAIT) == 0) {
-#endif
-						return -1;
-					}
+	// adhoc_data->reading = 0;
+	// switch(event) {
+		// case EV_CONNECT_SUCCESS: {
+			// adhoc_data->connected = 1;
+			// eventpool_fd_enable_write(node);
+		// } break;
+		// case EV_READ: {
+			// switch(adhoc_data->steps) {
+				// case 1: {
+					// int x = socket_recv(node->fd, &node->buffer, &node->len);
+					// if(x == -1) {
+						// return -1;
+					// } else if(x == 0) {
+						// eventpool_fd_enable_read(node);
+						// return 0;
+					// } else {
+						// logprintf(LOG_DEBUG, "socket recv: %s", node->buffer);
+						// if(strcmp("{\"status\":\"success\"}", node->buffer) == 0) {
+							// sockfd = node->fd;
+							// adhoc_data->steps = 2;
+							// eventpool_fd_enable_write(node);
+							// eventpool_trigger(REASON_ADHOC_CONNECTED, NULL, NULL);
+							// FREE(node->buffer);
+							// node->len = 0;
+						// }
+					// }
+				// } break;
+				// case 3: {
+					// struct JsonNode *jchilds = NULL;
+					// struct JsonNode *tmp = NULL;
+					// char *message = NULL;
+					// int x = socket_recv(node->fd, &node->buffer, &node->len);
+					// if(x == -1) {
+						// return -1;
+					// } else if(x == 0) {
+						// eventpool_fd_enable_read(node);
+						// return 0;
+					// } else {
+						// logprintf(LOG_DEBUG, "socket recv: %s", node->buffer);
+						// if(json_validate(node->buffer) == true) {
+							// struct JsonNode *json = json_decode(node->buffer);
+							// if(json_find_string(json, "message", &message) == 0) {
+								// if(strcmp(message, "config") == 0) {
+									// struct JsonNode *jconfig = NULL;
+									// if((jconfig = json_find_member(json, "config")) != NULL) {
+										// int match = 1;
+										// while(match) {
+											// jchilds = json_first_child(jconfig);
+											// match = 0;
+											// while(jchilds) {
+												// tmp = jchilds;
+												// if(strcmp(tmp->key, "devices") != 0) {
+													// json_remove_from_parent(tmp);
+													// match = 1;
+												// }
+												// jchilds = jchilds->next;
+												// if(match == 1) {
+													// json_delete(tmp);
+												// }
+											// }
+										// }
 
-					int x = socket_recv(node->fd, &node->buffer, &node->len);
-					if(x == -1) {
-						return -1;
-					} else if(x == 0) {
-						eventpool_fd_enable_read(node);
-						return 0;
-					} else {
-						logprintf(LOG_DEBUG, "socket recv: %s", node->buffer);
-						if(strcmp("{\"status\":\"success\"}", node->buffer) == 0) {
-							sockfd = node->fd;
-							adhoc_data->steps = 2;
-							eventpool_fd_enable_write(node);
-							eventpool_trigger(REASON_ADHOC_CONNECTED, NULL, NULL);
-							FREE(node->buffer);
-							node->len = 0;
-						}
-					}
-				} break;
-				case 3: {
-					struct JsonNode *jchilds = NULL;
-					struct JsonNode *tmp = NULL;
-					char *message = NULL;
-					int x = socket_recv(node->fd, &node->buffer, &node->len);
-					if(x == -1) {
-						return -1;
-					} else if(x == 0) {
-						eventpool_fd_enable_read(node);
-						return 0;
-					} else {
-						logprintf(LOG_DEBUG, "socket recv: %s", node->buffer);
-						if(json_validate(node->buffer) == true) {
-							struct JsonNode *json = json_decode(node->buffer);
-							if(json_find_string(json, "message", &message) == 0) {
-								if(strcmp(message, "config") == 0) {
-									struct JsonNode *jconfig = NULL;
-									if((jconfig = json_find_member(json, "config")) != NULL) {
-										int match = 1;
-										while(match) {
-											jchilds = json_first_child(jconfig);
-											match = 0;
-											while(jchilds) {
-												tmp = jchilds;
-												if(strcmp(tmp->key, "devices") != 0) {
-													json_remove_from_parent(tmp);
-													match = 1;
-												}
-												jchilds = jchilds->next;
-												if(match == 1) {
-													json_delete(tmp);
-												}
-											}
-										}
+										// struct JsonNode *jout = NULL;
+										// if(json_clone(jconfig, &jout) == 0) {
+											// eventpool_trigger(REASON_ADHOC_CONFIG_RECEIVED, reason_adhoc_config_received_free, jout);
+										// }
 
-										struct JsonNode *jout = NULL;
-										if(json_clone(jconfig, &jout) == 0) {
-											eventpool_trigger(REASON_ADHOC_CONFIG_RECEIVED, reason_adhoc_config_received_free, jout);
-										}
+										// adhoc_data->steps = 4;
+										// eventpool_fd_enable_read(node);
+									// }
+								// }
+							// }
+							// json_delete(json);
+						// }
+						// FREE(node->buffer);
+						// node->len = 0;
+					// }
+				// } break;
+				// case 4: {
+					// int x = socket_recv(node->fd, &node->buffer, &node->len);
+					// if(x == -1) {
+						// return -1;
+					// } else if(x == 0) {
+						// eventpool_fd_enable_read(node);
+						// return 0;
+					// } else {
+						// char *action = NULL, *origin = NULL, *protocol = NULL;
+						// struct JsonNode *json = NULL;
+						// logprintf(LOG_DEBUG, "socket recv: %s", node->buffer);
+						// char **array = NULL;
+						// unsigned int z = explode(node->buffer, "\n", &array), q = 0;
+						// for(q=0;q<z;q++) {
+							// if(json_validate(array[q]) == true) {
+								// json = json_decode(array[q]);
 
-										adhoc_data->steps = 4;
-										eventpool_fd_enable_read(node);
-									}
-								}
-							}
-							json_delete(json);
-						}
-						FREE(node->buffer);
-						node->len = 0;
-					}
-				} break;
-				case 4: {
-					int x = socket_recv(node->fd, &node->buffer, &node->len);
-					if(x == -1) {
-						return -1;
-					} else if(x == 0) {
-						eventpool_fd_enable_read(node);
-						return 0;
-					} else {
-						char *action = NULL, *origin = NULL, *protocol = NULL;
-						struct JsonNode *json = NULL;
-						logprintf(LOG_DEBUG, "socket recv: %s", node->buffer);
-						char **array = NULL;
-						unsigned int z = explode(node->buffer, "\n", &array), q = 0;
-						for(q=0;q<z;q++) {
-							if(json_validate(array[q]) == true) {
-								json = json_decode(array[q]);
+								// if(json_find_string(json, "action", &action) == 0) {
+									// if(strcmp(action, "send") == 0 /*||
+										 // strcmp(action, "control") == 0*/) {
 
-								if(json_find_string(json, "action", &action) == 0) {
-									if(strcmp(action, "send") == 0 /*||
-										 strcmp(action, "control") == 0*/) {
+										// char *respons = NULL;
+										// if(socket_parse_responses(array[q], "all", &respons) == 0) {
+											// socket_write(node->fd, respons);
+										// }/* else {
+											// logprintf(LOG_ERR, "could not parse respons to: %s", buffer);
+											// client_remove(sd);
+											// socket_close(sd);
+											// return NULL;
+										// }*/
+										// FREE(respons);
+									// }
+								// } else if(json_find_string(json, "origin", &origin) == 0 &&
+										// json_find_string(json, "protocol", &protocol) == 0) {
+									// if(strcmp(origin, "receiver") == 0 ||
+											 // strcmp(origin, "sender") == 0) {
+										// char *out = MALLOC(strlen(array[q])+1);
+										// if(out == NULL) {
+											// OUT_OF_MEMORY
+										// }
+										// strcpy(out, array[q]);
+										// eventpool_trigger(REASON_FORWARD, reason_forward_free, out);
+									// }
+								// }
+								// json_delete(json);
+							// }
+							// array_free(&array, z);
+						// }
+						// FREE(node->buffer);
+						// node->len = 0;
+					// }
+					// eventpool_fd_enable_read(node);
+				// } break;
+			// }
+		// } break;
+		// case EV_WRITE: {
+			// switch(adhoc_data->steps) {
+				// case 0: {
+					// struct JsonNode *json = json_mkobject();
+					// struct JsonNode *joptions = json_mkobject();
+					// json_append_member(json, "action", json_mkstring("identify"));
+					// json_append_member(joptions, "receiver", json_mknumber(1, 0));
+					// json_append_member(joptions, "forward", json_mknumber(1, 0));
+					// json_append_member(joptions, "config", json_mknumber(1, 0));
+					// json_append_member(json, "uuid", json_mkstring(pilight_uuid));
+					// json_append_member(json, "options", joptions);
 
-										char *respons = NULL;
-										if(socket_parse_responses(array[q], "all", &respons) == 0) {
-											socket_write(node->fd, respons);
-										}/* else {
-											logprintf(LOG_ERR, "could not parse respons to: %s", buffer);
-											client_remove(sd);
-											socket_close(sd);
-											return NULL;
-										}*/
-										FREE(respons);
-									}
-								} else if(json_find_string(json, "origin", &origin) == 0 &&
-										json_find_string(json, "protocol", &protocol) == 0) {
-									if(strcmp(origin, "receiver") == 0 ||
-											 strcmp(origin, "sender") == 0) {
-										char *out = MALLOC(strlen(array[q])+1);
-										if(out == NULL) {
-											OUT_OF_MEMORY
-										}
-										strcpy(out, array[q]);
-										eventpool_trigger(REASON_FORWARD, reason_forward_free, out);
-									}
-								}
-								json_delete(json);
-							}
-							array_free(&array, z);
-						}
-						FREE(node->buffer);
-						node->len = 0;
-					}
-					eventpool_fd_enable_read(node);
-				} break;
-			}
-		} break;
-		case EV_WRITE: {
-			switch(adhoc_data->steps) {
-				case 0: {
-					struct JsonNode *json = json_mkobject();
-					struct JsonNode *joptions = json_mkobject();
-					json_append_member(json, "action", json_mkstring("identify"));
-					json_append_member(joptions, "receiver", json_mknumber(1, 0));
-					json_append_member(joptions, "forward", json_mknumber(1, 0));
-					json_append_member(joptions, "config", json_mknumber(1, 0));
-					json_append_member(json, "uuid", json_mkstring(pilight_uuid));
-					json_append_member(json, "options", joptions);
+					// char *output = json_stringify(json, NULL);
+					// socket_write(node->fd, output);
+					// json_free(output);
+					// json_delete(json);
 
-					char *output = json_stringify(json, NULL);
-					socket_write(node->fd, output);
-					json_free(output);
-					json_delete(json);
+					// adhoc_data->steps = 1;
 
-					adhoc_data->steps = 1;
+					// eventpool_fd_enable_read(node);
+				// } break;
+				// case 2: {
+					// struct JsonNode *json = json_mkobject();
+					// json_append_member(json, "action", json_mkstring("request config"));
+					// char *output = json_stringify(json, NULL);
 
-					eventpool_fd_enable_read(node);
-				} break;
-				case 2: {
-					struct JsonNode *json = json_mkobject();
-					json_append_member(json, "action", json_mkstring("request config"));
-					char *output = json_stringify(json, NULL);
+					// socket_write(node->fd, output);
 
-					socket_write(node->fd, output);
+					// json_free(output);
+					// json_delete(json);
 
-					json_free(output);
-					json_delete(json);
+					// adhoc_data->steps = 3;
 
-					adhoc_data->steps = 3;
+					// eventpool_fd_enable_read(node);
+				// } break;
+			// }
+		// } break;
+		// case EV_DISCONNECTED: {
+			// clientize_client = NULL;
+			// adhoc_data->steps = 0;
+			// adhoc_data->connected = 0;
 
-					eventpool_fd_enable_read(node);
-				} break;
-			}
-		} break;
-		case EV_DISCONNECTED: {
-			clientize_client = NULL;
-			adhoc_data->steps = 0;
-			adhoc_data->connected = 0;
+			// tv.tv_sec = 3;
+			// tv.tv_usec = 0;
+			// logprintf(LOG_DEBUG, "lost connection to master server");
+			// threadpool_add_scheduled_work("adhoc mode reconnect", adhoc_reconnect, tv, NULL);
+			// eventpool_trigger(REASON_ADHOC_DISCONNECTED, NULL, NULL);
 
-			tv.tv_sec = 3;
-			tv.tv_usec = 0;
-			logprintf(LOG_DEBUG, "lost connection to master server");
-			threadpool_add_scheduled_work("adhoc mode reconnect", adhoc_reconnect, tv, NULL);
-			eventpool_trigger(REASON_ADHOC_DISCONNECTED, NULL, NULL);
+			// eventpool_fd_remove(node);
+			// FREE(ssdp_data);
+		// } break;
+	// }
+	// return 0;
+// }
 
-			eventpool_fd_remove(node);
-			FREE(ssdp_data);
-		} break;
-	}
-	return 0;
-}
-
-static void *ssdp_found(void *param) {
+static void *ssdp_found(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct reason_ssdp_received_t *data = task->userdata;
 
@@ -1646,7 +1636,7 @@ static void *ssdp_found(void *param) {
 			if(clientize_client != NULL) {
 				eventpool_fd_remove(clientize_client);
 			}
-			clientize_client = eventpool_socket_add("clientize", ssdp_data->server, ssdp_data->port, AF_INET, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_CLIENT, clientize, NULL, ssdp_data);
+			// clientize_client = eventpool_socket_add("clientize", ssdp_data->server, ssdp_data->port, AF_INET, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_CLIENT, clientize, NULL, ssdp_data);
 		}
 	}
 	return NULL;
@@ -1766,7 +1756,7 @@ int main_gc(void) {
 	hardware_gc();
 	storage_gc();
 	protocol_gc();
-	ntp_gc();
+	// ntp_gc();
 	whitelist_free();
 #ifndef _WIN32
 	wiringXGC();
@@ -2080,7 +2070,7 @@ int start_pilight(int argc, char **argv) {
 		printf("\n\tThe following GPIO platforms are supported:\n");
 		char *tmp = NULL;
 		int z = 0;
-		wiringXSetup("", logprintf);
+		wiringXSetup("", _logprintf);
 		printf("\t- none\n");
 		while((tmp = platform_iterate_name(z++)) != NULL) {
 			printf("\t- %s\n", tmp);
@@ -2387,11 +2377,11 @@ int start_pilight(int argc, char **argv) {
 	pilight.runmode = STANDALONE;
 	if(standalone == 0 || (master_server != NULL && master_port > 0)) {
 		if(master_server != NULL && master_port > 0) {
-			if((sockfd = socket_connect(master_server, master_port)) == -1) {
-				logprintf(LOG_NOTICE, "pilight daemon not found @%s, waiting for it to come online", master_server);
-			} else {
-				logprintf(LOG_INFO, "a pilight daemon was found, clientizing");
-			}
+			// if((sockfd = socket_connect(master_server, master_port)) == -1) {
+				// logprintf(LOG_NOTICE, "pilight daemon not found @%s, waiting for it to come online", master_server);
+			// } else {
+				// logprintf(LOG_INFO, "a pilight daemon was found, clientizing");
+			// }
 			pilight.runmode = ADHOC;
 		}
 	}
@@ -2451,7 +2441,7 @@ int start_pilight(int argc, char **argv) {
 		while(jchilds && main_loop == 1) {
 			if(hardware_select_struct(ORIGIN_MASTER, jchilds->key, &hardware) == 0) {
 				if(hardware->init != NULL) {
-					if(hardware->init(receivePulseTrain) == EXIT_FAILURE) {
+					if(hardware->init() == EXIT_FAILURE) {
 						if(main_loop == 1) {
 							logprintf(LOG_ERR, "could not initialize %s hardware mode", hardware->id);
 							goto clear;
@@ -2477,7 +2467,7 @@ int start_pilight(int argc, char **argv) {
 	if(settings_select_string_element(ORIGIN_MASTER, "ntp-servers", 0, &ntpsync) == 0) {
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
-		threadpool_add_scheduled_work("ntp sync", ntpthread, tv, NULL);
+		// threadpool_add_scheduled_work("ntp sync", ntpthread, tv, NULL);
 	}
 
 	tv.tv_sec = 3;

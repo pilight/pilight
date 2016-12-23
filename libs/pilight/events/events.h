@@ -17,6 +17,6 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short validate);
 int events_gc(void);
 void event_init(void);
-void *events_loop(void *param);
+void *events_loop(int, void *);
 
 #endif

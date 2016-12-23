@@ -10,14 +10,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <setjmp.h>
-#include <unistd.h>
 #include <errno.h>
 #ifdef _WIN32
+	#include <winsock2.h>
 	#include <windows.h>
 #else
 	#include <execinfo.h>
 	#define UNW_LOCAL_ONLY
-	#ifndef __mips__
+	#if !defined(__mips__) && !defined(__sun)
 		#include <libunwind.h>
 	#endif
 #endif
@@ -36,7 +36,7 @@ volatile sig_atomic_t gcloop = 1;
 static int (*gc)(void) = NULL;
 
 void gc_handler(int sig) {
-#if !defined(_WIN32) && !defined(__mips__)
+#if !defined(_WIN32) && !defined(__mips__) && !defined(__sun)
 	char name[256];
 	unw_cursor_t cursor; unw_context_t uc;
 	unw_word_t ip, sp, offp;
@@ -50,7 +50,7 @@ void gc_handler(int sig) {
 		case SIGILL:
 		case SIGABRT:
 		case SIGFPE: {
-#if !defined(_WIN32) && !defined(__mips__)
+#if !defined(_WIN32) && !defined(__mips__) && !defined(__sun)
 			log_shell_disable();
 			void *stack[50];
 			int n = backtrace(stack, 50);

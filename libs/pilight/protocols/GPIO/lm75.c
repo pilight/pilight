@@ -39,7 +39,7 @@
 #include "../protocol.h"
 #include "lm75.h"
 
-#if !defined(__FreeBSD__) && !defined(_WIN32)
+#if !defined(__FreeBSD__) && !defined(_WIN32) && !defined(__sun)
 typedef struct data_t {
 	char *name;
 
@@ -91,7 +91,7 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static void *addDevice(void *param) {
+static void *addDevice(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
@@ -187,7 +187,7 @@ static void gc(void) {
 }
 #endif
 
-#if !defined(MODULE) && !defined(_WIN32)
+#if !defined(MODULE) && !defined(_WIN32) && !defined(__sun)
 __attribute__((weak))
 #endif
 void lm75Init(void) {
@@ -207,7 +207,7 @@ void lm75Init(void) {
 	options_add(&lm75->options, 0, "temperature-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
 	options_add(&lm75->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
-#if !defined(__FreeBSD__) && !defined(_WIN32)
+#if !defined(__FreeBSD__) && !defined(_WIN32) && !defined(__sun)
 	// lm75->initDev=&initDev;
 	lm75->gc=&gc;
 
@@ -215,7 +215,7 @@ void lm75Init(void) {
 #endif
 }
 
-#if defined(MODULE) && !defined(_WIN32)
+#if defined(MODULE) && !defined(_WIN32) && !defined(__sun)
 void compatibility(struct module_t *module) {
 	module->name = "lm75";
 	module->version = "3.0";

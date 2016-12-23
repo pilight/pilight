@@ -82,8 +82,11 @@ static void *thread(void *param) {
 	int dst = 0;
 
 	t = time(NULL);
-	t -= getntpdiff();
-	dst = isdst(t, settings->tz);
+	/*
+	 * FIXME
+	 */
+	// t -= getntpdiff();
+	// dst = isdst(t, settings->tz);
 
 	/* Get UTC time */
 #ifdef _WIN32
@@ -134,7 +137,7 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static void *addDevice(void *param) {
+static void *addDevice(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
@@ -202,7 +205,7 @@ static void *addDevice(void *param) {
 		logprintf(LOG_INFO, "datetime %s %.6f:%.6f seems to be in timezone: %s", jdevice->key, node->longitude, node->latitude, node->tz);
 	}
 
-	node->target_offset = tzoffset(UTC, node->tz);
+	// node->target_offset = tzoffset(UTC, node->tz);
 
 	if((node->name = MALLOC(strlen(jdevice->key)+1)) == NULL) {
 		OUT_OF_MEMORY

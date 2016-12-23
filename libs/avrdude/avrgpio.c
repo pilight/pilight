@@ -154,7 +154,7 @@ void gpio_initpgm(PROGRAMMER *pgm)
 		logprintf(LOG_ERR, "no gpio-platform configured");
 		exit(EXIT_FAILURE);
 	}
-	if(wiringXSetup(platform, logprintf) < 0) {
+	if(wiringXSetup(platform, _logprintf) < 0) {
 		exit(EXIT_FAILURE);
 	}
 

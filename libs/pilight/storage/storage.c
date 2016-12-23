@@ -44,7 +44,7 @@
 
 #include "json.h"
 
-static void *storage_import_thread(void *param);
+static void *storage_import_thread(int, void *);
 
 static void *reason_config_update_free(void *param) {
 	struct reason_config_update_t *data = param;
@@ -72,7 +72,7 @@ static struct JsonNode *jsettings_cache = NULL;
 static struct JsonNode *jhardware_cache = NULL;
 static struct JsonNode *jregistry_cache = NULL;
 
-static void *devices_update_cache(void *param) {
+static void *devices_update_cache(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct reason_config_update_t *data = task->userdata;
 
@@ -117,7 +117,7 @@ static void *devices_update_cache(void *param) {
 	return NULL;
 }
 
-void *config_values_update(void *param) {
+void *config_values_update(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	char *protoname = NULL, *origin = NULL, *message = NULL, *uuid = NULL, *settings = NULL;
 
@@ -220,8 +220,7 @@ void *config_values_update(void *param) {
 #else
 	gmtime_r(&timenow, &gmt);
 #endif
-	char utc[] = "UTC";
-	time_t utct = datetime2ts(gmt.tm_year+1900, gmt.tm_mon+1, gmt.tm_mday, gmt.tm_hour, gmt.tm_min, gmt.tm_sec, utc);
+	time_t utct = datetime2ts(gmt.tm_year+1900, gmt.tm_mon+1, gmt.tm_mday, gmt.tm_hour, gmt.tm_min, gmt.tm_sec);
 	data->timestamp = utct;
 
 	if((opt = protocol->options)) {
@@ -1440,7 +1439,7 @@ int settings_validate_settings(struct JsonNode *jsettings, int i) {
 			return -1;
 		} else {
 			if(strcmp(jsettings->string_, "none") != 0) { 				
-				if(wiringXSetup(jsettings->string_, logprintf) != 0 && i > 0) {
+				if(wiringXSetup(jsettings->string_, _logprintf) != 0 && i > 0) {
 					logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a supported gpio platform", i, jsettings->key);
 				}
 			}
@@ -2197,7 +2196,7 @@ int storage_read(char *file, unsigned long objects) {
 	return 0;
 }
 
-static void *storage_import_thread(void *param) {
+static void *storage_import_thread(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jconfig = task->userdata;
 

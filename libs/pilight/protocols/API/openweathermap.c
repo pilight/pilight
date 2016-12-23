@@ -106,9 +106,9 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 								int mday = current.tm_mday;
 								int year = current.tm_year+1900;
 
-								time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
+								time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59)+1);
 
-								char *sun = NULL;
+								char *_sun = NULL;
 
 								time_t a = (time_t)sunrise;
 								memset(&tm, '\0', sizeof(struct tm));
@@ -125,9 +125,9 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 								localtime_r(&a, &tm);
 #endif
 								if(timenow > (int)round(sunrise) && timenow < (int)round(sunset)) {
-									sun = "rise";
+									_sun = "rise";
 								} else {
-									sun = "set";
+									_sun = "set";
 								}
 
 								struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
@@ -136,7 +136,7 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 								};
 								snprintf(data->message, 1024,
 									"{\"location\":\"%s\",\"country\":\"%s\",\"temperature\":%.2f,\"humidity\":%.2f,\"update\":0,\"sunrise\":%.2f,\"sunrise\":%.2f,\"sun\":%s}",
-									settings->location, settings->country, temp, humi, ((double)((tm.tm_hour*100)+tm.tm_min)/100), ((double)((tm.tm_hour*100)+tm.tm_min)/100), sun
+									settings->location, settings->country, temp, humi, ((double)((tm.tm_hour*100)+tm.tm_min)/100), ((double)((tm.tm_hour*100)+tm.tm_min)/100), _sun
 								);
 								strncpy(data->origin, "receiver", 255);
 								data->protocol = openweathermap->id;
@@ -146,7 +146,7 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 									data->uuid = NULL;
 								}
 								data->repeat = 1;
-								printf("\n\n-- %p\n\n", data);
+
 								eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
 
 								/* Send message when sun rises */
@@ -239,7 +239,7 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static void *addDevice(void *param) {
+static void *addDevice(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;

@@ -70,7 +70,7 @@ static int createCode(struct JsonNode *code, char *message) {
 		have_error = 1;
 		goto clear;
 #if defined(__arm__) || defined(__mips__)
-	} else if(wiringXSetup(platform, logprintf) < 0) {
+	} else if(wiringXSetup(platform, _logprintf) < 0) {
 		logprintf(LOG_ERR, "unable to setup wiringX") ;
 		return EXIT_FAILURE;
 	} else {
@@ -156,7 +156,7 @@ static int checkValues(struct JsonNode *code) {
 				if(settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
 					logprintf(LOG_ERR, "relay: no gpio-platform configured");
 					return -1;
-				} else if(wiringXSetup(platform, logprintf) < 0) {
+				} else if(wiringXSetup(platform, _logprintf) < 0) {
 					logprintf(LOG_ERR, "unable to setup wiringX") ;
 					return -1;
 				} else if(wiringXValidGPIO(gpio) != 0) {

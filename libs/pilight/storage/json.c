@@ -33,7 +33,7 @@ static struct JsonNode *jconfig = NULL;
 static char *configfile = NULL;
 static unsigned short has_config = 0;
 
-static void *_values_update(void *param) {
+static void *_values_update(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct reason_config_update_t *data = task->userdata;
 

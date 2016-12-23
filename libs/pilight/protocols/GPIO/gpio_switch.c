@@ -89,7 +89,7 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 	return 0;
 }
 
-static void *addDevice(void *param) {
+static void *addDevice(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
@@ -158,7 +158,7 @@ static int checkValues(struct JsonNode *jvalues) {
 		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
 		return -1;
 	}	
-	if(wiringXSetup(platform, logprintf) < 0) {
+	if(wiringXSetup(platform, _logprintf) < 0) {
 		logprintf(LOG_ERR, "unable to setup wiringX") ;
 		return -1;
 	} else if((jid = json_find_member(jvalues, "id"))) {

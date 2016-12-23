@@ -110,16 +110,16 @@ static void callback2(int code, char *data, int size, char *type, void *userdata
 								int month = current.tm_mon+1;
 								int mday = current.tm_mday;
 								int year = current.tm_year+1900;
-								char *sun = NULL;
+								char *_sun = NULL;
 
-								time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
+								time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59)+1);
 								time_t sunset = 0;
 								time_t sunrise = 0;
 
 								if(timenow > sunrise && timenow < sunset) {
-									sun = "rise";
+									_sun = "rise";
 								} else {
-									sun = "set";
+									_sun = "set";
 								}
 
 								struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
@@ -129,7 +129,7 @@ static void callback2(int code, char *data, int size, char *type, void *userdata
 								snprintf(data->message, 1024,
 									"{\"api\":\"%s\",\"location\":\"%s\",\"country\":\"%s\",\"temperature\":%.2f,\"humidity\":%d,\"update\":0,\"sunrise\":%.2f,\"sunset\":%.2f,\"sun\":\"%s\"}",
 									settings->api, settings->location, settings->country, settings->temp, settings->humi,
-									((double)((atoi(rhour)*100)+atoi(rmin))/100), ((double)((atoi(shour)*100)+atoi(smin))/100), sun
+									((double)((atoi(rhour)*100)+atoi(rmin))/100), ((double)((atoi(shour)*100)+atoi(smin))/100), _sun
 								);
 								strncpy(data->origin, "receiver", 255);
 								data->protocol = wunderground->id;
@@ -275,7 +275,7 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static void *addDevice(void *param) {
+static void *addDevice(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;

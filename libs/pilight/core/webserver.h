@@ -13,6 +13,8 @@
 #include "../../mbedtls/mbedtls/ssl.h"
 #endif
 
+#include "../libs/libuv/uv.h"
+
 typedef struct connection_t {
 	int fd;
 	char *request;
@@ -38,11 +40,9 @@ typedef struct connection_t {
   unsigned int flags;
 	unsigned short timer;
 
-	unsigned int pull;
-	unsigned int push;
+	int file_fd;
 
-	// char *fin;
-	// size_t fin_size;
+	char buffer[WEBSERVER_CHUNK_SIZE];
 
 #ifdef WEBSERVER_HTTPS
 	int is_ssl;
@@ -53,9 +53,9 @@ typedef struct connection_t {
 
 int webserver_gc(void);
 int webserver_start(void);
-void *webserver_broadcast(void *param);
-void webserver_create_header(char **p, const char *message, char *mimetype, unsigned long len);
-int http_parse_request(char *buffer, struct connection_t *c);
-const char *http_get_header(const struct connection_t *conn, const char *s);
+void *webserver_broadcast(void *);
+void webserver_create_header(char **, const char *, char *, unsigned long);
+int http_parse_request(char *, struct connection_t *);
+const char *http_get_header(struct connection_t *, const char *);
 
 #endif

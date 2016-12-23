@@ -28,7 +28,7 @@ typedef enum {
 	COMAPI
 } communication_t;
 
-#include <pthread.h>
+// #include <pthread.h>
 #include "../core/options.h"
 #include "../core/json.h"
 #include "../core/threadpool.h"
@@ -56,19 +56,19 @@ typedef struct hardware_t {
 	int mingaplen;
 	int maxgaplen;
 
-	unsigned short (*init)(void *(*)(void *));
+	unsigned short (*init)(void);
 	unsigned short (*deinit)(void);
 	union {
 		int (*receiveOOK)(void);
-		void *(*receiveAPI)(void *param);
-		int (*receivePulseTrain)(struct rawcode_t *r);
+		void *(*receiveAPI)(void *);
+		int (*receivePulseTrain)(struct rawcode_t *);
 	};
 	union {
-		int (*sendOOK)(int *code, int rawlen, int repeats);
-		int (*sendAPI)(struct JsonNode *code);
+		int (*sendOOK)(int *, int, int);
+		int (*sendAPI)(struct JsonNode *);
 	};
 	int (*gc)(void);
-	unsigned short (*settings)(JsonNode *json);
+	unsigned short (*settings)(struct JsonNode *);
 	struct hardware_t *next;
 } hardware_t;
 
@@ -76,8 +76,8 @@ typedef struct hardware_t {
 extern struct hardware_t *hardware;
 
 void hardware_init(void);
-void hardware_register(struct hardware_t **hw);
-void hardware_set_id(struct hardware_t *hw, const char *id);
+void hardware_register(struct hardware_t **);
+void hardware_set_id(struct hardware_t *, const char *);
 int hardware_gc(void);
 
 #endif

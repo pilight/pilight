@@ -136,8 +136,11 @@ static void *thread(void *param) {
 	int year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0;
 
 	t = time(NULL);
-	t -= getntpdiff();
-	dst = isdst(t, settings->tz);
+	/*
+	 * FIXME
+	 */	
+	// t -= getntpdiff();
+	// dst = isdst(t, settings->tz);
 
 	/* Get UTC time */
 #ifdef _WIN32
@@ -209,12 +212,12 @@ static void *thread(void *param) {
 		unsigned long time2rise = trise-tnow;
 		unsigned long time2midnight = (tmidnight+1)-tnow;
 
-		char *sun = NULL;
+		char *_sun = NULL;
 		hournow = (hour*100)+minute;
 		if(hournow >= risetime && hournow < settime) {
-			sun = "rise";
+			_sun = "rise";
 		} else {
-			sun = "set";
+			_sun = "set";
 		}
 
 		struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
@@ -223,7 +226,7 @@ static void *thread(void *param) {
 		}
 		snprintf(data->message, 1024,
 			"{\"longitude\":%.6f,\"latitude\":%.6f,\"sun\":\"%s\",\"sunrise\":%.2f,\"sunset\":%.2f}",
-			settings->longitude, settings->latitude, sun, ((double)risetime/100), ((double)settime/100)
+			settings->longitude, settings->latitude, _sun, ((double)risetime/100), ((double)settime/100)
 		);
 		strncpy(data->origin, "receiver", 255);
 		data->protocol = sunriseset->id;
@@ -244,7 +247,7 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static void *addDevice(void *param) {
+static void *addDevice(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
@@ -311,7 +314,7 @@ static void *addDevice(void *param) {
 		logprintf(LOG_INFO, "sunriseset %s %.6f:%.6f seems to be in timezone: %s", jdevice->key, node->longitude, node->latitude, node->tz);
 	}
 
-	node->target_offset = tzoffset(UTC, node->tz);
+	// node->target_offset = tzoffset(UTC, node->tz);
 
 	if((node->name = MALLOC(strlen(jdevice->key)+1)) == NULL) {
 		OUT_OF_MEMORY
@@ -341,10 +344,10 @@ static void gc(void) {
 }
 
 static int checkValues(JsonNode *code) {
-	char *sun = NULL;
+	char *_sun = NULL;
 
-	if(json_find_string(code, "sun", &sun) == 0) {
-		if(strcmp(sun, "rise") != 0 && strcmp(sun, "set") != 0) {
+	if(json_find_string(code, "sun", &_sun) == 0) {
+		if(strcmp(_sun, "rise") != 0 && strcmp(_sun, "set") != 0) {
 			return 1;
 		}
 	}

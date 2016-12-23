@@ -79,6 +79,7 @@ void ssl_init(void) {
 	memset(&ssl_server_crt, 0, sizeof(mbedtls_x509_crt));
 	mbedtls_x509_crt_init(&ssl_server_crt);
 	if(server_success == 0 &&
+	  (file_exists(pemfile) == 0) &&
 	  (ret = mbedtls_x509_crt_parse_file(&ssl_server_crt, pemfile)) != 0) {
 		mbedtls_strerror(ret, (char *)&buffer, BUFFER_SIZE);
 		logprintf(LOG_NOTICE, "mbedtls_x509_crt_parse_file failed: %s", buffer);
@@ -89,6 +90,7 @@ void ssl_init(void) {
 
 	mbedtls_pk_init(&ssl_pk_key);
 	if(server_success == 0 &&
+	  (file_exists(pemfile) == 0) &&
 	  (ret = mbedtls_pk_parse_keyfile(&ssl_pk_key, pemfile, NULL)) != 0) {
 		mbedtls_strerror(ret, (char *)&buffer, BUFFER_SIZE);
 		logprintf(LOG_NOTICE, "mbedtls_pk_parse_keyfile failed: %s", buffer);
@@ -100,7 +102,7 @@ void ssl_init(void) {
 	mbedtls_ssl_conf_ca_chain(&ssl_server_conf, ssl_server_crt.next, NULL);
 
 	if(server_success == 0 &&
-	  (ret = mbedtls_ssl_conf_own_cert(&ssl_server_conf, &ssl_server_crt, &ssl_pk_key)) != 0) {
+		(ret = mbedtls_ssl_conf_own_cert(&ssl_server_conf, &ssl_server_crt, &ssl_pk_key)) != 0) {
 		mbedtls_strerror(ret, (char *)&buffer, BUFFER_SIZE);
 		logprintf(LOG_ERR, "mbedtls_ssl_conf_own_cert failed: %s", buffer);
 		server_success = -1;

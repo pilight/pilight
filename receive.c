@@ -15,32 +15,36 @@
 #ifdef _WIN32
 	#include <conio.h>
 	#include <pthread.h>
+#else
+	#include <sys/socket.h>
 #endif
+#include <sys/types.h>
 
+#include "libs/libuv/uv.h"
 #include "libs/pilight/core/http.h"
 #include "libs/pilight/core/eventpool.h"
 #include "libs/pilight/core/timerpool.h"
-#include "libs/pilight/core/threadpool.h"
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/common.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/options.h"
 #include "libs/pilight/core/socket.h"
 #include "libs/pilight/core/ssdp.h"
-#include "libs/pilight/core/gc.h"
 #include "libs/pilight/protocols/protocol.h"
 
+static uv_tty_t *tty_req = NULL;
+static uv_signal_t *signal_req = NULL;
+
+static struct ssdp_list_t *ssdp_list = NULL;
+static char *instance = NULL;
+static char **filters = NULL;
+static int ssdp_list_size = 0;
+static unsigned int nrfilter = 0;
 static unsigned short stats = 0;
 static unsigned short connecting = 0;
 static unsigned short connected = 0;
 static unsigned short found = 0;
-static char *instance = NULL;
-char **filters = NULL;
-unsigned int m = 0;
-
-#ifdef _WIN32
-pthread_t thr_user_input;
-#endif
+static unsigned short filteropt = 0;
 
 typedef struct ssdp_list_t {
 	char server[INET_ADDRSTRLEN+1];
@@ -49,19 +53,11 @@ typedef struct ssdp_list_t {
 	struct ssdp_list_t *next;
 } ssdp_list_t;
 
-static struct ssdp_list_t *ssdp_list = NULL;
-static int ssdp_list_size = 0;
-static unsigned short filteropt = 0;
+static void signal_cb(uv_signal_t *, int);
 
-int main_gc(void) {
-	char *filter = NULL;
-
-	if(filter != NULL) {
-		FREE(filter);
-		filter = NULL;
-	}
+static int main_gc(void) {
 	if(filters != NULL) {
-		array_free(&filters, m);
+		array_free(&filters, nrfilter);
 	}
 
 	struct ssdp_list_t *tmp = NULL;
@@ -72,150 +68,174 @@ int main_gc(void) {
 	}
 
 	protocol_gc();
-	timer_thread_gc();
 	eventpool_gc();
 
 	log_shell_disable();
+	eventpool_gc();
 	log_gc();
 	FREE(progname);
 
 	return 0;
 }
 
-void *timeout(void *param) {
+static void timeout_cb(uv_timer_t *param) {
 	if(connected == 0) {
-#ifndef _WIN32
-		signal(SIGALRM, SIG_IGN);
-#endif
-		logprintf(LOG_ERR, "could not connect to the pilight instance");
-
-#ifndef _WIN32
-		kill(getpid(), SIGINT);
-#else
-		GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
-#endif
+		logprintf(LOG_ERR, "could not connect to the pilight instance", "");
+		signal_cb(NULL, SIGINT);
 	}
-	return NULL;
 }
 
-void *ssdp_not_found(void *param) {
+static void ssdp_not_found(uv_timer_t *param) {
 	if(found == 0) {
-#ifndef _WIN32
-		signal(SIGALRM, SIG_IGN);
-#endif
 		logprintf(LOG_ERR, "could not find pilight instance: %s", instance);
-
-#ifndef _WIN32
-		kill(getpid(), SIGINT);
-#else
-		GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
-#endif
+		signal_cb(NULL, SIGINT);
 	}
-	return NULL;
 }
 
-static int client_callback(struct eventpool_fd_t *node, int event) {
-	switch(event) {
-		case EV_CONNECT_SUCCESS: {
-			connected = 1;
-			struct JsonNode *jclient = json_mkobject();
-			struct JsonNode *joptions = json_mkobject();
-			json_append_member(jclient, "action", json_mkstring("identify"));
-			json_append_member(joptions, "receiver", json_mknumber(1, 0));
-			json_append_member(joptions, "stats", json_mknumber(stats, 0));
-			json_append_member(jclient, "options", joptions);
-			char *out = json_stringify(jclient, NULL);
-			socket_write(node->fd, out);
-			json_delete(jclient);
-			json_free(out);
-			eventpool_fd_enable_write(node);
-		} break;
-		case EV_WRITE: {
-			eventpool_fd_enable_read(node);
-		}	break;
-		case EV_READ: {
-			int x = socket_recv(node->fd, &node->buffer, &node->len);
-			if(x == -1) {
-				return -1;
-			} else if(x == 0) {
-				eventpool_fd_enable_read(node);
-				return 0;
-			} else {
-				if(strcmp(node->buffer, "{\"status\":\"success\"}") != 0) {
-					char **array = NULL;
-					char *protocol = NULL;
-					unsigned int n = explode(node->buffer, "\n", &array), i = 0;
-					for(i=0;i<n;i++) {
-						if(json_validate(array[i]) == true) {
-							struct JsonNode *jcontent = json_decode(array[i]);
-							struct JsonNode *jtype = json_find_member(jcontent, "type");
-							if(jtype != NULL) {
-								json_remove_from_parent(jtype);
-								json_delete(jtype);
+static void alloc_cb(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
+	buf->len = len;
+	if((buf->base = malloc(len)) == NULL) {
+		OUT_OF_MEMORY
+	}
+	memset(buf->base, 0, len);
+}
+
+static void on_read(uv_stream_t *server, ssize_t nread, const uv_buf_t *buf) {
+  if(nread == -1) {
+    logprintf(LOG_ERR, "socket read failed", "");
+    return;
+  }
+	if(strncmp(buf->base, "{\"status\":\"success\"}", 20) != 0) {
+		char **array = NULL;
+		char *protocol = NULL;
+		unsigned int n = explode(buf->base, "\n", &array), i = 0;
+		for(i=0;i<n;i++) {
+			if(json_validate(array[i]) == true) {
+				struct JsonNode *jcontent = json_decode(array[i]);
+				struct JsonNode *jtype = json_find_member(jcontent, "type");
+				if(jtype != NULL) {
+					json_remove_from_parent(jtype);
+					json_delete(jtype);
+				}
+				if(filteropt == 1) {
+					int filtered = 0, j = 0;
+					if(json_find_string(jcontent, "protocol", &protocol) == 0) {
+						for(j=0;j<nrfilter;j++) {
+							if(strcmp(filters[j], protocol) == 0) {
+								filtered = 1;
+								break;
 							}
-							if(filteropt == 1) {
-								int filtered = 0, j = 0;
-								if(json_find_string(jcontent, "protocol", &protocol) == 0) {
-									for(j=0;j<m;j++) {
-										if(strcmp(filters[j], protocol) == 0) {
-											filtered = 1;
-											break;
-										}
-									}
-								}
-								if(filtered == 0) {
-									char *content = json_stringify(jcontent, "\t");
-									printf("%s\n", content);
-									json_free(content);
-								}
-							} else {
-								char *content = json_stringify(jcontent, "\t");
-								printf("%s\n", content);
-								json_free(content);
-							}
-							json_delete(jcontent);
 						}
 					}
-					array_free(&array, n);
+					if(filtered == 0) {
+						char *content = json_stringify(jcontent, "\t");
+						printf("%s\n", content);
+						json_free(content);
+					}
+				} else {
+					char *content = json_stringify(jcontent, "\t");
+					printf("%s\n", content);
+					json_free(content);
 				}
-				FREE(node->buffer);
-				node->len = 0;
-				eventpool_fd_enable_read(node);
+				json_delete(jcontent);
 			}
-		} break;
-		case EV_DISCONNECTED: {
-#ifndef _WIN32
-			kill(getpid(), SIGINT);
-#else
-			GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
-#endif
-		} break;
+		}
+		array_free(&array, n);
 	}
-	return 0;
+	free(buf->base);
 }
 
-static void *ssdp_reseek(void *param) {
-	if(found == 0 && connecting == 0) {
-		struct timeval tv;
-		tv.tv_sec = 3;
-		tv.tv_usec = 0;
-		threadpool_add_scheduled_work("ssdp seek", ssdp_reseek, tv, NULL);
-		ssdp_seek();
+static void on_write(uv_write_t *req, int status) {
+	uv_read_start(req->handle, alloc_cb, on_read);
+	FREE(req);
+}
+
+static void on_connect(uv_connect_t *req, int status) {
+  if(status != 0) {
+    logprintf(LOG_ERR, "socket connect failed", "");
+    return;
 	}
-	return NULL;
+
+	uv_write_t *write_req = NULL;
+	if((write_req = MALLOC(sizeof(uv_write_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+	char out[BUFFER_SIZE];
+	uv_buf_t buf = uv_buf_init(out, BUFFER_SIZE);
+	
+	connected = 1;
+
+	struct JsonNode *jclient = json_mkobject();
+	struct JsonNode *joptions = json_mkobject();
+	json_append_member(jclient, "action", json_mkstring("identify"));
+	json_append_member(joptions, "receiver", json_mknumber(1, 0));
+	json_append_member(joptions, "stats", json_mknumber(stats, 0));
+	json_append_member(jclient, "options", joptions);
+
+	buf.base = json_stringify(jclient, NULL);
+	buf.len = strlen(buf.base);
+
+	json_delete(jclient);
+
+	uv_write(write_req, req->handle, &buf, 1, on_write);
+	FREE(buf.base);
+	FREE(req);
+}
+
+static void connect_to_server(char *server, int port) {
+#ifdef _WIN32
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "could not initialize new socket");
+		exit(EXIT_FAILURE);
+	}
+#endif
+
+	struct sockaddr_in addr;
+	uv_os_sock_t sock;
+	uv_tcp_t *client_req = NULL;
+	uv_connect_t *connect_req = NULL;	
+	uv_timer_t *socket_timeout_req = NULL;
+	
+	if((client_req = MALLOC(sizeof(uv_tcp_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	if((connect_req = MALLOC(sizeof(uv_connect_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	if((socket_timeout_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+
+  sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+
+#ifndef _WIN32
+  {
+    /* Allow reuse of the port. */
+    int yes = 1;
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
+  }
+#endif
+
+	uv_tcp_init(uv_default_loop(), client_req);
+	uv_tcp_open(client_req, sock);
+	uv_ip4_addr(server, port, &addr);
+
+	uv_tcp_connect(connect_req, client_req, (const struct sockaddr *)&addr, on_connect);
+
+	uv_timer_init(uv_default_loop(), socket_timeout_req);
+	uv_timer_start(socket_timeout_req, timeout_cb, 1000, 0);	
 }
 
 static int select_server(int server) {
-	struct timeval tv;	
 	struct ssdp_list_t *tmp = ssdp_list;
 	int i = 0;
 	while(tmp) {
 		if((ssdp_list_size-i) == server) {
-			socket_connect1(tmp->server, tmp->port, client_callback);
-			tv.tv_sec = 1;
-			tv.tv_usec = 0;
-			threadpool_add_scheduled_work("socket timeout", timeout, tv, NULL);
-			connecting = 1;
+			connect_to_server(tmp->server, tmp->port);
 			return 0;
 		}
 		i++;
@@ -224,62 +244,8 @@ static int select_server(int server) {
 	return -1;
 }
 
-#ifndef _WIN32
-static int user_input(struct eventpool_fd_t *node, int event) {
-	switch(event) {
-		case EV_CONNECT_SUCCESS: {
-			long arg = fcntl(node->fd, F_GETFL, NULL);
-			fcntl(node->fd, F_SETFL, arg | O_NONBLOCK);
-			eventpool_fd_enable_read(node);
-		} break;
-		case EV_READ: {
-			char buf[BUFFER_SIZE];
-			memset(buf, '\0', BUFFER_SIZE);
-			int c = 0;
-			if((c = read(node->fd, buf, BUFFER_SIZE)) > 0) {
-				buf[c-1] = '\0';
-				if(isNumeric(buf) == 0) {
-					return select_server(atoi(buf));
-				}
-			}
-			eventpool_fd_enable_read(node);
-		}
-	}
-	return 0;
-}
-#else
-static void *user_input(void *param) {
-	int i = 0;
-	char buffer[1024];
-	while(1) {
-		i = 0;
-		while(1) {
-			if(_kbhit()) {
-				buffer[i] = _getch();
-				printf("%c", buffer[i]);
-				if(buffer[i] == 13) {
-					buffer[i] = '\0';
-					break;
-				}
-				i++;
-				if(i > 1023) {
-					i = 0;
-				}
-			}
-			SleepEx(10, TRUE);
-		}
-		if(select_server(atoi(buffer)) == 0) {
-			break;
-		}
-	}
-	return NULL;
-}
-#endif
-
-static void *ssdp_found(void *param) {
-	struct threadpool_tasks_t *task = param;
-	struct reason_ssdp_received_t *data = task->userdata;
-	struct timeval tv;
+static void *ssdp_found(int reason, void *param) {
+	struct reason_ssdp_received_t *data = param;
 	struct ssdp_list_t *node = NULL;
 	int match = 0;
 
@@ -313,26 +279,70 @@ static void *ssdp_found(void *param) {
 		} else {
 			if(strcmp(data->name, instance) == 0) {
 				found = 1;
-				connecting = 1;
-				socket_connect1(data->ip, data->port, client_callback);
-				tv.tv_sec = 1;
-				tv.tv_usec = 0;
-				threadpool_add_scheduled_work("socket timeout", timeout, tv, NULL);
+				connect_to_server(data->ip, data->port);
 			}
 		}
 	}
 	return NULL;
 }
 
-int main(int argc, char **argv) {
-	atomicinit();
-	gc_attach(main_gc);
-	gc_catch();
+static void read_cb(uv_stream_t *stream, ssize_t len, const uv_buf_t *buf) {
+	buf->base[len-1] = '\0';
 
+#ifdef _WIN32
+	/* Remove windows vertical tab */
+	if(buf->base[len-2] == 13) {
+		buf->base[len-2] = '\0';
+	}
+#endif
+
+	if(isNumeric(buf->base) == 0) {
+		select_server(atoi(buf->base));
+	}
+	free(buf->base);
+}
+
+static void close_cb(uv_handle_t *handle) {
+	FREE(handle);
+}
+
+static void walk_cb(uv_handle_t *handle, void *arg) {
+	if(!uv_is_closing(handle)) {
+		uv_close(handle, close_cb);
+	}
+}
+
+static void signal_cb(uv_signal_t *handle, int signum) {
+	if(instance == NULL && tty_req != NULL) {
+		uv_read_stop((uv_stream_t *)tty_req);
+		tty_req = NULL;
+	}
+	uv_stop(uv_default_loop());
+	main_gc();
+}
+
+static void main_loop(int onclose) {
+	if(onclose == 1) {
+		signal_cb(NULL, SIGINT);
+	}
+	uv_run(uv_default_loop(), UV_RUN_DEFAULT);	
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+	if(onclose == 1) {
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			uv_run(uv_default_loop(), UV_RUN_DEFAULT);	
+		}
+	}
+}
+
+int main(int argc, char **argv) {
+	log_init();
 	log_shell_enable();
 	log_file_disable();
-
 	log_level_set(LOG_NOTICE);
+
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	pilight.process = PROCESS_CLIENT;
 
@@ -340,8 +350,15 @@ int main(int argc, char **argv) {
 		OUT_OF_MEMORY
 	}
 	strcpy(progname, "pilight-receive");
+
+	if((signal_req = malloc(sizeof(uv_signal_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	uv_signal_init(uv_default_loop(), signal_req);
+	uv_signal_start(signal_req, signal_cb, SIGINT);	
+
 	struct options_t *options = NULL;
-	struct timeval tv;
 
 	char *args = NULL;
 	char *server = NULL;
@@ -376,11 +393,11 @@ int main(int argc, char **argv) {
 				printf("\t -I --instance=name\t\tconnect to pilight instance\n");
 				printf("\t -s --stats\t\t\tshow CPU and RAM statistics\n");
 				printf("\t -F --filter=protocol\t\tfilter out protocol(s)\n");
-				exit(EXIT_SUCCESS);
+				goto close;
 			break;
 			case 'V':
 				printf("%s v%s\n", progname, PILIGHT_VERSION);
-				exit(EXIT_SUCCESS);
+				goto close;
 			break;
 			case 'S':
 				if((server = MALLOC(strlen(args)+1)) == NULL) {
@@ -402,29 +419,26 @@ int main(int argc, char **argv) {
 			break;
 			case 'F':
 				if((filter = REALLOC(filter, strlen(args)+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				strcpy(filter, args);
 				filteropt = 1;
 			break;
 			default:
 				printf("Usage: %s \n", progname);
-				exit(EXIT_SUCCESS);
+				goto close;
 			break;
 		}
 	}
-	options_delete(options);
-	options_gc();
 
 	if(filteropt == 1) {
 		struct protocol_t *protocol = NULL;
-		m = explode(filter, ",", &filters);
+		nrfilter = explode(filter, ",", &filters);
 		int match = 0, j = 0;
 
 		protocol_init();
 
-		for(j=0;j<m;j++) {
+		for(j=0;j<nrfilter;j++) {
 			match = 0;
 			struct protocols_t *pnode = protocols;
 			if(filters[j] != NULL && strlen(filters[j]) > 0) {
@@ -442,44 +456,60 @@ int main(int argc, char **argv) {
 				}
 			}
 		}
+		FREE(filter);
 	}
 
-	threadpool_init(1, 1, 10);
-	eventpool_init(EVENTPOOL_THREADED);
+	eventpool_init(EVENTPOOL_NO_THREADS);
 	eventpool_callback(REASON_SSDP_RECEIVED, ssdp_found);
-	tv.tv_sec = 0;
-	tv.tv_usec = 0;
-	timer_thread_start();
 
 	if(server != NULL && port > 0) {
-		socket_connect1(server, port, client_callback);
-		tv.tv_sec = 1;
-		threadpool_add_scheduled_work("socket timeout", timeout, tv, NULL);
+		connect_to_server(server, port);
 	} else {
 		ssdp_seek();
-		tv.tv_sec = 3;
-		threadpool_add_scheduled_work("ssdp seek", ssdp_reseek, tv, NULL);
+		uv_timer_t *ssdp_reseek_req = NULL;
+		if((ssdp_reseek_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+			OUT_OF_MEMORY
+		}
+
+		uv_timer_init(uv_default_loop(), ssdp_reseek_req);
+		uv_timer_start(ssdp_reseek_req, (void (*)(uv_timer_t *))ssdp_seek, 3000, 3000);
 		if(instance == NULL) {
 			printf("[%2s] %15s:%-5s %-16s\n", "#", "server", "port", "name");
 			printf("To which server do you want to connect?:\r");
 			fflush(stdout);
+
+			if((tty_req = MALLOC(sizeof(uv_tty_t))) == NULL) {
+				OUT_OF_MEMORY
+			}
+
+			uv_tty_init(uv_default_loop(), tty_req, 0, 1);
+			uv_read_start((uv_stream_t *)tty_req, alloc_cb, read_cb);
 		} else {
-			tv.tv_sec = 1;			
-			threadpool_add_scheduled_work("ssdp seek", ssdp_not_found, tv, NULL);
+			uv_timer_t *ssdp_not_found_req = NULL;
+			if((ssdp_not_found_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+				OUT_OF_MEMORY
+			}
+
+			uv_timer_init(uv_default_loop(), ssdp_not_found_req);
+			uv_timer_start(ssdp_not_found_req, ssdp_not_found, 1000, 0);
 		}
 	}
 
-#ifdef _WIN32
-	pthread_create(&thr_user_input, NULL, user_input, NULL);
-#else
-	eventpool_fd_add("stdin", fileno(stdin), user_input, NULL, NULL);
-#endif
-	eventpool_process(NULL);
+	main_loop(0);
 
 close:
+	if(options != NULL) {
+		options_delete(options);
+		options_gc();
+		options = NULL;
+	}
+
+	main_loop(1);
+
 	if(server != NULL) {
 		FREE(server);
 	}
+
 	if(instance != NULL) {
 		FREE(instance);
 	}

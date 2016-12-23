@@ -1,4 +1,4 @@
-/*
+ /*
  * avrdude - A Downloader/Uploader for AVR device programmers
  * Copyright (C) 2000-2005  Brian S. Dean <bsd@bsdhome.com>
  * Copyright (C) 2007 Joerg Wunsch
@@ -28,6 +28,7 @@
 #ifndef _WIN32
 	#define _GNU_SOURCE
 	#include <string.h>
+	#include <libgen.h>
 #endif
 
 #ifdef _WIN32

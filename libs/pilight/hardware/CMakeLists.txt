@@ -14,6 +14,11 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/IRgpio.c")
 		list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/IRgpio.h")
 	endif()
+
+	if(${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
+		list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/433lirc.c")
+		list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/433lirc.h")
+	endif()
 	
 	if(${ZWAVE} MATCHES "OFF")
 		list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/zwave.cpp")

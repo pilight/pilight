@@ -9,15 +9,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <errno.h>
 #include <time.h>
 #include <math.h>
 #include <string.h>
+#include <assert.h>
 #include <sys/types.h>
 #ifdef _WIN32
+	#if _WIN32_WINNT < 0x0501
+		#undef _WIN32_WINNT
+		#define _WIN32_WINNT 0x0501
+	#endif
 	#define WIN32_LEAN_AND_MEAN
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
@@ -28,9 +32,12 @@
 	#include <netinet/in.h>
 	#include <netinet/tcp.h>
 	#include <netdb.h>
+	#include <poll.h>
 	#include <arpa/inet.h>
+	#include <unistd.h>
 #endif
 
+#include "../../libuv/uv.h"
 #include "pilight.h"
 #include "socket.h"
 #include "log.h"
@@ -44,28 +51,118 @@
 #define HTTP_POST			1
 #define HTTP_GET			0
 
+#define STEP_HANDSHAKE			0
+#define STEP_WRITE					1
+#define STEP_READ						2
+
+typedef struct http_clients_t {
+	uv_poll_t *req;
+	struct http_clients_t *next;
+} http_clients_t;
+
+static uv_mutex_t http_lock;
+// static pthread_mutexattr_t http_attr;
+struct http_clients_t *http_clients = NULL;
+static int http_lock_init = 0;
+
 typedef struct request_t {
 	char *host;
   char *uri;
   char *query_string;
 	char *auth64;
 	int port;
+	int is_ssl;
 	int status_code;
 	int reading;
 	void *userdata;
 
+	int steps;
 	int request_method;
 
   char *content;
 	char mimetype[255];
+	int chunked;
+	int chunksize;
+	int chunkread;
+	int gotheader;
   size_t content_len;
 	size_t bytes_read;
 
-	int is_ssl;
-	int handshake;
-	mbedtls_ssl_context ssl;
 	void (*callback)(int code, char *data, int size, char *type, void *userdata);
 } request_t;
+
+int done = 0;
+
+static void http_client_close(uv_poll_t *req);
+
+static void free_request(struct request_t *request) {
+	if(request->host != NULL) {
+		FREE(request->host);
+	}
+	if(request->uri != NULL) {
+		FREE(request->uri);
+	}
+	if(request->content != NULL) {
+		FREE(request->content);
+	}
+	if(request->auth64 != NULL) {
+		FREE(request->auth64);
+	}
+	FREE(request);
+}
+
+int http_gc(void) {
+	struct http_clients_t *node = NULL;
+
+	uv_mutex_lock(&http_lock);
+	while(http_clients) {
+		node = http_clients->next;
+		http_client_close(http_clients->req);
+		http_clients = node;
+	}
+
+	if(http_clients != NULL) {
+		FREE(http_clients);
+	}
+	uv_mutex_unlock(&http_lock);
+
+	logprintf(LOG_DEBUG, "garbage collected http library");
+	return 1;
+}
+
+static void http_client_add(uv_poll_t *req) {
+	uv_mutex_lock(&http_lock);
+	struct http_clients_t *node = MALLOC(sizeof(struct http_clients_t));
+	if(node == NULL) {
+		OUT_OF_MEMORY
+	}
+	node->req = req;
+
+	node->next = http_clients;
+	http_clients = node;
+	uv_mutex_unlock(&http_lock);
+}
+
+static void http_client_remove(uv_poll_t *req) {
+	uv_mutex_lock(&http_lock);
+	struct http_clients_t *currP, *prevP;
+
+	prevP = NULL;
+
+	for(currP = http_clients; currP != NULL; prevP = currP, currP = currP->next) {
+		if(currP->req == req) {
+			if(prevP == NULL) {
+				http_clients = currP->next;
+			} else {
+				prevP->next = currP->next;
+			}
+
+			FREE(currP);
+			break;
+		}
+	}
+	uv_mutex_unlock(&http_lock);
+}
 
 static int prepare_request(struct request_t **request, int method, char *url, const char *contype, char *post, void (*callback)(int, char *, int, char *, void *), void *userdata) {
 	char *tok = NULL, *auth = NULL;
@@ -75,13 +172,15 @@ static int prepare_request(struct request_t **request, int method, char *url, co
 		OUT_OF_MEMORY
 	}
 	memset((*request), 0, sizeof(struct request_t));
-	(*request)->request_method = method;
+
 	/* Check which port we need to use based on the http(s) protocol */
 	if(strncmp(url, "http://", 7) == 0) {
 		(*request)->port = 80;
 		plen = 8;
+		(*request)->is_ssl = 0;
 	} else if(strncmp(url, "https://", 8) == 0) {
 		(*request)->port = 443;
+		(*request)->is_ssl = 1;
 		plen = 9;
 		if(ssl_client_init_status() == -1) {
 			logprintf(LOG_ERR, "HTTPS URL's require a properly initialized SSL library");
@@ -120,9 +219,6 @@ static int prepare_request(struct request_t **request, int method, char *url, co
 	}
 	if((tok = strstr((*request)->host, "@"))) {
 		size_t pglen = strlen((*request)->uri);
-		if(strcmp((*request)->uri, "/") == 0) {
-			pglen -= 1;
-		}
 		tlen = (size_t)(tok-(*request)->host);
 		if((auth = MALLOC(tlen+1)) == NULL) {
 			OUT_OF_MEMORY
@@ -142,8 +238,32 @@ static int prepare_request(struct request_t **request, int method, char *url, co
 		strcpy((*request)->content, post);
 		(*request)->content_len = strlen(post);
 	}
+
+	if((tok = strstr((*request)->host, ":"))) {
+		size_t pglen = strlen((*request)->host);
+		tlen = (size_t)(tok-(*request)->host)+1;
+		if(isNumeric(&(*request)->host[tlen]) == 0) {
+			(*request)->port = atoi(&(*request)->host[tlen]);
+		} else {
+			logprintf(LOG_ERR, "A custom URL port must be numeric");
+			FREE((*request)->host);
+			FREE((*request)->uri);
+			FREE((*request));
+			return -1;
+		}
+		if(pglen == tlen) {
+			logprintf(LOG_ERR, "A custom URL port is missing");
+			FREE((*request)->host);
+			FREE((*request)->uri);
+			FREE((*request));
+			return -1;
+		}
+		(*request)->host[tlen-1] = '\0';
+	}
+
 	(*request)->userdata = userdata;
 	(*request)->callback = callback;
+	(*request)->request_method = method;
 	return 0;
 }
 
@@ -173,83 +293,232 @@ static void append_to_header(char **header, char *data, ...) {
 	}
 }
 
-static int client_send(struct eventpool_fd_t *node) {
-	int ret = 0;
-	int is_ssl = 0;
-	if(node->userdata != NULL) {
-		struct request_t *c = (struct request_t *)node->userdata;
-		is_ssl = c->is_ssl;
-	}
-	if(is_ssl == 0) {
-		if(node->data.socket.port > 0 && strlen(node->data.socket.ip) > 0) {
-			ret = (int)sendto(node->fd, node->send_iobuf.buf, node->send_iobuf.len, 0,
-					(struct sockaddr *)&node->data.socket.addr, sizeof(node->data.socket.addr));
-		} else {
-			ret = (int)send(node->fd, node->send_iobuf.buf, node->send_iobuf.len, 0);
-		}
-		return ret;
-	} else {
-		char buffer[BUFFER_SIZE];
-		struct request_t *c = (struct request_t *)node->userdata;
-		int len = WEBSERVER_CHUNK_SIZE;
-		if(node->send_iobuf.len < len) {
-			len = node->send_iobuf.len;
+static void process_chunk(char **buf, ssize_t *size, struct request_t *request) {
+	char *p = NULL;
+	int pos = 0,  toread = 0;
+
+	while(1) {
+		toread = *size;
+		if(strncmp(*buf, "0\r\n\r\n", 5) == 0) {
+			request->reading = 0;
+			break;
 		}
 
-		if(c->handshake == 0) {
-			if((ret = mbedtls_ssl_handshake(&c->ssl)) < 0) {
-				if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-					mbedtls_strerror(ret, (char *)&buffer, BUFFER_SIZE);
-					logprintf(LOG_ERR, "mbedtls_ssl_handshake failed: %s", buffer);
-					return -1;
-				} else {
-					return 0;
-				}
+		if(request->chunksize == request->chunkread) {
+			if((p = strstr(*buf, "\r\n")) != NULL) {
+				pos = p-*buf;
+				(*buf)[pos+1] = '\0';
+				request->chunksize = strtoul(*buf, NULL, 16);
+				memmove(&(*buf)[0], &(*buf)[pos+2], toread-(pos+2));
+				toread -= (pos+2);
+				*size -= (pos+2);
+				(*buf)[toread] = '\0';
 			}
-			c->handshake = 1;
 		}
 
-		ret = mbedtls_ssl_write(&c->ssl, (unsigned char *)node->send_iobuf.buf, len);
-		if(ret <= 0) {
-			if(ret == MBEDTLS_ERR_NET_CONN_RESET) {
-				mbedtls_strerror(ret, (char *)&buffer, BUFFER_SIZE);
-				logprintf(LOG_NOTICE, "mbedtls_ssl_write failed: %s", buffer);
-				return -1;
+		if((request->chunksize-request->chunkread) < *size) {
+			toread = request->chunksize-request->chunkread;
+		}
+
+		if((request->content = REALLOC(request->content, request->bytes_read+toread+1)) == NULL) {
+			OUT_OF_MEMORY
+		}
+
+		/*
+		 * Prevent uninitialised values in valgrind
+		 */
+		memset(&request->content[request->bytes_read], 0, toread+1);
+		memcpy(&request->content[request->bytes_read], *buf, toread);
+		request->bytes_read += toread;
+		request->chunkread += toread;
+
+		memmove(&(*buf)[0], &(*buf)[toread], *size-toread);
+
+		*size -= toread;
+		(*buf)[*size] = '\0';
+
+		if(request->chunkread <= request->chunksize) {
+			if(strncmp(*buf, "\r\n", 2) == 0) {
+				memmove(&(*buf)[0], &(*buf)[2], *size-2);
+				*size -= 2;
+				toread -= 2;
+				(*buf)[*size] = '\0';
 			}
-			if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-				mbedtls_strerror(ret, (char *)&buffer, BUFFER_SIZE);
-				logprintf(LOG_NOTICE, "mbedtls_ssl_write failed: %s", buffer);
-				return -1;
+			if(request->chunkread == request->chunksize) {
+				request->chunksize = 0;
+				request->chunkread = 0;
 			}
-			return 0;
+		}
+
+		if(request->chunksize == 0 && strstr(*buf, "\r\n") == NULL) {
+			break;
+		} else if(*size > 0 && strncmp(*buf, "0\r\n\r\n", 5) != 0) {
+			request->reading = 1; 
 		} else {
-			return ret;
+			break;
 		}
 	}
 }
 
-static int client_callback(struct eventpool_fd_t *node, int event) {
-	char *header = NULL, buffer[BUFFER_SIZE], *data = NULL;
-	int bytes = 0, n = 0;
-	memset(&buffer, '\0', BUFFER_SIZE);
+static void close_cb(uv_handle_t *handle) {
+	FREE(handle);
+}
 
-	struct request_t *request = (struct request_t *)node->userdata;
-	switch(event) {
-		case EV_CONNECT_SUCCESS: {
-			if(request->port == 443) {
-				request->is_ssl = 1;
-				int ret = 0;
+static void http_client_close(uv_poll_t *req) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct request_t *request = custom_poll_data->data;
+	int fd = -1, r = 0;
 
-				if((ret = mbedtls_ssl_setup(&request->ssl, &ssl_client_conf)) != 0) {
-					mbedtls_strerror(ret, (char *)&buffer, BUFFER_SIZE);
-					logprintf(LOG_ERR, "mbedtls_ssl_setup failed: %s", buffer);
-					return -1;
-				}
+	http_client_remove(req);		
+	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
+		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
+	}
 
-				mbedtls_ssl_session_reset(&request->ssl);
-				mbedtls_ssl_set_bio(&request->ssl, &node->fd, mbedtls_net_send, mbedtls_net_recv, NULL);
+	if(!uv_is_closing((uv_handle_t *)req)) {
+		uv_poll_stop(req);
+		uv_close((uv_handle_t *)req, close_cb);
+	}
+
+	if(fd > -1) {
+#ifdef _WIN32
+		shutdown(fd, SD_BOTH);
+#else
+		shutdown(fd, SHUT_RDWR);
+#endif
+		close(fd);
+	}
+	if(request != NULL) {
+		free_request(request);
+		custom_poll_data->data = NULL;
+	}
+	if(custom_poll_data != NULL) {
+		uv_custom_poll_free(custom_poll_data);	
+		req->data = NULL;
+	}
+}
+
+static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct request_t *request = custom_poll_data->data;
+	char *header = NULL, *p = NULL;
+	const char *a = NULL, *b = NULL;
+	int pos = 0;
+
+	if(*nread > 0) {
+		buf[*nread] = '\0';
+	}
+
+	/*
+	 * FIXME: Use io read buf instead of new buffer
+	 */
+	if(*nread > 0) {
+		if(request->gotheader == 0 && (p = strstr(buf, "\r\n\r\n")) != NULL) {
+			pos = p-buf;
+			if((header = MALLOC(pos+1)) == NULL) {
+				OUT_OF_MEMORY
 			}
+			strncpy(header, buf, pos);
+			header[pos] = '\0';
+			request->gotheader = 1;
+			*nread -= pos+4;
+			memmove(buf, &buf[pos+4], *nread);
+			buf[*nread] = '\0';
 
+			struct connection_t c;
+			char *location = NULL;
+			const char *p = location;
+			http_parse_request(header, &c);
+			if(c.status_code == 301 && (p = http_get_header(&c, "Location")) != NULL) {
+				if(request->callback != NULL) {
+					request->callback(c.status_code, location, strlen(location), NULL, request->userdata);
+				}
+				FREE(header);
+				return;
+			}
+			request->status_code = c.status_code;
+			if((a = http_get_header(&c, "Content-Type")) != NULL || (b = http_get_header(&c, "Content-type")) != NULL) {
+				int len = 0, i = 0;
+				if(a != NULL) {
+					strcpy(request->mimetype, http_get_header(&c, "Content-Type"));
+				} else if(b != NULL) {
+					strcpy(request->mimetype, http_get_header(&c, "Content-type"));
+				}
+				len = strlen(request->mimetype);
+				for(i=0;i<len;i++) {
+					if(request->mimetype[i] == ';') {
+						request->mimetype[i] = '\0';
+						break;
+					}
+				}
+			}
+			if(http_get_header(&c, "Content-Length") != NULL) {
+				request->content_len = atoi(http_get_header(&c, "Content-Length"));
+			}
+			if(http_get_header(&c, "Transfer-Encoding") != NULL) {
+				if(strcmp(http_get_header(&c, "Transfer-Encoding"), "chunked") == 0) {
+					request->chunked = 1;
+				}
+			}
+			FREE(header);
+			if(*nread == 0) {
+				if(request->callback != NULL) {
+					request->callback(request->status_code, "", request->content_len, request->mimetype, request->userdata);
+					goto close;
+				}
+			}
+		}
+		if(request->chunked == 1) {
+			process_chunk(&buf, &(*nread), request);
+		} else if(*nread > 0) {
+			if((request->content = REALLOC(request->content, request->bytes_read+(*nread)+1)) == NULL) {
+				OUT_OF_MEMORY
+			}
+			/*
+			 * Prevent uninitialised values in valgrind
+			 */
+			memset(&request->content[request->bytes_read], 0, *nread+1);
+			memcpy(&request->content[request->bytes_read], buf, *nread);
+			request->bytes_read += *nread;
+			*nread = 0;
+		}
+	}
+
+	if(strcmp(buf, "0\r\n\r\n") == 0) {
+		request->reading = 0;
+		request->chunked = 0;
+		request->content[request->bytes_read] = '\0';
+		request->content_len = request->bytes_read;
+	}
+
+	if(request->chunked == 1 || request->bytes_read < request->content_len) {
+		request->reading = 1;
+	} else if(request->content != NULL) {
+		request->content[request->content_len] = '\0';
+		if(request->callback != NULL) {
+			request->callback(request->status_code, request->content, request->content_len, request->mimetype, request->userdata);
+			goto close;
+		}
+	}
+
+	if(request->reading == 1) {
+		uv_custom_read(req);
+		return;
+	}
+
+close:
+	if(!uv_is_closing((uv_handle_t *)req)) {
+		http_client_close(req);
+	}
+}
+
+static void write_cb(uv_poll_t *req) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct request_t *request = custom_poll_data->data;
+	char *header = NULL;
+	int r = 0;
+
+	switch(request->steps) {
+		case STEP_WRITE: {
 			if(request->request_method == HTTP_POST) {
 				append_to_header(&header, "POST %s HTTP/1.0\r\n", request->uri);
 				append_to_header(&header, "Host: %s\r\n", request->host);
@@ -261,7 +530,7 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 				append_to_header(&header, "Content-Length: %lu\r\n\r\n", request->content_len);
 				append_to_header(&header, "%s", request->content);
 			} else if(request->request_method == HTTP_GET) {
-				append_to_header(&header, "GET %s HTTP/1.0\r\n", request->uri);
+				append_to_header(&header, "GET %s HTTP/1.1\r\n", request->uri);
 				append_to_header(&header, "Host: %s\r\n", request->host);
 				if(request->auth64 != NULL) {
 					append_to_header(&header, "Authorization: Basic %s\r\n", request->auth64);
@@ -269,140 +538,131 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 				append_to_header(&header, "User-Agent: %s\r\n", USERAGENT);
 				append_to_header(&header, "Connection: close\r\n\r\n");
 			}
+			iobuf_append(&custom_poll_data->send_iobuf, (void *)header, strlen(header));
 
-			eventpool_fd_enable_write(node);
-			eventpool_fd_write(node->fd, header, strlen(header));
-			if(header != NULL) {
-				FREE(header);
+			r = uv_poll_start(req, UV_WRITABLE, uv_custom_poll_cb);
+			if(r != 0) {
+				logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
+				FREE(req);
+				return;
 			}
-			eventpool_fd_enable_read(node);
+			FREE(header);
+			request->steps = STEP_READ;
 		} break;
-		case EV_READ: {
-			if(request->is_ssl == 1) {
-				bytes = mbedtls_ssl_read(&request->ssl, (unsigned char *)buffer, BUFFER_SIZE);
-
-				if(bytes == MBEDTLS_ERR_SSL_WANT_READ || bytes == MBEDTLS_ERR_SSL_WANT_WRITE) {
-					eventpool_fd_enable_read(node);
-					return 0;
-				}
-				if(bytes == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY || bytes <= 0) {
-					mbedtls_strerror(bytes, (char *)&buffer, BUFFER_SIZE);
-					logprintf(LOG_ERR, "mbedtls_ssl_read failed: %s", buffer);
-					return -1;
-				}
-
-				buffer[bytes] = '\0';
-			} else {
-				if((bytes = recv(node->fd, buffer, BUFFER_SIZE, 0)) <= 0) {
-					return -1;
-				}
+		case STEP_READ:
+			r = uv_poll_start(req, UV_READABLE, uv_custom_poll_cb);
+			if(r != 0) {
+				logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
+				return;
 			}
-
-			char **array = NULL;
-			if(request->reading == 1) {
-				data = buffer;
-				if((request->content = REALLOC(request->content, request->bytes_read+bytes+1)) == NULL) {
-					OUT_OF_MEMORY
-				}
-				strncpy(&request->content[request->bytes_read], data, request->bytes_read+bytes);
-				request->bytes_read += bytes;
-			} else {
-				if((n = explode(buffer, "\r\n\r\n", &array)) == 2 || n == 1) {
-					struct connection_t c;
-					char *location = NULL;
-					const char *p = location;
-					http_parse_request(array[0], &c);
-					if(c.status_code == 301 && (p = http_get_header(&c, "Location")) != NULL) {
-						if(request->callback != NULL) {
-							request->callback(c.status_code, location, strlen(location), NULL, request->userdata);
-						}
-						array_free(&array, n);
-						return -1;
-					}
-					request->status_code = c.status_code;
-					if(http_get_header(&c, "Content-Type") != NULL) {
-						int len = 0, i = 0;
-						strcpy(request->mimetype, http_get_header(&c, "Content-Type"));
-						len = strlen(request->mimetype);
-						for(i=0;i<len;i++) {
-							if(request->mimetype[i] == ';') {
-								request->mimetype[i] = '\0';
-								break;
-							}
-						}
-					}
-					if(http_get_header(&c, "Content-Length") != NULL) {
-						request->content_len = atoi(http_get_header(&c, "Content-Length"));
-					}
-					if(n == 2) {
-						request->bytes_read = strlen(array[1]);
-						data = array[1];
-						if((request->content = REALLOC(request->content, request->bytes_read+1)) == NULL) {
-							OUT_OF_MEMORY
-						}
-						strncpy(request->content, data, request->bytes_read);
-					}
-				}
-			}
-
-			if(request->bytes_read < request->content_len) {
-				request->reading = 1;
-				eventpool_fd_enable_read(node);
-			} else if(request->content != NULL) {
-				/* Remove the header */
-				int pos = 0;
-				char *nl = NULL;
-				if((nl = strstr(request->content, "\r\n\r\n"))) {
-					pos = (nl-request->content)+4;
-					memmove(&request->content[0], &request->content[pos], (size_t)(request->content_len-pos));
-					request->content_len -= pos;
-				}
-				/* Remove the footer */
-				if((nl = strstr(request->content, "0\r\n\r\n"))) {
-					request->content_len -= 5;
-				}
-				request->content[request->content_len] = '\0';
-				if(request->callback != NULL) {
-					request->callback(request->status_code, request->content, request->content_len, request->mimetype, request->userdata);
-				}
-			}
-			array_free(&array, n);
-		} break;
-		case EV_DISCONNECTED: {
-			if(request->host != NULL) {
-				FREE(request->host);
-			}
-			if(request->uri != NULL) {
-				FREE(request->uri);
-			}
-			if(request->content != NULL) {
-				FREE(request->content);
-			}
-			if(request->auth64 != NULL) {
-				FREE(request->auth64);
-			}
-			if(request->is_ssl == 1) {
-				mbedtls_ssl_free(&request->ssl);
-			}
-			FREE(request);
-			eventpool_fd_remove(node);
-		} break;
+			return;
+		break;
 	}
-	return 0;
 }
 
-char *http_post_content(char *url, const char *contype, char *post, void (*callback)(int, char *, int, char *, void *), void *userdata) {
+char *http_process(int type, char *url, const char *conttype, char *post, void (*callback)(int, char *, int, char *, void *), void *userdata) {
 	struct request_t *request = NULL;
-	if(prepare_request(&request, HTTP_POST, url, contype, post, callback, userdata) == 0) {
-		eventpool_socket_add("http post", request->host, request->port, AF_INET, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_CLIENT, client_callback, client_send, request);
+	struct uv_custom_poll_t *custom_poll_data = NULL;
+	struct sockaddr_in addr;
+	char ip[INET_ADDRSTRLEN+1], *p = ip;
+	int r = 0, sockfd = 0;
+
+	if(http_lock_init == 0) {
+		http_lock_init = 1;
+		// pthread_mutexattr_init(&http_attr);
+		// pthread_mutexattr_settype(&http_attr, PTHREAD_MUTEX_RECURSIVE);
+		// pthread_mutex_init(&http_lock, &http_attr);
+		uv_mutex_init(&http_lock);
 	}
+	
+#ifdef _WIN32
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "WSAStartup");
+		exit(EXIT_FAILURE);
+	}
+#endif	
+	
+	if(prepare_request(&request, type, url, conttype, post, callback, userdata) == 0) {
+		r = host2ip(request->host, p);
+		if(r != 0) {
+			logprintf(LOG_ERR, "host2ip");
+			goto freeuv;
+		}
+
+		r = uv_ip4_addr(ip, request->port, &addr);
+		if(r != 0) {
+			logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
+			goto freeuv;
+		}
+
+		/*
+		 * Partly bypass libuv in case of ssl connections
+		 */
+		if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+			logprintf(LOG_ERR, "socket: %s", strerror(errno));
+			goto free;
+		}
+
+#ifdef _WIN32
+		unsigned long on = 1;
+		ioctlsocket(sockfd, FIONBIO, &on);
+#else
+		long arg = fcntl(sockfd, F_GETFL, NULL);
+		fcntl(sockfd, F_SETFL, arg | O_NONBLOCK);
+#endif
+
+		if(connect(sockfd, (const struct sockaddr *)&addr, sizeof(struct sockaddr)) < 0) {
+#ifdef _WIN32
+			if(!(WSAGetLastError() == WSAEWOULDBLOCK || WSAGetLastError() == WSAEISCONN)) {
+#else
+			if(!(errno == EINPROGRESS || errno == EISCONN)) {
+#endif
+				logprintf(LOG_ERR, "connect: %s", strerror(errno));
+				goto free;
+			}
+		}
+
+		uv_poll_t *poll_req = NULL;
+		if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
+			OUT_OF_MEMORY
+		}
+
+		uv_custom_poll_init(&custom_poll_data, poll_req, (void *)request);
+		custom_poll_data->is_ssl = request->is_ssl;
+		custom_poll_data->write_cb = write_cb;
+		custom_poll_data->read_cb = read_cb;
+
+		r = uv_poll_init_socket(uv_default_loop(), poll_req, sockfd);
+		if(r != 0) {
+			logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
+			FREE(poll_req);
+			goto freeuv;
+		}
+
+		http_client_add(poll_req);
+		request->steps = STEP_WRITE;
+		write_cb(poll_req);
+	}
+
 	return NULL;
+
+freeuv:
+	FREE(request->uri);
+	FREE(request->host);
+	FREE(request);
+free:
+	if(sockfd > 0) {
+		close(sockfd);
+	}
+	return NULL;	
 }
 
 char *http_get_content(char *url, void (*callback)(int, char *, int, char *, void *), void *userdata) {
-	struct request_t *request = NULL;
-	if(prepare_request(&request, HTTP_GET, url, NULL, NULL, callback, userdata) == 0) {
-		eventpool_socket_add("http get", request->host, request->port, AF_INET, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_CLIENT, client_callback, client_send, request);
-	}
-	return NULL;
+	return http_process(HTTP_GET, url, NULL, NULL, callback, userdata);
+}
+
+char *http_post_content(char *url, const char *conttype, char *post, void (*callback)(int, char *, int, char *, void *), void *userdata) {
+	return http_process(HTTP_POST, url, conttype, post, callback, userdata);
 }

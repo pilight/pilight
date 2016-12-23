@@ -17,6 +17,7 @@
 #include <math.h>
 #include <string.h>
 
+#include "libs/libuv/uv.h"
 #include "libs/pilight/core/threadpool.h"
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/network.h"
@@ -35,35 +36,25 @@
 	#include "libs/wiringx/wiringX.h"
 #endif
 
-static unsigned short main_loop = 1;
+static uv_signal_t *signal_req = NULL;
+static unsigned short loop = 1;
 static unsigned short linefeed = 0;
 
-int main_gc(void) {
-	log_shell_disable();
-	main_loop = 0;
+static int main_gc(void) {
+	loop = 0;
 
-	datetime_gc();
-#ifdef EVENTS
-	events_gc();
-#endif
-	options_gc();
-	socket_gc();
-
+	protocol_gc();
+	hardware_gc();
 	storage_gc();
-	whitelist_free();
 
 #ifndef _WIN32
 	wiringXGC();
 #endif
-	dso_gc();
+	log_shell_disable();
+	eventpool_gc();
 	log_gc();
-	gc_clear();
 
 	FREE(progname);
-
-#ifdef _WIN32
-	WSACleanup();
-#endif
 
 	return EXIT_SUCCESS;
 }
@@ -72,7 +63,7 @@ int main_gc(void) {
 	// int duration = 0, iLoop = 0;
 
 	// struct hardware_t *hw = (hardware_t *)param;
-	// while(main_loop && hw->receiveOOK) {
+	// while(loop && hw->receiveOOK) {
 		// duration = hw->receiveOOK();
 		// iLoop++;
 		// if(duration > 0) {
@@ -91,9 +82,8 @@ int main_gc(void) {
 	// return NULL;
 // }
 
-void *receivePulseTrain(void *param) {
-	struct threadpool_tasks_t *task = param;
-	struct reason_received_pulsetrain_t *data = task->userdata;
+static void *receivePulseTrain(int reason, void *param) {
+	struct reason_received_pulsetrain_t *data = param;
 	struct hardware_t *hw = NULL;
 	int i = 0;
 
@@ -121,7 +111,7 @@ void *receivePulseTrain(void *param) {
 	// int i = 0;
 
 	// struct hardware_t *hw = (hardware_t *)param;
-	// while(main_loop && hw->receivePulseTrain) {
+	// while(loop && hw->receivePulseTrain) {
 		// hw->receivePulseTrain(&r);
 		// if(r.length == -1) {
 			// main_gc();
@@ -142,8 +132,37 @@ void *receivePulseTrain(void *param) {
 	// return NULL;
 // }
 
+static void signal_cb(uv_signal_t *handle, int signum) {
+	uv_stop(uv_default_loop());
+	main_gc();
+}
+
+static void close_cb(uv_handle_t *handle) {
+	FREE(handle);
+}
+
+static void walk_cb(uv_handle_t *handle, void *arg) {
+	if(!uv_is_closing(handle)) {
+		uv_close(handle, close_cb);
+	}
+}
+
+static void main_loop(int onclose) {
+	if(onclose == 1) {
+		signal_cb(NULL, SIGINT);
+	}
+	uv_run(uv_default_loop(), UV_RUN_DEFAULT);	
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+	if(onclose == 1) {
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			usleep(10);
+		}
+	}
+}
+
 int main(int argc, char **argv) {
-	atomicinit();
 	struct options_t *options = NULL;
 	char *args = NULL;
 	char *fconfig = NULL;
@@ -151,20 +170,24 @@ int main(int argc, char **argv) {
 
 	pilight.process = PROCESS_CLIENT;
 
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
+	
 	if((fconfig = MALLOC(strlen(CONFIG_FILE)+1)) == NULL) {
 		OUT_OF_MEMORY
 	}
 	strcpy(fconfig, CONFIG_FILE);
 
-	gc_attach(main_gc);
-
-	/* Catch all exit signals for gc */
-	gc_catch();
-
 	if((progname = MALLOC(12)) == NULL) {
 		OUT_OF_MEMORY
 	}
 	strcpy(progname, "pilight-raw");
+
+	if((signal_req = MALLOC(sizeof(uv_signal_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	uv_signal_init(uv_default_loop(), signal_req);
+	uv_signal_start(signal_req, signal_cb, SIGINT);	
 
 #ifndef _WIN32
 	if(geteuid() != 0) {
@@ -174,6 +197,7 @@ int main(int argc, char **argv) {
 	}
 #endif
 
+	log_init();
 	log_shell_enable();
 	log_file_disable();
 	log_level_set(LOG_NOTICE);
@@ -219,6 +243,8 @@ int main(int argc, char **argv) {
 		}
 	}
 	options_delete(options);
+	options_gc();
+	options = NULL;
 
 #ifdef _WIN32
 	if((pid = check_instances(L"pilight-raw")) != -1) {
@@ -238,11 +264,14 @@ int main(int argc, char **argv) {
 	}
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
+	protocol_init();
 	hardware_init();
 	storage_init();
-	if(storage_read(fconfig, CONFIG_HARDWARE | CONFIG_SETTINGS) != 0) {
+	if(storage_read(fconfig, CONFIG_HARDWARE | CONFIG_SETTINGS) != 0) {		
+		FREE(fconfig);
 		goto close;
 	}
+	FREE(fconfig);	
 
 	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain);
 
@@ -269,11 +298,11 @@ int main(int argc, char **argv) {
 
 	if(hardware_select(ORIGIN_MASTER, NULL, &jrespond) == 0) {
 		jchilds = json_first_child(jrespond);
-		while(jchilds && main_loop == 1) {
+		while(jchilds && loop == 1) {
 			if(hardware_select_struct(ORIGIN_MASTER, jchilds->key, &hardware) == 0) {
 				if(hardware->init != NULL) {
-					if(hardware->init(receivePulseTrain) == EXIT_FAILURE) {
-						if(main_loop == 1) {
+					if(hardware->init() == EXIT_FAILURE) {
+						if(loop == 1) {
 							logprintf(LOG_ERR, "could not initialize %s hardware mode", hardware->id);
 							goto close;
 						} else {
@@ -282,7 +311,7 @@ int main(int argc, char **argv) {
 					}
 				}
 			}
-			if(main_loop == 0) {
+			if(loop == 0) {
 				break;
 			}
 
@@ -290,15 +319,18 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	eventpool_process(NULL);
+	main_loop(0);
 
 close:
-	if(args != NULL) {
-		FREE(args);
+	if(options != NULL) {
+		options_delete(options);
+		options_gc();
+		options = NULL;
 	}
-	FREE(fconfig);
-	if(main_loop == 1) {
-		main_gc();
-	}
+
+	main_loop(1);
+
+	main_gc();
+
 	return (EXIT_FAILURE);
 }

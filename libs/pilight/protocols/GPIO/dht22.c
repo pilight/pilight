@@ -168,7 +168,7 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static void *addDevice(void *param) {
+static void *addDevice(int reason, void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
@@ -273,7 +273,7 @@ static int checkValues(struct JsonNode *code) {
 					logprintf(LOG_ERR, "dht22: no gpio-platform configured");
 					return -1;
 				}
-				if(wiringXSetup(platform, logprintf) < 0) {
+				if(wiringXSetup(platform, _logprintf) < 0) {
 					logprintf(LOG_ERR, "unable to setup wiringX") ;
 					return -1;
 				} else if(wiringXValidGPIO(gpio) != 0) {

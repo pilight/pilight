@@ -22,18 +22,20 @@
 	#include <syslog.h>
 #endif
 
-void logprintf(int prio, const char *format_str, ...);
-void logperror(int prio, const char *s);
-void *logloop(void *param);
+#define logprintf(a, b, ...) _logprintf(a, __FILE__, __LINE__, b, ##__VA_ARGS__)
+
+void _logprintf(int, char *, int, const char *, ...);
+void logperror(int, const char *)	;
+void *logloop(void *);
 void log_file_enable(void);
 void log_file_disable(void);
 void log_shell_enable(void);
 void log_shell_disable(void);
-int log_file_set(char *file);
-void log_level_set(int level);
+int log_file_set(char *);
+void log_level_set(int);
 int log_level_get(void);
 int log_gc(void);
 void log_init(void);
-void logerror(const char *format_str, ...);
+void logerror(const char *, ...);
 
 #endif

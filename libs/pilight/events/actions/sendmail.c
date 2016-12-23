@@ -206,9 +206,13 @@ static void *thread(void *param) {
 					strcpy(mail->from, stmp);
 				}
 				settings_select_string(ORIGIN_ACTION, "smtp-host", &shost);
-				if(settings_select_number(ORIGIN_ACTION, "smtp-port", &itmp) == 0) {
-					sport = (int)itmp;
-				}
+
+				/*
+				 * FIXME
+				 */
+				// if(settings_select_number(ORIGIN_ACTION, "smtp-port", &itmp) == 0) {
+					// sport = (int)itmp;
+				// }
 				settings_select_string(ORIGIN_ACTION, "smtp-user", &suser);
 				settings_select_string(ORIGIN_ACTION, "smtp-password", &spassword);
 
@@ -225,9 +229,12 @@ static void *thread(void *param) {
 				strcpy(mail->message, jval2->string_);
 				strcpy(mail->to, jval3->string_);
 
-				if(sendmail(shost, suser, spassword, sport, mail, callback) != 0) {
-					logprintf(LOG_ERR, "sendmail action failed to send message \"%s\"", jval2->string_);
-				}
+				/*
+				 * FIXME
+				 */
+				// if(sendmail(shost, suser, spassword, sport, mail, callback) != 0) {
+					// logprintf(LOG_ERR, "sendmail action failed to send message \"%s\"", jval2->string_);
+				// }
 			}
 		}
 	}

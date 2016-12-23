@@ -11,6 +11,9 @@
 #include <string.h>
 #ifndef _WIN32
 	#include <dlfcn.h>
+#else
+	#include <winsock2.h>
+	#include <windows.h>
 #endif
 
 #include "common.h"
@@ -19,8 +22,8 @@
 #include "dso.h"
 
 void *dso_load(char *object) {
-#ifndef _WIN32
 	void *handle = NULL;
+
 	int match = 0;
 	struct dso_t *tmp = dso;
 	while(tmp) {
@@ -38,12 +41,14 @@ void *dso_load(char *object) {
 	if(!(handle = dlopen(object, RTLD_LAZY | RTLD_GLOBAL | RTLD_GROUP | RTLD_WORLD | RTLD_PARENT))) {
 #elif defined(RTLD_DEEPBIND)
 	if(!(handle = dlopen(object, RTLD_LAZY | RTLD_GLOBAL | RTLD_DEEPBIND))) {
-#else
+#elif !defined(_WIN32)
 	if(!(handle = dlopen(object, RTLD_LAZY))) {
+#else
+	if(!(handle = (void *)LoadLibrary(object))) {
 #endif
-		atomiclock();
+#ifndef _WIN32
 		logprintf(LOG_ERR, dlerror());
-		atomicunlock();
+#endif
 		return NULL;
 	} else {
 		struct dso_t *node = MALLOC(sizeof(struct dso_t));
@@ -59,10 +64,6 @@ void *dso_load(char *object) {
 		dso = node;
 		return handle;
 	}
-#else
-	logprintf(LOG_ERR, "dynamic loading not implemented on Windows");
-	return NULL;
-#endif
 }
 
 int dso_gc(void) {
@@ -71,6 +72,8 @@ int dso_gc(void) {
 		tmp = dso;
 #ifndef _WIN32
 		dlclose(tmp->handle);
+#else
+		FreeLibrary((HINSTANCE)tmp->handle);
 #endif
 		FREE(tmp->name);
 		dso = dso->next;
@@ -85,19 +88,24 @@ int dso_gc(void) {
 }
 
 void *dso_function(void *handle, const char *name) {
-#ifndef _WIN32
-	void *init = (void *)dlsym(handle, name);
-	char *error = NULL;
 	atomiclock();
+#ifdef _WIN32
+	void *init = (void *)GetProcAddress((HINSTANCE)handle, name);
+#else
+	dlerror();
+	void *init = (void *)dlsym(handle, name);
+#endif
+#ifndef _WIN32
+	char *error = NULL;
 	if((error = dlerror()) != NULL)  {
-		logprintf(LOG_ERR, error);
 		atomicunlock();
+		logprintf(LOG_ERR, error);
 		return 0;
 	} else {
+#endif
 		atomicunlock();
 		return init;
+#ifndef _WIN32
 	}
-#else
-	return 0;
 #endif
 }
