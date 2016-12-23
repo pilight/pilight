@@ -1265,6 +1265,23 @@ static void socket_parse_data(int i, char *buffer) {
 					} else {
 						socket_write(sd, "{\"status\":\"failed\"}");
 					}
+				} else if(strcmp(action, "list protocols") == 0) {
+					struct protocols_t *pnode = protocols;
+					struct JsonNode *schema = json_mkobject();
+					struct JsonNode *proto_schema = json_mkarray();
+
+					json_append_member(schema, "protocols", proto_schema);
+
+					/* iterate all protocols */
+					while(pnode) {
+						json_append_element(proto_schema, protocol_schema(pnode->listener));
+						pnode = pnode->next;
+					}
+
+					char *schema_message = json_stringify(schema, NULL);
+					socket_write(sd, schema_message);
+					json_free(schema_message);
+					json_delete(schema);
 				} else if(strcmp(action, "control") == 0) {
 					struct JsonNode *code = NULL;
 					struct devices_t *dev = NULL;

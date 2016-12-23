@@ -1436,3 +1436,26 @@ int json_find_string(JsonNode *object, const char *name, char **out) {
 void json_free(void *a) {
 	free(a);
 }
+
+JsonNode *json_vartype(int vartype) {
+	JsonNode *vartype_array = json_mkarray();
+	if((vartype & JSON_NULL) != 0) {
+		json_append_element(vartype_array, json_mkstring("null"));
+	}
+	if((vartype & JSON_BOOL) != 0) {
+		json_append_element(vartype_array, json_mkstring("boolean"));
+	}
+	if((vartype & JSON_STRING) != 0) {
+		json_append_element(vartype_array, json_mkstring("string"));
+	}
+	if((vartype & JSON_NUMBER) != 0) {
+		json_append_element(vartype_array, json_mkstring("number"));
+	}
+	if((vartype & JSON_ARRAY) != 0) {
+		json_append_element(vartype_array, json_mkstring("array"));
+	}
+	if((vartype & JSON_OBJECT) != 0) {
+		json_append_element(vartype_array, json_mkstring("object"));
+	}
+	return vartype_array;
+}

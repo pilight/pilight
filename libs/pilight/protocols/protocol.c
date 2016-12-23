@@ -347,6 +347,39 @@ void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
 	proto->devices = dnode;
 }
 
+JsonNode *protocol_schema(protocol_t *proto) {
+	JsonNode *root = json_mkobject();
+
+	json_append_member(root, "name", json_mkstring(proto->id));
+
+	JsonNode *devices = json_mkarray();
+	json_append_member(root, "devices", devices);
+
+	struct protocol_devices_t *dev_temp = proto->devices;
+	while(dev_temp) {
+		json_append_element(devices, json_mkstring(dev_temp->id));
+		dev_temp = dev_temp->next;
+	}
+
+
+	JsonNode *options = json_mkarray();
+	json_append_member(root, "options", options);
+
+	struct options_t *opt_temp = proto->options;
+	while(opt_temp) {
+		if(opt_temp->id != 0) {
+			JsonNode *option = json_mkobject();
+			json_append_element(options, option);
+
+			json_append_member(option, "name", json_mkstring(opt_temp->name));
+			json_append_member(option, "vartype", json_vartype(opt_temp->vartype));
+		}
+		opt_temp = opt_temp->next;
+	}
+
+	return root;
+}
+
 int protocol_device_exists(protocol_t *proto, const char *id) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
