@@ -9,19 +9,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <errno.h>
 #include <time.h>
-#include <sys/time.h>
 #include <math.h>
 #include <string.h>
-#include <pthread.h>
 #ifndef _WIN32
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
+	#include <pthread.h>
+	#include <sys/time.h>
+	#include <unistd.h>
 #endif
 
 #include "../core/pilight.h"
@@ -204,10 +204,16 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 			return 0;
 		}
 
-		char device[strlen(array[0])+1];
+		char *device = MALLOC(strlen(array[0])+1);
+		if(device == NULL) {
+			OUT_OF_MEMORY
+		}
 		strcpy(device, array[0]);
 
-		char name[strlen(array[1])+1];
+		char *name = MALLOC(strlen(array[1])+1);
+		if(name == NULL) {
+			OUT_OF_MEMORY
+		}
 		strcpy(name, array[1]);
 
 		array_free(&array, n);
@@ -284,6 +290,8 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 									varcont->number_ = 0;
 									varcont->decimals_ = 0;
 									*rtype = -1;
+									FREE(device);
+									FREE(name);
 									return -1;
 								}
 								match2 = 1;
@@ -296,6 +304,8 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 							varcont->number_ = 0;
 							varcont->decimals_ = 0;
 							*rtype = -1;
+							FREE(device);
+							FREE(name);
 							return -1;
 						}
 					} else if(!(strcmp(name, "repeats") == 0 || strcmp(name, "uuid") == 0)) {
@@ -304,6 +314,8 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 						varcont->number_ = 0;
 						varcont->decimals_ = 0;
 						*rtype = -1;
+						FREE(device);
+						FREE(name);
 						return -1;
 					}
 				}
@@ -315,16 +327,22 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 						if(jnode->tag == JSON_STRING) {
 							varcont->string_ = jnode->string_;
 							*rtype = JSON_STRING;
+							FREE(device);
+							FREE(name);
 							return 0;
 						} else if(jnode->tag == JSON_NUMBER) {
 							varcont->number_ = jnode->number_;
 							varcont->decimals_ = jnode->decimals_;
 							*rtype = JSON_NUMBER;
+							FREE(device);
+							FREE(name);
 							return 0;
 						}
 					}
 				}
 				*rtype = -1;
+				FREE(device);
+				FREE(name);
 				return 1;				
 			} else if(recvtype == 1) {
 				if(validate == 1) {
@@ -373,6 +391,8 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 						varcont->number_ = 0;
 						varcont->decimals_ = 0;
 						*rtype = -1;
+						FREE(device);
+						FREE(name);
 						return -1;
 					}
 				}
@@ -391,11 +411,15 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 								// }
 								varcont->string_ = val.string_;
 								*rtype = JSON_STRING;
+								FREE(device);
+								FREE(name);
 								return 0;
 							} else {
 								logprintf(LOG_ERR, "rule #%d invalid: trying to compare integer variable \"%s.%s\" to a string", obj->nr, device, name);
 								varcont->string_ = NULL;
 								*rtype = -1;
+								FREE(device);
+								FREE(name);
 								return -1;
 							}
 						} else if(val.type_ == JSON_NUMBER) {
@@ -407,12 +431,16 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 								varcont->number_ = val.number_;
 								varcont->decimals_ = val.decimals_;
 								*rtype = JSON_NUMBER;
+								FREE(device);
+								FREE(name);
 								return 0;
 							} else {
 								logprintf(LOG_ERR, "rule #%d invalid: trying to compare string variable \"%s.%s\" to an integer", obj->nr, device, name);
 								varcont->number_ = 0;
 								varcont->decimals_ = 0;
 								*rtype = -1;
+								FREE(device);
+								FREE(name);
 								return -1;
 							}
 						}
@@ -423,6 +451,8 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 				varcont->number_ = 0;
 				varcont->decimals_ = 0;
 				*rtype = -1;
+				FREE(device);
+				FREE(name);
 				return -1;
 			} /*else {
 				logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" does not exist in the config", obj->nr, device);
@@ -432,6 +462,8 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 				return -1;
 			}*/
 		}
+		FREE(device);
+		FREE(name);
 	}/* else if(nrdots > 2) {
 		logprintf(LOG_ERR, "rule #%d invalid: variable \"%s\" is invalid", obj->nr, var);
 		varcont->string_ = NULL;
@@ -1691,25 +1723,25 @@ void *events_iterate(void *param) {
 
 	tmp_rules = list->rules[list->ptr++];
 
-	clock_gettime(CLOCK_MONOTONIC, &tmp_rules->timestamp.first);
-	if((str = MALLOC(strlen(tmp_rules->rule)+1)) == NULL) {
-		OUT_OF_MEMORY
-	}
+	// clock_gettime(CLOCK_MONOTONIC, &tmp_rules->timestamp.first);
+	// if((str = MALLOC(strlen(tmp_rules->rule)+1)) == NULL) {
+		// OUT_OF_MEMORY
+	// }
 	strcpy(str, tmp_rules->rule);
 	if(event_parse_rule(str, tmp_rules, 0, 0) == 0) {
 		if(tmp_rules->status == 1) {
 			logprintf(LOG_INFO, "executed rule: %s", tmp_rules->name);
 		}
 	}
-	clock_gettime(CLOCK_MONOTONIC, &tmp_rules->timestamp.second);
-	logprintf(LOG_DEBUG, "rule #%d %s was parsed in %.6f seconds", tmp_rules->nr, tmp_rules->name,
-		((double)tmp_rules->timestamp.second.tv_sec + 1.0e-9*tmp_rules->timestamp.second.tv_nsec) -
-		((double)tmp_rules->timestamp.first.tv_sec + 1.0e-9*tmp_rules->timestamp.first.tv_nsec));
+	// clock_gettime(CLOCK_MONOTONIC, &tmp_rules->timestamp.second);
+	// logprintf(LOG_DEBUG, "rule #%d %s was parsed in %.6f seconds", tmp_rules->nr, tmp_rules->name,
+		// ((double)tmp_rules->timestamp.second.tv_sec + 1.0e-9*tmp_rules->timestamp.second.tv_nsec) -
+		// ((double)tmp_rules->timestamp.first.tv_sec + 1.0e-9*tmp_rules->timestamp.first.tv_nsec));
 	FREE(str);
 
 	tmp_rules->status = 0;
 	if(list->ptr < list->nr) {
-		threadpool_add_work(REASON_END, NULL, "rules loop", 0, events_iterate, NULL, (void *)task->userdata);
+		// threadpool_add_work(REASON_END, NULL, "rules loop", 0, events_iterate, NULL, (void *)task->userdata);
 	} else {
 		int i = 0;
 		for(i=0;i<list->nr;i++) {
@@ -1818,7 +1850,7 @@ void *events_loop(int reason, void *param) {
 		}
 	}
 	if(list != NULL && list->nr > 0) {
-		threadpool_add_work(REASON_END, NULL, "rules loop", 0, events_iterate, NULL, (void *)list);
+		// threadpool_add_work(REASON_END, NULL, "rules loop", 0, events_iterate, NULL, (void *)list);
 	}
 
 	running = 0;

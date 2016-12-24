@@ -61,10 +61,8 @@
  */
 
 #include <time.h>
-#include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <sys/types.h>
 #ifdef _WIN32
 	#define WIN32_LEAN_AND_MEAN
@@ -87,6 +85,8 @@
 	#include <netinet/in_systm.h>
 	#include <netinet/ip.h>
 	#include <netinet/ip_icmp.h>
+	#include <unistd.h>
+	#include <sys/time.h>
 #endif
 #include <errno.h>
 #include <string.h>
@@ -95,7 +95,7 @@
 #include "common.h"
 #include "ping.h"
 #include "network.h"
-#include "timerpool.h"
+// #include "timerpool.h"
 #include "log.h"
 #include "mem.h"
 

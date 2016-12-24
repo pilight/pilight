@@ -10,17 +10,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <signal.h>
 #include <limits.h>
-#include <sys/time.h>
 #ifdef _WIN32
 	#include <winsock2.h>
 	#include <windows.h>
 	#define SIGRTMIN 34
-#endif
-#define __USE_UNIX98
-#include <pthread.h>
+#else
+	#define __USE_UNIX98
+	#include <pthread.h>
+	#include <sys/time.h>
+	#include <unistd.h>
+#endif	
 
 #include "gc.h"
 #include "log.h"
@@ -28,7 +29,7 @@
 #include "common.h"
 #include "errno.h"
 #include "threadpool.h"
-#include "timerpool.h"
+// #include "timerpool.h"
 
 static struct threadpool_tasks_t *threadpool_tasks = NULL;
 static struct threadpool_workers_t *threadpool_workers = NULL;
@@ -49,7 +50,7 @@ static int maxlinger = 0;
 
 static int nrruns[REASON_END+1][10];
 
-static struct timers_t timer;
+// static struct timers_t timer;
 
 typedef struct timer_list_t {
 	unsigned long id;
@@ -149,27 +150,27 @@ static void *worker(void *param) {
 			FREE(tmp);
 			uv_mutex_unlock(&tasks_lock);
 
-			if(pilight.debuglevel >= 2) {
-				fprintf(stderr, "activated worker %d, executing %s\n", node->nr, copy.name);
-			}
-			if(pilight.debuglevel >= 1) {
-				clock_gettime(CLOCK_MONOTONIC, &copy.timestamp.first);
-			}
-			if(pilight.debuglevel >= 2) {
-				// getThreadCPUUsage(node->pth, &node->cpu_usage);
-			}
+			// if(pilight.debuglevel >= 2) {
+				// fprintf(stderr, "activated worker %d, executing %s\n", node->nr, copy.name);
+			// }
+			// if(pilight.debuglevel >= 1) {
+				// clock_gettime(CLOCK_MONOTONIC, &copy.timestamp.first);
+			// }
+			// if(pilight.debuglevel >= 2) {
+				// // getThreadCPUUsage(node->pth, &node->cpu_usage);
+			// }
 			copy.func(copy.reason, &copy);
 
-			if(pilight.debuglevel >= 1) {
-				if(pilight.debuglevel >= 2) {
-					// getThreadCPUUsage(node->pth, &node->cpu_usage);
-					fprintf(stderr, "worker %d: %f%% CPU", node->nr, node->cpu_usage.cpu_per);
-				}
-				clock_gettime(CLOCK_MONOTONIC, &copy.timestamp.second);
-				logprintf(LOG_DEBUG, "task %s executed in %.6f seconds", copy.name,
-					((double)copy.timestamp.second.tv_sec + 1.0e-9*copy.timestamp.second.tv_nsec) -
-					((double)copy.timestamp.first.tv_sec + 1.0e-9*copy.timestamp.first.tv_nsec));
-			}
+			// if(pilight.debuglevel >= 1) {
+				// if(pilight.debuglevel >= 2) {
+					// // getThreadCPUUsage(node->pth, &node->cpu_usage);
+					// fprintf(stderr, "worker %d: %f%% CPU", node->nr, node->cpu_usage.cpu_per);
+				// }
+				// clock_gettime(CLOCK_MONOTONIC, &copy.timestamp.second);
+				// logprintf(LOG_DEBUG, "task %s executed in %.6f seconds", copy.name,
+					// ((double)copy.timestamp.second.tv_sec + 1.0e-9*copy.timestamp.second.tv_nsec) -
+					// ((double)copy.timestamp.first.tv_sec + 1.0e-9*copy.timestamp.first.tv_nsec));
+			// }
 
 			if(copy.ref == NULL ||
 				 (sem_trywait(copy.ref) == -1 && errno == EAGAIN) ||
@@ -257,7 +258,10 @@ void threadpool_add_worker(void) {
 	struct threadpool_workers_t *tmp = threadpool_workers;
 	if(tmp) {
 		int mw = maxworkers;
-		int list[mw+1], i = 0, x = 0;
+		int *list = MALLOC(mw+1), i = 0, x = 0;
+		if(list == NULL) {
+			OUT_OF_MEMORY
+		}
 		memset(&list, 0, mw+1);
 		while(tmp) {
 			list[i] = tmp->nr;
@@ -265,6 +269,7 @@ void threadpool_add_worker(void) {
 			i++;
 		}
 		x = findMissingNr(list, i);
+		FREE(list);
 		tmp = threadpool_workers;
 		while(tmp->next != NULL) {
 			tmp = tmp->next;
@@ -298,7 +303,7 @@ int threadpool_free_runs(int reason) {
 	return -1;
 }
 
-unsigned long threadpool_add_work(int reason, sem_t *ref, char *name, int priority, void *(*func)(void *), void *(*free)(void *), void *userdata) {
+unsigned long threadpool_add_work(int reason, uv_sem_t *ref, char *name, int priority, void *(*func)(int, void *), void *(*free)(void *), void *userdata) {
 	if(acceptwork == 0 && init == 0) {
 		// Adding work to uninitialized threadpool
 		return -1;
@@ -367,10 +372,10 @@ unsigned long threadpool_add_work(int reason, sem_t *ref, char *name, int priori
 	return id;
 }
 
-static void *threadpool_timer_handler(struct timer_tasks_t *task) {
-	threadpool_add_work(REASON_END, NULL, task->name, 0, task->func, NULL, task->userdata);
-	return NULL;
-}
+// static void *threadpool_timer_handler(struct timer_tasks_t *task) {
+	// threadpool_add_work(REASON_END, NULL, task->name, 0, task->func, NULL, task->userdata);
+	// return NULL;
+// }
 
 void threadpool_init(int min, int max, int linger) {
 	int i = 0;
@@ -385,7 +390,7 @@ void threadpool_init(int min, int max, int linger) {
 		}
 	}
 
-	timer_init(&timer, SIGRTMIN, threadpool_timer_handler, TIMER_ABSTIME, tv1, tv2);
+	// timer_init(&timer, SIGRTMIN, threadpool_timer_handler, TIMER_ABSTIME, tv1, tv2);
 
 	maxworkers = max;
 	minworkers = min;
@@ -406,12 +411,12 @@ void threadpool_init(int min, int max, int linger) {
 		threadpool_add_worker();
 	}
 	init = 1;
-	while(ttasks) {
-		struct timer_list_t *tmp = ttasks;
-		timer_add_task(&timer, tmp->name, tmp->tv, tmp->task, tmp->userdata);
-		ttasks = ttasks->next;
-		FREE(tmp);
-	}
+	// while(ttasks) {
+		// struct timer_list_t *tmp = ttasks;
+		// timer_add_task(&timer, tmp->name, tmp->tv, tmp->task, tmp->userdata);
+		// ttasks = ttasks->next;
+		// FREE(tmp);
+	// }
 }
 
 unsigned long threadpool_add_scheduled_work(char *name, void *(*task)(void *), struct timeval tv, void *userdata) {
@@ -425,23 +430,23 @@ unsigned long threadpool_add_scheduled_work(char *name, void *(*task)(void *), s
 		 * We need to buffer any scheduled task until we are forked
 		 * and threadpool_init is run.
 		 */
-		struct timer_list_t *node = MALLOC(sizeof(struct timer_list_t));
-		if(node == NULL) {
-			OUT_OF_MEMORY
-		}
+		// struct timer_list_t *node = MALLOC(sizeof(struct timer_list_t));
+		// if(node == NULL) {
+			// OUT_OF_MEMORY
+		// }
 
-		node->id = 0;
-		strncpy(node->name, name, 255);
-		node->name[254] = '\0';
-		node->task = task;
-		memcpy(&node->tv, &tv, sizeof(struct timeval));
-		node->userdata = userdata;
+		// node->id = 0;
+		// strncpy(node->name, name, 255);
+		// node->name[254] = '\0';
+		// node->task = task;
+		// memcpy(&node->tv, &tv, sizeof(struct timeval));
+		// node->userdata = userdata;
 
-		node->next = ttasks;
-		ttasks = node;
+		// node->next = ttasks;
+		// ttasks = node;
 		return 0;
 	} else {
-		timer_add_task(&timer, name, tv, task, userdata);
+		// timer_add_task(&timer, name, tv, task, userdata);
 		return 0;
 	}
 }
@@ -492,6 +497,6 @@ void threadpool_gc() {
 	threadpool_workers_gc();
 	threadpool_tasks_gc();
 
-	timer_gc(&timer);
+	// timer_gc(&timer);
 	init = 0;
 }

@@ -339,48 +339,6 @@ int host2ip(char *host, char *ip) {
 	return -1;
 }
 
-#ifdef _WIN32
-const char *inet_ntop(int af, const void *src, char *dst, int cnt) {
-	struct sockaddr_in srcaddr;
-
-	memset(&srcaddr, 0, sizeof(struct sockaddr_in));
-	memcpy(&(srcaddr.sin_addr), src, sizeof(srcaddr.sin_addr));
-
-	srcaddr.sin_family = af;
-	if(WSAAddressToString((struct sockaddr *)&srcaddr, sizeof(struct sockaddr_in), 0, dst, (LPDWORD)&cnt) != 0) {
-		DWORD rv = WSAGetLastError();
-		printf("WSAAddressToString() : %d\n", (int)rv);
-		return NULL;
-	}
-	return dst;
-}
-
-int inet_pton(int af, const char *src, void *dst) {
-	struct sockaddr_storage ss;
-	int size = sizeof(ss);
-	char src_copy[INET6_ADDRSTRLEN+1];
-
-	ZeroMemory(&ss, sizeof(ss));
-	/* stupid non-const API */
-	strncpy(src_copy, src, INET6_ADDRSTRLEN+1);
-	src_copy[INET6_ADDRSTRLEN] = 0;
-
-	if(WSAStringToAddress(src_copy, af, NULL, (struct sockaddr *)&ss, &size) == 0) {
-		switch(af) {
-			case AF_INET:
-				*(struct in_addr *)dst = ((struct sockaddr_in *)&ss)->sin_addr;
-				return 1;
-			case AF_INET6:
-				*(struct in6_addr *)dst = ((struct sockaddr_in6 *)&ss)->sin6_addr;
-				return 1;
-			default:
-				return 0;
-		}
-	}
-	return 0;
-}
-#endif
-
 #ifdef __FreeBSD__
 struct sockaddr *sockaddr_dup(struct sockaddr *sa) {
 	struct sockaddr *ret;

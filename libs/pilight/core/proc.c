@@ -15,16 +15,16 @@
 #include <signal.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <unistd.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 #include <time.h>
 #ifdef _WIN32
 	#include <windows.h>
+#else
+	#include <pthread.h>
+	#include <unistd.h>
+	#include <sys/time.h>
 #endif
-#include <pthread.h>
 #include <ctype.h>
-#include <dirent.h>
 
 #include "proc.h"
 #include "log.h"
@@ -99,50 +99,6 @@ double getCPUUsage(void) {
 	cpu_usage.sec_start = cpu_usage.ts.tv_sec + cpu_usage.ts.tv_nsec / 1e9;
 
 	return a;
-#endif
-}
-
-void getThreadCPUUsage(pthread_t pth, struct cpu_usage_t *cpu_usage) {
-#ifdef _WIN32
-	FILETIME createTime;
-	FILETIME exitTime;
-	FILETIME kernelTime;
-	FILETIME userTime;
-	if(GetThreadTimes(pthread_gethandle(pth), &createTime, &exitTime, &kernelTime, &userTime) != -1) {
-		SYSTEMTIME userSystemTime;
-		if(FileTimeToSystemTime(&userTime, &userSystemTime) != -1) {
-			cpu_usage->cpu_new = ((double)userSystemTime.wHour * 3600.0 + (double)userSystemTime.wMinute * 60.0 +
-													 (double)userSystemTime.wSecond + (double)userSystemTime.wMilliseconds / 1000.0);
-			if(cpu_usage->cpu_per > 100) {
-				cpu_usage->cpu_per = (cpu_usage->cpu_new - cpu_usage->cpu_old);
-			}
-			cpu_usage->cpu_old = cpu_usage->cpu_new;
-		}
-	}
-	cpu_usage->cpu_per = 0;
-#else
-	clockid_t cid;
-	memset(&cid, '\0', sizeof(cid));
-
-	clock_gettime(CLOCK_REALTIME, &cpu_usage->ts);
-	cpu_usage->sec_stop = cpu_usage->ts.tv_sec + cpu_usage->ts.tv_nsec / 1e9;
-
-	cpu_usage->sec_diff = cpu_usage->sec_stop - cpu_usage->sec_start;
-
-	#ifndef __sun
-		pthread_getcpuclockid(pth, &cid);
-	#endif
-	clock_gettime(cid, &cpu_usage->ts);
-
-	cpu_usage->cpu_new = (cpu_usage->ts.tv_sec + (cpu_usage->ts.tv_nsec / 1e9));
-	cpu_usage->cpu_per = ((cpu_usage->cpu_new-cpu_usage->cpu_old) / cpu_usage->sec_diff * 100.0);
-	if(cpu_usage->cpu_per > 100) {
-		cpu_usage->cpu_per = 0;
-	}
-	cpu_usage->cpu_old = cpu_usage->cpu_new;
-
-	clock_gettime(CLOCK_REALTIME, &cpu_usage->ts);
-	cpu_usage->sec_start = cpu_usage->ts.tv_sec + cpu_usage->ts.tv_nsec / 1e9;
 #endif
 }
 

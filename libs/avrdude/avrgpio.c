@@ -23,8 +23,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
-#include <unistd.h>
 #include <errno.h>
+
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 #include "avrdude.h"
 #include "avr.h"

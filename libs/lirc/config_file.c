@@ -12,16 +12,21 @@
 
 #include <errno.h>
 #include <limits.h>
-#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libgen.h>
 
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
 #include <ctype.h>
+
+#ifdef _WIN32
+	#include "../pilight/core/dirname.h"
+#else
+	#include <unistd.h>
+	#include <libgen.h>
+#endif
 
 #include "../pilight/core/log.h"
 #include "../pilight/core/mem.h"
@@ -92,9 +97,9 @@ int add_void_array(struct void_array *ar, void *dataptr)
 		}
 		ar->ptr = ptr;
 	}
-	memcpy((ar->ptr) + (ar->item_size * ar->nr_items), dataptr, ar->item_size);
+	memcpy((char *)(ar->ptr) + (ar->item_size * ar->nr_items), dataptr, ar->item_size);
 	ar->nr_items = (ar->nr_items) + 1;
-	memset((ar->ptr) + (ar->item_size * ar->nr_items), 0, ar->item_size);
+	memset((char *)(ar->ptr) + (ar->item_size * ar->nr_items), 0, ar->item_size);
 	return (1);
 }
 

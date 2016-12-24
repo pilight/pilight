@@ -11,14 +11,14 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <time.h>
-#include <sys/time.h>
-#include <libgen.h>
-#include <dirent.h>
 #ifndef _WIN32
 	#include <dlfcn.h>
+	#include <sys/time.h>
+	#include <libgen.h>
+	#include <dirent.h>
+	#include <unistd.h>
 #endif
 
 #include "../core/pilight.h"

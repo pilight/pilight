@@ -21,9 +21,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
-#include <sys/time.h>
 #include <time.h>
 
 #include "avrdude.h"
@@ -36,6 +34,9 @@
 
 #ifdef _WIN32
 	#include <windows.h>
+#else
+	#include <sys/time.h>
+	#include <unistd.h>
 #endif
 
 FP_UpdateProgress avr_update_progress;

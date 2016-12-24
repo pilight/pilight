@@ -15,8 +15,8 @@
 			#define __USE_UNIX98
 		#endif
 	#endif
+	#include <pthread.h>
 #endif
-#include <pthread.h>
 
 #include "defines.h"
 #include "../core/options.h"
@@ -51,9 +51,9 @@ typedef struct protocol_devices_t {
 } protocol_devices_t;
 
 typedef struct protocol_threads_t {
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
-	pthread_mutexattr_t attr;
+	// pthread_mutex_t mutex;
+	// pthread_cond_t cond;
+	// pthread_mutexattr_t attr;
 	JsonNode *param;
 	struct protocol_threads_t *next;
 } protocol_threads_t;

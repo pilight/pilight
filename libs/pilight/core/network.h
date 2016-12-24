@@ -10,6 +10,11 @@
 #define _NETWORK_H_
 
 #ifndef _WIN32
+	#if _WIN32_WINNT < 0x0501
+		#undef _WIN32_WINNT
+		#define _WIN32_WINNT 0x0501
+	#endif
+	#define WIN32_LEAN_AND_MEAN
 	#include <sys/types.h>
 	#include <ifaddrs.h>
 	#include <sys/socket.h>
@@ -24,8 +29,6 @@
 
 #ifdef _WIN32
 #define sa_family_t uint16_t
-int inet_pton(int af, const char *src, void *dst);
-const char *inet_ntop(int af, const void *src, char *dst, int cnt);
 #endif
 
 int inetdevs(char ***array);

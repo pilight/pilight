@@ -10,32 +10,36 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
-#include <sys/time.h>
 #include <time.h>
 #include <string.h>
-#include <unistd.h>
-#include <libgen.h>
 #include <sys/stat.h>
 #ifndef _WIN32
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
+	#include <sys/time.h>
+	#include <unistd.h>
 #endif
-#define __USE_UNIX98
-#include <pthread.h>
 
 #include "pilight.h"
 #include "common.h"
 #include "gc.h"
 #include "log.h"
+#include "../../libuv/uv.h"
+
+#if defined(WIN32) || defined(WIN64)
+	// Copied from linux libc sys/stat.h:
+	#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
+	#define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
+#endif
 
 struct logqueue_t {
 	char *buffer;
 	struct logqueue_t *next;
 } logqueue_t;
 
-static pthread_mutex_t logqueue_lock;
-static pthread_mutexattr_t logqueue_attr;
+static uv_mutex_t logqueue_lock;
+// static pthread_mutexattr_t logqueue_attr;
 static int pthinitialized = 0;
 
 static struct logqueue_t *logqueue = NULL;
@@ -60,10 +64,14 @@ void logwrite(char *line) {
 	if(logfile != NULL) {
 		if((stat(logfile, &sb)) == 0) {
 			if(sb.st_nlink != 0 && sb.st_size > LOG_MAX_SIZE) {
-				char tmp[strlen(logfile)+5];
+				char *tmp = MALLOC(strlen(logfile)+5);
+				if(tmp == NULL) {
+					OUT_OF_MEMORY
+				}
 				strcpy(tmp, logfile);
 				strcat(tmp, ".old");
 				rename(logfile, tmp);
+				FREE(tmp);
 			}
 		}
 		if((lf = fopen(logfile, "a")) == NULL) {
@@ -88,7 +96,7 @@ int log_gc(void) {
 	filelog = 0;
 
 	/* Flush log queue to pilight.err file */
-	pthread_mutex_lock(&logqueue_lock);
+	uv_mutex_lock(&logqueue_lock);
 	while(logqueue) {
 		struct logqueue_t *tmp = logqueue;
 
@@ -99,7 +107,7 @@ int log_gc(void) {
 		FREE(tmp->buffer);
 		FREE(tmp);
 	}
-	pthread_mutex_unlock(&logqueue_lock);
+	uv_mutex_unlock(&logqueue_lock);
 
 	if(logfile != NULL) {
 		FREE(logfile);
@@ -110,9 +118,10 @@ int log_gc(void) {
 
 static void loginitlock(void) {
 	if(pthinitialized == 0) {
-		pthread_mutexattr_init(&logqueue_attr);
-		pthread_mutexattr_settype(&logqueue_attr, PTHREAD_MUTEX_RECURSIVE);
-		pthread_mutex_init(&logqueue_lock, &logqueue_attr);
+		// pthread_mutexattr_init(&logqueue_attr);
+		// pthread_mutexattr_settype(&logqueue_attr, PTHREAD_MUTEX_RECURSIVE);
+		// pthread_mutex_init(&logqueue_lock, &logqueue_attr);
+		uv_mutex_init(&logqueue_lock);
 		pthinitialized = 1;
 	}	
 }
@@ -130,7 +139,8 @@ void _logprintf(int prio, char *file, int line, const char *str, ...) {
 		gettimeofday(&tv, NULL);
 #ifdef _WIN32
 		struct tm *tm1 = NULL;
-		if((tm1 = gmtime(&tv.tv_sec)) != 0) {
+		time_t long_time = tv.tv_sec;
+		if((tm1 = gmtime(&long_time)) != 0) {
 			memcpy(&tm, tm1, sizeof(struct tm));
 			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
 #else
@@ -198,13 +208,13 @@ void _logprintf(int prio, char *file, int line, const char *str, ...) {
 			fprintf(stderr, "%s", buffer);
 		}
 #ifdef _WIN32
-		if(prio == LOG_ERR && strstr(progname, "daemon") != NULL && pilight.running == 0) {
-			MessageBox(NULL, buffer, "pilight :: error", MB_OK);
-		}
+		// if(prio == LOG_ERR && strstr(progname, "daemon") != NULL && pilight.running == 0) {
+			// MessageBox(NULL, buffer, "pilight :: error", MB_OK);
+		// }
 #endif
 		if(prio < LOG_DEBUG && stop == 0 && filelog == 1) {
 			if(init == 0) {
-				pthread_mutex_lock(&logqueue_lock);
+				uv_mutex_lock(&logqueue_lock);
 				struct logqueue_t *node = MALLOC(sizeof(struct logqueue_t));
 				if(node == NULL) {
 					OUT_OF_MEMORY
@@ -228,7 +238,7 @@ void _logprintf(int prio, char *file, int line, const char *str, ...) {
 					node->next = logqueue;
 					logqueue = node;
 				}
-				pthread_mutex_unlock(&logqueue_lock);
+				uv_mutex_unlock(&logqueue_lock);
 			} else {
 				struct reason_log_t *node = MALLOC(sizeof(struct reason_log_t));
 				if(node == NULL) {
@@ -263,7 +273,7 @@ void log_init(void) {
 
 	loginitlock();
 	eventpool_callback(REASON_LOG, logprocess);
-	pthread_mutex_lock(&logqueue_lock);
+	uv_mutex_lock(&logqueue_lock);
 	while(logqueue) {
 		struct logqueue_t *tmp = logqueue;
 		struct reason_log_t *node = MALLOC(sizeof(struct reason_log_t));
@@ -279,7 +289,7 @@ void log_init(void) {
 		FREE(tmp->buffer);
 		FREE(tmp);
 	}
-	pthread_mutex_unlock(&logqueue_lock);
+	uv_mutex_unlock(&logqueue_lock);
 }
 
 void logperror(int prio, const char *s) {
@@ -314,13 +324,34 @@ void log_shell_disable(void) {
 int log_file_set(char *log) {
 	struct stat s;
 	struct stat sb;
+	char *filename = NULL;
 	char *logpath = NULL;
 	FILE *lf = NULL;
 
-	atomiclock();
-	/* basename isn't thread safe */
-	char *filename = basename(log);
-	atomicunlock();
+#ifdef _WIN32
+	char drive[255];
+	char directory[255];
+	char filebase[255];
+	char extension[255];
+
+	if(_splitpath_s(log, drive, 255, directory, 255,  filebase, 255, extension, 255) != 0) {
+		logprintf(LOG_ERR, "could not open logfile %s", log);
+		return -1;
+	}
+	if((filename = MALLOC(strlen(filebase)+strlen(extension)+1)) == NULL) {
+		OUT_OF_MEMORY
+	}
+	sprintf(filename, "%s%s", filebase, extension);
+
+#else
+	if((filename = MALLOC(MAXPATHLEN)) == NULL) {
+		OUT_OF_MEMORY
+	}
+	if(basename_r(log, filename) == NULL) {
+		logprintf(LOG_ERR, "could not open logfile %s", log);
+		return -1;
+	}
+#endif
 
 	size_t i = (strlen(log)-strlen(filename));
 	if((logpath = REALLOC(logpath, i+1)) == NULL) {
@@ -368,8 +399,12 @@ int log_file_set(char *log) {
 		}
 		strcpy(logfile, log);
 	}
-
-	char tmp[strlen(logfile)+5];
+	FREE(filename);
+	
+	char *tmp = MALLOC(strlen(logfile)+5);
+	if(tmp == NULL) {
+		OUT_OF_MEMORY
+	}
 	strcpy(tmp, logfile);
 	strcat(tmp, ".old");
 
@@ -383,6 +418,7 @@ int log_file_set(char *log) {
 			}
 		}
 	}
+	FREE(tmp);
 
 	if(lf == NULL && filelog == 1) {
 		if((lf = fopen(logfile, "a")) == NULL) {
@@ -433,9 +469,14 @@ void logerror(const char *format_str, ...) {
 
 	gettimeofday(&tv, NULL);
 #ifdef _WIN32
-		if((localtime(&tv.tv_sec)) != 0) {
+	struct tm *tm1 = NULL;
+	time_t long_time = tv.tv_sec;
+	if((tm1 = gmtime(&long_time)) != 0) {
+		memcpy(&tm, tm1, sizeof(struct tm));
+		strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
 #else
-		if((localtime_r(&tv.tv_sec, &tm)) != 0) {
+	if((gmtime_r(&tv.tv_sec, &tm)) != 0) {
+		strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
 #endif
 		strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
 		snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
@@ -461,10 +502,14 @@ void logerror(const char *format_str, ...) {
 			if(f != NULL) {
 				fclose(f);
 			}
-			char tmp[strlen(errpath)+5];
+			char *tmp = MALLOC(strlen(errpath)+5);
+			if(tmp == NULL) {
+				OUT_OF_MEMORY
+			}
 			strcpy(tmp, errpath);
 			strcat(tmp, ".old");
 			rename(errpath, tmp);
+			FREE(tmp);
 			if((f = fopen(errpath, "a")) == NULL) {
 				return;
 			}

@@ -80,12 +80,17 @@ static const char base64table[] = {
 };
 
 static uv_mutex_t atomic_lock;
+static int atomic_init = 0;
 
 void atomicinit(void) {
-	uv_mutex_init(&atomic_lock);
+	if(atomic_init == 0) {
+		atomic_init = 1;
+		uv_mutex_init(&atomic_lock);
+	}
 }
 
 void atomiclock(void) {
+	atomicinit();
 	uv_mutex_lock(&atomic_lock);
 }
 

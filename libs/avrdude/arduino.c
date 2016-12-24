@@ -27,7 +27,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "avrdude.h"
 #include "pgm.h"
@@ -39,6 +38,8 @@
 
 #ifdef _WIN32
 	#include <windows.h>
+#else
+	#include <unistd.h>
 #endif
 
 /* read signature bytes - arduino version */

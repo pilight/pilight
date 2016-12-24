@@ -63,8 +63,6 @@
 #ifndef _PING_H_
 #define _PING_H_
 
-#include <pthread.h>
-
 typedef struct ping_list_t {
 	char ip[INET_ADDRSTRLEN];
 	int found;

@@ -15,11 +15,16 @@
 #define IR_REMOTE_TYPES_H
 
 #include <sys/types.h>
-#include <sys/time.h>
-#include <unistd.h>
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
+
+#ifdef _WIN32
+	#include <winsock2.h>
+#else
+	#include <sys/time.h>
+	#include <unistd.h>
+#endif
 
 #include "lirc.h"
 

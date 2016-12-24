@@ -36,19 +36,19 @@
 #include <fcntl.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
 #include <ctype.h>
 #include <sys/types.h>
 #include <limits.h>
 #include <sys/stat.h>
-#include <sys/time.h>
-#include <dirent.h>
 #ifdef _WIN32
 	#define STRICT
 	#define WIN32_LEAN_AND_MEAN
 	#include <windows.h>
 #else
 	#include <termios.h>
+	#include <unistd.h>
+	#include <sys/time.h>
+	#include <dirent.h>
 #endif
 
 #include "../../avrdude/avr.h"

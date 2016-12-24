@@ -32,7 +32,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <unistd.h>
 
 #include "../pilight/core/log.h"
 #include "avrdude.h"
@@ -44,6 +43,8 @@
 
 #ifdef _WIN32
 	#include <windows.h>
+#else
+	#include <unistd.h>
 #endif
 
 #define STK500_XTAL 7372800U
@@ -404,15 +405,21 @@ static int stk500_paged_write(PROGRAMMER *pgm, AVRPART *p, AVRMEM *m,
 															unsigned int page_size,
 															unsigned int addr, unsigned int n_bytes) {
 
-	unsigned char buf[page_size + 16];
+	unsigned char *buf = malloc(page_size + 16);
 	int memtype = 0, a_div = 0, block_size = 0, tries = 0;
 	unsigned int n = 0, i = 0;
 
+	if(buf == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(-1);
+	}
+	
 	if(strcmp(m->desc, "flash") == 0) {
 		memtype = 'F';
 	} else if(strcmp(m->desc, "eeprom") == 0) {
 		memtype = 'E';
 	} else {
+		free(buf);
 		return -2;
 	}
 
@@ -450,31 +457,38 @@ static int stk500_paged_write(PROGRAMMER *pgm, AVRPART *p, AVRMEM *m,
 		stk500_send(pgm, buf, i);
 
 		if(stk500_recv(pgm, buf, 1) < 0) {
+			free(buf);
 			return -1;
 		}
 		if(buf[0] == Resp_STK_NOSYNC) {
 			if(tries > 33) {
 				logprintf(LOG_ERR, "stk500_paged_write(): can't get into sync", progname);
+				free(buf);
 				return -3;
 			}
 			if(stk500_getsync(pgm) < 0) {
+				free(buf);
 				return -1;
 			}
 			goto retry;
 		} else if(buf[0] != Resp_STK_INSYNC) {
 			logprintf(LOG_ERR, "stk500_paged_write(): (a) protocol error, expect=0x%02x, resp=0x%02x", Resp_STK_INSYNC, buf[0]);
+			free(buf);
 			return -4;
 		}
 
 		if(stk500_recv(pgm, buf, 1) < 0) {
+			free(buf);
 			return -1;
 		}
 		if(buf[0] != Resp_STK_OK) {
 			logprintf(LOG_ERR, "stk500_paged_write(): (a) protocol error, expect=0x%02x, resp=0x%02x", Resp_STK_INSYNC, buf[0]);
+			free(buf);
 			return -5;
 		}
 	}
 
+	free(buf);	
 	return n_bytes;
 }
 

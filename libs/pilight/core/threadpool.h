@@ -67,7 +67,7 @@ struct threadpool_workers_t {
 int threadpool_free_runs(int);
 void threadpool_remove_task(unsigned long);
 void threadpool_add_worker(void);
-unsigned long threadpool_add_work(int, uv_sem_t *, char *, int, void *(*)(void *), void *(*)(void *), void *);
+unsigned long threadpool_add_work(int, uv_sem_t *, char *, int, void *(*)(int, void *), void *(*)(void *), void *);
 void threadpool_init(int, int, int);
 void threadpool_reinit(void);
 void threadpool_gc(void);

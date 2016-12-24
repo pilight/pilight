@@ -19,7 +19,7 @@
 #include "alltests.h"
 
 static uv_async_t *async_close_req = NULL;
-static pthread_t pth;
+static uv_thread_t pth;
 
 static void close_cb(uv_handle_t *handle) {
 	FREE(handle);
@@ -38,7 +38,7 @@ static void async_close_cb(uv_async_t *handle) {
 	uv_stop(uv_default_loop());
 }
 
-static void *thread(void *param) {
+static void test(void *param) {
 	logprintf(LOG_EMERG, "emergency");
 	logprintf(LOG_ALERT, "alert");
 	logprintf(LOG_CRIT, "critical");
@@ -47,9 +47,9 @@ static void *thread(void *param) {
 	logprintf(LOG_NOTICE, "test");
 	logprintf(LOG_INFO, "test");
 	logprintf(LOG_DEBUG, "test");
-	
+
 	uv_async_send(async_close_req);
-	return NULL;
+	return;
 }
 
 static void test_log(CuTest *tc) {
@@ -74,8 +74,7 @@ static void test_log(CuTest *tc) {
 	log_file_enable();
 	log_shell_enable();
 
-	pthread_create(&pth, NULL, thread, NULL);
-
+	uv_thread_create(&pth, test, NULL);
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
 	uv_run(uv_default_loop(), UV_RUN_ONCE);
@@ -84,7 +83,7 @@ static void test_log(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 	}	
 
-	pthread_join(pth, NULL);
+	uv_thread_join(&pth);
 
 	char *tmp = NULL, **array = NULL;
 	int n = file_get_contents("test.log", &tmp), x = 0, i =0;
