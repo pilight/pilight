@@ -69,6 +69,8 @@
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
 	#include <windows.h>
+	#include <iphlpapi.h>
+	#include <icmpapi.h>
 	#define MSG_NOSIGNAL 0
 #else
 	#include <sys/socket.h>
@@ -99,108 +101,34 @@
 #include "log.h"
 #include "mem.h"
 
+#ifdef _WIN32
+static char send_data[] = "pilight";
+struct io_status_block {
+  union {
+    int status;
+    void *pointer;
+  };
+  unsigned long information;
+} io_status_block;
+#endif
+
 typedef struct data_t {
 	struct ping_list_t *nodes;
 	struct ping_list_t *iplist;
-	struct eventpool_fd_t *server;
+#ifdef _WIN32
+	HANDLE file;
+	char ip[INET_ADDRSTRLEN+1];
+	struct {
+		char *buffer;
+		int size;
+	} reply;
+#else
+	uv_timer_t *timer_req;
+	uv_poll_t *poll_req;
+#endif
 
 	void (*callback)(char *, int);
 } data_t;
-
-#ifdef _WIN32
-	typedef unsigned char u_int8_t;
-	typedef unsigned short u_int16_t;
-	typedef unsigned int u_int32_t;
-
-	#define ICMP_ECHO		8
-	#define ICMP_ECHOREPLY		0
-
-	struct icmp_ra_addr	{
-		u_int32_t ira_addr;
-		u_int32_t ira_preference;
-	};
-
-	struct ip {
-		u_char	ip_hl:4,		/* header length */
-			ip_v:4;			/* version */
-		u_char	ip_tos;			/* type of service */
-		short	ip_len;			/* total length */
-		u_short	ip_id;			/* identification */
-		short	ip_off;			/* fragment offset field */
-	#define	IP_DF 0x4000			/* dont fragment flag */
-	#define	IP_MF 0x2000			/* more fragments flag */
-		u_char	ip_ttl;			/* time to live */
-		u_char	ip_p;			/* protocol */
-		u_short	ip_sum;			/* checksum */
-		struct	in_addr ip_src,ip_dst;	/* source and dest address */
-	};
-
-	struct icmp
-	{
-		u_int8_t  icmp_type;	/* type of message, see below */
-		u_int8_t  icmp_code;	/* type sub code */
-		u_int16_t icmp_cksum;	/* ones complement checksum of struct */
-		union
-		{
-			u_char ih_pptr;		/* ICMP_PARAMPROB */
-			struct in_addr ih_gwaddr;	/* gateway address */
-			struct ih_idseq		/* echo datagram */
-			{
-				u_int16_t icd_id;
-				u_int16_t icd_seq;
-			} ih_idseq;
-			u_int32_t ih_void;
-
-			/* ICMP_UNREACH_NEEDFRAG -- Path MTU Discovery (RFC1191) */
-			struct ih_pmtu
-			{
-				u_int16_t ipm_void;
-				u_int16_t ipm_nextmtu;
-			} ih_pmtu;
-
-			struct ih_rtradv
-			{
-				u_int8_t irt_num_addrs;
-				u_int8_t irt_wpa;
-				u_int16_t irt_lifetime;
-			} ih_rtradv;
-		} icmp_hun;
-	#define	icmp_pptr	icmp_hun.ih_pptr
-	#define	icmp_gwaddr	icmp_hun.ih_gwaddr
-	#define	icmp_id		icmp_hun.ih_idseq.icd_id
-	#define	icmp_seq	icmp_hun.ih_idseq.icd_seq
-	#define	icmp_void	icmp_hun.ih_void
-	#define	icmp_pmvoid	icmp_hun.ih_pmtu.ipm_void
-	#define	icmp_nextmtu	icmp_hun.ih_pmtu.ipm_nextmtu
-	#define	icmp_num_addrs	icmp_hun.ih_rtradv.irt_num_addrs
-	#define	icmp_wpa	icmp_hun.ih_rtradv.irt_wpa
-	#define	icmp_lifetime	icmp_hun.ih_rtradv.irt_lifetime
-		union
-		{
-			struct
-			{
-				u_int32_t its_otime;
-				u_int32_t its_rtime;
-				u_int32_t its_ttime;
-			} id_ts;
-			struct
-			{
-				struct ip idi_ip;
-				/* options and then 64 bits of data */
-			} id_ip;
-			struct icmp_ra_addr id_radv;
-			u_int32_t   id_mask;
-			u_int8_t    id_data[1];
-		} icmp_dun;
-	#define	icmp_otime	icmp_dun.id_ts.its_otime
-	#define	icmp_rtime	icmp_dun.id_ts.its_rtime
-	#define	icmp_ttime	icmp_dun.id_ts.its_ttime
-	#define	icmp_ip		icmp_dun.id_ip.idi_ip
-	#define	icmp_radv	icmp_dun.id_radv
-	#define	icmp_mask	icmp_dun.id_mask
-	#define	icmp_data	icmp_dun.id_data
-	};
-#endif
 
 void ping_add_host(struct ping_list_t **iplist, const char *ip) {
 	struct ping_list_t *node = MALLOC(sizeof(struct ping_list_t));
@@ -216,6 +144,87 @@ void ping_add_host(struct ping_list_t **iplist, const char *ip) {
 	*iplist = node;
 }
 
+static void ping_data_gc(struct data_t *data) {
+	struct ping_list_t *tmp = NULL;
+#ifdef _WIN32
+	FREE(data->reply.buffer);
+	IcmpCloseHandle(data->file);
+#endif
+	while(data->iplist) {
+		tmp = data->iplist;
+		data->iplist = data->iplist->next;
+		FREE(tmp);
+	}
+	if(data->iplist != NULL) {
+		FREE(data->iplist);
+	}
+	FREE(data);
+}
+
+#ifdef _WIN32
+int reply_cb(void *param, struct io_status_block *io_status, unsigned long reserved) {
+	struct data_t *data = param;
+
+	data->callback(data->ip, (io_status->status == 0) ? 0 : -1);
+	if(data->nodes == NULL) {
+		ping_data_gc(data);
+	} else {
+		unsigned long ipaddr = INADDR_NONE;
+
+		strcpy(data->ip, data->nodes->ip);
+		ipaddr = inet_addr(data->nodes->ip);
+
+		data->nodes = data->nodes->next;
+		int ret = IcmpSendEcho2(data->file, NULL, (FARPROC)reply_cb, data, ipaddr, send_data, sizeof(send_data), NULL, data->reply.buffer, data->reply.size, 1000);
+		int error = WSAGetLastError();
+		if(error != ERROR_IO_PENDING) {
+			logprintf(LOG_ERR, "IcmpSendEcho2: %d\n", WSAGetLastError());
+			FREE(data);
+			return -1;
+		}
+	}
+	
+	return 0;
+}
+
+int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
+	unsigned long ipaddr = INADDR_NONE;
+	struct data_t *data = MALLOC(sizeof(struct data_t));
+	if(data == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	memset(data, 0, sizeof(struct data_t));
+	data->callback = callback;
+	data->nodes = iplist;
+	data->iplist = iplist;
+	data->file = IcmpCreateFile();
+
+	if(data->file == INVALID_HANDLE_VALUE) {
+		logprintf(LOG_ERR, "IcmpCreateFile: %d\n", WSAGetLastError());
+		FREE(data);
+		return -1;
+	}
+
+	data->reply.size = sizeof(ICMP_ECHO_REPLY) + sizeof(send_data) + 8;
+	data->reply.buffer = MALLOC(data->reply.size);
+	if(data->reply.buffer == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	strcpy(data->ip, data->nodes->ip);
+	ipaddr = inet_addr(data->nodes->ip);
+	data->nodes = data->nodes->next;
+
+	int ret = IcmpSendEcho2(data->file, NULL, (FARPROC)reply_cb, data, ipaddr, send_data, sizeof(send_data), NULL, data->reply.buffer, data->reply.size, 1000);
+	int error = WSAGetLastError();
+	if(error != ERROR_IO_PENDING) {
+		logprintf(LOG_ERR, "IcmpSendEcho2: %d\n", WSAGetLastError());
+		FREE(data);
+		return -1;
+	}
+}
+#else
 /*
  * in_cksum --
  *	Checksum routine for Internet Protocol family headers (C Version)
@@ -277,23 +286,8 @@ static int initpacket(char *buf) {
 	return icmplen;
 }
 
-static void ping_data_gc(struct data_t *data) {
-	struct ping_list_t *tmp = NULL;
-	while(data->iplist) {
-		tmp = data->iplist;
-		data->iplist = data->iplist->next;
-		FREE(tmp);
-	}
-	if(data->iplist != NULL) {
-		FREE(data->iplist);
-	}
-	data->server = NULL;
-	FREE(data);
-}
-
-static void *ping_timeout(void *param) {
-	struct threadpool_tasks_t *node = param;
-	struct data_t *data = node->userdata;
+static void ping_timeout(uv_timer_t *handle) {
+	struct data_t *data = handle->data;
 	struct ping_list_t *tmp = data->iplist;
 	struct timeval tv;
 	unsigned long now = 0;
@@ -307,11 +301,15 @@ static void *ping_timeout(void *param) {
 		if((now-tmp->time) > 1000000 && tmp->live == 1) {
 			tmp->live = 0;
 			if(tmp->found == 0) {
-				if(data->callback != NULL && tmp->called == 0) {
+				if(tmp->called == 0) {
 					tmp->called = 1;
-					data->callback(tmp->ip, (tmp->found == 1) ? 0 : -1);
+					if(data->callback != NULL) {
+						data->callback(tmp->ip, (tmp->found == 1) ? 0 : -1);
+					}
 				}
 			}
+			match++;
+		} else if(tmp->called == 1) {
 			match++;
 		}
 		tmp = tmp->next;
@@ -329,109 +327,156 @@ static void *ping_timeout(void *param) {
 			}
 			tmp = tmp->next;
 		}
-		eventpool_fd_remove(data->server);
-		ping_data_gc(data);
-	}	else {
-		tv.tv_sec = 1;
-		tv.tv_usec = 0;
-		threadpool_add_scheduled_work("aap", ping_timeout, tv, data);
+
+		uv_custom_close(data->poll_req);
+		uv_custom_write(data->poll_req);
+		uv_timer_stop(data->timer_req);
 	}
 	
-	return NULL;
+	return;
 }
 
-static int client_callback(struct eventpool_fd_t *node, int event) {
-	struct data_t *data = node->userdata;
+static void close_cb(uv_poll_t *req) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct data_t *data = custom_poll_data->data;
+	ping_data_gc(data);
+	uv_custom_poll_free(custom_poll_data);
+}
+
+static void write_cb(uv_poll_t *req) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct data_t *data = custom_poll_data->data;
 	char buf[1500];
 	struct ip *ip = (struct ip *)buf;
 	struct icmp *icmp = (struct icmp *)(ip + 1);
-	int icmplen = 0;
-	long int fromlen = 0;
+	int icmplen = 0, r = 0, x = 0;
 
-	memset(buf, '\0', 1500);
 	icmplen = initpacket(buf);
-	switch(event) {
-		case EV_SOCKET_SUCCESS: {
-			int on = 1;
-			if(setsockopt(node->fd, IPPROTO_IP, IP_HDRINCL, (const char *)&on, sizeof(on)) < 0) {
-				logperror(LOG_DEBUG, "IP_HDRINCL");
-				return -1;
-			}
-			eventpool_fd_enable_write(node);
-			eventpool_fd_enable_read(node);
-		} break;
-		case EV_WRITE: {
-			if(data->nodes != NULL) {
-				struct timeval tv;
-				gettimeofday(&tv, NULL);
-				data->nodes->time = (1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec);
 
-				struct sockaddr_in dst;
-				memset(&dst, 0, sizeof(struct sockaddr));
-				tv.tv_sec = 1;
-				tv.tv_usec = 0;
+	uv_os_fd_t fd = 0;
+	r = uv_fileno((uv_handle_t *)req, &fd);
+	if(r != 0) {
+		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
+		return;
+	}
 
-				icmp->icmp_cksum = 0;
-				icmp->icmp_cksum = in_cksum((int *)icmp, icmplen);
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	data->nodes->time = (1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec);
 
-				dst.sin_family = AF_INET;
-				dst.sin_addr.s_addr = inet_addr(data->nodes->ip);
-				dst.sin_port = htons(0);
-				ip->ip_dst.s_addr = inet_addr(data->nodes->ip);
-				if(sendto(node->fd, buf, ip->ip_len, 0, (struct sockaddr *)&dst, sizeof(dst)) < 0) {
-					// perror("sendto");
-					// return -1;
-				}
-				data->nodes->live = 1;
-				data->nodes = data->nodes->next;
+	struct sockaddr_in dst;
+	memset(&dst, 0, sizeof(struct sockaddr));
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
 
-				eventpool_fd_enable_read(node);
-				if(data->nodes != NULL) {
-					eventpool_fd_enable_write(node);
-				}
-			}
-		} break;
-		case EV_READ: {
-			char buf1[INET_ADDRSTRLEN+1];
-			memset(buf, '\0', sizeof(buf));
-			if((recvfrom(node->fd, buf, sizeof(buf), 0, NULL, (socklen_t *)&fromlen)) < 0) {
-				return -1;
-			}
+	icmp->icmp_cksum = 0;
+	icmp->icmp_cksum = in_cksum((int *)icmp, icmplen);
 
-			icmp = (struct icmp *)(buf + (ip->ip_hl << 2));
-			memset(&buf1, '\0', INET_ADDRSTRLEN+1);
-			inet_ntop(AF_INET, (void *)&(ip->ip_src), buf1, INET_ADDRSTRLEN+1);
-			if(icmp->icmp_type == ICMP_ECHOREPLY || icmp->icmp_type == ICMP_ECHO) {
-				struct ping_list_t *tmp = data->iplist;
-				while(tmp) {
-					if(strcmp(tmp->ip, buf1) == 0 && tmp->found == 0) {
-						logprintf(LOG_DEBUG, "ping found network device %s", tmp->ip);						
+	dst.sin_family = AF_INET;
+	dst.sin_addr.s_addr = inet_addr(data->nodes->ip);
+	dst.sin_port = htons(0);
+
+	ip->ip_dst.s_addr = inet_addr(data->nodes->ip);
+
+#ifdef _WIN32
+	if((x = sendto((SOCKET)fd, buf, ip->ip_len, 0, (struct sockaddr *)&dst, sizeof(dst))) < 0) {
+#else
+	if((x = sendto(fd, buf, ip->ip_len, 0, (struct sockaddr *)&dst, sizeof(dst))) < 0) {
+#endif
+		logprintf(LOG_ERR, "sendto: %s", strerror(errno));
+	}
+
+	data->nodes->live = 1;
+	data->nodes = data->nodes->next;
+
+	uv_custom_read(req);
+	if(data->nodes != NULL) {
+		uv_custom_write(req);
+	}
+}
+
+static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct data_t *data = custom_poll_data->data;
+	char buf2[1500];
+	struct ip *ip = (struct ip *)buf2;
+	struct icmp *icmp = (struct icmp *)(ip + 1);
+	char buf1[INET_ADDRSTRLEN+1];
+
+	if(*nread == 40) {
+		memcpy(&buf2, buf, 40);
+
+		icmp = (struct icmp *)(buf2 + (ip->ip_hl << 2));
+
+		memset(&buf1, '\0', INET_ADDRSTRLEN+1);
+
+		inet_ntop(AF_INET, (void *)&(ip->ip_src), buf1, INET_ADDRSTRLEN+1);
+		if(icmp->icmp_type == ICMP_ECHOREPLY || icmp->icmp_type == ICMP_ECHO) {
+			struct ping_list_t *tmp = data->iplist;
+			while(tmp) {
+				if(strcmp(tmp->ip, buf1) == 0 && tmp->found == 0) {
+					logprintf(LOG_DEBUG, "ping found network device %s", tmp->ip);
+					if(tmp->called == 0) {
+						tmp->called = 1;
 						if(data->callback != NULL) {
 							data->callback(tmp->ip, 0);
 						}
-						tmp->found = 1;
-						break;
 					}
-					tmp = tmp->next;
+					tmp->found = 1;
+					break;
 				}
+				tmp = tmp->next;
 			}
-			eventpool_fd_enable_read(node);
-		} break;
-		case EV_DISCONNECTED: {
-			ping_data_gc(data);
-			eventpool_fd_remove(node);
-		} break;
+		}
 	}
-	return 0;
+	*nread = 0;
+	uv_custom_read(req);
 }
 
 int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
+	struct uv_custom_poll_t *custom_poll_data = NULL;
+	struct data_t *data = NULL;
+	int sockfd = 0;
+	unsigned long on = 1;
+
 	if(iplist == NULL) {
 		return -1;
 	}
-	struct timeval tv;
-	struct data_t *data = MALLOC(sizeof(struct data_t));
-	if(data == NULL) {
+
+#ifdef _WIN32
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "WSAStartup");
+		exit(EXIT_FAILURE);
+	}
+#endif
+
+	if((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0){
+		logprintf(LOG_ERR, "socket: %s", strerror(errno));
+		return -1;
+	}
+
+#ifdef _WIN32
+	ioctlsocket(sockfd, FIONBIO, &on);
+#else
+	long arg = fcntl(sockfd, F_GETFL, NULL);
+	fcntl(sockfd, F_SETFL, arg | O_NONBLOCK);
+#endif
+
+	if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char *)&on, sizeof(on)) < 0) {
+		logprintf(LOG_ERR, "setsockopt: %s", strerror(errno));
+		close(sockfd);
+		return -1;
+	}
+
+	if(setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, (const char *)&on, sizeof(on)) < 0) {
+		logprintf(LOG_ERR, "setsockopt: %s", strerror(errno));
+		close(sockfd);
+		return -1;
+	}
+
+	if((data = MALLOC(sizeof(struct data_t))) == NULL) {
 		OUT_OF_MEMORY
 	}
 	memset(data, 0, sizeof(struct data_t));
@@ -439,9 +484,50 @@ int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
 	data->nodes = iplist;
 	data->iplist = iplist;
 
-	tv.tv_sec = 1;
-	tv.tv_usec = 0;
-	threadpool_add_scheduled_work("ping", ping_timeout, tv, data);
-	data->server = eventpool_socket_add("ping", NULL, 0, AF_INET, SOCK_RAW, IPPROTO_ICMP, EVENTPOOL_TYPE_SOCKET_CLIENT, client_callback, NULL, data);
+	if((data->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+	data->timer_req->data = data;
+
+	if((data->poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	uv_custom_poll_init(&custom_poll_data, data->poll_req, (void *)data);
+
+	custom_poll_data->write_cb = write_cb;
+	custom_poll_data->read_cb = read_cb;
+	custom_poll_data->close_cb = close_cb;
+
+	int r = uv_poll_init_socket(uv_default_loop(), data->poll_req, sockfd);
+	if(r != 0) {
+		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
+		goto free;
+	}
+
+	r = uv_timer_init(uv_default_loop(), data->timer_req);
+	if(r != 0) {
+		logprintf(LOG_ERR, "uv_timer_init: %s", uv_strerror(r));
+		goto free;
+	}
+
+	r = uv_timer_start(data->timer_req, (void (*)(uv_timer_t *))ping_timeout, 1000, 1000);		
+	if(r != 0) {
+		logprintf(LOG_ERR, "uv_timer_start: %s", uv_strerror(r));
+		goto free;
+	}
+
+	uv_custom_write(data->poll_req);
+	uv_custom_read(data->poll_req);
+
 	return 0;
+
+free:
+	FREE(data->poll_req);
+	FREE(data->timer_req);
+	ping_data_gc(data);
+	uv_custom_poll_free(custom_poll_data);
+
+	return -1;
 }
+#endif

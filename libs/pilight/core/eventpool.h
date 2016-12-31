@@ -187,6 +187,7 @@ typedef struct iobuf_t {
 struct uv_custom_poll_t {
 	int is_ssl;
 	int is_server;
+	int is_udp;
 	int doread;
 	int dowrite;
 	int doclose;

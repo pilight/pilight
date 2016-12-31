@@ -19,6 +19,7 @@
 	#endif
 	#include <sys/time.h>
 	#include <unistd.h>
+	#include <libgen.h>
 #endif
 
 #include "pilight.h"
@@ -344,13 +345,16 @@ int log_file_set(char *log) {
 	sprintf(filename, "%s%s", filebase, extension);
 
 #else
-	if((filename = MALLOC(MAXPATHLEN)) == NULL) {
-		OUT_OF_MEMORY
-	}
-	if(basename_r(log, filename) == NULL) {
+	/*
+	 * FIXME: Replace basename with custom threadsafe implementation
+	 */
+	atomiclock();
+	if((filename = basename(log)) == NULL) {
 		logprintf(LOG_ERR, "could not open logfile %s", log);
+		atomicunlock();
 		return -1;
 	}
+	atomicunlock();
 #endif
 
 	size_t i = (strlen(log)-strlen(filename));
@@ -399,8 +403,10 @@ int log_file_set(char *log) {
 		}
 		strcpy(logfile, log);
 	}
+#ifdef _WIN32
 	FREE(filename);
-	
+#endif
+
 	char *tmp = MALLOC(strlen(logfile)+5);
 	if(tmp == NULL) {
 		OUT_OF_MEMORY

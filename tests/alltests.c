@@ -27,6 +27,7 @@ CuSuite *suite_eventpool(void);
 CuSuite *suite_ssdp(void);
 CuSuite *suite_ntp(void);
 CuSuite *suite_http(void);
+CuSuite *suite_ping(void);
 CuSuite *suite_mail(void);
 CuSuite *suite_webserver(void);
 CuSuite *suite_socket(void);
@@ -180,6 +181,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_log();
 	suites[nr++] = suite_ssdp();
 	suites[nr++] = suite_ntp();
+	suites[nr++] = suite_ping();
 	suites[nr++] = suite_http();
 	suites[nr++] = suite_mail();
 	suites[nr++] = suite_webserver();

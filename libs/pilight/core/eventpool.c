@@ -1182,24 +1182,26 @@ static void eventpool_execute(uv_async_t *handle) {
 }
 
 int eventpool_gc(void) {
-	uv_mutex_lock(&listeners_lock);
-	struct eventpool_listener_t *listeners = NULL;
-	while(eventpool_listeners) {
-		listeners = eventpool_listeners;
-		eventpool_listeners = eventpool_listeners->next;
-		FREE(listeners);
-	}
-	if(eventpool_listeners != NULL) {
-		FREE(eventpool_listeners);
-	}
-	threads = EVENTPOOL_NO_THREADS;
+	if(lockinit == 1) {
+		uv_mutex_lock(&listeners_lock);
+		struct eventpool_listener_t *listeners = NULL;
+		while(eventpool_listeners) {
+			listeners = eventpool_listeners;
+			eventpool_listeners = eventpool_listeners->next;
+			FREE(listeners);
+		}
+		if(eventpool_listeners != NULL) {
+			FREE(eventpool_listeners);
+		}
+		threads = EVENTPOOL_NO_THREADS;
 
-	int i = 0;
-	for(i=0;i<REASON_END;i++) {
-		nrlisteners[i] = 0;
-		nrlisteners1[i] = 0;
+		int i = 0;
+		for(i=0;i<REASON_END;i++) {
+			nrlisteners[i] = 0;
+			nrlisteners1[i] = 0;
+		}
+		uv_mutex_unlock(&listeners_lock);
 	}
-	uv_mutex_unlock(&listeners_lock);
 	eventpoolinit = 0;
 	return 0;
 }
@@ -1243,6 +1245,7 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 	struct iobuf_t *send_io = NULL;
 	char buffer[BUFFER_SIZE];
 	uv_os_fd_t fd = 0;
+	long int fromlen = 0;
 	int r = 0, n = 0, action = 0;
 
 	custom_poll_data = req->data;
@@ -1451,7 +1454,11 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 				return;
 			}
 		} else {
-			n = (int)recv((unsigned int)fd, buffer, BUFFER_SIZE, 0);
+			if(custom_poll_data->is_udp == 1) {
+				n = (int)recv((unsigned int)fd, buffer, BUFFER_SIZE, 0);
+			} else {
+				n = recvfrom(fd, buffer, BUFFER_SIZE, 0, NULL, (socklen_t *)&fromlen);
+			}
 		}
 
 		if(n > 0) {
