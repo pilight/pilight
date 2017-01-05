@@ -65,7 +65,7 @@ static void parseCode(void) {
 		logprintf(LOG_ERR, "arctech_switch_old: parsecode - invalid parameter passed %d", arctech_switch_old->rawlen);
 		return;
 	}
-
+/*
 	for(x=0;x<arctech_switch_old->rawlen-3;x+=4) {
 		// valid telegrams must consist of 0110 and 1001 blocks
 		int low_high = 0;
@@ -92,7 +92,16 @@ static void parseCode(void) {
 				return; // invalid telegram
 		}
 	}
+*/
+       for(x=0;x<arctech_switch_old->rawlen-2;x+=4) {
+                if(arctech_switch_old->raw[x+3] > len) {
+                        binary[i++] = 0;
+                } else {
+                        binary[i++] = 1;
+                }
+        }
 
+   
 	int unit = binToDec(binary, 0, 3);
 	int state = binary[11];
 	int id = binToDec(binary, 4, 8);
