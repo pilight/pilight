@@ -220,7 +220,7 @@ void arctechSwitchOldInit(void) {
 	protocol_device_add(arctech_switch_old, "intertechno_old", "Old Intertechno Switches");
 	protocol_device_add(arctech_switch_old, "byebyestandby", "Bye Bye Standby Switches");
 	protocol_device_add(arctech_switch_old, "duwi", "Düwi Terminal Switches");
-//	arctech_switch_old->rxrpt=3;
+	arctech_switch_old->rxrpt=2;
 	arctech_switch_old->devtype = SWITCH;
 	arctech_switch_old->hwtype = RF433;
 	arctech_switch_old->minrawlen = RAW_LENGTH;

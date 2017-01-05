@@ -203,7 +203,7 @@ void arctechScreenOldInit(void) {
 	arctech_screen_old->maxrawlen = RAW_LENGTH;
 	arctech_screen_old->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	arctech_screen_old->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
-
+	arctech_screen_old->rxrpt = 2;
 	options_add(&arctech_screen_old->options, 't', "up", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&arctech_screen_old->options, 'f', "down", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&arctech_screen_old->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
