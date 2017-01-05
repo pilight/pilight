@@ -218,6 +218,7 @@ void cleverwattsInit(void) {
 	cleverwatts->maxrawlen = RAW_LENGTH;
 	cleverwatts->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	cleverwatts->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
+	cleverwatts->rxrpt=3;
 
 	options_add(&cleverwatts->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&cleverwatts->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);

@@ -209,6 +209,7 @@ void heitechInit(void) {
 	heitech->maxrawlen = RAW_LENGTH;
 	heitech->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	heitech->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
+	heitech->rxrpt=3;
 
 	options_add(&heitech->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&heitech->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
