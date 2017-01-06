@@ -223,10 +223,10 @@ struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNo
 	}
 
 	node->param = param;
-	pthread_mutexattr_init(&node->attr);
-	pthread_mutexattr_settype(&node->attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&node->mutex, &node->attr);
-	pthread_cond_init(&node->cond, NULL);
+	// pthread_mutexattr_init(&node->attr);
+	// pthread_mutexattr_settype(&node->attr, PTHREAD_MUTEX_RECURSIVE);
+	// pthread_mutex_init(&node->mutex, &node->attr);
+	// pthread_cond_init(&node->cond, NULL);
 	node->next = proto->threads;
 	proto->threads = node;
 
@@ -238,7 +238,7 @@ int protocol_thread_wait(struct protocol_threads_t *node, int interval, int *nrl
 	struct timeval tp;
 	struct timespec ts;
 
-	pthread_mutex_unlock(&node->mutex);
+	// pthread_mutex_unlock(&node->mutex);
 
 	gettimeofday(&tp, NULL);
 	ts.tv_sec = tp.tv_sec;
@@ -251,9 +251,10 @@ int protocol_thread_wait(struct protocol_threads_t *node, int interval, int *nrl
 		ts.tv_sec += interval;
 	}
 
-	pthread_mutex_lock(&node->mutex);
+	// pthread_mutex_lock(&node->mutex);
 
-	return pthread_cond_timedwait(&node->cond, &node->mutex, &ts);
+	// return pthread_cond_timedwait(&node->cond, &node->mutex, &ts);
+	return 0;
 }
 
 void protocol_thread_stop(protocol_t *proto) {
@@ -261,8 +262,8 @@ void protocol_thread_stop(protocol_t *proto) {
 	if(proto != NULL && proto->threads != NULL ) {
 		struct protocol_threads_t *tmp = proto->threads;
 		while(tmp) {
-			pthread_mutex_unlock(&tmp->mutex);
-			pthread_cond_signal(&tmp->cond);
+			// pthread_mutex_unlock(&tmp->mutex);
+			// pthread_cond_signal(&tmp->cond);
 			tmp = tmp->next;
 		}
 	}
