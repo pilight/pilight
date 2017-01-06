@@ -1,63 +1,21 @@
 /*
- * icmpquery.c - send and receive ICMP queries for address mask
- *               and current time.
- *
- * Version 1.0.3
- *
- * Copyright 1998, 1999, 2000  David G. Andersen <angio@pobox.com>
- *                                        <danderse@cs.utah.edu>
- *                                        http://www.angio.net/
- *
- * All rights reserved.
- * This information is subject to change without notice and does not
- * represent a commitment on the part of David G. Andersen.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. The name of David G. Andersen may not
- *    be used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL DAVID G. ANDERSEN BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- *
- *
- * Verified to work on:
- *    FreeBSD (2.x, 3.x)
- *    Linux 2.0.x, 2.2.0-pre1
- *    NetBSD 1.3
- *
- * Should work on Solaris and other platforms with BSD-ish stacks.
- *
- * If you compile it somewhere else, or it doesn't work somewhere,
- * please let me know.
- *
- * Compilation:  gcc icmpquery.c -o icmpquery
- *
- * One usage note:  In order to receive accurate time information,
- *                  the time on your computer must be correct; the
- *                  ICMP timestamp reply is a relative time figure.
- */
+	Copyright (C) 2013 - 2016 CurlyMo
 
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
 
-/* Some portions of this code are taken from FreeBSD's ping source.
+/* 
+ * Some portions of this code are taken from FreeBSD's ping source.
  * Those portions are subject to the BSD copyright, which is appended
- * at the end of this file.  Namely, in_cksum.
+ * at the end of this file. Namely, in_cksum.
+ *
+ * Some other portions are taken from icmpquery by
+ *  David G. Andersen <angio@pobox.com>
+ *                    <danderse@cs.utah.edu>
+ *                    http://www.angio.net/
+ *
  */
 
 #include <time.h>
@@ -259,33 +217,6 @@ static int in_cksum(int *addr, int len) {
 	return answer;
 }
 
-static int initpacket(char *buf) {
-	struct ip *ip = (struct ip *)buf;
-	struct icmp *icmp = (struct icmp *)(ip + 1);
-	int icmplen = 20;
-	struct in_addr fromaddr;
-	fromaddr.s_addr = 0;
-
-	ip->ip_src = fromaddr;
-	ip->ip_v = 4;
-	ip->ip_hl = sizeof *ip >> 2;
-	ip->ip_tos = 0;
-	ip->ip_id = htons(4321);
-	ip->ip_ttl = 255;
-	ip->ip_p = 1;
-	ip->ip_sum = 0;
-
-	icmp->icmp_seq = 1;
-	icmp->icmp_cksum = 0;
-	icmp->icmp_type = ICMP_ECHO;
-	icmp->icmp_code = 0;
-
-	gettimeofday((struct timeval *)(icmp+8), NULL);
-	memset(icmp+12, '\0',	8);
-	ip->ip_len = sizeof(struct ip) + icmplen;
-	return icmplen;
-}
-
 static void ping_timeout(uv_timer_t *handle) {
 	struct data_t *data = handle->data;
 	struct ping_list_t *tmp = data->iplist;
@@ -343,6 +274,98 @@ static void close_cb(uv_poll_t *req) {
 	uv_custom_poll_free(custom_poll_data);
 }
 
+#ifdef __FreeBSD__
+static void write_cb(uv_poll_t *req) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct data_t *data = custom_poll_data->data;
+	static u_char outpackhdr[IP_MAXPACKET], *outpack;
+	struct icmp *icp = NULL;	
+	static int datalen = 12;
+	static int send_len = 0;
+	struct ip *ip = NULL;
+	u_char packet[IP_MAXPACKET] __aligned(4);
+	int icmp_len = 0, cc = 0, i = 0, r = 0;
+
+	uv_os_fd_t fd = 0;
+	r = uv_fileno((uv_handle_t *)req, &fd);
+	if(r != 0) {
+		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
+		return;
+	}	
+
+	outpack = outpackhdr + sizeof(struct ip);
+	
+	icmp_len = sizeof(struct ip) + ICMP_MINLEN;
+	send_len = icmp_len + datalen;
+
+	ip = (struct ip *)outpackhdr;
+
+	ip->ip_v = IPVERSION;
+	ip->ip_hl = sizeof(struct ip) >> 2;
+	ip->ip_tos = 0;
+	ip->ip_id = htons(4321);
+	ip->ip_off = htons(0);
+	ip->ip_ttl = 255;
+	ip->ip_p = IPPROTO_ICMP;
+	ip->ip_src.s_addr = INADDR_ANY;
+
+	icp = (struct icmp *)packet;
+	icp->icmp_type = ICMP_ECHO;
+	icp->icmp_code = 0;
+	icp->icmp_cksum = 0;
+	icp->icmp_seq = htons(0);
+	icp->icmp_id = htons(4321);
+
+	cc = ICMP_MINLEN + datalen;
+
+	icp->icmp_cksum = in_cksum((int *)icp, cc);
+
+	struct sockaddr_in dst;
+	memset(&dst, 0, sizeof(struct sockaddr));
+
+	dst.sin_family = AF_INET;
+	dst.sin_addr.s_addr = inet_addr(data->nodes->ip);
+	dst.sin_port = htons(0);	
+	
+	if((i = sendto(fd, packet, cc, 0, (struct sockaddr *)&dst, sizeof(dst))) < 0) {
+		logprintf(LOG_ERR, "sendto: %s", strerror(errno));
+	}
+	data->nodes->live = 1;
+	data->nodes = data->nodes->next;
+
+	uv_custom_read(req);
+	if(data->nodes != NULL) {
+		uv_custom_write(req);
+	}
+}
+#else
+static int initpacket(char *buf) {
+	struct ip *ip = (struct ip *)buf;
+	struct icmp *icmp = (struct icmp *)(ip + 1);
+	int icmplen = 20;
+
+	ip->ip_src.s_addr = INADDR_ANY;
+	ip->ip_v = 4;
+	ip->ip_hl = sizeof(struct ip) >> 2;
+	ip->ip_tos = 0;
+	ip->ip_id = htons(4321);
+	ip->ip_ttl = 255;
+	ip->ip_p = IPPROTO_ICMP;
+	ip->ip_sum = 0;
+	ip->ip_off = 0;
+
+	icmp->icmp_seq = 0;
+	icmp->icmp_cksum = 0;
+	icmp->icmp_type = ICMP_ECHO;
+	icmp->icmp_code = 0;
+
+	gettimeofday((struct timeval *)(icmp+8), NULL);
+	memset(icmp+12, '\0',	8);
+	ip->ip_len = sizeof(struct ip) + icmplen;
+
+	return icmplen;
+}
+
 static void write_cb(uv_poll_t *req) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct data_t *data = custom_poll_data->data;
@@ -378,11 +401,7 @@ static void write_cb(uv_poll_t *req) {
 
 	ip->ip_dst.s_addr = inet_addr(data->nodes->ip);
 
-#ifdef _WIN32
-	if((x = sendto((SOCKET)fd, buf, ip->ip_len, 0, (struct sockaddr *)&dst, sizeof(dst))) < 0) {
-#else
 	if((x = sendto(fd, buf, ip->ip_len, 0, (struct sockaddr *)&dst, sizeof(dst))) < 0) {
-#endif
 		logprintf(LOG_ERR, "sendto: %s", strerror(errno));
 	}
 
@@ -394,6 +413,7 @@ static void write_cb(uv_poll_t *req) {
 		uv_custom_write(req);
 	}
 }
+#endif
 
 static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
@@ -470,7 +490,12 @@ int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
 		return -1;
 	}
 
+#ifdef __FreeBSD__
+	int off = 0;
+	if(setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, (const char *)&off, sizeof(off)) < 0) {
+#else
 	if(setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, (const char *)&on, sizeof(on)) < 0) {
+#endif
 		logprintf(LOG_ERR, "setsockopt: %s", strerror(errno));
 		close(sockfd);
 		return -1;

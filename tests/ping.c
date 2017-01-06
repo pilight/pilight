@@ -144,7 +144,6 @@ static void ping_wait(void *param) {
 				if(FD_ISSET(ping_socket, &fdsread)) {
 					memset(message, '\0', BUFFER_SIZE);
 					r = recvfrom(ping_socket, message, BUFFER_SIZE, 0, (struct sockaddr *)&addr, &addrlen);
-
 					CuAssertIntEquals(gtc, 40, r);
 					CuAssertStrEquals(gtc, request, message);
 					break;
@@ -201,7 +200,12 @@ static void ping_custom_server(void) {
 	r = setsockopt(ping_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(int));
 	CuAssertTrue(gtc, (r >= 0));
 
-	r = setsockopt(ping_socket, IPPROTO_IP, IP_HDRINCL, (const char *)&opt, sizeof(int));
+#ifdef __FreeBSD__
+	int off = 0;
+	r = setsockopt(ping_socket, IPPROTO_IP, IP_HDRINCL, (const char *)&off, sizeof(off));
+#else	
+	r = setsockopt(ping_socket, IPPROTO_IP, IP_HDRINCL, (const char *)&opt, sizeof(opt));
+#endif
 	CuAssertTrue(gtc, (r >= 0));
 	
 	r = bind(ping_socket, (struct sockaddr *)&addr, sizeof(addr));
@@ -273,6 +277,7 @@ static void test_ping_timeout(CuTest *tc) {
 	test_ping(tc);
 }
 
+#if !defined(_WIN32) && !defined(__FreeBSD__)
 static void test_ping_response(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
@@ -283,13 +288,14 @@ static void test_ping_response(CuTest *tc) {
 
 	test_ping(tc);
 }
+#endif
 
 CuSuite *suite_ping(void) {	
 	CuSuite *suite = CuSuiteNew();
 
 	SUITE_ADD_TEST(suite, test_ping_localhost);
 	SUITE_ADD_TEST(suite, test_ping_timeout);
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__FreeBSD__)
 	SUITE_ADD_TEST(suite, test_ping_response);
 #endif
 
