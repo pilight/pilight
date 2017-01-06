@@ -131,8 +131,8 @@ void _logprintf(int prio, char *file, int line, const char *str, ...) {
 	struct timeval tv;
 	struct tm tm;
 	va_list ap, apcpy;
-	char fmt[64], *buffer = NULL;
-	int errcpy = -1, len = 0, pos = 0, bufsize = 0;
+	char fmt[64], buffer[1024];
+	int errcpy = -1, len = 0, pos = 0, bufsize = 1024;
 
 	if(loglevel >= prio) {	
 		errcpy = errno;
@@ -152,13 +152,13 @@ void _logprintf(int prio, char *file, int line, const char *str, ...) {
 		len = snprintf(NULL, 0, "(%s #%d) [%s:%03u]", file, line, fmt, (unsigned int)tv.tv_usec);
 		
 		/* len + loglevel */
-		if(len+9 > bufsize) {
-			if((buffer = REALLOC(buffer, len+10)) == NULL) {
-				printf("out of memory\n");
-				exit(EXIT_FAILURE);
-			}
-			bufsize = len+10+1;
-		}
+		// if(len+9 > bufsize) {
+			// if((buffer = REALLOC(buffer, len+10)) == NULL) {
+				// printf("out of memory\n");
+				// exit(EXIT_FAILURE);
+			// }
+			// bufsize = len+10+1;
+		// }
 		pos += snprintf(buffer, bufsize, "(%s #%d) [%s:%03u] ", file, line, fmt, (unsigned int)tv.tv_usec);
 
 		switch(prio) {
@@ -191,23 +191,40 @@ void _logprintf(int prio, char *file, int line, const char *str, ...) {
 		if(len == -1) {
 			fprintf(stderr, "ERROR: improperly formatted logprintf message %s\n", str);
 		} else {
-			va_end(apcpy);
-			if(len+pos+3 > bufsize) {
-				if((buffer = REALLOC(buffer, len+pos+3)) == NULL) {
+			/*
+			 * Truncate with ellipses when logstring
+			 * is larger than allowed size.
+			 */
+			if(len > (bufsize-pos-3)) {
+				va_end(apcpy);
+				char *tmp = MALLOC(len);
+				if(tmp == NULL) {
 					printf("out of memory\n");
 					exit(EXIT_FAILURE);
 				}
-				bufsize = len+pos+3;
+				va_start(ap, str);
+				vsnprintf(tmp, len, str, ap);
+				va_end(ap);
+				tmp[bufsize-pos-6] = '.';
+				tmp[bufsize-pos-5] = '.';
+				tmp[bufsize-pos-4] = '.';
+				tmp[bufsize-pos-3] = '\0';
+				strcpy(&buffer[pos], tmp);
+				pos += bufsize-pos-3;
+				FREE(tmp);
+			} else {
+				va_end(apcpy);
+				va_start(ap, str);
+				pos += vsnprintf(&buffer[pos], bufsize-pos, str, ap);
+				va_end(ap);
 			}
-			va_start(ap, str);
-			pos += vsnprintf(&buffer[pos], bufsize-pos, str, ap);
-			va_end(ap);
 		}
 		buffer[pos++]='\n';
 		buffer[pos++]='\0';
 		if(shelllog == 1) {
 			fprintf(stderr, "%s", buffer);
 		}
+
 #ifdef _WIN32
 		// if(prio == LOG_ERR && strstr(progname, "daemon") != NULL && pilight.running == 0) {
 			// MessageBox(NULL, buffer, "pilight :: error", MB_OK);
@@ -252,9 +269,9 @@ void _logprintf(int prio, char *file, int line, const char *str, ...) {
 				eventpool_trigger(REASON_LOG, reason_log_free, node);
 			}
 		}
-		if(buffer != NULL) {
-			FREE(buffer);
-		}
+		// if(buffer != NULL) {
+			// FREE(buffer);
+		// }
 		
 		errno = errcpy;
 	}

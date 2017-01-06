@@ -260,7 +260,7 @@ static void *received(int reason, void *param) {
 				} break;
 				case 1: {
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":16.44,\"sunrise\":16.44,\"sun\":rise}",
+						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":16.44,\"sunrise\":16.44,\"sun\":set}",
 						data->message);
 					uv_stop(uv_default_loop());
 				} break;

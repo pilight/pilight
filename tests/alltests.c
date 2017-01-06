@@ -181,9 +181,14 @@ int RunAllTests(void) {
 	suites[nr++] = suite_dso();
 	suites[nr++] = suite_eventpool();
 	suites[nr++] = suite_log();
+	/*
+	 * FIXME:
+	 * When SSDP is started before ping
+	 * ping will not work properly.
+	 */
+	suites[nr++] = suite_ping();
 	suites[nr++] = suite_ssdp();
 	suites[nr++] = suite_ntp();
-	suites[nr++] = suite_ping();
 	suites[nr++] = suite_http();
 	suites[nr++] = suite_mail();
 	suites[nr++] = suite_webserver();
