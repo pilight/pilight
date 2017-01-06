@@ -84,16 +84,17 @@ enum eventpool_threads_t {
 #define REASON_SSDP_CONNECTED					15
 #define REASON_WEBSERVER_CONNECTED		16
 #define REASON_DEVICE_ADDED						17
-#define REASON_ADHOC_MODE							18
-#define REASON_ADHOC_CONNECTED				19
-#define REASON_ADHOC_CONFIG_RECEIVED	20
-#define REASON_ADHOC_DATA_RECEIVED		21
-#define REASON_ADHOC_UPDATE_RECEIVED	22
-#define REASON_ADHOC_DISCONNECTED			23
-#define REASON_SEND_BEGIN							24
-#define REASON_SEND_END								25
-#define REASON_LOG										26
-#define REASON_END										27
+#define REASON_DEVICE_ADAPT						18
+#define REASON_ADHOC_MODE							19
+#define REASON_ADHOC_CONNECTED				20
+#define REASON_ADHOC_CONFIG_RECEIVED	21
+#define REASON_ADHOC_DATA_RECEIVED		22
+#define REASON_ADHOC_UPDATE_RECEIVED	23
+#define REASON_ADHOC_DISCONNECTED			24
+#define REASON_SEND_BEGIN							25
+#define REASON_SEND_END								26
+#define REASON_LOG										27
+#define REASON_END										28
 
 typedef struct eventpool_listener_t {
 	void *(*func)(int, void *);
