@@ -71,10 +71,11 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 	struct data_t *settings = userdata;
 	struct timeval tv;
 	time_t timenow = 0;
-	struct tm tm;
+	struct tm tm_rise, tm_set;
 	double sunset = 0.0, sunrise = 0.0, temp = 0.0, humi = 0.0;
 
-	memset(&tm, 0, sizeof(struct tm));
+	memset(&tm_rise, 0, sizeof(struct tm));
+	memset(&tm_set, 0, sizeof(struct tm));
 
 	if(code == 200) {
 		if(strstr(type, "application/json") != NULL) {
@@ -100,9 +101,9 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 								struct tm current;
 								memset(&current, '\0', sizeof(struct tm));
 #ifdef _WIN32
-								localtime(&timenow);
+								gmtime = localtime(&timenow);
 #else
-								localtime_r(&timenow, &current);
+								gmtime_r(&timenow, &current);
 #endif
 
 								int month = current.tm_mon+1;
@@ -114,18 +115,18 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 								char *_sun = NULL;
 
 								time_t a = (time_t)sunrise;
-								memset(&tm, '\0', sizeof(struct tm));
+								memset(&tm_rise, '\0', sizeof(struct tm));
 #ifdef _WIN32
-								localtime(&a);
+								tm_rise = gmtime(&a);
 #else
-								localtime_r(&a, &tm);
+								gmtime_r(&a, &tm_rise);
 #endif
 								a = (time_t)sunset;
-								memset(&tm, '\0', sizeof(struct tm));
+								memset(&tm_set, '\0', sizeof(struct tm));
 #ifdef _WIN32
-								localtime(&a);
+								tm_set = gmtime(&a);
 #else
-								localtime_r(&a, &tm);
+								gmtime_r(&a, &tm_set);
 #endif
 								if(timenow > (int)round(sunrise) && timenow < (int)round(sunset)) {
 									_sun = "rise";
@@ -138,8 +139,8 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 									OUT_OF_MEMORY
 								};
 								snprintf(data->message, 1024,
-									"{\"location\":\"%s\",\"country\":\"%s\",\"temperature\":%.2f,\"humidity\":%.2f,\"update\":0,\"sunrise\":%.2f,\"sunrise\":%.2f,\"sun\":%s}",
-									settings->location, settings->country, temp, humi, ((double)((tm.tm_hour*100)+tm.tm_min)/100), ((double)((tm.tm_hour*100)+tm.tm_min)/100), _sun
+									"{\"location\":\"%s\",\"country\":\"%s\",\"temperature\":%.2f,\"humidity\":%.2f,\"update\":0,\"sunrise\":%.2f,\"sunset\":%.2f,\"sun\":%s}",
+									settings->location, settings->country, temp, humi, ((double)((tm_rise.tm_hour*100)+tm_rise.tm_min)/100), ((double)((tm_set.tm_hour*100)+tm_set.tm_min)/100), _sun
 								);
 								strncpy(data->origin, "receiver", 255);
 								data->protocol = openweathermap->id;
@@ -171,13 +172,16 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 
 								settings->update = time(NULL);
 
-								tv.tv_sec = settings->interval;
-								tv.tv_usec = 0;
-								threadpool_add_scheduled_work(settings->name, update, tv, (void *)settings);
-								tv.tv_sec = INTERVAL;
-								threadpool_add_scheduled_work(settings->name, update, tv, (void *)settings);
-								tv.tv_sec = 86400;
-								threadpool_add_scheduled_work(settings->name, update, tv, (void *)settings);
+								/*
+								 * FIXME
+								 */
+								// tv.tv_sec = settings->interval;
+								// tv.tv_usec = 0;
+								// threadpool_add_scheduled_work(settings->name, update, tv, (void *)settings);
+								// tv.tv_sec = INTERVAL;
+								// threadpool_add_scheduled_work(settings->name, update, tv, (void *)settings);
+								// tv.tv_sec = 86400;
+								// threadpool_add_scheduled_work(settings->name, update, tv, (void *)settings);
 							}
 						}
 					} else {
