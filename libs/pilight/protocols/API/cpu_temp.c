@@ -35,12 +35,13 @@
 #include "cpu_temp.h"
 
 #ifndef _WIN32
-static char cpu_path[] = "/sys/class/thermal/thermal_zone0/temp";
+static char cpu_path[PATH_MAX] = "/sys/class/thermal/thermal_zone0/temp";
 
 typedef struct data_t {
 	char *name;
 	int id;
 	int interval;
+	uv_timer_t *timer_req;
 	double temp_offset;
 	struct data_t *next;
 } data_t;
@@ -54,8 +55,8 @@ static void *reason_code_received_free(void *param) {
 }
 
 static void *thread(void *param) {
-	struct threadpool_tasks_t *task = param;
-	struct data_t *settings = task->userdata;
+	uv_timer_t *timer_req = param;
+	struct data_t *settings = timer_req->data;
 	FILE *fp = NULL;
 	struct stat st;
 	char *content = NULL;
@@ -92,10 +93,6 @@ static void *thread(void *param) {
 			}
 			data->repeat = 1;
 			eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
-			struct timeval tv;
-			tv.tv_sec = settings->interval;
-			tv.tv_usec = 0;
-			threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
 		}
 	} else {
 		logprintf(LOG_NOTICE, "CPU sysfs \"%s\" does not exists", cpu_path);
@@ -104,22 +101,46 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
+static void *adaptDevice(int reason, void *param) {
+	struct JsonNode *jdevice = NULL;
+	struct JsonNode *jpath = NULL;
+
+	if(param == NULL) {
+		return NULL;
+	}
+
+	if((jdevice = json_first_child(param)) == NULL) {
+		return NULL;
+	}
+
+	if(strcmp(jdevice->key, "cpu_temp") != 0) {
+		return NULL;
+	}
+
+	if((jpath = json_find_member(jdevice, "path")) != NULL) {
+		if(jpath->tag == JSON_STRING && strlen(jpath->string_) < PATH_MAX) {
+			strcpy(cpu_path, jpath->string_);
+		}
+	}
+
+	return NULL;
+}
+
 static void *addDevice(int reason, void *param) {
-	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct data_t *node = NULL;
-	struct timeval tv;
 	FILE *fp = NULL;
 	double itmp = 0;
 	int match = 0;
 
-	if(task->userdata == NULL) {
+	if(param == NULL) {
 		return NULL;
 	}
-	if((jdevice = json_first_child(task->userdata)) == NULL) {
+
+	if((jdevice = json_first_child(param)) == NULL) {
 		return NULL;
 	}
 
@@ -170,12 +191,16 @@ static void *addDevice(int reason, void *param) {
 		OUT_OF_MEMORY
 	}
 	strcpy(node->name, jdevice->key);
+	node->timer_req = NULL;
 	node->next = data;
 	data = node;
 
-	tv.tv_sec = 1;
-	tv.tv_usec = 0;
-	threadpool_add_scheduled_work(jdevice->key, thread, tv, (void *)node);
+	if((node->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+	node->timer_req->data = node;
+	uv_timer_init(uv_default_loop(), node->timer_req);
+	uv_timer_start(node->timer_req, (void (*)(uv_timer_t *))thread, node->interval*1000, node->interval*1000);
 
 	return NULL;
 }
@@ -185,6 +210,9 @@ static void gc(void) {
 	while(data) {
 		tmp = data;
 		FREE(tmp->name);
+		if(tmp->timer_req != NULL) {
+			uv_timer_stop(tmp->timer_req);
+		}
 		data = data->next;
 		FREE(tmp);
 	}
@@ -218,6 +246,7 @@ void cpuTempInit(void) {
 	cpuTemp->gc=&gc;
 
 	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
+	eventpool_callback(REASON_DEVICE_ADAPT, adaptDevice);
 #endif
 }
 

@@ -124,7 +124,7 @@ static void test_protocols_433(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
-CuSuite *suite_protocols(void) {	
+CuSuite *suite_protocols_433(void) {	
 	CuSuite *suite = CuSuiteNew();
 
 	SUITE_ADD_TEST(suite, test_protocols_433);

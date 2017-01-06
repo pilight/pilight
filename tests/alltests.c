@@ -32,7 +32,8 @@ CuSuite *suite_mail(void);
 CuSuite *suite_webserver(void);
 CuSuite *suite_socket(void);
 CuSuite *suite_log(void);
-CuSuite *suite_protocols(void);
+CuSuite *suite_protocols_433(void);
+CuSuite *suite_protocols_api(void);
 
 CuString *output = NULL;
 CuSuite *suite = NULL;
@@ -187,7 +188,8 @@ int RunAllTests(void) {
 	suites[nr++] = suite_mail();
 	suites[nr++] = suite_webserver();
 	suites[nr++] = suite_socket();
-	suites[nr++] = suite_protocols();
+	suites[nr++] = suite_protocols_433();
+	suites[nr++] = suite_protocols_api();
 
 	for(i=0;i<nr;i++) {
 		CuSuiteAddSuite(suite, suites[i]);

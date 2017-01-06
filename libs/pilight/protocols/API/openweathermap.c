@@ -37,11 +37,14 @@
 #include "openweathermap.h"
 
 #define INTERVAL	600
+char url[1024] = "http://api.openweathermap.org/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493";
 
 typedef struct data_t {
 	char *name;
 	char *country;
 	char *location;
+	uv_timer_t *timer_req;
+	uv_work_t *work_req;
 
 	int interval;
 	double temp_offset;
@@ -197,8 +200,8 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 }
 
 static void *update(void *param) {
-	struct threadpool_tasks_t *task = param;
-	struct data_t *settings = task->userdata;
+	uv_timer_t *timer_req = param;
+	struct data_t *settings = timer_req->data;
 
 	struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
 	if(data == NULL) {
@@ -221,37 +224,59 @@ static void *update(void *param) {
 	return NULL;
 }
 
-static void *thread(void *param) {
-	struct threadpool_tasks_t *task = param;
-	struct data_t *settings = task->userdata;
-	struct timeval tv;
-	char url[1024];
+static void thread_free(uv_work_t *req, int status) {
+	FREE(req);
+}
 
-	tv.tv_sec = settings->interval;
-	tv.tv_usec = 0;
+static void thread(uv_work_t *req) {
+	struct data_t *settings = req->data;
+	char parsed[1024];
+	char *enc = urlencode(settings->location);
 
-	threadpool_add_scheduled_work(settings->name, update, tv, (void *)settings);
+	memset(parsed, '\0', 1024);
+	snprintf(parsed, 1024, url, enc, settings->country);
+	FREE(enc);
+	
+	http_get_content(parsed, callback, settings);
+	return;
+}
 
-	memset(url, '\0', 1024);
-	snprintf(url, 1024, "http://api.openweathermap.org/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493", urlencode(settings->location), settings->country);
+static void *adaptDevice(int reason, void *param) {
+	struct JsonNode *jdevice = NULL;
+	struct JsonNode *jurl = NULL;
 
-	http_get_content(url, callback, task->userdata);
-	return (void *)NULL;
+	if(param == NULL) {
+		return NULL;
+	}
+
+	if((jdevice = json_first_child(param)) == NULL) {
+		return NULL;
+	}
+
+	if(strcmp(jdevice->key, "openweathermap") != 0) {
+		return NULL;
+	}
+
+	if((jurl = json_find_member(jdevice, "url")) != NULL) {
+		if(jurl->tag == JSON_STRING && strlen(jurl->string_) < 1024) {
+			strcpy(url, jurl->string_);
+		}
+	}
+
+	return NULL;
 }
 
 static void *addDevice(int reason, void *param) {
-	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
 	struct data_t *node = NULL;
-	struct timeval tv;
 	double itmp = 0;
 	int match = 0;
 
-	if(task->userdata == NULL) {
+	if(param == NULL) {
 		return NULL;
 	}
 
@@ -259,7 +284,7 @@ static void *addDevice(int reason, void *param) {
 		return NULL;
 	}
 
-	if((jdevice = json_first_child(task->userdata)) == NULL) {
+	if((jdevice = json_first_child(param)) == NULL) {
 		return NULL;
 	}
 
@@ -342,12 +367,14 @@ static void *addDevice(int reason, void *param) {
 	}
 	strcpy(node->name, jdevice->key);
 
-	tv.tv_sec = INTERVAL;
-	tv.tv_usec = 0;
-	threadpool_add_scheduled_work(jdevice->key, update, tv, (void *)node);
-	threadpool_add_scheduled_work(jdevice->key, update, tv, (void *)node);
-	tv.tv_sec = 1;
-	threadpool_add_scheduled_work(jdevice->key, update, tv, (void *)node);
+	node->work_req = NULL;
+	
+	if((node->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+	node->timer_req->data = node;
+	uv_timer_init(uv_default_loop(), node->timer_req);
+	uv_timer_start(node->timer_req, (void (*)(uv_timer_t *))update, node->interval*1000, -1);
 
 	return NULL;
 }
@@ -384,7 +411,12 @@ static int createCode(struct JsonNode *code, char *message) {
 			if(strcmp(tmp->country, country) == 0
 			   && strcmp(tmp->location, location) == 0) {
 				if((currenttime-tmp->update) > INTERVAL) {
-					threadpool_add_work(REASON_END, NULL, tmp->name, 0, thread, NULL, (void *)tmp);
+
+					if((tmp->work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+						OUT_OF_MEMORY
+					}
+					tmp->work_req->data = tmp;
+					uv_queue_work(uv_default_loop(), tmp->work_req, thread, thread_free);
 					tmp->update = time(NULL);
 				}
 			}
@@ -457,6 +489,7 @@ void openweathermapInit(void) {
 	openweathermap->printHelp=&printHelp;
 
 	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
+	eventpool_callback(REASON_DEVICE_ADAPT, adaptDevice);
 }
 
 #if defined(MODULE) && !defined(_WIN32)
