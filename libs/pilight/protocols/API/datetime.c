@@ -91,7 +91,7 @@ static void *adaptDevice(int reason, void *param) {
 		return NULL;
 	}
 
-	if((jtime = json_find_member(jdevice, "time_override")) != NULL) {
+	if((jtime = json_find_member(jdevice, "time-override")) != NULL) {
 		if(jtime->tag == JSON_NUMBER) {
 			time_override = jtime->number_;
 		}
