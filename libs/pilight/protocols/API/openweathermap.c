@@ -108,7 +108,7 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 								struct tm current;
 								memset(&current, '\0', sizeof(struct tm));
 #ifdef _WIN32
-								gmtime = localtime(&timenow);
+								current = gmtime(&timenow);
 #else
 								gmtime_r(&timenow, &current);
 #endif

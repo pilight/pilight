@@ -35,6 +35,7 @@ CuSuite *suite_log(void);
 CuSuite *suite_protocols_433(void);
 CuSuite *suite_protocols_api(void);
 CuSuite *suite_protocols_api_openweathermap(void);
+CuSuite *suite_protocols_api_wunderground(void);
 
 CuString *output = NULL;
 CuSuite *suite = NULL;
@@ -197,6 +198,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_protocols_433();
 	suites[nr++] = suite_protocols_api();
 	suites[nr++] = suite_protocols_api_openweathermap();
+	suites[nr++] = suite_protocols_api_wunderground();
 
 	for(i=0;i<nr;i++) {
 		CuSuiteAddSuite(suite, suites[i]);

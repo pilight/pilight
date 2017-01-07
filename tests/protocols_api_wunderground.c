@@ -23,9 +23,11 @@
 #include "../libs/pilight/protocols/protocol.h"
 #include "../libs/pilight/protocols/API/cpu_temp.h"
 #include "../libs/pilight/protocols/API/datetime.h"
-#include "../libs/pilight/protocols/API/openweathermap.h"
+#include "../libs/pilight/protocols/API/wunderground.h"
 
 #include "alltests.h"
+
+#include "wunderground.h"
 
 #define BUFSIZE 1024*1024
 
@@ -38,6 +40,8 @@ static char add[1024];
 static char adapt[1024];
 static CuTest *gtc = NULL;
 static int steps = 0;
+static int request = 0;
+static int loops = 0;
 static int run = UPDATE;
 static uv_thread_t pth;
 
@@ -88,10 +92,12 @@ static void http_wait(void *param) {
 	FD_ZERO(&fdsread);
 	FD_ZERO(&fdswrite);
 
+	loops = 0;
+	
 	while(http_loop) {
 		FD_SET((unsigned long)http_server, &fdsread);
-		tv.tv_sec = 0;
-		tv.tv_usec = 1000;
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
 
 		if(doquit == 2) {
 			http_loop = 0;
@@ -109,9 +115,6 @@ static void http_wait(void *param) {
 			http_client = 0;
 			http_server = 0;
 
-			protocol_gc();
-			eventpool_gc();
-			uv_stop(uv_default_loop());
 			break;
 		}
 
@@ -124,12 +127,11 @@ static void http_wait(void *param) {
 				n = select(http_server+1, &fdsread, &fdswrite, NULL, &tv);
 			}
 		} while(n == -1 && errno == EINTR && http_loop);
-		
+
 		if(http_loop == 0) {
 			doquit = 2;
 			http_loop = 1;
 		}
-
 		if(n == 0 || doquit == 2) {
 			continue;
 		}
@@ -172,7 +174,13 @@ static void http_wait(void *param) {
 					r = recv(http_client, message, BUFSIZE, 0);
 				}
 				CuAssertTrue(gtc, r >= 0);
-				CuAssertStrEquals(gtc, "GET /data/2.5/weather?q=amsterdam,nl&APPID=8db24c4ac56251371c7ea87fd3115493 HTTP/1.1\r\nHost: 127.0.0.1\r\nUser-Agent: pilight\r\nConnection: close\r\n\r\n", message);
+				if(request == 0) {
+					CuAssertStrEquals(gtc, "GET /api/abcdef123456/geolookup/conditions/q/nl/amsterdam.json HTTP/1.1\r\nHost: 127.0.0.1\r\nUser-Agent: pilight\r\nConnection: close\r\n\r\n", message);
+					request = 1;
+				} else if(request == 2) {
+					CuAssertStrEquals(gtc, "GET /api/abcdef123456/geolookup/astronomy/q/nl/amsterdam.json HTTP/1.1\r\nHost: 127.0.0.1\r\nUser-Agent: pilight\r\nConnection: close\r\n\r\n", message);
+					request = 3;
+				}
 				FREE(message);
 				dowrite = 1;
 			}
@@ -182,20 +190,24 @@ static void http_wait(void *param) {
 					OUT_OF_MEMORY
 				}
 				/*
-				 * Actual raw openweathermap http response
+				 * Actual raw wunderground http response
 				 */
-				strcpy(message, 
-					"HTTP/1.1 200 OK\r\n"
-					"Server: pilight\r\n"
-					"Date: Fri, 06 Jan 2017 15:22:49 GMT\r\n"
-					"Content-Type: application/json; charset=utf-8\n\r"
-					"Content-Length: 445\r\n"
-					"Connection: close\r\n"
-					"X-Cache-Key: /data/2.5/weather?APPID=8db24c4ac56251371c7ea87fd3115493&q=amsterdam,nl\r\n"
-					"Access-Control-Allow-Origin: *\r\n"
-					"Access-Control-Allow-Credentials: true\r\n"
-					"Access-Control-Allow-Methods: GET, POST\r\n\r\n"
-					"{\"coord\":{\"lon\":4.89,\"lat\":52.37},\"weather\":[{\"id\":800,\"main\":\"Clear\",\"description\":\"clear sky\",\"icon\":\"01d\"}],\"base\":\"stations\",\"main\":{\"temp\":272.15,\"pressure\":1038,\"humidity\":74,\"temp_min\":271.15,\"temp_max\":273.15},\"visibility\":10000,\"wind\":{\"speed\":4.1,\"deg\":180},\"clouds\":{\"all\":0},\"dt\":1483714500,\"sys\":{\"type\":1,\"id\":5204,\"message\":0.0527,\"country\":\"NL\",\"sunrise\":1483688925,\"sunset\":1483717490},\"id\":2759794,\"name\":\"Amsterdam\",\"cod\":200}");
+				if(request == 1) {
+					strcpy(message, conditions);
+					request = 2;
+				} else if(request == 3) {
+					strcpy(message, astronomy);
+					/*
+					 * Do quit if we have looped once.
+					 */
+					if(run == UPDATE || loops == 1) {
+						doquit = 2;
+					}
+					if(run == SUNRISE || run == SUNSET || run == MIDNIGHT) {
+						loops = 1;
+						request = 0;
+					}
+				}
 				len = strlen(message);
 
 				if(is_ssl == 1) {
@@ -212,7 +224,7 @@ static void http_wait(void *param) {
 				close(http_client);
 #endif
 				http_client = 0;
-				FREE(message);
+				FREE(message); 
 			}
 		}
 next:
@@ -278,22 +290,22 @@ static void *received(int reason, void *param) {
 					CuAssertIntEquals(gtc, 1, duration);
 					char message[1024];
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"update\":1}",
+						"{\"api\":\"abcdef123456\",\"location\":\"amsterdam\",\"country\":\"nl\",\"update\":1}",
 						data->message);
 					steps = 1;
-					CuAssertPtrNotNull(gtc, openweathermap->createCode);
-					struct JsonNode *code = json_decode("{\"location\":\"amsterdam\",\"country\":\"nl\",\"update\":1}");
-					openweathermap->createCode(code, message);
+					CuAssertPtrNotNull(gtc, wunderground->createCode);
+					struct JsonNode *code = json_decode("{\"api\":\"abcdef123456\",\"location\":\"amsterdam\",\"country\":\"nl\",\"update\":1}");
+					wunderground->createCode(code, message);
 					json_delete(code);
-					printf("[ %-48s ]\n", "- waiting for openweathermap notification");
+					printf("[ %-48s ]\n", "- waiting for wunderground notification");
 					fflush(stdout);
 				} break;
 				case 1: {
 					CuAssertIntEquals(gtc, 0, duration);
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":set}",
+						"{\"api\":\"abcdef123456\",\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":2.40,\"humidity\":99,\"update\":0,\"sunrise\":8.48,\"sunset\":16.46,\"sun\":\"set\"}",
 						data->message);
-					doquit = 2;
+					uv_stop(uv_default_loop());
 				} break;
 			}
 		break;
@@ -312,16 +324,16 @@ static void *received(int reason, void *param) {
 					 * After two seconds the first message should be received
 					 */
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":set}",
+						"{\"api\":\"abcdef123456\",\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":2.40,\"humidity\":99,\"update\":0,\"sunrise\":8.48,\"sunset\":16.46,\"sun\":\"set\"}",
 						data->message);
 					/*
 					 * Shift time to after sunrise and check if we get a
-					 * sunrise from openweathermap as well.
+					 * sunrise from wunderground as well.
 					 */
-					strcpy(adapt, "{\"openweathermap\":{\"time-override\":1483688926}}");
+					strcpy(adapt, "{\"wunderground\":{\"time-override\":1483778881}}");
 					eventpool_trigger(REASON_DEVICE_ADAPT, done, json_decode(adapt));
 					steps = 2;
-					printf("[ %-48s ]\n", "- waiting for openweathermap sunrise");
+					printf("[ %-48s ]\n", "- waiting for wunderground sunrise");
 					fflush(stdout);	
 				} break;
 				case 2: {
@@ -330,9 +342,9 @@ static void *received(int reason, void *param) {
 					 * After one second the sunrise notification should be sent
 					 */
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":rise}",
+						"{\"api\":\"abcdef123456\",\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":2.40,\"humidity\":99,\"update\":0,\"sunrise\":8.48,\"sunset\":16.46,\"sun\":\"rise\"}",
 						data->message);
-					doquit = 2;
+					uv_stop(uv_default_loop());
 				} break;
 			}
 		break;
@@ -351,16 +363,16 @@ static void *received(int reason, void *param) {
 					 * After two seconds the first message should be received
 					 */
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":rise}",
+						"{\"api\":\"abcdef123456\",\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":2.40,\"humidity\":99,\"update\":0,\"sunrise\":8.48,\"sunset\":16.46,\"sun\":\"rise\"}",
 						data->message);
 					/*
 					 * Shift time to after sunset and check if we get a
-					 * sunset from openweathermap as well.
+					 * sunset from wunderground as well.
 					 */
-					strcpy(adapt, "{\"openweathermap\":{\"time-override\":1483717491}}");
+					strcpy(adapt, "{\"wunderground\":{\"time-override\":1483807561}}");
 					eventpool_trigger(REASON_DEVICE_ADAPT, done, json_decode(adapt));
 					steps = 2;
-					printf("[ %-48s ]\n", "- waiting for openweathermap sunset");
+					printf("[ %-48s ]\n", "- waiting for wunderground sunset");
 					fflush(stdout);	
 				} break;
 				case 2: {
@@ -369,9 +381,9 @@ static void *received(int reason, void *param) {
 					 * After one second the sunrise notification should be sent
 					 */
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":set}",
+						"{\"api\":\"abcdef123456\",\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":2.40,\"humidity\":99,\"update\":0,\"sunrise\":8.48,\"sunset\":16.46,\"sun\":\"set\"}",
 						data->message);
-					doquit = 2;
+					uv_stop(uv_default_loop());
 				} break;
 			}
 		break;
@@ -390,11 +402,11 @@ static void *received(int reason, void *param) {
 					 * Directly after, the first message should be received
 					 */
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":set}",
+						"{\"api\":\"abcdef123456\",\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":2.40,\"humidity\":99,\"update\":0,\"sunrise\":8.48,\"sunset\":16.46,\"sun\":\"set\"}",
 						data->message);
 
 					steps = 2;
-					printf("[ %-48s ]\n", "- waiting for openweathermap midnight");
+					printf("[ %-48s ]\n", "- waiting for wunderground midnight");
 					fflush(stdout);	
 				} break;
 				case 2: {
@@ -403,9 +415,9 @@ static void *received(int reason, void *param) {
 					 * After one second the sunrise notification should be sent
 					 */
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":set}",
+						"{\"api\":\"abcdef123456\",\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":2.40,\"humidity\":99,\"update\":0,\"sunrise\":8.48,\"sunset\":16.46,\"sun\":\"set\"}",
 						data->message);
-					doquit = 2;
+					uv_stop(uv_default_loop());
 				} break;
 			}
 		break;
@@ -420,7 +432,7 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 	}
 }
 
-static void test_protocols_api_openweathermap(CuTest *tc) {
+static void test_protocols_api_wunderground(CuTest *tc) {
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
 
 	struct timeval tv;
@@ -448,10 +460,13 @@ static void test_protocols_api_openweathermap(CuTest *tc) {
 
 	uv_thread_join(&pth);
 
+	protocol_gc();
+	eventpool_gc();
+
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
-static void test_protocols_api_openweathermap_update(CuTest *tc) {
+static void test_protocols_api_wunderground_update(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -460,10 +475,11 @@ static void test_protocols_api_openweathermap_update(CuTest *tc) {
 	memtrack();	
 
 	steps = 0;
+	request = 0;
 	http_loop = 1;
 	doquit = 0;
 	
-	openweathermapInit();
+	wundergroundInit();
 
 	memset(&add, '\0', 1024);
 	memset(&adapt, '\0', 1024);
@@ -472,18 +488,18 @@ static void test_protocols_api_openweathermap_update(CuTest *tc) {
 
 	uv_thread_create(&pth, http_wait, NULL);
 	
-	strcpy(adapt, "{\"openweathermap\":{\"url\":\"http://127.0.0.1:10080/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493\"}}");
-	strcpy(add, "{\"test\":{\"protocol\":[\"openweathermap\"],\"id\":[{\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
+	strcpy(adapt, "{\"wunderground\":{\"url\":{\"astronomy\":\"http://127.0.0.1:10080/api/%s/geolookup/astronomy/q/%s/%s.json\",\"conditions\":\"http://127.0.0.1:10080/api/%s/geolookup/conditions/q/%s/%s.json\"}}}");
+	strcpy(add, "{\"test\":{\"protocol\":[\"wunderground\"],\"id\":[{\"api\":\"abcdef123456\",\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
 
 	run = UPDATE;
 	
 	printf("[ %-48s ]\n", "- waiting for update message");
 	fflush(stdout);
 
-	test_protocols_api_openweathermap(tc);
+	test_protocols_api_wunderground(tc);
 }
 
-static void test_protocols_api_openweathermap_sunrise(CuTest *tc) {
+static void test_protocols_api_wunderground_sunrise(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -492,10 +508,11 @@ static void test_protocols_api_openweathermap_sunrise(CuTest *tc) {
 	memtrack();
 
 	steps = 0;
+	request = 0;
 	http_loop = 1;
 	doquit = 0;
 
-	openweathermapInit();
+	wundergroundInit();
 
 	memset(&add, '\0', 1024);
 	memset(&adapt, '\0', 1024);
@@ -504,18 +521,18 @@ static void test_protocols_api_openweathermap_sunrise(CuTest *tc) {
 
 	uv_thread_create(&pth, http_wait, NULL);
 	
-	strcpy(adapt, "{\"openweathermap\":{\"time-override\":1483688921,\"url\":\"http://127.0.0.1:10080/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493\"}}");
-	strcpy(add, "{\"test\":{\"protocol\":[\"openweathermap\"],\"id\":[{\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
+	strcpy(adapt, "{\"wunderground\":{\"time-override\":1483778879,\"url\":{\"astronomy\":\"http://127.0.0.1:10080/api/%s/geolookup/astronomy/q/%s/%s.json\",\"conditions\":\"http://127.0.0.1:10080/api/%s/geolookup/conditions/q/%s/%s.json\"}}}");
+	strcpy(add, "{\"test\":{\"protocol\":[\"wunderground\"],\"id\":[{\"api\":\"abcdef123456\",\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
 
-	printf("[ %-48s ]\n", "- waiting for first openweathermap notification");
+	printf("[ %-48s ]\n", "- waiting for first wunderground notification");
 	fflush(stdout);	
 	
 	run = SUNRISE;
 
-	test_protocols_api_openweathermap(tc);
+	test_protocols_api_wunderground(tc);
 }
 
-static void test_protocols_api_openweathermap_sunset(CuTest *tc) {
+static void test_protocols_api_wunderground_sunset(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -527,7 +544,7 @@ static void test_protocols_api_openweathermap_sunset(CuTest *tc) {
 	http_loop = 1;
 	doquit = 0;
 
-	openweathermapInit();
+	wundergroundInit();
 
 	memset(&add, '\0', 1024);
 	memset(&adapt, '\0', 1024);
@@ -536,18 +553,18 @@ static void test_protocols_api_openweathermap_sunset(CuTest *tc) {
 
 	uv_thread_create(&pth, http_wait, NULL);
 	
-	strcpy(adapt, "{\"openweathermap\":{\"time-override\":1483717489,\"url\":\"http://127.0.0.1:10080/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493\"}}");
-	strcpy(add, "{\"test\":{\"protocol\":[\"openweathermap\"],\"id\":[{\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
+	strcpy(adapt, "{\"wunderground\":{\"time-override\":1483807559,\"url\":{\"astronomy\":\"http://127.0.0.1:10080/api/%s/geolookup/astronomy/q/%s/%s.json\",\"conditions\":\"http://127.0.0.1:10080/api/%s/geolookup/conditions/q/%s/%s.json\"}}}");
+	strcpy(add, "{\"test\":{\"protocol\":[\"wunderground\"],\"id\":[{\"api\":\"abcdef123456\",\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
 
-	printf("[ %-48s ]\n", "- waiting for first openweathermap notification");
+	printf("[ %-48s ]\n", "- waiting for first wunderground notification");
 	fflush(stdout);	
 
 	run = SUNSET;
 
-	test_protocols_api_openweathermap(tc);
+	test_protocols_api_wunderground(tc);
 }
 
-static void test_protocols_api_openweathermap_midnight(CuTest *tc) {
+static void test_protocols_api_wunderground_midnight(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -559,7 +576,7 @@ static void test_protocols_api_openweathermap_midnight(CuTest *tc) {
 	http_loop = 1;
 	doquit = 0;
 
-	openweathermapInit();
+	wundergroundInit();
 
 	memset(&add, '\0', 1024);
 	memset(&adapt, '\0', 1024);
@@ -568,24 +585,24 @@ static void test_protocols_api_openweathermap_midnight(CuTest *tc) {
 
 	uv_thread_create(&pth, http_wait, NULL);
 	
-	strcpy(adapt, "{\"openweathermap\":{\"time-override\":1483833599,\"url\":\"http://127.0.0.1:10080/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493\"}}");
-	strcpy(add, "{\"test\":{\"protocol\":[\"openweathermap\"],\"id\":[{\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
+	strcpy(adapt, "{\"wunderground\":{\"time-override\":1483833599,\"url\":{\"astronomy\":\"http://127.0.0.1:10080/api/%s/geolookup/astronomy/q/%s/%s.json\",\"conditions\":\"http://127.0.0.1:10080/api/%s/geolookup/conditions/q/%s/%s.json\"}}}");
+	strcpy(add, "{\"test\":{\"protocol\":[\"wunderground\"],\"id\":[{\"api\":\"abcdef123456\",\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
 
-	printf("[ %-48s ]\n", "- waiting for first openweathermap notification");
+	printf("[ %-48s ]\n", "- waiting for first wunderground notification");
 	fflush(stdout);	
 
 	run = MIDNIGHT;
 
-	test_protocols_api_openweathermap(tc);
+	test_protocols_api_wunderground(tc);
 }
 
-CuSuite *suite_protocols_api_openweathermap(void) {
+CuSuite *suite_protocols_api_wunderground(void) {
 	CuSuite *suite = CuSuiteNew();
 
-	SUITE_ADD_TEST(suite, test_protocols_api_openweathermap_update);
-	SUITE_ADD_TEST(suite, test_protocols_api_openweathermap_sunrise);
-	SUITE_ADD_TEST(suite, test_protocols_api_openweathermap_sunset);
-	SUITE_ADD_TEST(suite, test_protocols_api_openweathermap_midnight);
+	SUITE_ADD_TEST(suite, test_protocols_api_wunderground_update);
+	SUITE_ADD_TEST(suite, test_protocols_api_wunderground_sunrise);
+	SUITE_ADD_TEST(suite, test_protocols_api_wunderground_sunset);
+	SUITE_ADD_TEST(suite, test_protocols_api_wunderground_midnight);
 
 	return suite;
 }
