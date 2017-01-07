@@ -37,14 +37,16 @@
 #include "openweathermap.h"
 
 #define INTERVAL	600
-char url[1024] = "http://api.openweathermap.org/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493";
+static int min_interval = INTERVAL;
+static int time_override = -1;
+static char url[1024] = "http://api.openweathermap.org/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493";
 
 typedef struct data_t {
 	char *name;
 	char *country;
 	char *location;
-	uv_timer_t *timer_req;
-	uv_work_t *work_req;
+	uv_timer_t *enable_timer_req;
+	uv_timer_t *update_timer_req;
 
 	int interval;
 	double temp_offset;
@@ -56,6 +58,7 @@ typedef struct data_t {
 static struct data_t *data = NULL;
 
 static void *update(void *param);
+static void *enable(void *param);
 
 static void *reason_code_received_free(void *param) {
 	struct reason_code_received_t *data = param;
@@ -69,7 +72,6 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 	struct JsonNode *jsys = NULL;
 	struct JsonNode *node = NULL;
 	struct data_t *settings = userdata;
-	struct timeval tv;
 	time_t timenow = 0;
 	struct tm tm_rise, tm_set;
 	double sunset = 0.0, sunrise = 0.0, temp = 0.0, humi = 0.0;
@@ -97,7 +99,12 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 							} else {
 								temp = node->number_-273.15;
 
-								timenow = time(NULL);
+								if(time_override > -1) {
+									timenow = time_override;
+								} else {
+									timenow = time(NULL);
+								}
+
 								struct tm current;
 								memset(&current, '\0', sizeof(struct tm));
 #ifdef _WIN32
@@ -128,6 +135,7 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 #else
 								gmtime_r(&a, &tm_set);
 #endif
+
 								if(timenow > (int)round(sunrise) && timenow < (int)round(sunset)) {
 									_sun = "rise";
 								} else {
@@ -170,18 +178,20 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 									}
 								}
 
-								settings->update = time(NULL);
+								if(time_override > -1) {
+									settings->update = time_override;
+								} else {
+									settings->update = time(NULL);
+								}
 
 								/*
-								 * FIXME
+								 * Update all values on next event as described above
 								 */
-								// tv.tv_sec = settings->interval;
-								// tv.tv_usec = 0;
-								// threadpool_add_scheduled_work(settings->name, update, tv, (void *)settings);
-								// tv.tv_sec = INTERVAL;
-								// threadpool_add_scheduled_work(settings->name, update, tv, (void *)settings);
-								// tv.tv_sec = 86400;
-								// threadpool_add_scheduled_work(settings->name, update, tv, (void *)settings);
+								uv_timer_start(settings->update_timer_req, (void (*)(uv_timer_t *))update, settings->interval*1000, -1);
+								/*
+								 * Allow updating the values customly after INTERVAL seconds
+								 */
+								uv_timer_start(settings->enable_timer_req, (void (*)(uv_timer_t *))enable, min_interval*1000, -1);
 							}
 						}
 					} else {
@@ -203,7 +213,42 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 	return;
 }
 
+static void thread_free(uv_work_t *req, int status) {
+	FREE(req);
+}
+
+static void thread(uv_work_t *req) {
+	struct data_t *settings = req->data;
+	char parsed[1024];
+	char *enc = urlencode(settings->location);
+
+	memset(parsed, '\0', 1024);
+	snprintf(parsed, 1024, url, enc, settings->country);
+	FREE(enc);
+
+	http_get_content(parsed, callback, settings);
+	return;
+}
+
 static void *update(void *param) {
+	uv_timer_t *timer_req = param;
+	struct data_t *settings = timer_req->data;
+
+	uv_work_t *work_req = NULL;
+	if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+	work_req->data = settings;
+	uv_queue_work(uv_default_loop(), work_req, thread, thread_free);
+	if(time_override > -1) {
+		settings->update = time_override;
+	} else {
+		settings->update = time(NULL);
+	}
+	return NULL;
+}
+
+static void *enable(void *param) {
 	uv_timer_t *timer_req = param;
 	struct data_t *settings = timer_req->data;
 
@@ -228,26 +273,9 @@ static void *update(void *param) {
 	return NULL;
 }
 
-static void thread_free(uv_work_t *req, int status) {
-	FREE(req);
-}
-
-static void thread(uv_work_t *req) {
-	struct data_t *settings = req->data;
-	char parsed[1024];
-	char *enc = urlencode(settings->location);
-
-	memset(parsed, '\0', 1024);
-	snprintf(parsed, 1024, url, enc, settings->country);
-	FREE(enc);
-	
-	http_get_content(parsed, callback, settings);
-	return;
-}
-
 static void *adaptDevice(int reason, void *param) {
 	struct JsonNode *jdevice = NULL;
-	struct JsonNode *jurl = NULL;
+	struct JsonNode *jchild = NULL;
 
 	if(param == NULL) {
 		return NULL;
@@ -261,9 +289,21 @@ static void *adaptDevice(int reason, void *param) {
 		return NULL;
 	}
 
-	if((jurl = json_find_member(jdevice, "url")) != NULL) {
-		if(jurl->tag == JSON_STRING && strlen(jurl->string_) < 1024) {
-			strcpy(url, jurl->string_);
+	if((jchild = json_find_member(jdevice, "url")) != NULL) {
+		if(jchild->tag == JSON_STRING && strlen(jchild->string_) < 1024) {
+			strcpy(url, jchild->string_);
+		}
+	}
+
+	if((jchild = json_find_member(jdevice, "time-override")) != NULL) {
+		if(jchild->tag == JSON_NUMBER) {
+			time_override = jchild->number_;
+		}
+	}
+
+	if((jchild = json_find_member(jdevice, "min-interval")) != NULL) {
+		if(jchild->tag == JSON_NUMBER) {
+			min_interval = jchild->number_;
 		}
 	}
 
@@ -312,7 +352,7 @@ static void *addDevice(int reason, void *param) {
 	}
 	memset(node, '\0', sizeof(struct data_t));
 
-	node->interval = INTERVAL;
+	node->interval = min_interval;
 	node->country = NULL;
 	node->location = NULL;
 	node->update = 0;
@@ -370,26 +410,37 @@ static void *addDevice(int reason, void *param) {
 		OUT_OF_MEMORY
 	}
 	strcpy(node->name, jdevice->key);
-
-	node->work_req = NULL;
 	
-	if((node->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+	if((node->enable_timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
 		OUT_OF_MEMORY
 	}
-	node->timer_req->data = node;
-	uv_timer_init(uv_default_loop(), node->timer_req);
-	uv_timer_start(node->timer_req, (void (*)(uv_timer_t *))update, node->interval*1000, -1);
+	if((node->update_timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	node->enable_timer_req->data = node;
+	node->update_timer_req->data = node;
+
+	uv_timer_init(uv_default_loop(), node->enable_timer_req);
+	uv_timer_init(uv_default_loop(), node->update_timer_req);
+
+	uv_timer_start(node->enable_timer_req, (void (*)(uv_timer_t *))enable, node->interval*1000, -1);
+	/*
+	 * Do an update when this device is added after 3 seconds
+	 * to make sure pilight is actually running.
+	 */
+	uv_timer_start(node->update_timer_req, (void (*)(uv_timer_t *))update, 3000, -1);
 
 	return NULL;
 }
 
 static int checkValues(struct JsonNode *code) {
-	double interval = INTERVAL;
+	double dbl = min_interval;
 
-	json_find_number(code, "poll-interval", &interval);
+	json_find_number(code, "poll-interval", &dbl);
 
-	if((int)round(interval) < INTERVAL) {
-		logprintf(LOG_ERR, "openweathermap poll-interval cannot be lower than %d", INTERVAL);
+	if((int)round(dbl) < min_interval) {
+		logprintf(LOG_ERR, "openweathermap poll-interval cannot be lower than %d", min_interval);
 		return 1;
 	}
 
@@ -410,18 +461,29 @@ static int createCode(struct JsonNode *code, char *message) {
 	if(json_find_string(code, "country", &country) == 0 &&
 	   json_find_string(code, "location", &location) == 0 &&
 	   json_find_number(code, "update", &itmp) == 0) {
+
 		time_t currenttime = time(NULL);
+		if(time_override > -1) {
+			currenttime = time_override;
+		}
+
 		while(tmp) {
 			if(strcmp(tmp->country, country) == 0
 			   && strcmp(tmp->location, location) == 0) {
-				if((currenttime-tmp->update) > INTERVAL) {
+				if((currenttime-tmp->update) > min_interval) {
 
-					if((tmp->work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+					uv_work_t *work_req = NULL;
+					if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
 						OUT_OF_MEMORY
 					}
-					tmp->work_req->data = tmp;
-					uv_queue_work(uv_default_loop(), tmp->work_req, thread, thread_free);
-					tmp->update = time(NULL);
+					work_req->data = tmp;
+					uv_queue_work(uv_default_loop(), work_req, thread, thread_free);
+
+					if(time_override > -1) {
+						tmp->update = time_override;
+					} else {
+						tmp->update = time(NULL);
+					}
 				}
 			}
 			tmp = tmp->next;
