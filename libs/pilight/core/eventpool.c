@@ -1185,6 +1185,15 @@ static void eventpool_execute(uv_async_t *handle) {
 int eventpool_gc(void) {
 	if(lockinit == 1) {
 		uv_mutex_lock(&listeners_lock);
+		struct eventqueue_t *queue = NULL;
+		while(eventqueue) {
+			queue = eventqueue;
+			if(eventqueue->data != NULL && eventqueue->done != NULL) {
+				eventqueue->done(eventqueue->data);
+			}
+			eventqueue = eventqueue->next;
+			FREE(queue);
+		}
 		struct eventpool_listener_t *listeners = NULL;
 		while(eventpool_listeners) {
 			listeners = eventpool_listeners;

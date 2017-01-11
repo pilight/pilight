@@ -21,8 +21,6 @@
 #include "../libs/pilight/core/json.h"
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/protocols/protocol.h"
-#include "../libs/pilight/protocols/API/cpu_temp.h"
-#include "../libs/pilight/protocols/API/datetime.h"
 #include "../libs/pilight/protocols/API/wunderground.h"
 
 #include "alltests.h"

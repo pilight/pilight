@@ -46,148 +46,137 @@
 #include "lirc.h"
 
 #ifndef _WIN32
+static uv_timer_t *timer_req = NULL;
+
 static char socket_path[BUFFER_SIZE];
-static int connected = 0;
 static int initialized = 0;
 static char *name = NULL;
 
-static void *thread(void *param);
+static void start(void);
 
 static void *reason_code_received_free(void *param) {
 	struct reason_code_received_t *data = param;
+
 	FREE(data);
 	return NULL;
 }
 
-static int callback(struct eventpool_fd_t *node, int state) {
-	struct timeval tv;
+static void read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
+	if(nread > 0) {
+		char **nlarray = NULL;
+		unsigned int e = explode(buf->base, "\n", &nlarray), t = 0;
 
-	switch(state) {
-		case EV_SOCKET_SUCCESS: {
-			int ret = 0;
-			struct sockaddr_un servaddr;
-
-			memset(&servaddr, '\0', sizeof(servaddr));
-			servaddr.sun_family = AF_UNIX;
-			strcpy(servaddr.sun_path, socket_path);
-
-			if((ret = connect(node->fd, (struct sockaddr *)&servaddr, sizeof(struct sockaddr))) < 0) {
-				if(errno == EINPROGRESS || errno == EISCONN) {
-					node->stage = EVENTPOOL_STAGE_CONNECTING;
-					eventpool_fd_enable_write(node);
-					return 0;
-				} else {
-					return -1;
+		for(t=0;t<e;t++) {
+			int x = 0, nrspace = 0;
+			for(x=0;x<strlen(nlarray[t]);x++) {
+				if(nlarray[t][x] == ' ') {
+					nrspace++;
 				}
-			} else if(ret == 0) {
-				node->stage = EVENTPOOL_STAGE_CONNECTING;
-				eventpool_fd_enable_write(node);
-				return 0;
-			} else {
-				return -1;
 			}
-			return -1;
-		} break;
-		case EV_CONNECT_SUCCESS: {
-			eventpool_fd_enable_read(node);
-			tv.tv_sec = 86400;
-			tv.tv_usec = 0;
-			threadpool_add_scheduled_work(name, thread, tv, NULL);
-			connected = 1;
-		} break;
-		case EV_READ: {
-			size_t bytes = 0;
-			char recvBuff[BUFFER_SIZE];
-			memset(&recvBuff, '\0', BUFFER_SIZE);
-			bytes = (int)recv(node->fd, recvBuff, BUFFER_SIZE, 0);
-			if(bytes <= 0) {
-				return -1;
-			} else {
-				char **nlarray = NULL;
-				unsigned int e = explode(recvBuff, "\n", &nlarray), t = 0;
-				for(t=0;t<e;t++) {
-					int x = 0, nrspace = 0;
-					for(x=0;x<strlen(nlarray[t]);x++) {
-						if(nlarray[t][x] == ' ') {
-							nrspace++;
-						}
-					}
-					if(nrspace >= 3) {
-						char **array = NULL;
-						unsigned int q = explode(nlarray[t], " ", &array);
-						if(q == 4) {
-							char *code1 = array[0];
-							char *rep = array[1];
-							char *btn = array[2];
-							char *remote = array[3];
-							char *y = NULL;
-							if((y = strstr(remote, "\n")) != NULL) {
-								size_t pos = (size_t)(y-remote);
-								remote[pos] = '\0';
-							}
-							int r = strtol(rep, NULL, 16);
+			if(nrspace >= 3) {
+				char **array = NULL;
+				unsigned int q = explode(nlarray[t], " ", &array);
 
-							struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
-							if(data == NULL) {
-								OUT_OF_MEMORY
-							}
-							snprintf(data->message, 1024, "{\"code\":\"%s\",\"repeat\":%d,\"button\":\"%s\",\"remote\":\"%s\"}", code1, r, btn, remote);
-							strncpy(data->origin, "receiver", 255);
-							data->protocol = lirc->id;
-							if(strlen(pilight_uuid) > 0) {
-								data->uuid = pilight_uuid;
-							} else {
-								data->uuid = NULL;
-							}
-							data->repeat = 1;
-							eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
-						}
-						array_free(&array, q);
+				if(q == 4) {
+					char *code1 = array[0];
+					char *rep = array[1];
+					char *btn = array[2];
+					char *remote = array[3];
+					char *y = NULL;
+					if((y = strstr(remote, "\n")) != NULL) {
+						size_t pos = (size_t)(y-remote);
+						remote[pos] = '\0';
 					}
+					int r = strtol(rep, NULL, 16);
+
+					struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
+					if(data == NULL) {
+						OUT_OF_MEMORY
+					}
+					snprintf(data->message, 1024, "{\"code\":\"%s\",\"repeat\":%d,\"button\":\"%s\",\"remote\":\"%s\"}", code1, r, btn, remote);
+					strncpy(data->origin, "receiver", 255);
+					data->protocol = lirc->id;
+					if(strlen(pilight_uuid) > 0) {
+						data->uuid = pilight_uuid;
+					} else {
+						data->uuid = NULL;
+					}
+					data->repeat = 1;
+
+					eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
 				}
-				array_free(&nlarray, t);
-				memset(recvBuff, '\0', BUFFER_SIZE);
+				array_free(&array, q);
 			}
-			eventpool_fd_enable_read(node);
-		} break;
-		case EV_CONNECT_FAILED:
-		case EV_DISCONNECTED:
-			tv.tv_sec = 1;
-			tv.tv_usec = 0;
-			threadpool_add_scheduled_work(name, thread, tv, (void *)NULL);
-			eventpool_fd_remove(node);
-			connected = 0;
-			return -1;
-		break;
+		}
+		array_free(&nlarray, t);
 	}
-	return 0;
-}
 
-static void *thread(void *param) {
-	if(connected == 0) {
-		connected = 1;
-		if(path_exists(socket_path) == EXIT_SUCCESS) {
-			eventpool_socket_add("lirc", NULL, -1, AF_UNIX, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_CLIENT, callback, NULL, NULL);
+	if(nread < 0) {
+		if(nread != UV_EOF) {
+			logprintf(LOG_ERR, "read_cb: %s\n", uv_strerror(nread));
+		} else {
+			uv_read_stop((uv_stream_t *)client);
+
+			timer_req = MALLOC(sizeof(uv_timer_t));
+			if(timer_req == NULL) {
+				OUT_OF_MEMORY
+			}
+
+			int r = 0;
+			if((r = uv_timer_init(uv_default_loop(), timer_req)) != 0) {
+				logprintf(LOG_ERR, "uv_timer_init: %s", uv_strerror(r));
+				FREE(timer_req);
+				free(buf->base);
+				return;
+			}
+
+			if((r = uv_timer_start(timer_req, (void (*)(uv_timer_t *))start, 1000, -1)) != 0) {
+				logprintf(LOG_ERR, "uv_timer_start: %s", uv_strerror(r));
+				FREE(timer_req);
+				free(buf->base);
+				return;
+			}
 		}
 	}
 
-	return NULL;
+	free(buf->base);
+	return;
+}
+
+static void alloc_cb(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
+	buf->base = malloc(suggested_size);
+	buf->len = suggested_size;
+	memset(buf->base, '\0', buf->len);
+}
+
+static void connect_cb(uv_connect_t *req, int status) {
+	if(status < 0) {
+		logprintf(LOG_ERR, "connect_cb: %s\n", uv_strerror(status));
+	} else {
+		uv_read_start((uv_stream_t *)req->handle, alloc_cb, read_cb);
+	}
+
+	FREE(req);
+}
+
+static void start(void) {
+	uv_connect_t *connect_req = MALLOC(sizeof(uv_connect_t));
+	uv_pipe_t *pipe_req = MALLOC(sizeof(uv_pipe_t));
+	uv_pipe_init(uv_default_loop(), pipe_req, 1);
+	uv_pipe_connect(connect_req, pipe_req, socket_path, connect_cb);	
 }
 
 static void *addDevice(int reason, void *param) {
-	struct threadpool_tasks_t *task = param;
-
-	struct timeval tv;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jchild = NULL;
 	int match = 0;
 
-	if(task->userdata == NULL) {
+	if(param == NULL) {
 		return NULL;
 	}
 
-	if((jdevice = json_first_child(task->userdata)) == NULL) {
+	if((jdevice = json_first_child(param)) == NULL) {
 		return NULL;
 	}
 	if((jprotocols = json_find_member(jdevice, "protocol")) != NULL) {
@@ -215,10 +204,8 @@ static void *addDevice(int reason, void *param) {
 	}
 	strcpy(name, jdevice->key);
 
-	tv.tv_sec = 1;
-	tv.tv_usec = 0;
-	threadpool_add_scheduled_work(jdevice->key, thread, tv, NULL);
-
+	start();
+	
 	return NULL;
 }
 

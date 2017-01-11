@@ -12,7 +12,7 @@
 #include "alltests.h"
 #include "gplv3.h"
 
-#define NRSUITS 14
+#define NRSUITS 128
 
 CuSuite *suite_common(void);
 CuSuite *suite_network(void);
@@ -36,6 +36,7 @@ CuSuite *suite_protocols_433(void);
 CuSuite *suite_protocols_api(void);
 CuSuite *suite_protocols_api_openweathermap(void);
 CuSuite *suite_protocols_api_wunderground(void);
+CuSuite *suite_protocols_api_lirc(void);
 
 CuString *output = NULL;
 CuSuite *suite = NULL;
@@ -197,6 +198,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_socket();
 	suites[nr++] = suite_protocols_433();
 	suites[nr++] = suite_protocols_api();
+	suites[nr++] = suite_protocols_api_lirc();
 	suites[nr++] = suite_protocols_api_openweathermap();
 	suites[nr++] = suite_protocols_api_wunderground();
 
