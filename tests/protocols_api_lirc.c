@@ -59,7 +59,6 @@ static void *received(int reason, void *param) {
 	}
 
 	if(x > 10) {
-		x++;
 		uv_stream_t *client_req = timer_req->data;
 		uv_timer_stop(timer_req);
 		uv_close((uv_handle_t *)pipe_req, close_cb);
@@ -68,8 +67,8 @@ static void *received(int reason, void *param) {
 		uv_fs_t req;
 		uv_fs_unlink(uv_default_loop(), &req, "/dev/lircd", NULL);
 
-		if(loop == 0) {
-			loop = 1;
+		if(loop < 2) {
+			loop++;
 			start();
 		} else {
 			uv_stop(uv_default_loop());
@@ -109,6 +108,7 @@ static void connect_cb(uv_stream_t *req, int status) {
 	CuAssertTrue(gtc, status >= 0);
 
 	i = 0;
+	x = 0;
 	uv_pipe_t *client_req = MALLOC(sizeof(uv_pipe_t));
 	CuAssertPtrNotNull(gtc, client_req);
 
