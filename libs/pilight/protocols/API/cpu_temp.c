@@ -34,7 +34,6 @@
 #include "../../core/gc.h"
 #include "cpu_temp.h"
 
-#ifndef _WIN32
 static char cpu_path[PATH_MAX] = "/sys/class/thermal/thermal_zone0/temp";
 
 typedef struct data_t {
@@ -220,7 +219,6 @@ static void gc(void) {
 		FREE(data);
 	}
 }
-#endif
 
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
@@ -241,13 +239,11 @@ void cpuTempInit(void) {
 	options_add(&cpuTemp->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&cpuTemp->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
-#ifndef _WIN32
 	// cpuTemp->initDev=&initDev;
 	cpuTemp->gc=&gc;
 
 	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
 	eventpool_callback(REASON_DEVICE_ADAPT, adaptDevice);
-#endif
 }
 
 #if defined(MODULE) && !defined(_WIN32)

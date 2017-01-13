@@ -1162,13 +1162,6 @@ void datetime_init(void) {
 }
 
 int datetime_gc(void) {
-/*
-	Extra checks for graceful (early)
-  stopping of pilight
-*/
-	if(mutex_init == 1) {
-		uv_mutex_unlock(&mutex_lock);
-	}
 	while(searchingtz > 0) {
 #ifdef _WIN32
   SleepEx(10, TRUE);

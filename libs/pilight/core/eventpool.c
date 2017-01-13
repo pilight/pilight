@@ -1013,7 +1013,9 @@ static void fib(uv_work_t *req) {
 }
 
 void eventpool_callback(int reason, void *(*func)(int, void *)) {
-	uv_mutex_lock(&listeners_lock);
+	if(lockinit == 1) {
+		uv_mutex_lock(&listeners_lock);
+	}
 	struct eventpool_listener_t *node = MALLOC(sizeof(struct eventpool_listener_t));
 	if(node == NULL) {
 		OUT_OF_MEMORY
@@ -1030,7 +1032,9 @@ void eventpool_callback(int reason, void *(*func)(int, void *)) {
 #else
 	__sync_add_and_fetch(&nrlisteners[reason], 1);
 #endif
-	uv_mutex_unlock(&listeners_lock);
+	if(lockinit == 1) {
+		uv_mutex_unlock(&listeners_lock);
+	}
 }
 
 void eventpool_trigger(int reason, void *(*done)(void *), void *data) {

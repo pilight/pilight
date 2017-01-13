@@ -226,11 +226,13 @@ static void http_wait(void *param) {
 			}
 		}
 next:
-		if(dowrite == 1) {
-			FD_SET((unsigned long)http_client, &fdswrite);
-		}
-		if(doread == 1) {
-			FD_SET((unsigned long)http_client, &fdsread);
+		if(http_client > 0) {
+			if(dowrite == 1) {
+				FD_SET((unsigned long)http_client, &fdswrite);
+			}
+			if(doread == 1) {
+				FD_SET((unsigned long)http_client, &fdsread);
+			}
 		}
 	}
 

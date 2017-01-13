@@ -1,5 +1,5 @@
 static const int alecto_wx500_nrtests = 0;
-static const struct raw_t alecto_wx500_tests[] = {
+static const struct raw_t alecto_wx500_tests[] = { 0
 // {
 	// /*
 	 // * Ideal situation with sync bits

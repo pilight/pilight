@@ -125,7 +125,9 @@ static void callback2(int code, char *data, int size, char *type, void *userdata
 								 * we are in.
 								 */
 #ifdef _WIN32
-								current = gmtime(&timenow);
+								struct tm *ptm;
+								ptm = gmtime(&timenow);
+								memcpy(&current, ptm, sizeof(struct tm));
 #else
 								gmtime_r(&timenow, &current);
 #endif
