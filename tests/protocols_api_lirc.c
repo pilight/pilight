@@ -179,6 +179,7 @@ static void test_protocols_api_lirc(CuTest *tc) {
 	eventpool_gc();
 	protocol_gc();
 
+	CuAssertIntEquals(tc, 2, loop);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 

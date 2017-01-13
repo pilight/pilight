@@ -37,6 +37,7 @@ CuSuite *suite_protocols_api(void);
 CuSuite *suite_protocols_api_openweathermap(void);
 CuSuite *suite_protocols_api_wunderground(void);
 CuSuite *suite_protocols_api_lirc(void);
+CuSuite *suite_protocols_api_xbmc(void);
 
 CuString *output = NULL;
 CuSuite *suite = NULL;
@@ -199,6 +200,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_protocols_433();
 	suites[nr++] = suite_protocols_api();
 	suites[nr++] = suite_protocols_api_lirc();
+	suites[nr++] = suite_protocols_api_xbmc();
 	suites[nr++] = suite_protocols_api_openweathermap();
 	suites[nr++] = suite_protocols_api_wunderground();
 
