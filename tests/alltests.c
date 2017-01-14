@@ -38,6 +38,8 @@ CuSuite *suite_protocols_api_openweathermap(void);
 CuSuite *suite_protocols_api_wunderground(void);
 CuSuite *suite_protocols_api_lirc(void);
 CuSuite *suite_protocols_api_xbmc(void);
+CuSuite *suite_protocols_core(void);
+CuSuite *suite_protocols_generic(void);
 
 CuString *output = NULL;
 CuSuite *suite = NULL;
@@ -203,6 +205,8 @@ int RunAllTests(void) {
 	suites[nr++] = suite_protocols_api_xbmc();
 	suites[nr++] = suite_protocols_api_openweathermap();
 	suites[nr++] = suite_protocols_api_wunderground();
+	suites[nr++] = suite_protocols_core();
+	suites[nr++] = suite_protocols_generic();
 
 	for(i=0;i<nr;i++) {
 		CuSuiteAddSuite(suite, suites[i]);

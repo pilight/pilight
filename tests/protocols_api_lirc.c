@@ -69,6 +69,12 @@ static void *received(int reason, void *param) {
 
 		if(loop < 2) {
 			loop++;
+
+			char msg[128];
+			sprintf(msg, "%s%d", "- round ", loop);
+			printf("[ %-48s ]\n", msg);
+			fflush(stdout);
+
 			start();
 		} else {
 			uv_stop(uv_default_loop());
@@ -132,6 +138,7 @@ static void connect_cb(uv_stream_t *req, int status) {
 
 static void start(void) {
 	int r = 0;
+
 	pipe_req = MALLOC(sizeof(uv_pipe_t));
 	CuAssertPtrNotNull(gtc, pipe_req);
 

@@ -374,6 +374,8 @@ static void write_cb(uv_poll_t *req) {
 	struct icmp *icmp = (struct icmp *)(ip + 1);
 	int icmplen = 0, r = 0, x = 0;
 
+	memset(&buf, '\0', 1500);
+
 	icmplen = initpacket(buf);
 
 	uv_os_fd_t fd = 0;

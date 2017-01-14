@@ -253,6 +253,7 @@ static void start(struct data_t *node) {
 
 static void *timer_cb(uv_timer_t *timer_req) {
 	start(timer_req->data);
+	return NULL;
 }
 
 static void *addDevice(int reason, void *param) {

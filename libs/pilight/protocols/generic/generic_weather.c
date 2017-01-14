@@ -41,6 +41,9 @@ static int createCode(struct JsonNode *code, char *message) {
 		return EXIT_FAILURE;
 	} else {
 		int x = snprintf(message, 255, "{");
+		if(id > -1) {
+			x += snprintf(&message[x], 255-x, "\"id\":%d,", batt);
+		}
 		if(temp > -998.0) {
 			x += snprintf(&message[x], 255-x, "\"temperature\":%.2f,", temp);
 		}

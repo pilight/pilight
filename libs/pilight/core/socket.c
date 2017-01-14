@@ -183,16 +183,16 @@ static void read_cb(uv_stream_t *client_req, ssize_t nread, const uv_buf_t *buf)
   if(nread < 0) {
 		struct sockaddr_in addr;
 		socklen_t socklen = sizeof(addr);
-		char buf[INET_ADDRSTRLEN+1];
+		char buf1[INET_ADDRSTRLEN+1];
 
 #ifdef _WIN32
 		if(getpeername((SOCKET)fd, (struct sockaddr *)&addr, &socklen) == 0) {
 #else
 		if(getpeername(fd, (struct sockaddr *)&addr, &socklen) == 0) {
 #endif
-			memset(&buf, '\0', INET_ADDRSTRLEN+1);
-			inet_ntop(AF_INET, (void *)&(addr.sin_addr), buf, INET_ADDRSTRLEN+1);
-			logprintf(LOG_DEBUG, "client disconnected, ip %s, port %d", buf, ntohs(addr.sin_port));
+			memset(&buf1, '\0', INET_ADDRSTRLEN+1);
+			inet_ntop(AF_INET, (void *)&(addr.sin_addr), buf1, INET_ADDRSTRLEN+1);
+			logprintf(LOG_DEBUG, "client disconnected, ip %s, port %d", buf1, ntohs(addr.sin_port));
 		}
 		struct reason_socket_disconnected_t *data1 = MALLOC(sizeof(struct reason_socket_disconnected_t));
 		if(data1 == NULL) {
@@ -205,6 +205,8 @@ static void read_cb(uv_stream_t *client_req, ssize_t nread, const uv_buf_t *buf)
 			FREE(data->buffer);
 		}
 		FREE(data);
+
+		free(buf->base);
     uv_close((uv_handle_t *)client_req, close_cb);
     return;
   }

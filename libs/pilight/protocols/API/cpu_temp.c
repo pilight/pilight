@@ -209,9 +209,6 @@ static void gc(void) {
 	while(data) {
 		tmp = data;
 		FREE(tmp->name);
-		if(tmp->timer_req != NULL) {
-			uv_timer_stop(tmp->timer_req);
-		}
 		data = data->next;
 		FREE(tmp);
 	}

@@ -42,6 +42,7 @@ static uv_thread_t pth;
 static int http_client = 0;
 static int http_server = 0;
 static int http_loop = 1;
+static int loops = 0;
 static int doquit = 0;
 static int is_ssl = 0;
 static int is_ssl_init = 0;
@@ -88,8 +89,8 @@ static void http_wait(void *param) {
 
 	while(http_loop) {
 		FD_SET((unsigned long)http_server, &fdsread);
-		tv.tv_sec = 0;
-		tv.tv_usec = 1000;
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
 
 		if(doquit == 2) {
 			http_loop = 0;
@@ -107,9 +108,6 @@ static void http_wait(void *param) {
 			http_client = 0;
 			http_server = 0;
 
-			protocol_gc();
-			eventpool_gc();
-			uv_stop(uv_default_loop());
 			break;
 		}
 
@@ -122,7 +120,7 @@ static void http_wait(void *param) {
 				n = select(http_server+1, &fdsread, &fdswrite, NULL, &tv);
 			}
 		} while(n == -1 && errno == EINTR && http_loop);
-		
+
 		if(http_loop == 0) {
 			doquit = 2;
 			http_loop = 1;
@@ -203,6 +201,13 @@ static void http_wait(void *param) {
 				}
 				CuAssertIntEquals(gtc, len, r);
 				doread = 1;
+
+				if(run == UPDATE || loops == 1) {
+					doquit = 2;
+				}
+				if(run == SUNRISE || run == SUNSET || run == MIDNIGHT) {
+					loops = 1;
+				}
 
 #ifdef _WIN32
 				closesocket(http_client);
@@ -293,7 +298,7 @@ static void *received(int reason, void *param) {
 					CuAssertStrEquals(gtc,
 						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":set}",
 						data->message);
-					doquit = 2;
+					uv_stop(uv_default_loop());
 				} break;
 			}
 		break;
@@ -332,7 +337,7 @@ static void *received(int reason, void *param) {
 					CuAssertStrEquals(gtc,
 						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":rise}",
 						data->message);
-					doquit = 2;
+					uv_stop(uv_default_loop());
 				} break;
 			}
 		break;
@@ -371,7 +376,7 @@ static void *received(int reason, void *param) {
 					CuAssertStrEquals(gtc,
 						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":set}",
 						data->message);
-					doquit = 2;
+					uv_stop(uv_default_loop());
 				} break;
 			}
 		break;
@@ -405,7 +410,7 @@ static void *received(int reason, void *param) {
 					CuAssertStrEquals(gtc,
 						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":set}",
 						data->message);
-					doquit = 2;
+					uv_stop(uv_default_loop());
 				} break;
 			}
 		break;
@@ -448,6 +453,9 @@ static void test_protocols_api_openweathermap(CuTest *tc) {
 
 	uv_thread_join(&pth);
 
+	protocol_gc();
+	eventpool_gc();
+
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -459,6 +467,7 @@ static void test_protocols_api_openweathermap_update(CuTest *tc) {
 
 	memtrack();	
 
+	loops = 0;
 	steps = 0;
 	http_loop = 1;
 	doquit = 0;
@@ -472,7 +481,7 @@ static void test_protocols_api_openweathermap_update(CuTest *tc) {
 
 	uv_thread_create(&pth, http_wait, NULL);
 	
-	strcpy(adapt, "{\"openweathermap\":{\"url\":\"http://127.0.0.1:10080/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493\"}}");
+	strcpy(adapt, "{\"openweathermap\":{\"time-override\":1484393226,\"url\":\"http://127.0.0.1:10080/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493\"}}");
 	strcpy(add, "{\"test\":{\"protocol\":[\"openweathermap\"],\"id\":[{\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
 
 	run = UPDATE;
@@ -491,6 +500,7 @@ static void test_protocols_api_openweathermap_sunrise(CuTest *tc) {
 
 	memtrack();
 
+	loops = 0;
 	steps = 0;
 	http_loop = 1;
 	doquit = 0;
@@ -523,6 +533,7 @@ static void test_protocols_api_openweathermap_sunset(CuTest *tc) {
 
 	memtrack();
 
+	loops = 0;
 	steps = 0;
 	http_loop = 1;
 	doquit = 0;
@@ -555,6 +566,7 @@ static void test_protocols_api_openweathermap_midnight(CuTest *tc) {
 
 	memtrack();
 
+	loops = 0;
 	steps = 0;
 	http_loop = 1;
 	doquit = 0;

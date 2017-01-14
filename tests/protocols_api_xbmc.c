@@ -172,6 +172,12 @@ static void wait(void *param) {
 			cmdnr = 0;
 			doquit = 0;
 			loops++;
+
+			char msg[128];
+			sprintf(msg, "%s%d", "- round ", loops);
+			printf("[ %-48s ]\n", msg);
+			fflush(stdout);
+
 #ifdef _WIN32
 			closesocket(xbmc_client);
 #else

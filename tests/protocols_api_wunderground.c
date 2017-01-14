@@ -303,7 +303,7 @@ static void *received(int reason, void *param) {
 				case 1: {
 					CuAssertIntEquals(gtc, 0, duration);
 					CuAssertStrEquals(gtc,
-						"{\"api\":\"abcdef123456\",\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":2.40,\"humidity\":99,\"update\":0,\"sunrise\":8.48,\"sunset\":16.46,\"sun\":\"set\"}",
+						"{\"api\":\"abcdef123456\",\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":2.40,\"humidity\":99,\"update\":0,\"sunrise\":8.48,\"sunset\":16.46,\"sun\":\"rise\"}",
 						data->message);
 					uv_stop(uv_default_loop());
 				} break;
@@ -488,7 +488,7 @@ static void test_protocols_api_wunderground_update(CuTest *tc) {
 
 	uv_thread_create(&pth, http_wait, NULL);
 	
-	strcpy(adapt, "{\"wunderground\":{\"url\":{\"astronomy\":\"http://127.0.0.1:10080/api/%s/geolookup/astronomy/q/%s/%s.json\",\"conditions\":\"http://127.0.0.1:10080/api/%s/geolookup/conditions/q/%s/%s.json\"}}}");
+	strcpy(adapt, "{\"wunderground\":{\"time-override\":1484393226,\"url\":{\"astronomy\":\"http://127.0.0.1:10080/api/%s/geolookup/astronomy/q/%s/%s.json\",\"conditions\":\"http://127.0.0.1:10080/api/%s/geolookup/conditions/q/%s/%s.json\"}}}");
 	strcpy(add, "{\"test\":{\"protocol\":[\"wunderground\"],\"id\":[{\"api\":\"abcdef123456\",\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
 
 	run = UPDATE;

@@ -599,12 +599,6 @@ static void gc(void) {
 		FREE(tmp->country);
 		FREE(tmp->location);
 		FREE(tmp->key);
-		if(tmp->update_timer_req != NULL) {
-			uv_timer_stop(tmp->update_timer_req);
-		}
-		if(tmp->enable_timer_req != NULL) {
-			uv_timer_stop(tmp->enable_timer_req);
-		}
 		data = data->next;
 		FREE(tmp);
 	}
