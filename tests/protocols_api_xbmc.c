@@ -128,7 +128,6 @@ static void wait(void *param) {
 	int addrlen = sizeof(addr);
 	char *message = NULL;
 	int n = 0, r = 0, len = 0;
-	int doread = 0, dowrite = 0;
 	fd_set fdsread;
 	fd_set fdswrite;
 
@@ -186,8 +185,6 @@ static void wait(void *param) {
 			xbmc_client = 0;
 		}
 
-		dowrite = 0;
-		doread = 0;
 		do {
 			if(xbmc_client > xbmc_server) {
 				n = select(xbmc_client+1, &fdsread, &fdswrite, NULL, &tv);
@@ -216,7 +213,6 @@ static void wait(void *param) {
 				if(xbmc_client == 0) {
 					xbmc_client = accept(xbmc_server, (struct sockaddr *)&addr, (socklen_t *)&addrlen);
 					CuAssertTrue(gtc, xbmc_client > 0);
-					dowrite = 1;
 				}
 			}
 			if(FD_ISSET(xbmc_client, &fdswrite)) {

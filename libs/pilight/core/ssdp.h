@@ -12,5 +12,6 @@
 void ssdp_start(void);
 void ssdp_seek(void);
 void ssdp_gc(void);
+void ssdp_override(char *, int);
 
 #endif

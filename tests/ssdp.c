@@ -164,6 +164,8 @@ static void test_ssdp_client(CuTest *tc) {
 
 	memtrack();
 
+	check = 0;
+
 	gtc = tc;
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
@@ -217,7 +219,11 @@ static void test_ssdp_server(CuTest *tc) {
 
 	memtrack();
 
+	check = 0;
+
 	gtc = tc;
+
+	ssdp_override("123.123.123.123", 1234);
 
 	ssdp_start();
 	ssdp_seek();
@@ -246,10 +252,10 @@ static void test_ssdp_server(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
+	ssdp_override(NULL, -1);
 	eventpool_gc();
 
 	CuAssertIntEquals(tc, 1, check);
-
 	CuAssertIntEquals(tc, 0, xfree());
 }
 

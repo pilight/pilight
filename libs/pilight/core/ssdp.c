@@ -53,6 +53,12 @@ struct data_t {
 	struct data_t *next;
 } data_t;
 
+/*
+ * Override values for unit testing
+ */
+static int ssdp_override_port = -1;
+static char ssdp_override_server[INET_ADDRSTRLEN+1] = { 0 };
+
 static uv_mutex_t nodes_lock;
 // static pthread_mutexattr_t nodes_attr;
 static int lock_init = 0;
@@ -61,6 +67,15 @@ static struct data_t *data = NULL;
 
 static void close_cb(uv_handle_t *handle) {
 	FREE(handle);
+}
+
+void ssdp_override(char *server, int port) {
+	ssdp_override_port = port;
+	if(server == NULL) {
+		memset(&ssdp_override_server, '\0', INET_ADDRSTRLEN+1);
+	} else {
+		strcpy(ssdp_override_server, server);
+	}
 }
 
 void ssdp_gc(void) {
@@ -158,7 +173,7 @@ static int ssdp_create_header(char ***header) {
 
 	if((nrdevs = inetdevs(&devs)) > 0) {
 		for(x=0;x<nrdevs;x++) {
-			if(dev2ip(devs[x], &p, AF_INET) == 0) {
+			if(strlen(ssdp_override_server) > 0 || dev2ip(devs[x], &p, AF_INET) == 0) {
 				if((id = genuuid(devs[x])) == NULL) {
 					logprintf(LOG_ERR, "could not generate the device uuid");
 					continue;
@@ -171,6 +186,13 @@ static int ssdp_create_header(char ***header) {
 					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
+				int port = socket_get_port();
+				if(ssdp_override_port > -1) {
+					port = ssdp_override_port;
+				}
+				if(strlen(ssdp_override_server) > 0) {
+					strcpy(host, ssdp_override_server);
+				}
 				memset((*header)[nrheader], '\0', BUFFER_SIZE);
 				sprintf((*header)[nrheader], "NOTIFY * HTTP/1.1\r\n"
 					"Host:239.255.255.250:1900\r\n"
@@ -179,7 +201,7 @@ static int ssdp_create_header(char ***header) {
 					"NT:urn:schemas-upnp-org:service:pilight:1\r\n"
 					"USN:uuid:%s::urn:schemas-upnp-org:service:pilight:1\r\n"
 					"NTS:ssdp:alive\r\n"
-					"SERVER:%s UPnP/1.1 pilight (%s)/%s\r\n\r\n", host, socket_get_port(), id, distro, name, PILIGHT_VERSION);
+					"SERVER:%s UPnP/1.1 pilight (%s)/%s\r\n\r\n", host, port, id, distro, name, PILIGHT_VERSION);
 				nrheader++;
 				FREE(id);
 			}
@@ -274,12 +296,12 @@ static void alloc(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
 	memset(buf->base, 0, len);
 }
 
-static void on_read(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const struct sockaddr *addr, unsigned int port) {
+static void read_cb(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const struct sockaddr *addr, unsigned int port) {
 	struct data_t *node = stream->data;
 	char name[BUFFER_SIZE], buffer[BUFFER_SIZE];
 	char *p = name;
 
-	if(node->type == SERVER) {		
+	if(node->type == SERVER) {
 		if(strstr(buf->base, "urn:schemas-upnp-org:service:pilight:1") != NULL) {
 			char **header = NULL;
 			int nrheader = ssdp_create_header(&header), x = 0;
@@ -368,7 +390,7 @@ void ssdp_start(void) {
 	}	
 	
 	struct data_t *node = MALLOC(sizeof(struct data_t));
-	node->type = CLIENT;
+	node->type = SERVER;
 	node->timer_req = NULL;
 	if((node->ssdp_req = MALLOC(sizeof(uv_udp_t))) == NULL) {
 		OUT_OF_MEMORY
@@ -398,7 +420,7 @@ void ssdp_start(void) {
 		logprintf(LOG_ERR, "uv_udp_set_membership: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
 		goto close;
 	}
-	r = uv_udp_recv_start(node->ssdp_req, alloc, on_read);
+	r = uv_udp_recv_start(node->ssdp_req, alloc, read_cb);
 	if(r != 0) {
 		logprintf(LOG_ERR, "uv_udp_recv_start: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
 		goto close;
@@ -408,6 +430,8 @@ void ssdp_start(void) {
 	node->next = data;
 	data = node;
 	uv_mutex_unlock(&nodes_lock);
+
+	logprintf(LOG_INFO, "ssdp server started");
 
 	return;
 
@@ -491,7 +515,7 @@ void ssdp_seek(void) {
 		logprintf(LOG_ERR, "uv_udp_send: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
 		goto close;
 	}
-	r = uv_udp_recv_start(node->ssdp_req, alloc, on_read);
+	r = uv_udp_recv_start(node->ssdp_req, alloc, read_cb);
 	if(r != 0) {
 		logprintf(LOG_ERR, "uv_udp_recv_start: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
 		goto close;

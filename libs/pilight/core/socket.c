@@ -432,6 +432,9 @@ int socket_start(unsigned short port) {
 		logprintf(LOG_ERR, "uv_listen: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
 		goto close;
 	}
+
+	logprintf(LOG_INFO, "socket server started at port #%d", port);
+
 	return 0;
 
 close:
