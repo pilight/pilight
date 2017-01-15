@@ -23,7 +23,6 @@
 #include "libs/libuv/uv.h"
 #include "libs/pilight/core/http.h"
 #include "libs/pilight/core/eventpool.h"
-#include "libs/pilight/core/timerpool.h"
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/common.h"
 #include "libs/pilight/core/log.h"
@@ -54,6 +53,7 @@ typedef struct ssdp_list_t {
 } ssdp_list_t;
 
 static void signal_cb(uv_signal_t *, int);
+static uv_timer_t *ssdp_reseek_req = NULL;
 
 static int main_gc(void) {
 	if(filters != NULL) {
@@ -67,6 +67,7 @@ static int main_gc(void) {
 		FREE(tmp);
 	}
 
+	socket_gc();
 	protocol_gc();
 	eventpool_gc();
 
@@ -100,69 +101,33 @@ static void alloc_cb(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
 	memset(buf->base, 0, len);
 }
 
-static void on_read(uv_stream_t *server, ssize_t nread, const uv_buf_t *buf) {
-  if(nread == -1) {
-    logprintf(LOG_ERR, "socket read failed", "");
-    return;
-  }
-	if(strncmp(buf->base, "{\"status\":\"success\"}", 20) != 0) {
-		char **array = NULL;
-		char *protocol = NULL;
-		unsigned int n = explode(buf->base, "\n", &array), i = 0;
-		for(i=0;i<n;i++) {
-			if(json_validate(array[i]) == true) {
-				struct JsonNode *jcontent = json_decode(array[i]);
-				struct JsonNode *jtype = json_find_member(jcontent, "type");
-				if(jtype != NULL) {
-					json_remove_from_parent(jtype);
-					json_delete(jtype);
-				}
-				if(filteropt == 1) {
-					int filtered = 0, j = 0;
-					if(json_find_string(jcontent, "protocol", &protocol) == 0) {
-						for(j=0;j<nrfilter;j++) {
-							if(strcmp(filters[j], protocol) == 0) {
-								filtered = 1;
-								break;
-							}
-						}
-					}
-					if(filtered == 0) {
-						char *content = json_stringify(jcontent, "\t");
-						printf("%s\n", content);
-						json_free(content);
-					}
-				} else {
-					char *content = json_stringify(jcontent, "\t");
-					printf("%s\n", content);
-					json_free(content);
-				}
-				json_delete(jcontent);
-			}
-		}
-		array_free(&array, n);
+static void *socket_received(int reason, void *param) {
+	struct reason_socket_received_t *data = param;
+
+	if(strcmp(data->buffer, "1") != 0 &&
+	   strncmp(data->buffer, "{\"status\":\"success\"}", 20) != 0) {
+		struct JsonNode *json = json_decode(data->buffer);
+		char *out = json_stringify(json, "\t");
+		printf("%s\n", out);
+		json_delete(json);
+		json_free(out);
 	}
-	free(buf->base);
+
+	return NULL;
 }
 
-static void on_write(uv_write_t *req, int status) {
-	uv_read_start(req->handle, alloc_cb, on_read);
-	FREE(req);
+static void *socket_disconnected(int reason, void *param) {
+	struct reason_socket_disconnected_t *data = param;
+
+	socket_close(data->fd);
+	signal_cb(NULL, SIGINT);
+
+	return NULL;
 }
 
-static void on_connect(uv_connect_t *req, int status) {
-  if(status != 0) {
-    logprintf(LOG_ERR, "socket connect failed", "");
-    return;
-	}
+static void *socket_connected(int reason, void *param) {
+	struct reason_socket_connected_t *data = param;
 
-	uv_write_t *write_req = NULL;
-	if((write_req = MALLOC(sizeof(uv_write_t))) == NULL) {
-		OUT_OF_MEMORY
-	}
-	char out[BUFFER_SIZE];
-	uv_buf_t buf = uv_buf_init(out, BUFFER_SIZE);
-	
 	connected = 1;
 
 	struct JsonNode *jclient = json_mkobject();
@@ -172,59 +137,23 @@ static void on_connect(uv_connect_t *req, int status) {
 	json_append_member(joptions, "stats", json_mknumber(stats, 0));
 	json_append_member(jclient, "options", joptions);
 
-	buf.base = json_stringify(jclient, NULL);
-	buf.len = strlen(buf.base);
+	char *out = json_stringify(jclient, NULL);
+
+	socket_write(data->fd, out);
 
 	json_delete(jclient);
-
-	uv_write(write_req, req->handle, &buf, 1, on_write);
-	FREE(buf.base);
-	FREE(req);
+	json_free(out);
+	return NULL;
 }
 
 static void connect_to_server(char *server, int port) {
-#ifdef _WIN32
-	WSADATA wsa;
+	socket_connect(server, port);
 
-	if(WSAStartup(0x202, &wsa) != 0) {
-		logprintf(LOG_ERR, "could not initialize new socket");
-		exit(EXIT_FAILURE);
-	}
-#endif
-
-	struct sockaddr_in addr;
-	uv_os_sock_t sock;
-	uv_tcp_t *client_req = NULL;
-	uv_connect_t *connect_req = NULL;	
 	uv_timer_t *socket_timeout_req = NULL;
 	
-	if((client_req = MALLOC(sizeof(uv_tcp_t))) == NULL) {
-		OUT_OF_MEMORY
-	}
-
-	if((connect_req = MALLOC(sizeof(uv_connect_t))) == NULL) {
-		OUT_OF_MEMORY
-	}
-
 	if((socket_timeout_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
 		OUT_OF_MEMORY
 	}
-
-  sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-
-#ifndef _WIN32
-  {
-    /* Allow reuse of the port. */
-    int yes = 1;
-    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
-  }
-#endif
-
-	uv_tcp_init(uv_default_loop(), client_req);
-	uv_tcp_open(client_req, sock);
-	uv_ip4_addr(server, port, &addr);
-
-	uv_tcp_connect(connect_req, client_req, (const struct sockaddr *)&addr, on_connect);
 
 	uv_timer_init(uv_default_loop(), socket_timeout_req);
 	uv_timer_start(socket_timeout_req, timeout_cb, 1000, 0);	
@@ -279,6 +208,7 @@ static void *ssdp_found(int reason, void *param) {
 		} else {
 			if(strcmp(data->name, instance) == 0) {
 				found = 1;
+				uv_timer_stop(ssdp_reseek_req);
 				connect_to_server(data->ip, data->port);
 			}
 		}
@@ -461,12 +391,14 @@ int main(int argc, char **argv) {
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
 	eventpool_callback(REASON_SSDP_RECEIVED, ssdp_found);
+	eventpool_callback(REASON_SOCKET_CONNECTED, socket_connected);
+	eventpool_callback(REASON_SOCKET_DISCONNECTED, socket_disconnected);
+	eventpool_callback(REASON_SOCKET_RECEIVED, socket_received);
 
 	if(server != NULL && port > 0) {
 		connect_to_server(server, port);
 	} else {
 		ssdp_seek();
-		uv_timer_t *ssdp_reseek_req = NULL;
 		if((ssdp_reseek_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
 			OUT_OF_MEMORY
 		}

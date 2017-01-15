@@ -29,17 +29,19 @@
 #include "gc.h"
 #include "socket.h"
 
-typedef struct client_list_t {
-	uv_connect_t *req;
-	int fd;
-	struct client_list_t *next;
-} client_list_t;
-
 typedef struct data_t {
 	int steps;
 	char *buffer;
 	size_t buflen;
 } data_t;
+
+typedef struct client_list_t {
+	uv_stream_t *req;
+	int fd;
+	struct data_t *data;
+
+	struct client_list_t *next;
+} client_list_t;
 
 static uv_mutex_t lock;
 static int lock_init = 0;
@@ -71,7 +73,12 @@ int socket_gc(void) {
 	struct client_list_t *tmp = NULL;
 	while(client_list) {
 		tmp = client_list;
-		// FREE(tmp->req);
+		if(tmp->data != NULL) {
+			if(tmp->data->buflen > 0) {
+				FREE(tmp->data->buffer);
+			}
+			FREE(tmp->data);
+		}
 		client_list= client_list->next;
 		FREE(tmp);
 	}
@@ -113,11 +120,10 @@ int socket_recv(char *buffer, int bytes, char **data, size_t *ptr) {
 			} else {
 				if(l == 0) {
 					(*data)[*ptr-len] = '\0'; // remove delimiter
-					return *ptr;
 				} else {
 					(*data)[*ptr] = '\0';
-					return 0;
 				}
+				return *ptr;
 				if(strcmp(*data, "1") == 0 || strcmp(*data, "BEAT") == 0) {
 					FREE(*data);
 					return *ptr;
@@ -172,7 +178,7 @@ static void read_cb(uv_stream_t *client_req, ssize_t nread, const uv_buf_t *buf)
 	uv_os_fd_t fd = 0;
 
 	struct data_t *data = client_req->data;
-	
+
 	int r = uv_fileno((uv_handle_t *)client_req, &fd);
 	if(r != 0) {
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
@@ -251,11 +257,11 @@ static void read_cb(uv_stream_t *client_req, ssize_t nread, const uv_buf_t *buf)
 	}
 }
 
-static void connection_cb(uv_stream_t *server_req, int status) {
+static void connect_cb(uv_stream_t *server_req, int status) {
 	uv_os_fd_t fd;
 	int r = 0;
 	if(status < 0) {
-		logprintf(LOG_ERR, "connection_cb: %s (%s #%d)", uv_strerror(status), __FILE__, __LINE__);
+		logprintf(LOG_ERR, "connection_cb: %s", uv_strerror(status));
 		return;
 	}
 
@@ -265,7 +271,7 @@ static void connection_cb(uv_stream_t *server_req, int status) {
 	}
 	r = uv_tcp_init(uv_default_loop(), client_req);
 	if(r != 0) {
-		logprintf(LOG_ERR, "uv_tcp_init: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
+		logprintf(LOG_ERR, "uv_tcp_init: %s", uv_strerror(r));
 		return;
 	}
 
@@ -308,6 +314,24 @@ static void connection_cb(uv_stream_t *server_req, int status) {
 				logprintf(LOG_DEBUG, "client fd: %d", fd);
 			}
 
+			if(lock_init == 0) {
+				lock_init = 1;
+				uv_mutex_init(&lock);
+			}
+
+			struct client_list_t *node = MALLOC(sizeof(struct client_list_t));
+			if(node == NULL) {
+				OUT_OF_MEMORY
+			}
+			node->req = (uv_stream_t *)client_req;
+			node->fd = (int)fd;
+			node->data = data;
+
+			uv_mutex_lock(&lock);
+			node->next = client_list;
+			client_list = node;
+			uv_mutex_unlock(&lock);
+
 			struct reason_socket_connected_t *data1 = MALLOC(sizeof(struct reason_socket_connected_t));
 			if(data1 == NULL) {
 				OUT_OF_MEMORY
@@ -323,27 +347,49 @@ static void connection_cb(uv_stream_t *server_req, int status) {
 	}	
 }
 
-void on_connect(uv_connect_t *connection_req, int status) {
+static void on_write(uv_write_t *req, int status) {
+	uv_buf_t *buf = req->data;
+
+	buf->base[buf->len-1] = '\0';
+	buf->base[buf->len-2] = '\n';
+
+	logprintf(LOG_DEBUG, "socket write succeeded: %s", buf->base);
+
+	FREE(buf->base);
+	FREE(buf);
+	FREE(req);
+}
+
+void on_connect(uv_connect_t *connect_req, int status) {
 	uv_os_fd_t fd = 0;
-	int r = uv_fileno((uv_handle_t *)connection_req->handle, &fd);
+	int r = uv_fileno((uv_handle_t *)connect_req->handle, &fd);
 	if(r != 0) {
-		FREE(connection_req);
+		FREE(connect_req);
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
 		return;
 	}
 
-	FREE(connection_req);
+	struct data_t *data = MALLOC(sizeof(struct data_t));
+	if(data == NULL) {
+		OUT_OF_MEMORY
+	}
+	memset(data, '\0', sizeof(struct data_t));
+	data->buffer = NULL;
+	data->buflen = 0;
+	connect_req->handle->data = data;
 
 	if(lock_init == 0) {
 		lock_init = 1;
 		uv_mutex_init(&lock);
 	}
+
 	struct client_list_t *node = MALLOC(sizeof(struct client_list_t));
 	if(node == NULL) {
 		OUT_OF_MEMORY
 	}
-	node->req = connection_req;
+	node->req = connect_req->handle;
 	node->fd = (int)fd;
+	node->data = data;
 
 	uv_mutex_lock(&lock);
 	node->next = client_list;
@@ -356,9 +402,22 @@ void on_connect(uv_connect_t *connection_req, int status) {
 	}
 	data1->fd = (int)fd;
 	eventpool_trigger(REASON_SOCKET_CONNECTED, reason_socket_connected_free, data1);
+
+	uv_read_start((uv_stream_t *)connect_req->handle, alloc_cb, read_cb);
+
+	FREE(connect_req);
 }
 
 int socket_connect(char *address, unsigned short port) {
+#ifdef _WIN32
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "WSAStartup");
+		exit(EXIT_FAILURE);
+	}
+#endif
+
 	struct sockaddr_in addr;
 	int r = 0;
 
@@ -369,13 +428,13 @@ int socket_connect(char *address, unsigned short port) {
 
 	r = uv_tcp_init(uv_default_loop(), tcp_req);
 	if(r != 0) {
-		logprintf(LOG_ERR, "uv_tcp_init: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
+		logprintf(LOG_ERR, "uv_tcp_init: %s", uv_strerror(r));
 		goto close;
 	}
 
 	r = uv_ip4_addr(address, port, &addr);
 	if(r != 0) {
-		logprintf(LOG_ERR, "uv_ip4_addr: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
+		logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
 		goto close;
 	}
 
@@ -411,25 +470,25 @@ int socket_start(unsigned short port) {
 
 	r = uv_tcp_init(uv_default_loop(), tcp_req);
 	if(r != 0) {
-		logprintf(LOG_ERR, "uv_tcp_init: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
+		logprintf(LOG_ERR, "uv_tcp_init: %s", uv_strerror(r));
 		goto close;
 	}
 
 	r = uv_ip4_addr("0.0.0.0", port, &addr);
 	if(r != 0) {
-		logprintf(LOG_ERR, "uv_ip4_addr: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
+		logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
 		goto close;
 	}
 
-	r = uv_tcp_bind(tcp_req, (const struct sockaddr*)&addr, 0);
+	r = uv_tcp_bind(tcp_req, (const struct sockaddr *)&addr, 0);
 	if(r != 0) {
-		logprintf(LOG_ERR, "uv_tcp_bind: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
+		logprintf(LOG_ERR, "uv_tcp_bind: %s", uv_strerror(r));
 		goto close;
 	}
 
-	r = uv_listen((uv_stream_t *)tcp_req, 3, connection_cb);
+	r = uv_listen((uv_stream_t *)tcp_req, 3, connect_cb);
 	if(r != 0) {
-		logprintf(LOG_ERR, "uv_listen: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
+		logprintf(LOG_ERR, "uv_listen: %s", uv_strerror(r));
 		goto close;
 	}
 
@@ -469,6 +528,12 @@ static void client_remove(int fd) {
 				prevP->next = currP->next;
 			}
 
+			if(currP->data != NULL) {
+				if(currP->data->buflen > 0) {
+					FREE(currP->data->buffer);
+				}
+				FREE(currP->data);
+			}
 			FREE(currP);
 			break;
 		}
@@ -493,7 +558,7 @@ void socket_close(int sockfd) {
 		}
 
 		client_remove(sockfd);
-		
+
 #ifdef _WIN32
 		shutdown(sockfd, SD_BOTH);
 #else
@@ -501,19 +566,6 @@ void socket_close(int sockfd) {
 #endif
 		close(sockfd);
 	}
-}
-
-void write_cb(uv_write_t *req, int status) {
-	uv_buf_t *buf = req->data;
-
-	buf->base[buf->len-1] = '\0';
-	buf->base[buf->len-2] = '\n';
-
-	logprintf(LOG_DEBUG, "socket write succeeded: %s", buf->base);
-
-	FREE(buf->base);
-	FREE(buf);
-	FREE(req);
 }
 
 int socket_write(int sockfd, const char *msg, ...) {
@@ -546,7 +598,7 @@ int socket_write(int sockfd, const char *msg, ...) {
 
 		memcpy(&sendBuff[n-len], EOSS, (size_t)len);
 
-		uv_connect_t *req = NULL;
+		uv_stream_t *req = NULL;
 		uv_mutex_lock(&lock);
 		struct client_list_t *tmp = client_list;
 		while(tmp) {
@@ -559,24 +611,24 @@ int socket_write(int sockfd, const char *msg, ...) {
 		uv_mutex_unlock(&lock);
 
 		if(req != NULL) {
+			uv_write_t *write_req = NULL;
+			if((write_req = MALLOC(sizeof(uv_write_t))) == NULL) {
+				OUT_OF_MEMORY
+			}
+
 			uv_buf_t *buf = MALLOC(sizeof(uv_buf_t));
+			if(buf == NULL) {
+				OUT_OF_MEMORY
+			}
 			buf->len = strlen(sendBuff);
+
 			if((buf->base = MALLOC(buf->len+1)) == NULL) {
 				OUT_OF_MEMORY
 			}
 			strncpy(buf->base, sendBuff, buf->len);
-			
-			uv_write_t *write_req = MALLOC(sizeof(uv_write_t));
-			if(write_req == NULL) {
-				OUT_OF_MEMORY
-			}
-			write_req->data = (void *)buf;
 
-			int r = uv_write(write_req, (uv_stream_t *)req, buf, 1, write_cb);
-			if(r != 0) {
-				logprintf(LOG_ERR, "uv_write: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
-				return -1;
-			}
+			write_req->data = buf;
+			uv_write(write_req, req, buf, 1, on_write);
 		}
 
 		FREE(sendBuff);
