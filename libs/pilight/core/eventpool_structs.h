@@ -69,6 +69,7 @@ typedef struct reason_socket_received_t {
 	int fd;
 	char *buffer;
 	char type[256];
+	int endpoint;
 } reason_socket_received_t;
 
 typedef struct reason_socket_send_t {

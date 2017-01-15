@@ -21,7 +21,6 @@
 #define CLIENT	0
 #define SERVER	1
 
-static int run = CLIENT;
 static int check = 0;
 static uv_timer_t *timer_req = NULL;
 static uv_async_t *async_close_req = NULL;
@@ -49,7 +48,11 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 
 static void *socket_received(int reason, void *param) {
 	struct reason_socket_received_t *data = param;
-	CuAssertStrEquals(gtc, "{\"foo\":\"bar\"}", data->buffer);
+	if(data->endpoint == SOCKET_SERVER) {
+		CuAssertStrEquals(gtc, "{\"foo\":\"bar\",\"type\":\"server\"}", data->buffer);
+	} else {
+		CuAssertStrEquals(gtc, "{\"foo\":\"bar\",\"type\":\"client\"}", data->buffer);
+	}
 	check++;
 
 	return NULL;
@@ -74,13 +77,18 @@ static void *socket_connected(int reason, void *param) {
 		memset(&buf, '\0', INET_ADDRSTRLEN+1);
 		inet_ntop(AF_INET, (void *)&(addr.sin_addr), buf, INET_ADDRSTRLEN+1);
 
-		if((run == SERVER && htons(addr.sin_port) == 15001) ||
-			 (run == CLIENT && htons(addr.sin_port) != 15001)) {
-			int r = socket_write(data->fd, "{\"foo\":\"bar\"}");
-			CuAssertIntEquals(gtc, 15, r);
+		if(htons(addr.sin_port) == 15001) {
+			int r = socket_write(data->fd, "{\"foo\":\"bar\",\"type\":\"server\"}");
+			CuAssertIntEquals(gtc, 31, r);
 
-			r = socket_write(data->fd, "{\"foo\":\"bar\"}");
-			CuAssertIntEquals(gtc, 15, r);
+			r = socket_write(data->fd, "{\"foo\":\"bar\",\"type\":\"server\"}");
+			CuAssertIntEquals(gtc, 31, r);
+		} else {
+			int r = socket_write(data->fd, "{\"foo\":\"bar\",\"type\":\"client\"}");
+			CuAssertIntEquals(gtc, 31, r);
+
+			r = socket_write(data->fd, "{\"foo\":\"bar\",\"type\":\"client\"}");
+			CuAssertIntEquals(gtc, 31, r);
 		}
 	}
 
@@ -107,13 +115,13 @@ static void on_read(uv_stream_t *server, ssize_t nread, const uv_buf_t *buf) {
 			char **array = NULL;
 			int n = explode(data, "\n", &array), i = 0;
 			for(i=0;i<n;i++) {
-				CuAssertStrEquals(gtc, "{\"foo\":\"bar\"}", array[i]);
+				CuAssertStrEquals(gtc, "{\"foo\":\"bar\",\"type\":\"client\"}", array[i]);
 				check++;
 			}
 			array_free(&array, n);
 			FREE(data);
 		} else {
-			CuAssertStrEquals(gtc, "{\"foo\":\"bar\"}", buf->base);
+			CuAssertStrEquals(gtc, "{\"foo\":\"bar\",\"type\":\"client\"}", buf->base);
 			check++;
 		}
 	}
@@ -128,7 +136,7 @@ static void test_socket_client(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
-	run = CLIENT;
+	check = 0;
 
 	memtrack();
 
@@ -206,7 +214,7 @@ static void test_socket_server(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
-	run = SERVER;
+	check = 0;
 
 	memtrack();
 
@@ -246,7 +254,7 @@ static void test_socket_server(CuTest *tc) {
 
 	eventpool_gc();
 	
-	CuAssertIntEquals(tc, 2, check);
+	CuAssertIntEquals(tc, 4, check);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 

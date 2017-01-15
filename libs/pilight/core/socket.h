@@ -12,6 +12,9 @@
 #include <time.h>
 #include "eventpool.h"
 
+#define SOCKET_SERVER	0
+#define SOCKET_CLIENT	1
+
 /* Start the socket server */
 int socket_start(unsigned short);
 int socket_connect(char *, unsigned short);

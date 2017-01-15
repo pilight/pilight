@@ -33,6 +33,7 @@ typedef struct data_t {
 	int steps;
 	char *buffer;
 	size_t buflen;
+	int endpoint;
 } data_t;
 
 typedef struct client_list_t {
@@ -76,13 +77,19 @@ int socket_gc(void) {
 		if(tmp->data != NULL) {
 			if(tmp->data->buflen > 0) {
 				FREE(tmp->data->buffer);
+				tmp->data->buflen = 0;
 			}
 			FREE(tmp->data);
+			tmp->data = NULL;
 		}
-		client_list= client_list->next;
+		client_list = client_list->next;
 		FREE(tmp);
 	}
 	uv_mutex_unlock(&lock);
+
+	socket_started = 0;
+	static_port = 0;
+	client_list = NULL;
 
 	logprintf(LOG_DEBUG, "garbage collected socket library");
 	return EXIT_SUCCESS;
@@ -209,8 +216,10 @@ static void read_cb(uv_stream_t *client_req, ssize_t nread, const uv_buf_t *buf)
 
 		if(data->buflen > 0) {
 			FREE(data->buffer);
+			data->buflen = 0;
 		}
 		FREE(data);
+		client_req->data = NULL;
 
 		free(buf->base);
     uv_close((uv_handle_t *)client_req, close_cb);
@@ -234,6 +243,7 @@ static void read_cb(uv_stream_t *client_req, ssize_t nread, const uv_buf_t *buf)
 					}
 					strcpy(data1->buffer, array[q]);
 					strncpy(data1->type, "socket", 255);
+					data1->endpoint = data->endpoint;
 					eventpool_trigger(REASON_SOCKET_RECEIVED, reason_socket_received_free, data1);
 				}
 				array_free(&array, n);
@@ -248,6 +258,7 @@ static void read_cb(uv_stream_t *client_req, ssize_t nread, const uv_buf_t *buf)
 				}
 				strcpy(data1->buffer, data->buffer);
 				strncpy(data1->type, "socket", 255);
+				data1->endpoint = data->endpoint;
 				eventpool_trigger(REASON_SOCKET_RECEIVED, reason_socket_received_free, data1);
 			}
 			FREE(data->buffer);
@@ -282,8 +293,9 @@ static void connect_cb(uv_stream_t *server_req, int status) {
 	memset(data, '\0', sizeof(struct data_t));
 	data->buffer = NULL;
 	data->buflen = 0;
+	data->endpoint = SOCKET_SERVER;
 	client_req->data = data;
-	
+
 	if(uv_accept(server_req, (uv_stream_t *)client_req) == 0) {
 
 		struct sockaddr_in addr;
@@ -376,6 +388,7 @@ void on_connect(uv_connect_t *connect_req, int status) {
 	memset(data, '\0', sizeof(struct data_t));
 	data->buffer = NULL;
 	data->buflen = 0;
+	data->endpoint = SOCKET_CLIENT;
 	connect_req->handle->data = data;
 
 	if(lock_init == 0) {
@@ -531,6 +544,7 @@ static void client_remove(int fd) {
 			if(currP->data != NULL) {
 				if(currP->data->buflen > 0) {
 					FREE(currP->data->buffer);
+					currP->data->buflen = 0;
 				}
 				FREE(currP->data);
 			}
