@@ -36,7 +36,7 @@ if [ $# -eq 1 ]; then
 	fi
 	if [ "$1" == "install" ]; then
 		if [ ! -f Makefile ]; then
-			cmake .
+			cmake . -DCMAKE_C_FLAGS=-fomit-frame-pointer
 		fi
 		make install;
 	fi
@@ -109,7 +109,7 @@ else
 		fi
 		mkdir build
 		cd build
-		cmake ..
+		cmake .. -DCMAKE_C_FLAGS=-fomit-frame-pointer
 		make install
 	fi
 fi
