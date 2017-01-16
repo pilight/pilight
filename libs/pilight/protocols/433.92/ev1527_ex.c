@@ -150,8 +150,8 @@ static void printHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
-	printf("\t -r --readonly\t\t\read signals only\n");
-	printf("\t -w --sendonly\t\t\send signals only\n");
+	printf("\t -r --readonly\tread signals only\n");
+	printf("\t -w --sendonly\tsend signals only\n");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -169,7 +169,7 @@ void ev1527ExInit(void) {
 	ev1527_ex->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	ev1527_ex->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
-	options_add(&ev1527_ex->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-7]$");
+	options_add(&ev1527_ex->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]+$");
 	options_add(&ev1527_ex->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&ev1527_ex->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&ev1527_ex->options, 'r', "readonly", OPTION_NO_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
