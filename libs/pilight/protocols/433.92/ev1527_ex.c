@@ -30,11 +30,11 @@
 #include "../../core/gc.h"
 #include "ev1527_ex.h"
 
-#define PULSE_MULTIPLIER	3
+#define PULSE_MULTIPLIER	5
 #define MIN_PULSE_LENGTH	220
-#define MAX_PULSE_LENGTH	500
-#define AVG_PULSE_LENGTH	400
-#define RAW_LENGTH			50
+#define MAX_PULSE_LENGTH	480
+#define AVG_PULSE_LENGTH	266
+#define RAW_LENGTH		50
 
 static int validate(void) {
 	if(ev1527_ex->rawlen == RAW_LENGTH) {
@@ -61,8 +61,8 @@ static void parseCode(void) {
 		return;
 	}
 
-	for(x=0;x<ev1527_ex->rawlen-2;x+=2) {
-		if(ev1527_ex->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
+	for(x=ev1527_ex->rawlen-4;x>-2;x-=2) {
+		if(ev1527_ex->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
 		} else {
 			binary[i++] = 0;
