@@ -169,7 +169,7 @@ void ev1527ExInit(void) {
 	ev1527_ex->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	ev1527_ex->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
-	options_add(&ev1527_ex->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-7]$"));
+	options_add(&ev1527_ex->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-7]$");
 	options_add(&ev1527_ex->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&ev1527_ex->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&ev1527_ex->options, 'r', "readonly", OPTION_NO_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
