@@ -47,10 +47,14 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int systemcode) {
+static void createMessage(int systemcode, int state) {
 	ev1527_ex->message = json_mkobject();
 	json_append_member(ev1527_ex->message, "systemcode", json_mknumber(systemcode, 0));
-	json_append_member(ev1527_ex->message, "state", json_mkstring("on"));
+	if(state == 0) {
+		json_append_member(logilink_switch->message, "state", json_mkstring("on"));
+	} else {
+		json_append_member(logilink_switch->message, "state", json_mkstring("off"));
+	}
 }
 
 static void parseCode(void) {
@@ -70,7 +74,7 @@ static void parseCode(void) {
 	}
 
 	int systemcode = binToDec(binary, 0, 23);
-	createMessage(systemcode);
+	createMessage(systemcode, 0);
 }
 
 static void createLow(int s, int e) {
@@ -130,12 +134,14 @@ static int createCode(struct JsonNode *code) {
 		readonly = (int)round(itmp);
 	if(json_find_number(code, "sendonly", &itmp) == 0)
 		sendonly = (int)round(itmp);
+	if(json_find_number(code, "state", &itmp) == 0)
+		state = (int)round(itmp);
 
 	if(systemcode == -1) {
 		logprintf(LOG_ERR, "ev1527_ex: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
-		createMessage(systemcode);
+		createMessage(systemcode, state);
 		if( readonly == 0 ){
 			clearCode();
 			createSystemCode(systemcode);
