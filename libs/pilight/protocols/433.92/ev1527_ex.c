@@ -51,9 +51,9 @@ static void createMessage(int systemcode, int state) {
 	ev1527_ex->message = json_mkobject();
 	json_append_member(ev1527_ex->message, "systemcode", json_mknumber(systemcode, 0));
 	if(state == 0) {
-		json_append_member(logilink_switch->message, "state", json_mkstring("on"));
+		json_append_member(ev1527_ex->message, "state", json_mkstring("on"));
 	} else {
-		json_append_member(logilink_switch->message, "state", json_mkstring("off"));
+		json_append_member(ev1527_ex->message, "state", json_mkstring("off"));
 	}
 }
 
