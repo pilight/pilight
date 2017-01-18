@@ -93,8 +93,9 @@ static char *root = NULL;
 static unsigned short root_free = 0;
 
 typedef struct broadcast_list_t {
-	char out[1024];
-	int len;
+	char *out;
+	ssize_t len;
+	int fd;
 
 	struct broadcast_list_t *next;
 } broadcast_list_t;
@@ -118,6 +119,8 @@ enum {
 
 typedef struct webserver_clients_t {
 	uv_poll_t *req;
+	int is_websocket;
+
 	struct webserver_clients_t *next;
 } webserver_clients_t;
 
@@ -136,7 +139,8 @@ static struct fcache_t *fcache;
 	static pthread_mutex_t webserver_lock;
 	static pthread_mutexattr_t webserver_attr;
 #endif	
-struct webserver_clients_t *webserver_clients = NULL;
+static int lock_init = 0;
+static struct webserver_clients_t *webserver_clients = NULL;
 
 static void poll_close_cb(uv_poll_t *req);
 
@@ -167,10 +171,12 @@ int webserver_gc(void) {
 #else
 	pthread_mutex_lock(&webserver_lock);
 #endif
-	while(webserver_clients) {
-		node = webserver_clients->next;
-		poll_close_cb(webserver_clients->req);
-		webserver_clients = node;
+	{
+		while(webserver_clients) {
+			node = webserver_clients->next;
+			poll_close_cb(webserver_clients->req);
+			webserver_clients = node;
+		}
 	}
 
 	{
@@ -351,6 +357,7 @@ size_t websocket_write(uv_poll_t *req, int opcode, const char *data, unsigned lo
 	if((copy = REALLOC(copy, data_len + 10)) == NULL) {
 		OUT_OF_MEMORY
 	}
+	memset(copy, '\0', data_len + 10);
 
 	copy[0] = 0x80 + (opcode & 0x0f);
 	if(data_len <= 125) {
@@ -387,8 +394,7 @@ size_t websocket_write(uv_poll_t *req, int opcode, const char *data, unsigned lo
 }
 
 static void *webserver_send(int reason, void *param) {
-	struct threadpool_tasks_t *task = param;
-	struct reason_socket_send_t *data = task->userdata;
+	struct reason_socket_send_t *data = param;
 	struct connection_t c;
 	memset(&c, 0, sizeof(struct connection_t));
 
@@ -398,29 +404,35 @@ static void *webserver_send(int reason, void *param) {
 #else
 		pthread_mutex_lock(&webserver_lock);
 #endif
-		struct webserver_clients_t *clients = webserver_clients;
-		while(clients) {
-			int fd = 0, r = 0;
-
-			if((r = uv_fileno((uv_handle_t *)clients->req, (uv_os_fd_t *)&fd)) != 0) {
-				logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
-#ifdef _WIN32
-				uv_mutex_unlock(&webserver_lock);
-#else
-				pthread_mutex_unlock(&webserver_lock);
-#endif
-				return NULL;
-			}
-			if(fd == data->fd) {
-				websocket_write(clients->req, WEBSOCKET_OPCODE_TEXT, data->buffer, strlen(data->buffer));
-			}
-			clients = clients->next;
+		struct broadcast_list_t *node = MALLOC(sizeof(struct broadcast_list_t));
+		if(node == NULL) {
+			OUT_OF_MEMORY
 		}
+		memset(node, 0, sizeof(struct broadcast_list_t));
+		node->fd = data->fd;
+		if((node->out = STRDUP(data->buffer)) == NULL) {
+			OUT_OF_MEMORY
+		}
+		node->len = strlen(data->buffer);
+
+		struct broadcast_list_t *tmp = broadcast_list;
+		if(tmp != NULL) {
+			while(tmp->next != NULL) {
+				tmp = tmp->next;
+			}
+			tmp->next = node;
+			node = tmp;
+		} else {
+			node->next = broadcast_list;
+			broadcast_list = node;
+		}
+
 #ifdef _WIN32
 		uv_mutex_unlock(&webserver_lock);
 #else
 		pthread_mutex_unlock(&webserver_lock);
 #endif
+		uv_async_send(async_req);
 	}
 
 	return NULL;
@@ -923,15 +935,31 @@ static void webserver_process(uv_async_t *handle) {
 	pthread_mutex_lock(&webserver_lock);
 #endif
 	struct webserver_clients_t *clients = webserver_clients;
-	while(clients) {
-		struct broadcast_list_t *tmp = NULL;
-		while(broadcast_list) {
-			tmp = broadcast_list;
-			websocket_write(clients->req, 1, tmp->out, tmp->len);
-			broadcast_list = broadcast_list->next;
-			FREE(tmp);
+	struct broadcast_list_t *tmp = NULL;
+	while(broadcast_list) {
+		tmp = broadcast_list;
+		while(clients) {
+			if(tmp->fd > 0) {
+				int fd = 0, r = 0;
+
+				if((r = uv_fileno((uv_handle_t *)clients->req, (uv_os_fd_t *)&fd)) != 0) {
+					logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
+					continue;
+				}
+
+				if(fd == tmp->fd) {
+					websocket_write(clients->req, WEBSOCKET_OPCODE_TEXT, tmp->out, tmp->len);
+				}
+			} else if(clients->is_websocket == 1) {
+				websocket_write(clients->req, 1, tmp->out, tmp->len);
+			}
+			clients = clients->next;
 		}
-		clients = clients->next;
+		if(tmp->len > 0) {
+			FREE(tmp->out);
+		}
+		broadcast_list = broadcast_list->next;
+		FREE(tmp);
 	}
 	if(broadcast_list != NULL) {
 		uv_async_send(async_req);
@@ -958,6 +986,9 @@ static void *broadcast(int reason, void *param) {
 		OUT_OF_MEMORY
 	}
 	memset(node, 0, sizeof(struct broadcast_list_t));
+	if((node->out = MALLOC(1024)) == NULL) {
+		OUT_OF_MEMORY
+	}
 
 	int i = 0;
 	switch(reason) {
@@ -1151,6 +1182,7 @@ static void webserver_client_add(uv_poll_t *req) {
 		OUT_OF_MEMORY
 	}
 	node->req = req;
+	node->is_websocket = 0;
 
 	node->next = webserver_clients;
 	webserver_clients = node;
@@ -1235,6 +1267,15 @@ static void send_websocket_handshake_if_requested(uv_poll_t *req) {
 	const char *key = http_get_header(conn, "Sec-WebSocket-Key");
   if(ver != NULL && key != NULL) {
 		conn->is_websocket = 1;
+
+		struct webserver_clients_t *tmp = webserver_clients;
+		while(tmp) {
+			if(tmp->req == req) {
+				tmp->is_websocket = 1;
+				break;
+			}
+			tmp = tmp->next;
+		}
 		send_websocket_handshake(req, key);
   }
 }
@@ -1375,6 +1416,7 @@ static void poll_close_cb(uv_poll_t *req) {
 	}
 
 	webserver_client_remove(req);
+
 	uv_poll_stop(req);
 
 	if(!uv_is_closing((uv_handle_t *)req)) {
@@ -1440,6 +1482,7 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			unsigned char *p = (unsigned char *)buf;
 			if(websocket_read(req, p, *nread) == -1) {
 				uv_custom_close(req);
+				uv_custom_write(req);
 				return;
 			}
 		}
@@ -1704,13 +1747,16 @@ int webserver_start(void) {
 	int webserver_enabled = 0;
 	loop = 1;
 
+	if(lock_init == 0) {
+		lock_init = 1;
 #ifdef _WIN32
-	uv_mutex_init(&webserver_lock);
+		uv_mutex_init(&webserver_lock);
 #else
-	pthread_mutexattr_init(&webserver_attr);
-	pthread_mutexattr_settype(&webserver_attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&webserver_lock, &webserver_attr);
+		pthread_mutexattr_init(&webserver_attr);
+		pthread_mutexattr_settype(&webserver_attr, PTHREAD_MUTEX_RECURSIVE);
+		pthread_mutex_init(&webserver_lock, &webserver_attr);
 #endif
+	}
 
 	if(settings_select_number(ORIGIN_WEBSERVER, "webserver-http-port", &itmp) == 0) { http_port = (int)itmp; }
 	if(settings_select_number(ORIGIN_WEBSERVER, "webgui-websockets", &itmp) == 0) { websockets = (int)itmp; }

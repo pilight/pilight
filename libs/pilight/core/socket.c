@@ -31,7 +31,9 @@
 #include "socket.h"
 
 typedef struct data_t {
-	void (*read_cb)(int, char *, ssize_t);
+	char *buffer;
+	ssize_t len;
+	void (*read_cb)(int, char *, ssize_t, char **, ssize_t *);
 } data_t;
 
 typedef struct client_list_t {
@@ -166,6 +168,9 @@ static void client_remove(int fd) {
 				struct uv_custom_poll_t *custom_poll_data = currP->data;
 				if(custom_poll_data->data != NULL) {
 					struct data_t *data = custom_poll_data->data;
+					if(data->len > 0) {
+						FREE(data->buffer);
+					}
 					FREE(data);
 				}
 				uv_custom_poll_free(custom_poll_data);
@@ -255,7 +260,7 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	if(*nread > 0) {
 		buf[*nread] = '\0';
 
-		data->read_cb(fd, buf, *nread);
+		data->read_cb(fd, buf, *nread, &data->buffer, &data->len);
 
 		*nread = 0;
 		uv_custom_read(req);
@@ -351,7 +356,7 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	if(data == NULL) {
 		OUT_OF_MEMORY
 	}
-	memset(data, '\0', sizeof(struct data_t));
+	memset(data, 0, sizeof(struct data_t));
 	data->read_cb = server_data->read_cb;
 
 	uv_poll_t *poll_req = NULL;
@@ -390,7 +395,7 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 }
 
 /* Start the socket server */
-int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t)) {
+int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char **, ssize_t *)) {
 	if(pthread_equal(pth_main_id, pthread_self()) == 0) {
 		logprintf(LOG_ERR, "webserver_start can only be started from the main thread");
 		return -1;
@@ -474,6 +479,7 @@ int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t)) {
 	if(data == NULL) {
 		OUT_OF_MEMORY
 	}
+	memset(data, 0, sizeof(struct data_t));
 	data->read_cb = read_cb;
 	custom_poll_data->data = data;
 
@@ -620,7 +626,7 @@ int socket_write(int sockfd, const char *msg, ...) {
 	return n;
 }
 
-int socket_connect(char *server, unsigned short port, void (*read_cb)(int, char *, ssize_t)) {
+int socket_connect(char *server, unsigned short port, void (*read_cb)(int, char *, ssize_t, char **, ssize_t *)) {
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct sockaddr_in addr;
 	int r = 0, sockfd = 0;
@@ -678,6 +684,7 @@ int socket_connect(char *server, unsigned short port, void (*read_cb)(int, char 
 	if(data == NULL) {
 		OUT_OF_MEMORY
 	}
+	memset(data, 0, sizeof(struct data_t));
 	data->read_cb = read_cb;
 	custom_poll_data->data = data;
 

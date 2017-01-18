@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <signal.h>
+#include <assert.h>
 #ifdef _WIN32
 	#if _WIN32_WINNT < 0x0501
 		#undef _WIN32_WINNT
@@ -78,10 +79,20 @@ typedef struct data_t {
 } data_t;
 
 static void close_cb(uv_handle_t *handle) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	FREE(handle);
 }
 
 static void ntp_timeout(uv_timer_t *param) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct data_t *data = param->data;
 	void (*callback)(int, time_t) = data->callback;
 	callback(-1, 0);
@@ -98,6 +109,11 @@ static void ntp_timeout(uv_timer_t *param) {
 }
 
 static void on_read(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const struct sockaddr *addr, unsigned int port) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct pkt msg;	
 	struct data_t *data = stream->data;
 	void (*callback)(int, time_t) = data->callback;
@@ -127,16 +143,34 @@ static void on_read(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const st
 }
 
 static void alloc(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	buf->len = len;
 	buf->base = malloc(len);
 	memset(buf->base, 0, len);
 }
 
 static void on_send(uv_udp_send_t *req, int status) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	FREE(req);
 }
 
 int ntpsync(char *server, void (*callback)(int, time_t)) {
+	/*
+	 * Make sure we are called from the main thread
+	 */
+	if(pthread_equal(pth_main_id, pthread_self()) == 0) {
+		logprintf(LOG_ERR, "ntpsync can only be started from the main thread");
+		return -1;
+	}
+
 	struct sockaddr_in addr;
 	struct data_t *data = NULL;
 	uv_udp_t *client_req = NULL;

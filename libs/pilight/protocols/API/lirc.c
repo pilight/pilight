@@ -210,7 +210,9 @@ static void *addDevice(int reason, void *param) {
 }
 
 static void gc(void) {
-	FREE(name);
+	if(name != NULL) {
+		FREE(name);
+	}
 }
 
 #endif

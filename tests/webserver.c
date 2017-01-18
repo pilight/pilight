@@ -25,9 +25,10 @@
 
 #include "alltests.h"
 
-#define GET				0
-#define AUTH 			1
-#define WEBSOCKET	2
+#define GET					0
+#define AUTH 				1
+#define WEBSOCKET1	2
+#define WEBSOCKET2	3
 
 static int run = GET;
 static CuTest *gtc = NULL;
@@ -44,7 +45,13 @@ static char request[255] = { 0x81,
 	0x3a, 0xda
 };
 
-static char response[255] = { 
+static char response1[255] = {
+	0x81, 0x0d, 0x7b, 0x22,
+	0x66, 0x6f, 0x6f, 0x22,
+	0x3a, 0x22, 0x62, 0x61,
+	0x72, 0x22, 0x7d
+};
+static char response2[255] = { 
 	0x81, 0x4c, 0x7b, 0x22, 0x64,
 	0x65, 0x76, 0x69, 0x63, 0x65,
 	0x73, 0x22, 0x3a, 0x7b, 0x7d,
@@ -107,6 +114,13 @@ static struct tests_t auth_tests[] = {
 
 static int testnr = 0;
 static uv_async_t *async_close_req = NULL;
+
+static void *reason_socket_send_free(void *param) {
+	struct reason_socket_send_t *data = param;
+	FREE(data->buffer);
+	FREE(data);
+	return NULL;
+}
 
 static void close_cb(uv_handle_t *handle) {
 	FREE(handle);
@@ -177,11 +191,17 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			iobuf_append(&custom_poll_data->send_iobuf, request, 33);
 			uv_custom_write(req);
 			uv_custom_read(req);
+
 			*nread = 0;
 			steps = 2;
 		} break;
 		case 2: {
-			CuAssertTrue(gtc, strncmp(buf, response, 78) == 0);
+			if(run == WEBSOCKET1) {
+				CuAssertTrue(gtc, strncmp(buf, response1, 15) == 0);
+			}
+			if(run == WEBSOCKET2) {
+				CuAssertTrue(gtc, strncmp(buf, response2, 78) == 0);
+			}
 
 			uv_custom_write(req);
 			uv_custom_close(req);
@@ -192,7 +212,7 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 static void write_cb(uv_poll_t *req) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	char buffer[1024];	
-	int len = 0, r = 0;
+	int len = 0;
 
 	switch(steps) {
 		case 0: {
@@ -207,20 +227,11 @@ static void write_cb(uv_poll_t *req) {
 				"Upgrade: websocket\r\n\r\n");
 			iobuf_append(&custom_poll_data->send_iobuf, (void *)buffer, len);
 
-			r = uv_poll_start(req, UV_WRITABLE, uv_custom_poll_cb);
-			if(r != 0) {
-				logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
-				FREE(req);
-				return;
-			}
+			uv_custom_write(req);
 			steps = 1;
 		} break;
 		case 1: {
-			r = uv_poll_start(req, UV_READABLE, uv_custom_poll_cb);
-			if(r != 0) {
-				logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
-				return;
-			}
+			uv_custom_read(req);
 			return;
 		} break;
 	}
@@ -309,9 +320,27 @@ static void *reason_broadcast_core_free(void *param) {
 }
 
 static void *listener(int reason, void *param) {
-	char *conf = STRDUP("{\"devices\":{},\"rules\":{},\"gui\":{},\"settings\":{},\"hardware\":{},\"registry\":{}}");
+	if(run == WEBSOCKET1) {
+		char *respons = "{\"foo\":\"bar\"}";
+		struct reason_socket_received_t *data = param;
+		struct reason_socket_send_t *data1 = MALLOC(sizeof(struct reason_socket_send_t));
+		if(data1 == NULL) {
+			OUT_OF_MEMORY
+		}
+		data1->fd = data->fd;
+		if((data1->buffer = MALLOC(strlen(respons)+1)) == NULL) {
+			OUT_OF_MEMORY;
+		}
+		strcpy(data1->buffer, respons);
+		strncpy(data1->type, data->type, 255);
 
-	eventpool_trigger(REASON_BROADCAST_CORE, reason_broadcast_core_free, conf);
+		eventpool_trigger(REASON_SOCKET_SEND, reason_socket_send_free, data1);
+	}
+	if(run == WEBSOCKET2) {
+		char *conf = STRDUP("{\"devices\":{},\"rules\":{},\"gui\":{},\"settings\":{},\"hardware\":{},\"registry\":{}}");
+		eventpool_trigger(REASON_BROADCAST_CORE, reason_broadcast_core_free, conf);
+	}
+
 	return NULL;
 }
 
@@ -330,10 +359,10 @@ static void test_webserver(CuTest *tc) {
 	uv_async_init(uv_default_loop(), async_close_req, async_close_cb);
 
 	ssl_init();	
-	
+
 	if(run == GET || run == AUTH) {
 		eventpool_init(EVENTPOOL_NO_THREADS);
-	} else if(run == WEBSOCKET) {
+	} else if(run == WEBSOCKET1 || run == WEBSOCKET2) {
 		eventpool_init(EVENTPOOL_THREADED);
 		eventpool_callback(REASON_SOCKET_RECEIVED, listener);
 	}
@@ -343,7 +372,7 @@ static void test_webserver(CuTest *tc) {
 		http_get_content(get_tests[testnr].url, callback, NULL);
 	} else if(run == AUTH) {
 		http_get_content(auth_tests[testnr].url, callback, NULL);
-	} else if(run == WEBSOCKET) {
+	} else if(run == WEBSOCKET1 || run == WEBSOCKET2) {
 		test();
 	}
 
@@ -369,6 +398,7 @@ static void test_webserver_get(CuTest *tc) {
 	fflush(stdout);
 
 	gtc = tc;
+	steps = 0;
 
 	run = GET;
 	test_webserver(tc);
@@ -379,6 +409,7 @@ static void test_webserver_auth(CuTest *tc) {
 	fflush(stdout);
 
 	gtc = tc;
+	steps = 0;
 
 	run = AUTH;
 	config_enable |= CONFIG_AUTH;
@@ -386,13 +417,25 @@ static void test_webserver_auth(CuTest *tc) {
 	config_enable &= ~CONFIG_AUTH;
 }
 
-static void test_webserver_websocket(CuTest *tc) {
+static void test_webserver_websocket1(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
 	gtc = tc;
+	steps = 0;
 
-	run = WEBSOCKET;
+	run = WEBSOCKET1;
+	test_webserver(tc);
+}
+
+static void test_webserver_websocket2(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	gtc = tc;
+	steps = 0;
+
+	run = WEBSOCKET2;
 	test_webserver(tc);
 }
 
@@ -401,7 +444,8 @@ CuSuite *suite_webserver(void) {
 
 	SUITE_ADD_TEST(suite, test_webserver_get);
 	SUITE_ADD_TEST(suite, test_webserver_auth);
-	SUITE_ADD_TEST(suite, test_webserver_websocket);
+	SUITE_ADD_TEST(suite, test_webserver_websocket1);
+	SUITE_ADD_TEST(suite, test_webserver_websocket2);
 
 	return suite;
 }

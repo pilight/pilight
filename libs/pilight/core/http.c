@@ -60,7 +60,13 @@ typedef struct http_clients_t {
 	struct http_clients_t *next;
 } http_clients_t;
 
-static uv_mutex_t http_lock;
+#ifdef _WIN32
+	static uv_mutex_t http_lock;
+#else
+	static pthread_mutex_t http_lock;
+	static pthread_mutexattr_t http_attr;
+#endif
+
 struct http_clients_t *http_clients = NULL;
 static int http_lock_init = 0;
 
@@ -113,21 +119,33 @@ static void free_request(struct request_t *request) {
 int http_gc(void) {
 	struct http_clients_t *node = NULL;
 
+#ifdef _WIN32
 	uv_mutex_lock(&http_lock);
+#else
+	pthread_mutex_lock(&http_lock);
+#endif
 	while(http_clients) {
 		node = http_clients->next;
 		http_client_close(http_clients->req);
 		http_clients = node;
 	}
 
+#ifdef _WIN32
 	uv_mutex_unlock(&http_lock);
+#else
+	pthread_mutex_unlock(&http_lock);
+#endif
 
 	logprintf(LOG_DEBUG, "garbage collected http library");
 	return 1;
 }
 
 static void http_client_add(uv_poll_t *req) {
+#ifdef _WIN32
 	uv_mutex_lock(&http_lock);
+#else
+	pthread_mutex_lock(&http_lock);
+#endif
 	struct http_clients_t *node = MALLOC(sizeof(struct http_clients_t));
 	if(node == NULL) {
 		OUT_OF_MEMORY
@@ -136,11 +154,19 @@ static void http_client_add(uv_poll_t *req) {
 
 	node->next = http_clients;
 	http_clients = node;
+#ifdef _WIN32
 	uv_mutex_unlock(&http_lock);
+#else
+	pthread_mutex_unlock(&http_lock);
+#endif
 }
 
 static void http_client_remove(uv_poll_t *req) {
+#ifdef _WIN32
 	uv_mutex_lock(&http_lock);
+#else
+	pthread_mutex_lock(&http_lock);
+#endif
 	struct http_clients_t *currP, *prevP;
 
 	prevP = NULL;
@@ -157,7 +183,11 @@ static void http_client_remove(uv_poll_t *req) {
 			break;
 		}
 	}
+#ifdef _WIN32
 	uv_mutex_unlock(&http_lock);
+#else
+	pthread_mutex_unlock(&http_lock);
+#endif
 }
 
 static int prepare_request(struct request_t **request, int method, char *url, const char *contype, char *post, void (*callback)(int, char *, int, char *, void *), void *userdata) {
@@ -390,8 +420,8 @@ static void http_client_close(uv_poll_t *req) {
 
 	http_client_remove(req);
 
-	uv_poll_stop(req);
 	if(!uv_is_closing((uv_handle_t *)req)) {
+		uv_poll_stop(req);
 		uv_close((uv_handle_t *)req, close_cb);
 	}
 
@@ -582,7 +612,13 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 
 	if(http_lock_init == 0) {
 		http_lock_init = 1;
+#ifdef _WIN32
 		uv_mutex_init(&http_lock);
+#else
+		pthread_mutexattr_init(&http_attr);
+		pthread_mutexattr_settype(&http_attr, PTHREAD_MUTEX_RECURSIVE);
+		pthread_mutex_init(&http_lock, &http_attr);
+#endif
 	}
 	
 #ifdef _WIN32
