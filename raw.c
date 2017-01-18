@@ -163,6 +163,8 @@ static void main_loop(int onclose) {
 }
 
 int main(int argc, char **argv) {
+	pth_main_id = pthread_self();
+
 	struct options_t *options = NULL;
 	char *args = NULL;
 	char *fconfig = NULL;

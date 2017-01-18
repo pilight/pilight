@@ -36,6 +36,8 @@ typedef enum origin_t {
 	ORIGIN_SSDP
 } origin_t;
 
+#include <pthread.h>
+
 #include "defines.h"
 #include "eventpool.h"
 #include "json.h"
@@ -75,7 +77,7 @@ struct pilight_t {
 } pilight_t;
 
 extern struct pilight_t pilight;
-
+extern pthread_t pth_main_id;
 extern char pilight_uuid[UUID_LENGTH];
 
 #endif

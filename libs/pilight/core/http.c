@@ -61,7 +61,6 @@ typedef struct http_clients_t {
 } http_clients_t;
 
 static uv_mutex_t http_lock;
-// static pthread_mutexattr_t http_attr;
 struct http_clients_t *http_clients = NULL;
 static int http_lock_init = 0;
 
@@ -121,9 +120,6 @@ int http_gc(void) {
 		http_clients = node;
 	}
 
-	if(http_clients != NULL) {
-		FREE(http_clients);
-	}
 	uv_mutex_unlock(&http_lock);
 
 	logprintf(LOG_DEBUG, "garbage collected http library");
@@ -361,22 +357,26 @@ static void process_chunk(char **buf, ssize_t *size, struct request_t *request) 
 }
 
 static void close_cb(uv_handle_t *handle) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	FREE(handle);
 }
 
 static void http_client_close(uv_poll_t *req) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct request_t *request = custom_poll_data->data;
 	int fd = -1, r = 0;
 
-	http_client_remove(req);		
 	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
-	}
-
-	if(!uv_is_closing((uv_handle_t *)req)) {
-		uv_poll_stop(req);
-		uv_close((uv_handle_t *)req, close_cb);
 	}
 
 	if(fd > -1) {
@@ -387,17 +387,35 @@ static void http_client_close(uv_poll_t *req) {
 #endif
 		close(fd);
 	}
+
+	http_client_remove(req);
+
+	uv_poll_stop(req);
+	if(!uv_is_closing((uv_handle_t *)req)) {
+		uv_close((uv_handle_t *)req, close_cb);
+	}
+
 	if(request != NULL) {
 		free_request(request);
 		custom_poll_data->data = NULL;
 	}
+
 	if(custom_poll_data != NULL) {
 		uv_custom_poll_free(custom_poll_data);	
 		req->data = NULL;
 	}
 }
 
+static void poll_close_cb(uv_poll_t *req) {
+	http_client_close(req);
+}
+
 static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct request_t *request = custom_poll_data->data;
 	char *header = NULL, *p = NULL;
@@ -481,22 +499,22 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			request->bytes_read += *nread;
 			*nread = 0;
 		}
-	}
 
-	if(strcmp(buf, "0\r\n\r\n") == 0) {
-		request->reading = 0;
-		request->chunked = 0;
-		request->content[request->bytes_read] = '\0';
-		request->content_len = request->bytes_read;
-	}
+		if(strcmp(buf, "0\r\n\r\n") == 0) {
+			request->reading = 0;
+			request->chunked = 0;
+			request->content[request->bytes_read] = '\0';
+			request->content_len = request->bytes_read;
+		}
 
-	if(request->chunked == 1 || request->bytes_read < request->content_len) {
-		request->reading = 1;
-	} else if(request->content != NULL) {
-		request->content[request->content_len] = '\0';
-		if(request->callback != NULL) {
-			request->callback(request->status_code, request->content, request->content_len, request->mimetype, request->userdata);
-			goto close;
+		if(request->chunked == 1 || request->bytes_read < request->content_len) {
+			request->reading = 1;
+		} else if(request->content != NULL) {
+			request->content[request->content_len] = '\0';
+			if(request->callback != NULL) {
+				request->callback(request->status_code, request->content, request->content_len, request->mimetype, request->userdata);
+				goto close;
+			}
 		}
 	}
 
@@ -506,12 +524,16 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	}
 
 close:
-	if(!uv_is_closing((uv_handle_t *)req)) {
-		http_client_close(req);
-	}
+	uv_custom_close(req);
+	uv_custom_write(req);
 }
 
 static void write_cb(uv_poll_t *req) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct request_t *request = custom_poll_data->data;
 	char *header = NULL;
@@ -540,21 +562,12 @@ static void write_cb(uv_poll_t *req) {
 			}
 			iobuf_append(&custom_poll_data->send_iobuf, (void *)header, strlen(header));
 
-			r = uv_poll_start(req, UV_WRITABLE, uv_custom_poll_cb);
-			if(r != 0) {
-				logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
-				FREE(req);
-				return;
-			}
+			uv_custom_write(req);
 			FREE(header);
 			request->steps = STEP_READ;
 		} break;
 		case STEP_READ:
-			r = uv_poll_start(req, UV_READABLE, uv_custom_poll_cb);
-			if(r != 0) {
-				logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
-				return;
-			}
+			uv_custom_read(req);
 			return;
 		break;
 	}
@@ -569,9 +582,6 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 
 	if(http_lock_init == 0) {
 		http_lock_init = 1;
-		// pthread_mutexattr_init(&http_attr);
-		// pthread_mutexattr_settype(&http_attr, PTHREAD_MUTEX_RECURSIVE);
-		// pthread_mutex_init(&http_lock, &http_attr);
 		uv_mutex_init(&http_lock);
 	}
 	
@@ -602,7 +612,7 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 		 */
 		if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
 			logprintf(LOG_ERR, "socket: %s", strerror(errno));
-			goto free;
+			goto freeuv;
 		}
 
 #ifdef _WIN32
@@ -620,7 +630,7 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 			if(!(errno == EINPROGRESS || errno == EISCONN)) {
 #endif
 				logprintf(LOG_ERR, "connect: %s", strerror(errno));
-				goto free;
+				goto freeuv;
 			}
 		}
 
@@ -633,6 +643,7 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 		custom_poll_data->is_ssl = request->is_ssl;
 		custom_poll_data->write_cb = write_cb;
 		custom_poll_data->read_cb = read_cb;
+		custom_poll_data->close_cb = poll_close_cb;
 
 		r = uv_poll_init_socket(uv_default_loop(), poll_req, sockfd);
 		if(r != 0) {
@@ -643,7 +654,7 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 
 		http_client_add(poll_req);
 		request->steps = STEP_WRITE;
-		write_cb(poll_req);
+		uv_custom_write(poll_req);
 	}
 
 	return NULL;
@@ -652,7 +663,7 @@ freeuv:
 	FREE(request->uri);
 	FREE(request->host);
 	FREE(request);
-free:
+
 	if(sockfd > 0) {
 		close(sockfd);
 	}

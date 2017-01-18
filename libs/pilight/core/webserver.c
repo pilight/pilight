@@ -79,8 +79,9 @@
 static int https_port = WEBSERVER_HTTPS_PORT;
 #endif
 
-uv_poll_t *poll_http_req = NULL;
-uv_poll_t *poll_https_req = NULL;
+static uv_poll_t *poll_http_req = NULL;
+static uv_poll_t *poll_https_req = NULL;
+static uv_async_t *async_req = NULL;
 
 static int http_port = WEBSERVER_HTTP_PORT;
 static int websockets = WEBGUI_WEBSOCKETS;
@@ -90,6 +91,15 @@ static char *authentication_password = NULL;
 static unsigned short loop = 1;
 static char *root = NULL;
 static unsigned short root_free = 0;
+
+typedef struct broadcast_list_t {
+	char out[1024];
+	int len;
+
+	struct broadcast_list_t *next;
+} broadcast_list_t;
+
+static struct broadcast_list_t *broadcast_list = NULL;
 
 enum mg_result {
 	MG_FALSE,
@@ -163,8 +173,13 @@ int webserver_gc(void) {
 		webserver_clients = node;
 	}
 
-	if(webserver_clients != NULL) {
-		FREE(webserver_clients);
+	{
+		struct broadcast_list_t *tmp = NULL;
+		while(broadcast_list) {
+			tmp = broadcast_list;
+			broadcast_list = broadcast_list->next;
+			FREE(tmp);
+		}
 	}
 #ifdef _WIN32
 	uv_mutex_unlock(&webserver_lock);
@@ -172,16 +187,15 @@ int webserver_gc(void) {
 	pthread_mutex_unlock(&webserver_lock);
 #endif
 
-	struct fcache_t *tmp = fcache;
-	while(fcache) {
-		tmp = fcache;
-		FREE(tmp->name);
-		FREE(tmp->bytes);
-		fcache = fcache->next;
-		FREE(tmp);
-	}
-	if(fcache != NULL) {
-		FREE(fcache);
+	{
+		struct fcache_t *tmp = fcache;
+		while(fcache) {
+			tmp = fcache;
+			FREE(tmp->name);
+			FREE(tmp->bytes);
+			fcache = fcache->next;
+			FREE(tmp);
+		}
 	}
 
 	if(poll_http_req != NULL) {
@@ -237,6 +251,11 @@ const char *http_get_header(struct connection_t *conn, const char *s) {
 }
 
 void send_auth_request(uv_poll_t *req) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct connection_t *conn = custom_poll_data->data;
 	char *a = "HTTP/1.1 401 Unauthorized\r\n"
@@ -248,6 +267,11 @@ void send_auth_request(uv_poll_t *req) {
 }
 
 int authorize_input(uv_poll_t *req, char *username, char *password) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct connection_t *conn = custom_poll_data->data;
   const char *hdr = NULL;
@@ -301,8 +325,10 @@ int authorize_input(uv_poll_t *req, char *username, char *password) {
 }
 
 static int auth_handler(uv_poll_t *req) {
-	// struct uv_custom_poll_t *custom_poll_data = req->data;
-	// struct connection_t *conn = custom_poll_data->data;
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
 
 	if(authentication_username != NULL && authentication_password != NULL) {
 		return authorize_input(req, authentication_username, authentication_password);
@@ -312,8 +338,12 @@ static int auth_handler(uv_poll_t *req) {
 }
 
 size_t websocket_write(uv_poll_t *req, int opcode, const char *data, unsigned long long data_len) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
-	// struct connection_t *conn = custom_poll_data->data;
 	unsigned char *copy = NULL;
 	size_t copy_len = 0;
 	int index = 2;
@@ -397,8 +427,12 @@ static void *webserver_send(int reason, void *param) {
 }
 
 static void write_chunk(uv_poll_t *req, char *buf, int len) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
-	// struct connection_t *conn = custom_poll_data->data;
 
   char chunk_size[50];
   int n = snprintf(chunk_size, sizeof(chunk_size), "%X\r\n", len);
@@ -409,8 +443,12 @@ static void write_chunk(uv_poll_t *req, char *buf, int len) {
 }
 
 static size_t send_data(uv_poll_t *req, char *mimetype, void *data, unsigned long data_len) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
-	// struct connection_t *conn = custom_poll_data->data;
 	char header[1024], *p = header;
 	memset(header, '\0', 1024);
 
@@ -422,6 +460,11 @@ static size_t send_data(uv_poll_t *req, char *mimetype, void *data, unsigned lon
 }
 
 static size_t send_chunked_data(uv_poll_t *req, void *data, unsigned long data_len) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct connection_t *conn = custom_poll_data->data;
 
@@ -435,6 +478,11 @@ static size_t send_chunked_data(uv_poll_t *req, void *data, unsigned long data_l
 }
 
 static int parse_rest(uv_poll_t *req) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct connection_t *conn = custom_poll_data->data;
 
@@ -568,10 +616,20 @@ clear:
 }
 
 static void close_cb(uv_handle_t *handle) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	FREE(handle);
 }
 
 static int file_read_cb(int fd, uv_poll_t *req) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct connection_t *conn = custom_poll_data->data;
 	struct timeval timeout;
@@ -618,6 +676,11 @@ static int file_read_cb(int fd, uv_poll_t *req) {
 }
 
 static int request_handler(uv_poll_t *req) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct connection_t *conn = custom_poll_data->data;
 
@@ -848,6 +911,38 @@ filenotfound:
 	return MG_TRUE;
 }
 
+static void webserver_process(uv_async_t *handle) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
+#ifdef _WIN32
+	uv_mutex_lock(&webserver_lock);
+#else
+	pthread_mutex_lock(&webserver_lock);
+#endif
+	struct webserver_clients_t *clients = webserver_clients;
+	while(clients) {
+		struct broadcast_list_t *tmp = NULL;
+		while(broadcast_list) {
+			tmp = broadcast_list;
+			websocket_write(clients->req, 1, tmp->out, tmp->len);
+			broadcast_list = broadcast_list->next;
+			FREE(tmp);
+		}
+		clients = clients->next;
+	}
+	if(broadcast_list != NULL) {
+		uv_async_send(async_req);
+	}
+#ifdef _WIN32
+	uv_mutex_unlock(&webserver_lock);
+#else
+	pthread_mutex_unlock(&webserver_lock);
+#endif
+}
+
 static void *broadcast(int reason, void *param) {
 	if(loop == 0) {
 		return NULL;
@@ -858,54 +953,69 @@ static void *broadcast(int reason, void *param) {
 #else
 	pthread_mutex_lock(&webserver_lock);
 #endif
-	struct webserver_clients_t *clients = webserver_clients;
-	char out[1025];
-	int len = 0, i = 0;
+	struct broadcast_list_t *node = MALLOC(sizeof(struct broadcast_list_t));
+	if(node == NULL) {
+		OUT_OF_MEMORY
+	}
+	memset(node, 0, sizeof(struct broadcast_list_t));
+
+	int i = 0;
 	switch(reason) {
 		case REASON_CONFIG_UPDATE: {
 			struct reason_config_update_t *data = param;
-			len += snprintf(out, 1024,
+			node->len += snprintf(node->out, 1024,
 				"{\"origin\":\"update\",\"type\":%d,\"devices\":[",
 				data->type
 			);
 			for(i=0;i<data->nrdev;i++) {
-				len += snprintf(&out[len], 1024-len, "\"%s\",", data->devices[i]);
+				node->len += snprintf(&node->out[node->len], 1024-node->len, "\"%s\",", data->devices[i]);
 			}
-			len += snprintf(&out[len-1], 1024-len, "],\"values\":{");
-			len -= 1;
+			node->len += snprintf(&node->out[node->len-1], 1024-node->len, "],\"values\":{");
+			node->len -= 1;
 			for(i=0;i<data->nrval;i++) {
 				if(data->values[i].type == JSON_NUMBER) {
-					len += snprintf(&out[len], 1024-len,
+					node->len += snprintf(&node->out[node->len], 1024-node->len,
 						"\"%s\":%.*f,",
 						data->values[i].name, data->values[i].decimals, data->values[i].number_
 					);
 				} else if(data->values[i].type == JSON_STRING) {
-					len += snprintf(&out[len], 1024-len,
+					node->len += snprintf(&node->out[node->len], 1024-node->len,
 						"\"%s\":\"%s\",",
 						data->values[i].name, data->values[i].string_
 					);
 				}
 			}
-			len += snprintf(&out[len-1], 1024-len, "}}");
-			len -= 1;
+			node->len += snprintf(&node->out[node->len-1], 1024-node->len, "}}");
+			node->len -= 1;
 		} break;
 		case REASON_BROADCAST_CORE:
-			strncpy(out, (char *)param, 1024);
-			len = strlen(out);
+			strncpy(node->out, (char *)param, 1024);
+			node->len = strlen(node->out);
 		break;
 		default:
+			FREE(node);
 		return NULL;
 	}
 
-	while(clients) {
-		websocket_write(clients->req, 1, out, len);
-		clients = clients->next;
+
+	struct broadcast_list_t *tmp = broadcast_list;
+	if(tmp != NULL) {
+		while(tmp->next != NULL) {
+			tmp = tmp->next;
+		}
+		tmp->next = node;
+		node = tmp;
+	} else {
+		node->next = broadcast_list;
+		broadcast_list = node;
 	}
+
 #ifdef _WIN32
 	uv_mutex_unlock(&webserver_lock);
 #else
 	pthread_mutex_unlock(&webserver_lock);
 #endif
+	uv_async_send(async_req);
 
 	return NULL;
 }
@@ -1026,8 +1136,10 @@ int http_parse_request(char *buffer, struct connection_t *c) {
 }
 
 static void webserver_client_add(uv_poll_t *req) {
-	// struct uv_custom_poll_t *custom_poll_data = req->data;
-	// struct connection_t *conn = custom_poll_data->data;
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
 
 #ifdef _WIN32
 	uv_mutex_lock(&webserver_lock);
@@ -1079,8 +1191,12 @@ static void webserver_client_remove(uv_poll_t *req) {
 }
 
 static void send_websocket_handshake(uv_poll_t *req, const char *key) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
-	// struct connection_t *conn = custom_poll_data->data;
   static const char *magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
   unsigned char sha[20];
 	char buf[500], *b64_sha = NULL, *p = (char *)sha;
@@ -1107,6 +1223,11 @@ static void send_websocket_handshake(uv_poll_t *req, const char *key) {
 }
 
 static void send_websocket_handshake_if_requested(uv_poll_t *req) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct connection_t *conn = custom_poll_data->data;
 
@@ -1119,6 +1240,11 @@ static void send_websocket_handshake_if_requested(uv_poll_t *req) {
 }
 
 int websocket_read(uv_poll_t *req, unsigned char *buf, ssize_t buf_len) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct connection_t *conn = custom_poll_data->data;
 
@@ -1212,6 +1338,11 @@ int websocket_read(uv_poll_t *req, unsigned char *buf, ssize_t buf_len) {
 // }
 
 static void poll_close_cb(uv_poll_t *req) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct connection_t *conn = custom_poll_data->data;
 	int fd = -1, r = 0;
@@ -1232,6 +1363,7 @@ static void poll_close_cb(uv_poll_t *req) {
 #endif
 		close(fd);
 	}
+
 	if(conn != NULL) {
 		if(conn->fd > 0) {
 			close(conn->fd);
@@ -1244,6 +1376,7 @@ static void poll_close_cb(uv_poll_t *req) {
 
 	webserver_client_remove(req);
 	uv_poll_stop(req);
+
 	if(!uv_is_closing((uv_handle_t *)req)) {
 		uv_close((uv_handle_t *)req, close_cb);
 	}
@@ -1251,13 +1384,20 @@ static void poll_close_cb(uv_poll_t *req) {
 	if(custom_poll_data->data != NULL) {
 		FREE(custom_poll_data->data);
 	}
+
 	if(req->data != NULL) {
 		uv_custom_poll_free(custom_poll_data);
 		req->data = NULL;
 	}
+
 }
 
 static void client_write_cb(uv_poll_t *req) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct connection_t *c = (struct connection_t *)custom_poll_data->data;
 
@@ -1269,6 +1409,11 @@ static void client_write_cb(uv_poll_t *req) {
 }
 
 static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct connection_t *c = (struct connection_t *)custom_poll_data->data;
 	int is_websocket = 0;
@@ -1314,6 +1459,11 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 }
 
 static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct sockaddr_in servaddr;
 	struct uv_custom_poll_t *server_poll_data = req->data;
 	struct uv_custom_poll_t *custom_poll_data = NULL;
@@ -1338,7 +1488,8 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 	if(whitelist_check(buffer) != 0) {
 		logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", buffer, ntohs(servaddr.sin_port));
-		close(fd);
+		close(client);
+		return;
 	} else {
 		logprintf(LOG_DEBUG, "new client, ip: %s, port: %d", buffer, ntohs(servaddr.sin_port));
 		logprintf(LOG_DEBUG, "client fd: %d", client);
@@ -1407,6 +1558,11 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 }
 
 static void server_write_cb(uv_poll_t *req) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct sockaddr_in servaddr;
 	socklen_t socklen = sizeof(servaddr);
 	int r = 0, fd = 0;
@@ -1425,7 +1581,7 @@ static void server_write_cb(uv_poll_t *req) {
 	setsockopt(fd, SOL_SOCKET, SO_LINGER, (void *)&linger, lsize);
 
 	if(getsockname(fd, (struct sockaddr *)&servaddr, (socklen_t *)&socklen) == -1) {
-		perror("getsockname");
+		logprintf(LOG_ERR, "getsockname");
 	} else {
 #ifdef WEBSERVER_HTTPS
 		if(ntohs(servaddr.sin_port) == https_port) {
@@ -1442,6 +1598,11 @@ static void server_write_cb(uv_poll_t *req) {
 }
 
 static int webserver_init(int port, int is_ssl) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct sockaddr_in addr;
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	int r = 0, sockfd = 0, socklen = sizeof(addr);
@@ -1529,6 +1690,16 @@ static int webserver_init(int port, int is_ssl) {
 }
 
 int webserver_start(void) {
+	if(pthread_equal(pth_main_id, pthread_self()) == 0) {
+		logprintf(LOG_ERR, "webserver_start can only be started from the main thread");
+		return -1;
+	}
+
+	if((async_req = MALLOC(sizeof(uv_async_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+	uv_async_init(uv_default_loop(), async_req, webserver_process);
+
 	double itmp = 0.0;
 	int webserver_enabled = 0;
 	loop = 1;

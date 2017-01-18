@@ -16,11 +16,12 @@
 #define SOCKET_CLIENT	1
 
 /* Start the socket server */
-int socket_start(unsigned short);
-int socket_connect(char *, unsigned short);
+void socket_override(int);
+int socket_start(unsigned short, void (*)(int, char *, ssize_t));
+int socket_connect(char *, unsigned short, void (*)(int, char *, ssize_t));
 void socket_close(int);
 int socket_write(int, const char *, ...);
-int socket_recv(char *buffer, int bytes, char **data, size_t *ptr);
+ssize_t socket_recv(char *, int, char **, ssize_t *);
 int socket_gc(void);
 unsigned int socket_get_port(void);
 

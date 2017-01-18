@@ -21,7 +21,6 @@
 
 #include "libs/libuv/uv.h"
 #include "libs/pilight/core/threadpool.h"
-#include "libs/pilight/core/timerpool.h"
 #include "libs/pilight/core/eventpool.h"
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/common.h"
@@ -98,7 +97,6 @@ static int main_gc(void) {
 	}
 
 	protocol_gc();
-	timer_thread_gc();
 	eventpool_gc();
 
 	log_shell_disable();
@@ -384,6 +382,8 @@ static void main_loop(int onclose) {
 }
 
 int main(int argc, char **argv) {
+	pth_main_id = pthread_self();
+
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	log_init();

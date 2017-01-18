@@ -31,6 +31,8 @@
 #endif
 
 int main(int argc, char **argv) {
+	pth_main_id = pthread_self();
+
 	atomicinit();
 	log_shell_enable();
 	log_file_disable();

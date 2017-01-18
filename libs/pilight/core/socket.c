@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <time.h>
 #include <math.h>
+#include <assert.h>
 #include <string.h>
 #include <sys/types.h>
 #ifndef _WIN32
@@ -30,25 +31,34 @@
 #include "socket.h"
 
 typedef struct data_t {
-	int steps;
-	char *buffer;
-	size_t buflen;
-	int endpoint;
+	void (*read_cb)(int, char *, ssize_t);
 } data_t;
 
 typedef struct client_list_t {
-	uv_stream_t *req;
+	uv_poll_t *req;
+	struct uv_custom_poll_t *data;
 	int fd;
-	struct data_t *data;
 
 	struct client_list_t *next;
 } client_list_t;
 
-static uv_mutex_t lock;
+#ifdef _WIN32
+	static uv_mutex_t lock;
+#else
+	static pthread_mutex_t lock;
+	static pthread_mutexattr_t attr;
+#endif
 static int lock_init = 0;
 static unsigned int static_port = 0;
 static unsigned int socket_started = 0;
 static struct client_list_t *client_list = NULL;
+static int socket_override_whitelist_check = -1;
+
+static void poll_close_cb(uv_poll_t *req);
+
+void socket_override(int whitelist) {
+	socket_override_whitelist_check = whitelist;
+}
 
 static void *reason_socket_disconnected_free(void *param) {
 	struct reason_socket_disconnected_t *data = param;
@@ -62,151 +72,174 @@ static void *reason_socket_connected_free(void *param) {
 	return NULL;
 }
 
-static void *reason_socket_received_free(void *param) {
-	struct reason_socket_received_t *data = param;
-	FREE(data->buffer);
-	FREE(data);
-	return NULL;
-}
-
 int socket_gc(void) {
-	uv_mutex_lock(&lock);
-	struct client_list_t *tmp = NULL;
-	while(client_list) {
-		tmp = client_list;
-		if(tmp->data != NULL) {
-			if(tmp->data->buflen > 0) {
-				FREE(tmp->data->buffer);
-				tmp->data->buflen = 0;
-			}
-			FREE(tmp->data);
-			tmp->data = NULL;
-		}
-		client_list = client_list->next;
-		FREE(tmp);
+
+	if(lock_init == 1) {
+#ifdef _WIN32
+		uv_mutex_lock(&lock);
+#else
+		pthread_mutex_lock(&lock);
+#endif
 	}
-	uv_mutex_unlock(&lock);
+
+	struct client_list_t *node = NULL;
+	while(client_list) {
+		node = client_list->next;
+		poll_close_cb(client_list->req);
+		client_list = node;
+	}
+
+	if(lock_init == 1) {
+#ifdef _WIN32
+		uv_mutex_unlock(&lock);
+#else
+		pthread_mutex_unlock(&lock);
+#endif
+	}
 
 	socket_started = 0;
 	static_port = 0;
-	client_list = NULL;
 
 	logprintf(LOG_DEBUG, "garbage collected socket library");
 	return EXIT_SUCCESS;
 }
 
-int socket_recv(char *buffer, int bytes, char **data, size_t *ptr) {
+ssize_t socket_recv(char *buffer, int bytes, char **data, ssize_t *ptr) {
 	int len = (int)strlen(EOSS);
-	size_t msglen = 0;
+	int end = strncmp(&buffer[bytes-len], EOSS, len);
+	int i = 0, nr = 0;
+
+	for(i=0;i<bytes;i++) {
+		if(strncmp(&buffer[i], EOSS, len) == 0) {
+			nr++;
+		}
+	}
+
+	str_replace(EOSS, "\n", &buffer);
+	bytes -= (nr*(len-1));
+
+	if(end == 0) {
+		buffer[bytes-1] = '\0';
+		bytes--;
+	}
+
 	*ptr += bytes;
+
 	if((*data = REALLOC(*data, *ptr+1)) == NULL) {
 		OUT_OF_MEMORY
 	}
+
 	memset(&(*data)[(*ptr-bytes)], '\0', bytes+1);
 	memcpy(&(*data)[(*ptr-bytes)], buffer, bytes);
-	msglen = strlen(*data);
 
-	if(*data != NULL && msglen > 0) {
-		/* When a stream is larger then the buffer size, it has to contain
-			 the pilight delimiter to know when the stream ends. If the stream
-			 is shorter then the buffer size, we know we received the full stream */
-		int l = 0;
-		if(((l = strncmp(&(*data)[*ptr-len], EOSS, (unsigned int)len)) == 0) || *ptr < BUFFER_SIZE) {
-			/* If the socket contains buffered TCP buffers, separate them by
-				 changing the delimiters into newlines */
-			if(*ptr > msglen) {
-				int i = 0;
-				for(i=0;i<*ptr;i++) {
-					if(i+(len-1) < *ptr && strncmp(&(*data)[i], EOSS, (size_t)len) == 0) {
-						memmove(&(*data)[i], &(*data)[i+(len-1)], (size_t)(*ptr-(i+(len-1))));
-						*ptr -= (len-1);
-						*data[i] = '\n';
-					}
-				}
-				*data[*ptr] = '\0';
-			} else {
-				if(l == 0) {
-					(*data)[*ptr-len] = '\0'; // remove delimiter
-				} else {
-					(*data)[*ptr] = '\0';
-				}
-				return *ptr;
-				if(strcmp(*data, "1") == 0 || strcmp(*data, "BEAT") == 0) {
-					FREE(*data);
-					return *ptr;
-				}
-			}
-		}
+	if(end == 0) {
+		return *ptr;
+	} else {
+		return 0;
 	}
+
 	return 0;	
 }
 
-// static void *adhoc_mode(int reason, void *param) {
-	// if(socket_server != NULL) {
-		// eventpool_fd_remove(socket_server);
-		// logprintf(LOG_INFO, "shut down socket server due to adhoc mode");
-		// socket_server = NULL;
-	// }
-	// return NULL;
-// }
+static void client_remove(int fd) {
+	if(lock_init == 1) {
+#ifdef _WIN32
+		uv_mutex_lock(&lock);
+#else
+		pthread_mutex_lock(&lock);
+#endif
+	}
 
-// static void *socket_restart(int reason, void *param) {
-	// if(socket_server != NULL) {
-		// eventpool_fd_remove(socket_server);
-		// socket_server = NULL;
-	// }
+	struct client_list_t *currP, *prevP;
 
-	// socket_server = eventpool_socket_add("socket server", NULL, static_port, AF_INET, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_SERVER, server_callback, NULL, NULL);
+	prevP = NULL;
 
-	// return NULL;
-// }
+	for(currP = client_list; currP != NULL; prevP = currP, currP = currP->next) {
+		if(currP->fd == fd) {
+			if(prevP == NULL) {
+				client_list = currP->next;
+			} else {
+				prevP->next = currP->next;
+			}
 
-// static void *socket_send_thread(int reason, void *param) {
-	// struct threadpool_tasks_t *task = param;
-	// struct reason_socket_send_t *data = task->userdata;
+			if(currP->data != NULL) {
+				struct uv_custom_poll_t *custom_poll_data = currP->data;
+				if(custom_poll_data->data != NULL) {
+					struct data_t *data = custom_poll_data->data;
+					FREE(data);
+				}
+				uv_custom_poll_free(custom_poll_data);
+			}
+			FREE(currP);
+			break;
+		}
+	}
 
-	// if(strcmp(data->type, "socket") == 0) {
-		// socket_write(data->fd, data->buffer);
-	// }
-	// return NULL;
-// }
+	if(lock_init == 1) {
+#ifdef _WIN32
+		uv_mutex_unlock(&lock);
+#else
+		pthread_mutex_unlock(&lock);
+#endif
+	}
+}
+
+static void client_add(uv_poll_t *req, int fd, struct uv_custom_poll_t *data) {
+	if(lock_init == 0) {
+		lock_init = 1;
+#ifdef _WIN32
+		uv_mutex_init(&lock);
+#else
+		pthread_mutexattr_init(&attr);
+		pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+		pthread_mutex_init(&lock, &attr);
+#endif
+	}
+
+	struct client_list_t *node = MALLOC(sizeof(struct client_list_t));
+	if(node == NULL) {
+		OUT_OF_MEMORY
+	}
+	node->req = req;
+	node->fd = (int)fd;
+	node->data = data;
+
+#ifdef _WIN32
+	uv_mutex_lock(&lock);
+#else
+	pthread_mutex_lock(&lock);
+#endif
+	node->next = client_list;
+	client_list = node;
+#ifdef _WIN32
+	uv_mutex_unlock(&lock);
+#else
+	pthread_mutex_unlock(&lock);
+#endif
+}
 
 static void close_cb(uv_handle_t *handle) {
 	FREE(handle);
 }
 
-static void alloc_cb(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
-	buf->base = malloc(suggested_size);
-	buf->len = suggested_size;
-	memset(buf->base, '\0', suggested_size);
-}
+static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
 
-static void read_cb(uv_stream_t *client_req, ssize_t nread, const uv_buf_t *buf) {
+	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct data_t *data = custom_poll_data->data;
+
 	uv_os_fd_t fd = 0;
 
-	struct data_t *data = client_req->data;
-
-	int r = uv_fileno((uv_handle_t *)client_req, &fd);
+	int r = uv_fileno((uv_handle_t *)req, &fd);
 	if(r != 0) {
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
-		FREE(data);
 		return;
 	}
 
-  if(nread < 0) {
-		struct sockaddr_in addr;
-		socklen_t socklen = sizeof(addr);
-		char buf1[INET_ADDRSTRLEN+1];
-
-#ifdef _WIN32
-		if(getpeername((SOCKET)fd, (struct sockaddr *)&addr, &socklen) == 0) {
-#else
-		if(getpeername(fd, (struct sockaddr *)&addr, &socklen) == 0) {
-#endif
-			memset(&buf1, '\0', INET_ADDRSTRLEN+1);
-			inet_ntop(AF_INET, (void *)&(addr.sin_addr), buf1, INET_ADDRSTRLEN+1);
-			logprintf(LOG_DEBUG, "client disconnected, ip %s, port %d", buf1, ntohs(addr.sin_port));
-		}
+	if(*nread == -1) {
 		struct reason_socket_disconnected_t *data1 = MALLOC(sizeof(struct reason_socket_disconnected_t));
 		if(data1 == NULL) {
 			OUT_OF_MEMORY
@@ -214,101 +247,38 @@ static void read_cb(uv_stream_t *client_req, ssize_t nread, const uv_buf_t *buf)
 		data1->fd = (int)fd;
 		eventpool_trigger(REASON_SOCKET_DISCONNECTED, reason_socket_disconnected_free, data1);
 
-		if(data->buflen > 0) {
-			FREE(data->buffer);
-			data->buflen = 0;
-		}
-		FREE(data);
-		client_req->data = NULL;
+		uv_custom_close(req);
+		uv_custom_write(req);
 
-		free(buf->base);
-    uv_close((uv_handle_t *)client_req, close_cb);
     return;
-  }
-	
-	if(nread > 0) {
-		int x = socket_recv(buf->base, nread, &data->buffer, &data->buflen);
-		if(x > 0) {
-			if(strstr(data->buffer, "\n") != NULL) {
-				char **array = NULL;
-				unsigned int n = explode(data->buffer, "\n", &array), q = 0;
-				for(q=0;q<n;q++) {
-					struct reason_socket_received_t *data1 = MALLOC(sizeof(struct reason_socket_received_t));
-					if(data1 == NULL) {
-						OUT_OF_MEMORY
-					}
-					data1->fd = (int)fd;
-					if((data1->buffer = MALLOC(strlen(array[q])+1)) == NULL) {
-						OUT_OF_MEMORY
-					}
-					strcpy(data1->buffer, array[q]);
-					strncpy(data1->type, "socket", 255);
-					data1->endpoint = data->endpoint;
-					eventpool_trigger(REASON_SOCKET_RECEIVED, reason_socket_received_free, data1);
-				}
-				array_free(&array, n);
-			} else {
-				struct reason_socket_received_t *data1 = MALLOC(sizeof(struct reason_socket_received_t));
-				if(data1 == NULL) {
-					OUT_OF_MEMORY
-				}
-				data1->fd = (int)fd;
-				if((data1->buffer = MALLOC(strlen(data->buffer)+1)) == NULL) {
-					OUT_OF_MEMORY
-				}
-				strcpy(data1->buffer, data->buffer);
-				strncpy(data1->type, "socket", 255);
-				data1->endpoint = data->endpoint;
-				eventpool_trigger(REASON_SOCKET_RECEIVED, reason_socket_received_free, data1);
-			}
-			FREE(data->buffer);
-			data->buflen = 0;
-		}
-		free(buf->base);
+	}
+	if(*nread > 0) {
+		buf[*nread] = '\0';
+
+		data->read_cb(fd, buf, *nread);
+
+		*nread = 0;
+		uv_custom_read(req);
 	}
 }
 
-static void connect_cb(uv_stream_t *server_req, int status) {
-	uv_os_fd_t fd;
-	int r = 0;
-	if(status < 0) {
-		logprintf(LOG_ERR, "connection_cb: %s", uv_strerror(status));
+static void poll_close_cb(uv_poll_t *req) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
+	struct sockaddr_in addr;
+	socklen_t socklen = sizeof(addr);
+	char buf[INET_ADDRSTRLEN+1];
+	int fd = -1, r = 0;
+
+	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
+		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
 		return;
 	}
 
-	uv_tcp_t *client_req = MALLOC(sizeof(uv_tcp_t));
-	if(client_req == NULL) {
-		OUT_OF_MEMORY
-	}
-	r = uv_tcp_init(uv_default_loop(), client_req);
-	if(r != 0) {
-		logprintf(LOG_ERR, "uv_tcp_init: %s", uv_strerror(r));
-		return;
-	}
-
-	struct data_t *data = MALLOC(sizeof(struct data_t));
-	if(data == NULL) {
-		OUT_OF_MEMORY
-	}
-	memset(data, '\0', sizeof(struct data_t));
-	data->buffer = NULL;
-	data->buflen = 0;
-	data->endpoint = SOCKET_SERVER;
-	client_req->data = data;
-
-	if(uv_accept(server_req, (uv_stream_t *)client_req) == 0) {
-
-		struct sockaddr_in addr;
-		socklen_t socklen = sizeof(addr);
-		char buf[INET_ADDRSTRLEN+1];
-
-		r = uv_fileno((uv_handle_t *)client_req, &fd);
-		if(r != 0) {
-			logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
-			FREE(data);
-			return;
-		}
-
+	if(fd > -1) {
 #ifdef _WIN32
 		if(getpeername((SOCKET)fd, (struct sockaddr *)&addr, &socklen) == 0) {
 #else
@@ -316,112 +286,128 @@ static void connect_cb(uv_stream_t *server_req, int status) {
 #endif
 			memset(&buf, '\0', INET_ADDRSTRLEN+1);
 			inet_ntop(AF_INET, (void *)&(addr.sin_addr), buf, INET_ADDRSTRLEN+1);
-
-			if(whitelist_check(buf) != 0) {
-				logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", buf, ntohs(addr.sin_port));
-				FREE(data);
-				return;
-			} else {
-				logprintf(LOG_INFO, "new client, ip: %s, port: %d", buf, ntohs(addr.sin_port));
-				logprintf(LOG_DEBUG, "client fd: %d", fd);
-			}
-
-			if(lock_init == 0) {
-				lock_init = 1;
-				uv_mutex_init(&lock);
-			}
-
-			struct client_list_t *node = MALLOC(sizeof(struct client_list_t));
-			if(node == NULL) {
-				OUT_OF_MEMORY
-			}
-			node->req = (uv_stream_t *)client_req;
-			node->fd = (int)fd;
-			node->data = data;
-
-			uv_mutex_lock(&lock);
-			node->next = client_list;
-			client_list = node;
-			uv_mutex_unlock(&lock);
-
-			struct reason_socket_connected_t *data1 = MALLOC(sizeof(struct reason_socket_connected_t));
-			if(data1 == NULL) {
-				OUT_OF_MEMORY
-			}
-			data1->fd = (int)fd;
-			eventpool_trigger(REASON_SOCKET_CONNECTED, reason_socket_connected_free, data1);
+			logprintf(LOG_DEBUG, "client disconnected, fd %d, ip %s, port %d", fd, buf, htons(addr.sin_port));
 		}
 
-		uv_read_start((uv_stream_t *)client_req, alloc_cb, read_cb);
-	} else {
-		FREE(data);
-		uv_close((uv_handle_t *)client_req, close_cb);
-	}	
+#ifdef _WIN32
+		shutdown(fd, SD_BOTH);
+#else
+		shutdown(fd, SHUT_RDWR);
+#endif
+		close(fd);
+	}
+
+	client_remove(fd);
+
+	uv_close((uv_handle_t *)req, close_cb);
 }
 
-static void on_write(uv_write_t *req, int status) {
-	uv_buf_t *buf = req->data;
+static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
 
-	buf->base[buf->len-1] = '\0';
-	buf->base[buf->len-2] = '\n';
+	struct sockaddr_in servaddr;
+	struct uv_custom_poll_t *server_poll_data = req->data;
+	struct data_t *server_data = server_poll_data->data;
+	struct uv_custom_poll_t *custom_poll_data = NULL;
+	socklen_t socklen = sizeof(servaddr);
+	char buffer[BUFFER_SIZE];
+	int client = 0, r = 0, fd = 0;
 
-	logprintf(LOG_DEBUG, "socket write succeeded: %s", buf->base);
+	memset(buffer, '\0', BUFFER_SIZE);
 
-	FREE(buf->base);
-	FREE(buf);
-	FREE(req);
-}
-
-void on_connect(uv_connect_t *connect_req, int status) {
-	uv_os_fd_t fd = 0;
-	int r = uv_fileno((uv_handle_t *)connect_req->handle, &fd);
-	if(r != 0) {
-		FREE(connect_req);
+	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
 		return;
 	}
+
+	if((client = accept(fd, (struct sockaddr *)&servaddr, (socklen_t *)&socklen)) < 0) {
+		logprintf(LOG_NOTICE, "accept: %s", strerror(errno));
+		return;
+	}
+
+	memset(&buffer, '\0', INET_ADDRSTRLEN+1);
+	inet_ntop(AF_INET, (void *)&(servaddr.sin_addr), buffer, INET_ADDRSTRLEN+1);
+
+	if(socket_override_whitelist_check > -1 || whitelist_check(buffer) != 0) {
+		logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", buffer, ntohs(servaddr.sin_port));
+		close(client);
+		return;
+	} else {
+		logprintf(LOG_DEBUG, "new client, fd: %d, ip: %s, port: %d", client, buffer, ntohs(servaddr.sin_port));
+	}
+
+#ifdef _WIN32
+	unsigned long on = 1;
+	ioctlsocket(client, FIONBIO, &on);
+#else
+	long arg = fcntl(client, F_GETFL, NULL);
+	fcntl(client, F_SETFL, arg | O_NONBLOCK);
+#endif
 
 	struct data_t *data = MALLOC(sizeof(struct data_t));
 	if(data == NULL) {
 		OUT_OF_MEMORY
 	}
 	memset(data, '\0', sizeof(struct data_t));
-	data->buffer = NULL;
-	data->buflen = 0;
-	data->endpoint = SOCKET_CLIENT;
-	connect_req->handle->data = data;
+	data->read_cb = server_data->read_cb;
 
-	if(lock_init == 0) {
-		lock_init = 1;
-		uv_mutex_init(&lock);
-	}
-
-	struct client_list_t *node = MALLOC(sizeof(struct client_list_t));
-	if(node == NULL) {
+	uv_poll_t *poll_req = NULL;
+	if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
 		OUT_OF_MEMORY
 	}
-	node->req = connect_req->handle;
-	node->fd = (int)fd;
-	node->data = data;
+	uv_custom_poll_init(&custom_poll_data, poll_req, NULL);
 
-	uv_mutex_lock(&lock);
-	node->next = client_list;
-	client_list = node;
-	uv_mutex_unlock(&lock);
+	custom_poll_data->read_cb = client_read_cb;
+	custom_poll_data->close_cb = poll_close_cb;
+	custom_poll_data->data = data;
+
+	r = uv_poll_init_socket(uv_default_loop(), poll_req, client);
+	if(r != 0) {
+		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
+		close(fd);
+		if(custom_poll_data != NULL) {
+			uv_custom_poll_free(custom_poll_data);
+			poll_req->data = NULL;
+		}
+		FREE(poll_req);
+		return;
+	}
+
+	client_add(poll_req, client, custom_poll_data);
 
 	struct reason_socket_connected_t *data1 = MALLOC(sizeof(struct reason_socket_connected_t));
 	if(data1 == NULL) {
 		OUT_OF_MEMORY
 	}
-	data1->fd = (int)fd;
+	data1->fd = (int)client;
 	eventpool_trigger(REASON_SOCKET_CONNECTED, reason_socket_connected_free, data1);
 
-	uv_read_start((uv_stream_t *)connect_req->handle, alloc_cb, read_cb);
-
-	FREE(connect_req);
+	uv_custom_read(req);
+	uv_custom_read(poll_req);
 }
 
-int socket_connect(char *address, unsigned short port) {
+/* Start the socket server */
+int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t)) {
+	if(pthread_equal(pth_main_id, pthread_self()) == 0) {
+		logprintf(LOG_ERR, "webserver_start can only be started from the main thread");
+		return -1;
+	}
+
+	if(socket_started == 1) {
+		return 0;
+	}
+
+	static_port = port;
+	socket_started = 1;
+
+	struct uv_custom_poll_t *custom_poll_data = NULL;
+	struct sockaddr_in addr;
+	socklen_t socklen = sizeof(addr);
+	int r = 0, sockfd = 0;
+
 #ifdef _WIN32
 	WSADATA wsa;
 
@@ -431,86 +417,93 @@ int socket_connect(char *address, unsigned short port) {
 	}
 #endif
 
-	struct sockaddr_in addr;
-	int r = 0;
+	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+		logprintf(LOG_ERR, "socket: %s", strerror(errno));
+		close(sockfd);
+		return -1;
+	}
 
-	uv_tcp_t *tcp_req = MALLOC(sizeof(uv_tcp_t));
-	if(tcp_req == NULL) {
+#ifdef _WIN32
+	unsigned long on = 1;
+	ioctlsocket(sockfd, FIONBIO, &on);
+#else
+	long arg = fcntl(sockfd, F_GETFL, NULL);
+	fcntl(sockfd, F_SETFL, arg | O_NONBLOCK);
+#endif
+
+	unsigned long on = 1;
+
+	if((r = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(int))) < 0) {
+		logprintf(LOG_ERR, "setsockopt: %s", strerror(errno));
+		close(sockfd);
+		return -1;
+	}
+
+	memset((char *)&addr, '\0', sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	addr.sin_port = htons(port);
+
+	if((r = bind(sockfd, (struct sockaddr *)&addr, sizeof(addr))) < 0) {
+		int x = 0;
+		if((x = getpeername(sockfd, (struct sockaddr *)&addr, (socklen_t *)&socklen)) == 0) {
+			logprintf(LOG_ERR, "cannot bind to socket port %d, address already in use?", ntohs(addr.sin_port));
+		} else {
+			logprintf(LOG_ERR, "cannot bind to socket port, address already in use?");
+		}
+		close(sockfd);
+		return -1;
+	}
+
+	if((listen(sockfd, 0)) < 0) {
+		logprintf(LOG_ERR, "listen: %s", strerror(errno));
+		close(sockfd);
+		return -1;
+	}
+
+	uv_poll_t *poll_req = NULL;
+	if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
 		OUT_OF_MEMORY
 	}
 
-	r = uv_tcp_init(uv_default_loop(), tcp_req);
-	if(r != 0) {
-		logprintf(LOG_ERR, "uv_tcp_init: %s", uv_strerror(r));
-		goto close;
-	}
+	uv_custom_poll_init(&custom_poll_data, poll_req, (void *)NULL);
+	custom_poll_data->is_ssl = 0;
+	custom_poll_data->read_cb = server_read_cb;
 
-	r = uv_ip4_addr(address, port, &addr);
-	if(r != 0) {
-		logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
-		goto close;
-	}
-
-	uv_connect_t *connect_req = MALLOC(sizeof(uv_connect_t));
-	if(connect_req == NULL) {
+	struct data_t *data = MALLOC(sizeof(struct data_t));
+	if(data == NULL) {
 		OUT_OF_MEMORY
 	}
+	data->read_cb = read_cb;
+	custom_poll_data->data = data;
 
-	uv_tcp_connect(connect_req, tcp_req, (struct sockaddr *)&addr, on_connect);
-
-	return 0;
-
-close:
-	FREE(tcp_req);
-	return -1;
-}
-
-/* Start the socket server */
-int socket_start(unsigned short port) {
-	if(socket_started == 1) {
-		return 0;
-	}
-	static_port = port;
-	socket_started = 1;
-
-	struct sockaddr_in addr;
-	int r = 0;
-
-	uv_tcp_t *tcp_req = MALLOC(sizeof(uv_tcp_t));
-	if(tcp_req == NULL) {
-		OUT_OF_MEMORY
-	}
-
-	r = uv_tcp_init(uv_default_loop(), tcp_req);
+	r = uv_poll_init_socket(uv_default_loop(), poll_req, sockfd);
 	if(r != 0) {
-		logprintf(LOG_ERR, "uv_tcp_init: %s", uv_strerror(r));
-		goto close;
+		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
+		FREE(poll_req);
+		goto free;
 	}
 
-	r = uv_ip4_addr("0.0.0.0", port, &addr);
-	if(r != 0) {
-		logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
-		goto close;
+	uv_custom_write(poll_req);
+	uv_custom_read(poll_req);
+
+	if(getsockname(sockfd, (struct sockaddr *)&addr, (socklen_t *)&socklen) == -1) {
+		logprintf(LOG_ERR, "getsockname");
+	} else {
+		port = static_port = ntohs(addr.sin_port);
 	}
 
-	r = uv_tcp_bind(tcp_req, (const struct sockaddr *)&addr, 0);
-	if(r != 0) {
-		logprintf(LOG_ERR, "uv_tcp_bind: %s", uv_strerror(r));
-		goto close;
+	logprintf(LOG_INFO, "socket server started at port #%d, fd: %d", port, sockfd);
+
+	client_add(poll_req, sockfd, custom_poll_data);
+
+	return sockfd;
+
+free:
+	if(sockfd > 0) {
+		close(sockfd);
 	}
 
-	r = uv_listen((uv_stream_t *)tcp_req, 3, connect_cb);
-	if(r != 0) {
-		logprintf(LOG_ERR, "uv_listen: %s", uv_strerror(r));
-		goto close;
-	}
-
-	logprintf(LOG_INFO, "socket server started at port #%d", port);
-
-	return 0;
-
-close:
-	FREE(tcp_req);
 	return -1;
 	
 	// if(socket_server != NULL) {
@@ -527,58 +520,34 @@ unsigned int socket_get_port(void) {
 	return static_port;
 }
 
-static void client_remove(int fd) {
-	uv_mutex_lock(&lock);
-	struct client_list_t *currP, *prevP;
-
-	prevP = NULL;
-
-	for(currP = client_list; currP != NULL; prevP = currP, currP = currP->next) {
-		if(currP->fd == fd) {
-			if(prevP == NULL) {
-				client_list = currP->next;
-			} else {
-				prevP->next = currP->next;
-			}
-
-			if(currP->data != NULL) {
-				if(currP->data->buflen > 0) {
-					FREE(currP->data->buffer);
-					currP->data->buflen = 0;
-				}
-				FREE(currP->data);
-			}
-			FREE(currP);
+void socket_close(int sockfd) {
+	uv_poll_t *req = NULL;
+	if(lock_init == 1) {
+#ifdef _WIN32
+		uv_mutex_lock(&lock);
+#else
+		pthread_mutex_lock(&lock);
+#endif
+	}
+	struct client_list_t *tmp = client_list;
+	while(tmp) {
+		if(tmp->fd == sockfd && !uv_is_closing((uv_handle_t *)tmp->req)) {
+			req = tmp->req;
 			break;
 		}
+		tmp = tmp->next;
 	}
-	uv_mutex_unlock(&lock);
-}
-
-void socket_close(int sockfd) {
-	struct sockaddr_in addr;
-	socklen_t socklen = sizeof(addr);
-	char buf[INET_ADDRSTRLEN+1];
-
-	if(sockfd > 0) {
+	if(lock_init == 1) {
 #ifdef _WIN32
-		if(getpeername((SOCKET)sockfd, (struct sockaddr *)&addr, &socklen) == 0) {
+		uv_mutex_unlock(&lock);
 #else
-		if(getpeername(sockfd, (struct sockaddr *)&addr, &socklen) == 0) {
+		pthread_mutex_unlock(&lock);
 #endif
-			memset(&buf, '\0', INET_ADDRSTRLEN+1);
-			inet_ntop(AF_INET, (void *)&(addr.sin_addr), buf, INET_ADDRSTRLEN+1);
-			logprintf(LOG_DEBUG, "client disconnected, fd %d, ip %s, port %d", sockfd, buf, htons(addr.sin_port));
-		}
+	}
 
-		client_remove(sockfd);
-
-#ifdef _WIN32
-		shutdown(sockfd, SD_BOTH);
-#else
-		shutdown(sockfd, SHUT_RDWR);
-#endif
-		close(sockfd);
+	if(req != NULL) {
+		uv_custom_close(req);
+		uv_custom_write(req);
 	}
 }
 
@@ -612,40 +581,129 @@ int socket_write(int sockfd, const char *msg, ...) {
 
 		memcpy(&sendBuff[n-len], EOSS, (size_t)len);
 
-		uv_stream_t *req = NULL;
-		uv_mutex_lock(&lock);
+		struct uv_custom_poll_t *custom_poll_data = NULL;
+		uv_poll_t *req = NULL;
+
+		if(lock_init == 1) {
+#ifdef _WIN32
+			uv_mutex_lock(&lock);
+#else
+			pthread_mutex_lock(&lock);
+#endif
+		}
+
 		struct client_list_t *tmp = client_list;
 		while(tmp) {
-			if(tmp->fd == sockfd) {
+			if(tmp->fd == sockfd && !uv_is_closing((uv_handle_t *)tmp->req)) {
 				req = tmp->req;
+				custom_poll_data = tmp->data;
 				break;
 			}
 			tmp = tmp->next;
 		}
-		uv_mutex_unlock(&lock);
 
-		if(req != NULL) {
-			uv_write_t *write_req = NULL;
-			if((write_req = MALLOC(sizeof(uv_write_t))) == NULL) {
-				OUT_OF_MEMORY
-			}
+		if(lock_init == 1) {
+#ifdef _WIN32
+			uv_mutex_unlock(&lock);
+#else
+			pthread_mutex_unlock(&lock);
+#endif
+		}
 
-			uv_buf_t *buf = MALLOC(sizeof(uv_buf_t));
-			if(buf == NULL) {
-				OUT_OF_MEMORY
-			}
-			buf->len = strlen(sendBuff);
-
-			if((buf->base = MALLOC(buf->len+1)) == NULL) {
-				OUT_OF_MEMORY
-			}
-			strncpy(buf->base, sendBuff, buf->len);
-
-			write_req->data = buf;
-			uv_write(write_req, req, buf, 1, on_write);
+		if(req != NULL && custom_poll_data != NULL) {
+			iobuf_append(&custom_poll_data->send_iobuf, (void *)sendBuff, strlen(sendBuff));
+			uv_custom_write(req);
 		}
 
 		FREE(sendBuff);
 	}
 	return n;
+}
+
+int socket_connect(char *server, unsigned short port, void (*read_cb)(int, char *, ssize_t)) {
+	struct uv_custom_poll_t *custom_poll_data = NULL;
+	struct sockaddr_in addr;
+	int r = 0, sockfd = 0;
+
+#ifdef _WIN32
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "WSAStartup");
+		exit(EXIT_FAILURE);
+	}
+#endif
+
+	r = uv_ip4_addr(server, port, &addr);
+	if(r != 0) {
+		logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
+		goto freeuv;
+	}
+
+	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+		logprintf(LOG_ERR, "socket: %s", strerror(errno));
+		goto freeuv;
+	}
+
+#ifdef _WIN32
+	unsigned long on = 1;
+	ioctlsocket(sockfd, FIONBIO, &on);
+#else
+	long arg = fcntl(sockfd, F_GETFL, NULL);
+	fcntl(sockfd, F_SETFL, arg | O_NONBLOCK);
+#endif
+
+	if(connect(sockfd, (const struct sockaddr *)&addr, sizeof(struct sockaddr)) < 0) {
+#ifdef _WIN32
+		if(!(WSAGetLastError() == WSAEWOULDBLOCK || WSAGetLastError() == WSAEISCONN)) {
+#else
+		if(!(errno == EINPROGRESS || errno == EISCONN)) {
+#endif
+			logprintf(LOG_ERR, "connect: %s", strerror(errno));
+			goto freeuv;
+		}
+	}
+
+	uv_poll_t *poll_req = NULL;
+	if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	uv_custom_poll_init(&custom_poll_data, poll_req, NULL);
+	custom_poll_data->is_ssl = 0;
+	custom_poll_data->read_cb = client_read_cb;
+	custom_poll_data->close_cb = poll_close_cb;
+
+	struct data_t *data = MALLOC(sizeof(struct data_t));
+	if(data == NULL) {
+		OUT_OF_MEMORY
+	}
+	data->read_cb = read_cb;
+	custom_poll_data->data = data;
+
+	r = uv_poll_init_socket(uv_default_loop(), poll_req, sockfd);
+	if(r != 0) {
+		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
+		FREE(poll_req);
+		goto freeuv;
+	}
+
+	client_add(poll_req, sockfd, custom_poll_data);
+
+	struct reason_socket_connected_t *data1 = MALLOC(sizeof(struct reason_socket_connected_t));
+	if(data1 == NULL) {
+		OUT_OF_MEMORY
+	}
+	data1->fd = (int)sockfd;
+	eventpool_trigger(REASON_SOCKET_CONNECTED, reason_socket_connected_free, data1);
+
+	uv_custom_read(poll_req);
+
+	return sockfd;
+
+freeuv:
+	if(sockfd > 0) {
+		close(sockfd);
+	}
+	return 0;
 }

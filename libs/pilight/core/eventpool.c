@@ -924,6 +924,8 @@ static uv_mutex_t listeners_lock;
 // static pthread_mutexattr_t listeners_attr;
 static int lockinit = 0;
 static int eventpoolinit = 0;
+static ssize_t minus_one = -1;
+static ssize_t one = 1;
 
 static struct eventpool_listener_t *eventpool_listeners = NULL;
 
@@ -1063,7 +1065,11 @@ void eventpool_trigger(int reason, void *(*done)(void *), void *data) {
 	uv_async_send(async_req);
 }
 
-static void eventpool_execute(uv_async_t *handle) {
+static void eventpool_execute(uv_async_t *handle) {	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct threadpool_tasks_t **node = NULL;
 	struct threadpool_data_t *tpdata = NULL;
 	int x = 0, nr1 = 0, nrnodes = 16, nrnodes1 = 0, i = 0;
@@ -1255,6 +1261,11 @@ size_t iobuf_append(struct iobuf_t *io, const void *buf, int len) {
 }
 
 void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct iobuf_t *send_io = NULL;
 	char buffer[BUFFER_SIZE];
@@ -1458,7 +1469,8 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 					 * FIXME: New client not yet accepted
 					 */
 					if(custom_poll_data->read_cb != NULL) {
-						custom_poll_data->read_cb(req, 0, NULL);
+						one = 1;
+						custom_poll_data->read_cb(req, &one, NULL);
 					}
 				} else if(n != MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
 					mbedtls_strerror(n, (char *)&buffer, BUFFER_SIZE);
@@ -1487,7 +1499,8 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 			switch(WSAGetLastError()) {
 				case WSAENOTCONN:
 					if(custom_poll_data->read_cb != NULL) {
-						custom_poll_data->read_cb(req, 0, NULL);
+						one = 1;
+						custom_poll_data->read_cb(req, &one, NULL);
 					}
 				break;
 				case WSAEWOULDBLOCK:
@@ -1495,7 +1508,8 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 			switch(errno) {
 				case ENOTCONN:
 					if(custom_poll_data->read_cb != NULL) {
-						custom_poll_data->read_cb(req, 0, NULL);
+						one = 1;
+						custom_poll_data->read_cb(req, &one, NULL);
 					}
 				break;				
 #if defined EAGAIN
@@ -1516,6 +1530,10 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 				break;
 			}
 		} else if(n == 0) {
+			if(custom_poll_data->read_cb != NULL) {
+				minus_one = -1;
+				custom_poll_data->read_cb(req, &minus_one, NULL);
+			}
 			custom_poll_data->doread = 0;
 			action &= ~UV_READABLE;
 		}
@@ -1637,7 +1655,11 @@ int uv_custom_write(uv_poll_t *req) {
 	return 0;
 }
 
-void eventpool_init(enum eventpool_threads_t t) {
+void eventpool_init(enum eventpool_threads_t t) {	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	if(running() == 0) {
 		return;
 	}

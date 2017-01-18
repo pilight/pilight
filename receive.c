@@ -54,6 +54,8 @@ typedef struct ssdp_list_t {
 
 static void signal_cb(uv_signal_t *, int);
 static uv_timer_t *ssdp_reseek_req = NULL;
+static char *buffer = NULL;
+static ssize_t buflen = 0;
 
 static int main_gc(void) {
 	if(filters != NULL) {
@@ -101,19 +103,34 @@ static void alloc_cb(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
 	memset(buf->base, 0, len);
 }
 
-static void *socket_received(int reason, void *param) {
-	struct reason_socket_received_t *data = param;
-
-	if(strcmp(data->buffer, "1") != 0 &&
-	   strncmp(data->buffer, "{\"status\":\"success\"}", 20) != 0) {
-		struct JsonNode *json = json_decode(data->buffer);
-		char *out = json_stringify(json, "\t");
-		printf("%s\n", out);
-		json_delete(json);
-		json_free(out);
+static void on_read(int fd, char *buf, ssize_t len) {
+	if(strcmp(buf, "1") != 0 &&
+	   strncmp(buf, "{\"status\":\"success\"}", 20) != 0) {
+		if(socket_recv(buf, len, &buffer, &buflen) > 0) {
+			if(strstr(buffer, "\n") != NULL) {
+				char **array = NULL;
+				int n = explode(buffer, "\n", &array), i = 0;
+				for(i=0;i<n;i++) {
+					struct JsonNode *json = json_decode(array[i]);
+					char *out = json_stringify(json, "\t");
+					printf("%s\n", out);
+					json_delete(json);
+					json_free(out);
+				}
+				array_free(&array, n);
+			} else {
+				struct JsonNode *json = json_decode(buffer);
+				char *out = json_stringify(json, "\t");
+				printf("%s\n", out);
+				json_delete(json);
+				json_free(out);
+			}
+			FREE(buffer);
+			buflen = 0;
+		}
 	}
 
-	return NULL;
+	return;
 }
 
 static void *socket_disconnected(int reason, void *param) {
@@ -147,7 +164,7 @@ static void *socket_connected(int reason, void *param) {
 }
 
 static void connect_to_server(char *server, int port) {
-	socket_connect(server, port);
+	socket_connect(server, port, on_read);
 
 	uv_timer_t *socket_timeout_req = NULL;
 	
@@ -267,6 +284,8 @@ static void main_loop(int onclose) {
 }
 
 int main(int argc, char **argv) {
+	pth_main_id = pthread_self();
+
 	log_init();
 	log_shell_enable();
 	log_file_disable();
@@ -393,7 +412,6 @@ int main(int argc, char **argv) {
 	eventpool_callback(REASON_SSDP_RECEIVED, ssdp_found);
 	eventpool_callback(REASON_SOCKET_CONNECTED, socket_connected);
 	eventpool_callback(REASON_SOCKET_DISCONNECTED, socket_disconnected);
-	eventpool_callback(REASON_SOCKET_RECEIVED, socket_received);
 
 	if(server != NULL && port > 0) {
 		connect_to_server(server, port);

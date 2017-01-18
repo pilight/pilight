@@ -75,6 +75,8 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 }
 
 int main(int argc, char **argv) {
+	pth_main_id = pthread_self();
+
 	pilight.process = PROCESS_CLIENT;
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);

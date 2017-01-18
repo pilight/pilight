@@ -19,6 +19,7 @@
  */
 
 #include <time.h>
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -267,11 +268,31 @@ static void ping_timeout(uv_timer_t *handle) {
 	return;
 }
 
-static void close_cb(uv_poll_t *req) {
+static void close_cb(uv_handle_t *handle) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
+	FREE(handle);
+}
+
+static void custom_close_cb(uv_poll_t *req) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct data_t *data = custom_poll_data->data;
+
 	ping_data_gc(data);
 	uv_custom_poll_free(custom_poll_data);
+
+	if(!uv_is_closing((uv_handle_t *)req)) {
+		uv_poll_stop(req);
+		uv_close((uv_handle_t *)req, close_cb);
+	}
 }
 
 #ifdef __FreeBSD__
@@ -367,6 +388,11 @@ static int initpacket(char *buf) {
 }
 
 static void write_cb(uv_poll_t *req) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct data_t *data = custom_poll_data->data;
 	char buf[1500];
@@ -418,12 +444,24 @@ static void write_cb(uv_poll_t *req) {
 #endif
 
 static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct data_t *data = custom_poll_data->data;
 	char buf2[1500];
 	struct ip *ip = (struct ip *)buf2;
 	struct icmp *icmp = (struct icmp *)(ip + 1);
 	char buf1[INET_ADDRSTRLEN+1];
+
+	if(*nread == -1) {
+		/*
+		 * We are disconnected
+		 */
+		return;
+	}
 
 	if(*nread == 40) {
 		memcpy(&buf2, buf, 40);
@@ -524,7 +562,7 @@ int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
 
 	custom_poll_data->write_cb = write_cb;
 	custom_poll_data->read_cb = read_cb;
-	custom_poll_data->close_cb = close_cb;
+	custom_poll_data->close_cb = custom_close_cb;
 
 	int r = uv_poll_init_socket(uv_default_loop(), data->poll_req, sockfd);
 	if(r != 0) {

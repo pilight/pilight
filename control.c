@@ -20,7 +20,6 @@
 
 #include "libs/libuv/uv.h"
 #include "libs/pilight/core/eventpool.h"
-#include "libs/pilight/core/timerpool.h"
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/common.h"
 #include "libs/pilight/core/log.h"
@@ -53,7 +52,7 @@ static char *state = NULL, *values = NULL, *device = NULL;
 typedef struct data_t {
 	int steps;
 	char *buffer;
-	size_t buflen;
+	ssize_t buflen;
 } data_t;
 
 typedef struct ssdp_list_t {
@@ -99,7 +98,6 @@ static int main_gc(void) {
 	protocol_gc();
 	storage_gc();
 
-	timer_thread_gc();
 	eventpool_gc();
 
 	log_shell_disable();
@@ -514,6 +512,8 @@ static void main_loop(int onclose) {
 }
 
 int main(int argc, char **argv) {
+	pth_main_id = pthread_self();
+
 	struct options_t *options = NULL;
 	char *server = NULL, *fconfig = NULL;
 	unsigned short port = 0, showhelp = 0, showversion = 0;

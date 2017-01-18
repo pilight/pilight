@@ -319,7 +319,9 @@ static void main_loop(int onclose) {
 	}
 }
 
-int main(int argc, char **argv) {	
+int main(int argc, char **argv) {
+	pth_main_id = pthread_self();
+
 	pilight.process = PROCESS_CLIENT;
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	

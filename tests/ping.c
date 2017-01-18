@@ -28,8 +28,11 @@
 
 static int run = LOCALHOST;
 static uv_thread_t pth;
+static uv_thread_t pth1;
 static int ping_socket = 0;
 static int ping_loop = 1;
+static int threaded = 0;
+static int started = 0;
 
 /*
  * A ICMP request to 127.0.0.1
@@ -212,18 +215,7 @@ static void ping_custom_server(void) {
 	CuAssertTrue(gtc, (r >= 0));
 }
 
-static void test_ping(CuTest *tc) {
-	gtc = tc;
-
-	ping_loop = 1;
-
-	memtrack();
-
-	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
-
-#ifndef _WIN32
-	ping_custom_server();
-#endif
+static void thread(void *param) {
 	struct ping_list_t *list = NULL;
 	if(run == LOCALHOST) {
 		ping_add_host(&list, "127.0.0.1");
@@ -232,13 +224,40 @@ static void test_ping(CuTest *tc) {
 	}
 	ping(list, callback);
 
-#ifdef _WIN32
-	SleepEx(1000, TRUE);
-#else
+#ifndef _WIN32
 	if(run == LOCALHOST || run == RESPONSE) {
 		uv_thread_create(&pth, ping_wait, NULL);
 	}
+#endif
+	started = 1;
+}
 
+static void test_ping(CuTest *tc) {
+	gtc = tc;
+
+	ping_loop = 1;
+	started = 0;
+
+	memtrack();
+
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
+
+#ifndef _WIN32
+	ping_custom_server();
+#endif
+
+	if(threaded == 1) {
+		uv_thread_create(&pth1, thread, NULL);
+	} else {
+		thread(NULL);
+	}
+
+#ifdef _WIN32
+	SleepEx(1000, TRUE);
+#else
+	while(started == 0) {
+		usleep(10);
+	}
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
 	uv_run(uv_default_loop(), UV_RUN_ONCE);
@@ -249,6 +268,9 @@ static void test_ping(CuTest *tc) {
 
 	if(run == LOCALHOST || run == RESPONSE) {
 		uv_thread_join(&pth);
+	}
+	if(threaded == 1) {
+		uv_thread_join(&pth1);
 	}
 #endif
 
@@ -266,6 +288,18 @@ static void test_ping_localhost(CuTest *tc) {
 	test_ping(tc);
 }
 
+static void test_ping_localhost_threaded(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	gtc = tc;
+
+	run = LOCALHOST;
+	threaded = 1;
+
+	test_ping(tc);
+}
+
 static void test_ping_timeout(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
@@ -273,6 +307,18 @@ static void test_ping_timeout(CuTest *tc) {
 	gtc = tc;
 
 	run = TIMEOUT;
+
+	test_ping(tc);
+}
+
+static void test_ping_timeout_threaded(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	gtc = tc;
+
+	run = TIMEOUT;
+	threaded = 1;
 
 	test_ping(tc);
 }
@@ -288,6 +334,18 @@ static void test_ping_response(CuTest *tc) {
 
 	test_ping(tc);
 }
+
+static void test_ping_response_threaded(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	gtc = tc;
+
+	run = RESPONSE;
+	threaded = 1;
+
+	test_ping(tc);
+}
 #endif
 
 CuSuite *suite_ping(void) {	
@@ -298,6 +356,10 @@ CuSuite *suite_ping(void) {
 #if !defined(_WIN32) && !defined(__FreeBSD__)
 	SUITE_ADD_TEST(suite, test_ping_response);
 #endif
+
+	SUITE_ADD_TEST(suite, test_ping_localhost_threaded);
+	SUITE_ADD_TEST(suite, test_ping_timeout_threaded);
+	SUITE_ADD_TEST(suite, test_ping_response_threaded);
 
 	return suite;
 }

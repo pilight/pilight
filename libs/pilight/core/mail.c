@@ -15,6 +15,7 @@
 #include <time.h>
 #include <math.h>
 #include <string.h>
+#include <assert.h>
 #include <sys/types.h>
 #ifdef _WIN32
 	#if _WIN32_WINNT < 0x0501
@@ -92,33 +93,83 @@ typedef struct request_t {
 } request_t;
 
 static void close_cb(uv_handle_t *handle) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	FREE(handle);
 }
 
 static void abort_cb(uv_poll_t *req) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct request_t *request = custom_poll_data->data;
+	int fd = -1, r = 0;
+
+	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
+		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
+	}
 
 	if(request != NULL && request->callback != NULL) {
 		request->callback(-1);
 	}
+
+	if(fd > -1) {
+#ifdef _WIN32
+		shutdown(fd, SD_BOTH);
+#else
+		shutdown(fd, SHUT_RDWR);
+#endif
+		close(fd);
+	}
+
+	uv_poll_stop(req);
 	if(!uv_is_closing((uv_handle_t *)req)) {
 		uv_close((uv_handle_t *)req, close_cb);
 	}
+
 	if(custom_poll_data != NULL) {
 		uv_custom_poll_free(custom_poll_data);
 	}
+
 	if(request != NULL) {
 		FREE(request);
 	}
 }
 
+static void custom_close_cb(uv_poll_t *req) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
+	abort_cb(req);
+}
+
 static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct request_t *request = custom_poll_data->data;
 	char buffer[BUFFER_SIZE], testme[256], ch = 0;
 	int val = 0, n = 0;
 	memset(&buffer, '\0', BUFFER_SIZE);
+
+	if(*nread == -1) {
+		/*
+		 * We are disconnected
+		 */
+		abort_cb(req);
+		return;
+	}
 
 	if(*nread > 0) {
 		buf[*nread-1] = '\0';
@@ -127,7 +178,8 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	switch(request->step) {
 		case SMTP_STEP_RECV_WELCOME: {
 			if(strncmp(buf, "220", 3) != 0) {
-				abort_cb(req);
+				uv_custom_close(req);
+				uv_custom_write(req);
 				return;
 			}
 			request->bytes_read = 0;
@@ -156,7 +208,8 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 				if(val == 501 && ch == 32) {
 					array_free(&array, n);
-					abort_cb(req);
+					uv_custom_close(req);
+					uv_custom_write(req);
 					logprintf(LOG_NOTICE, "SMTP: EHLO error");
 					return;
 				}
@@ -166,7 +219,8 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 					if(request->authtype == UNSUPPORTED) {
 						logprintf(LOG_NOTICE, "SMTP: no supported authentication method");
 						array_free(&array, n);
-						abort_cb(req);
+						uv_custom_close(req);
+						uv_custom_write(req);
 						return;
 					}
 					if(request->authtype == STARTTLS) {
@@ -191,17 +245,20 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			}
 			if(strncmp(buf, "451", 3) == 0) {
 				logprintf(LOG_NOTICE, "SMTP: protocol violation while authenticating");
-				abort_cb(req);
+				uv_custom_close(req);
+				uv_custom_write(req);
 				return;
 			}
 			if(strncmp(buf, "501", 3) == 0) {
 				logprintf(LOG_NOTICE, "SMTP: improperly base64 encoded user/password");
-				abort_cb(req);
+				uv_custom_close(req);
+				uv_custom_write(req);
 				return;
 			}
 			if(strncmp(buf, "535", 3) == 0) {
 				logprintf(LOG_NOTICE, "SMTP: authentication failed: wrong user/password");
-				abort_cb(req);
+				uv_custom_close(req);
+				uv_custom_write(req);
 				return;
 			}
 			*nread = 0;
@@ -210,7 +267,8 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		} break;
 		case SMTP_STEP_RECV_FROM: {
 			if(strncmp(buf, "250", 3) != 0) {
-				abort_cb(req);
+				uv_custom_close(req);
+				uv_custom_write(req);
 				return;
 			}
 			request->bytes_read = 0;
@@ -220,7 +278,8 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		} break;
 		case SMTP_STEP_RECV_TO: {
 			if(strncmp(buf, "250", 3) != 0) {
-				abort_cb(req);
+				uv_custom_close(req);
+				uv_custom_write(req);
 				return;
 			}
 			request->bytes_read = 0;
@@ -230,7 +289,8 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		} break;
 		case SMTP_STEP_RECV_DATA: {
 			if(strncmp(buf, "354", 3) != 0) {
-				abort_cb(req);
+				uv_custom_close(req);
+				uv_custom_write(req);
 				return;
 			}
 			request->bytes_read = 0;
@@ -240,7 +300,8 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		} break;
 		case SMTP_STEP_RECV_BODY: {
 			if(strncmp(buf, "250", 3) != 0) {
-				abort_cb(req);
+				uv_custom_close(req);
+				uv_custom_write(req);
 				return;
 			}
 			request->bytes_read = 0;
@@ -250,7 +311,8 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		} break;
 		case SMTP_STEP_RECV_RESET: {
 			if(strncmp(buf, "250", 3) != 0) {
-				abort_cb(req);
+				uv_custom_close(req);
+				uv_custom_write(req);
 				return;
 			}
 			request->bytes_read = 0;
@@ -284,6 +346,11 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 }
 
 static void push_data(uv_poll_t *req, int step) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct request_t *request = custom_poll_data->data;
 
@@ -301,6 +368,11 @@ static void push_data(uv_poll_t *req, int step) {
 }
 
 static void write_cb(uv_poll_t *req) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	assert(pthread_equal(pth_main_id, pthread_self()));
+
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct request_t *request = custom_poll_data->data;
 
@@ -544,6 +616,7 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 	}
 	custom_poll_data->write_cb = write_cb;
 	custom_poll_data->read_cb = read_cb;
+	custom_poll_data->close_cb = custom_close_cb;
 
 	r = uv_poll_init_socket(uv_default_loop(), poll_req, sockfd);
 	if(r != 0) {
@@ -553,7 +626,7 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 	}
 
 	request->step = SMTP_STEP_RECV_WELCOME;
-	write_cb(poll_req);
+	uv_custom_write(poll_req);
 
 	return 0;
 

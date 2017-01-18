@@ -207,6 +207,7 @@ static struct tests_t {
 
 static CuTest *gtc = NULL;
 static uv_thread_t pth;
+static uv_thread_t pth1;
 static int testnr = 0;
 static int http_server = 0;
 static int http_client = 0;
@@ -214,9 +215,11 @@ static int http_loop = 1;
 static int is_ssl = 0;
 static int is_ssl_init = 0;
 static int doquit = 0;
+static int threaded = 0;
+static int started = 0;
 static mbedtls_ssl_context ssl_ctx;
 
-static void test(void);
+static void test(void *param);
 
 static void callback(int code, char *data, int size, char *type, void *userdata) {
 	CuAssertIntEquals(gtc, code, tests[testnr].code);
@@ -235,7 +238,13 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 	}
 
 	if(testnr < sizeof(tests)/sizeof(tests[0])) {
-		test();
+		if(threaded == 1) {
+			started = 0;
+			uv_thread_join(&pth1);
+			uv_thread_create(&pth1, test, NULL);
+		} else {
+			test(NULL);
+		}
 	}
 }
 
@@ -424,7 +433,7 @@ static void http_start(int port) {
 	CuAssertTrue(gtc, r >= 0);
 }
 
-static void test(void) {
+static void test(void *param) {
 	http_loop = 1;
 	is_ssl_init = 0;
 	is_ssl = 0;
@@ -433,13 +442,15 @@ static void test(void) {
 	http_start(tests[testnr].port);
 
 	uv_thread_create(&pth, http_wait, NULL);
-	
+
 	if(tests[testnr].getpost == GET) {
 		http_get_content(tests[testnr].url, callback, NULL);
 	}
 	if(tests[testnr].getpost == POST) {
 		http_post_content(tests[testnr].url, tests[testnr].type, tests[testnr].post, callback, NULL);
 	}
+
+	started = 1;
 }
 
 static void test_http(CuTest *tc) {
@@ -447,14 +458,16 @@ static void test_http(CuTest *tc) {
 	fflush(stdout);
 
 	memtrack();
+	started = 0;
+	testnr = 0;
 
 	gtc = tc;
-	
-	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
+
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	ssl_init();
 
-	test();
+	test(NULL);
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -467,6 +480,54 @@ static void test_http(CuTest *tc) {
 	http_gc();
 	ssl_gc();
 
+	CuAssertIntEquals(tc, 10, testnr);
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
+static void test_http_threaded(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	memtrack();
+
+	gtc = tc;
+	started = 0;
+	testnr = 0;
+	
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
+
+	ssl_init();
+
+	threaded = 1;
+	uv_thread_create(&pth1, test, NULL);
+
+restart:
+	while(started == 0) {
+		usleep(10);
+	}
+
+	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	}
+
+	if(testnr+1 < sizeof(tests)/sizeof(tests[0])) {
+		goto restart;
+	}
+
+	uv_thread_join(&pth1);
+
+	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	}
+
+	http_gc();
+	ssl_gc();
+
+	CuAssertIntEquals(tc, 10, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -474,6 +535,7 @@ CuSuite *suite_http(void) {
 	CuSuite *suite = CuSuiteNew();
 
 	SUITE_ADD_TEST(suite, test_http);
+	SUITE_ADD_TEST(suite, test_http_threaded);
 
 	return suite;
 }

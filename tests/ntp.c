@@ -10,6 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#ifndef _WIN32
+	#include <unistd.h>
+#endif
 
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
@@ -19,13 +22,11 @@
 
 #include "alltests.h"
 
-/*
- * FIXME: Timeout
- */
-
 static uv_thread_t pth;
+static uv_thread_t pth1;
 static int ntp_socket = 0;
 static int ntp_loop = 1;
+static int started = 0;
 
 static char request[48] = {
 	0xe3, 0x00, 0x00, 0x00,
@@ -166,7 +167,6 @@ static void ntp_custom_server(void) {
 	CuAssertTrue(gtc, (r >= 0));
 }
 
-
 static void test_ntp(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
@@ -196,10 +196,51 @@ static void test_ntp(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
+static void thread(void *param) {
+	uv_thread_create(&pth, ntp_wait, NULL);
+
+	CuAssertIntEquals(gtc, -1, ntpsync("127.0.0.1", callback));
+
+	started = 1;
+}
+
+static void test_ntp_threaded(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	gtc = tc;
+
+	memtrack();
+
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
+
+	ntp_custom_server();
+
+	uv_thread_create(&pth1, thread, NULL);
+
+	while(started == 0) {
+		usleep(10);
+	}
+
+	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	}
+
+	uv_thread_join(&pth);
+	uv_thread_join(&pth1);
+
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
 CuSuite *suite_ntp(void) {	
 	CuSuite *suite = CuSuiteNew();
 
 	SUITE_ADD_TEST(suite, test_ntp);
+	SUITE_ADD_TEST(suite, test_ntp_threaded);
 
 	return suite;
 }

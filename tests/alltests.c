@@ -45,6 +45,7 @@ CuString *output = NULL;
 CuSuite *suite = NULL;
 CuSuite *suites[NRSUITS];
 
+pthread_t pth_main_id;
 static unsigned char passout[33];
 static char converted[65];
 static char password[65] = "test";
@@ -132,16 +133,6 @@ int settings_select_string_element(enum origin_t a, char *b, int c, char **d) {
 	return -1;
 }
 
-// int socket_get_port(void) {
-	// return 1234;
-// }
-
-// int dev2ip(char *a, char **b, sa_family_t c) {
-	// // printf("devip: %s\n", a);
-	// strcpy(*b, "123.123.123.123");
-	// return 0;
-// }
-
 // void _logprintf(int prio, char *file, int line, const char *str, ...) {
 	// va_list ap;
 	// char buffer[1024];
@@ -160,6 +151,7 @@ int RunAllTests(void) {
 	output = CuStringNew();
 	suite = CuSuiteNew();
 
+	pth_main_id = pthread_self();
 	memtrack();
 
 	/*
