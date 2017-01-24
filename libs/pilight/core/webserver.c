@@ -938,6 +938,7 @@ static void webserver_process(uv_async_t *handle) {
 	struct broadcast_list_t *tmp = NULL;
 	while(broadcast_list) {
 		tmp = broadcast_list;
+
 		while(clients) {
 			if(tmp->fd > 0) {
 				int fd = 0, r = 0;
@@ -1027,7 +1028,6 @@ static void *broadcast(int reason, void *param) {
 			FREE(node);
 		return NULL;
 	}
-
 
 	struct broadcast_list_t *tmp = broadcast_list;
 	if(tmp != NULL) {

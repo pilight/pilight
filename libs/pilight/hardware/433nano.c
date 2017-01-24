@@ -53,12 +53,13 @@ typedef struct data1_t {
 } data1_t;
 
 typedef struct timestamp_t {
-	unsigned long first;
-	unsigned long second;
+	struct timespec first;
+	struct timespec second;
 } timestamp_t;
 
-timestamp_t timestamp;
+static struct timestamp_t timestamp;
 
+static uv_timer_t *timer_req = NULL;
 static char com[255];
 static int dopause = 0;
 static int dowrite = 0;
@@ -89,7 +90,7 @@ static int serial_interface_attribs(int fd, speed_t speed, tcflag_t parity) {
 	tty.c_lflag = 0;
 	tty.c_oflag = 0;
 	tty.c_cc[VMIN] = 0;
-	tty.c_cc[VTIME] = 5;
+	tty.c_cc[VTIME] = 1;
 	tty.c_iflag &= ~((unsigned int)IXON | (unsigned int)IXOFF | (unsigned int)IXANY);
 	tty.c_cflag |= ((unsigned int)CLOCAL | (unsigned int)CREAD);
 	tty.c_cflag &= ~((unsigned int)PARENB | (unsigned int)PARODD);
@@ -117,7 +118,6 @@ static void parse_code(char *buffer, unsigned int len) {
 	char c = 0;
 	unsigned int i = 0, startv = 0, startc = 0, startp = 0;
 
-	// printf("%s %d\n", buffer, len);
 	for(i=0;i<len;i++) {
 		c = buffer[i];
 		if(c == '\n') {
@@ -193,26 +193,32 @@ static void parse_code(char *buffer, unsigned int len) {
 	}
 }
 
-// static void close_cb(uv_fs_t *req) {
-	// uv_fs_req_cleanup(req);
-	// FREE(req);
-// }
+static void reconnect(uv_timer_t *timer_req) {
+	nano433->init();
+}
 
 static void on_read(uv_fs_t *req) {
 	struct data1_t *data = req->data;
 	unsigned int len = req->result, pos = 0;
 	char *p = NULL;
-
 	if(len < 0) {
 		logprintf(LOG_ERR, "read error: %s", uv_strerror(req->result));
 	} else if(len >= 0) {
+		memcpy(&timestamp.first, &timestamp.second, sizeof(struct timespec));
+		clock_gettime(CLOCK_MONOTONIC, &timestamp.second);
+		if((((double)timestamp.second.tv_sec + 1.0e-9*timestamp.second.tv_nsec) -
+			((double)timestamp.first.tv_sec + 1.0e-9*timestamp.first.tv_nsec)) < 0.0001) {
+			dostop = 1;
+
+			uv_timer_start(timer_req, reconnect, 1000, 1000);
+		}
 		if(len > 0) {
 			if(dowrite == 0) {
-				if(strncmp(&data->rbuf[0], "\n", 1) == 0) {
+				if(data->rbuf[0] == 10) {
 					dowrite = 1;
 				}
 			}
-			if(strcmp(data->rbuf, "\n") != 0) {
+			if(data->rbuf[0] != 10) {
 				while((pos++ < len) && (data->rbuf[pos] == '\n'));
 				pos--;
 				memcpy(&data->buf[data->ptr], &data->rbuf[pos], len-pos);
@@ -289,51 +295,60 @@ static void on_read(uv_fs_t *req) {
 static void open_cb(uv_fs_t *req) {
 	int fd = req->result;
 
-	uv_fs_req_cleanup(req);
-	FREE(req);	
-	
-#ifndef _WIN32
-	serial_interface_attribs(fd, B57600, 0);
+	if(fd >= 0) {
+		uv_timer_stop(timer_req);
+
+#ifdef _WIN32
+		COMMTIMEOUTS timeouts;
+		DCB port;
+
+		memset(&port, '\0', sizeof(port));
+
+		/*
+		 * FIXME: Raise
+		 */
+		port.DCBlength = sizeof(port);
+		if(GetCommState((HANDLE)_get_osfhandle(fd), &port) == FALSE) {
+			logprintf(LOG_ERR, "cannot get comm state for port");
+			raise(SIGINT);
+			uv_fs_req_cleanup(req);
+			FREE(req);
+			return;
+		}
+
+		if(BuildCommDCB("baud=57600 parity=n data=8 stop=1", &port) == FALSE) {
+			logprintf(LOG_ERR, "cannot build comm DCB for port\n");
+			raise(SIGINT);
+			uv_fs_req_cleanup(req);
+			FREE(req);
+			return;
+		}
+
+		if(SetCommState((HANDLE)_get_osfhandle(fd), &port) == FALSE) {
+			logprintf(LOG_ERR, "cannot build comm DCB for port");
+			raise(SIGINT);
+			uv_fs_req_cleanup(req);
+			FREE(req);
+			return;
+		}
+
+		timeouts.ReadIntervalTimeout = MAXDWORD;
+		timeouts.ReadTotalTimeoutMultiplier = 0;
+		timeouts.ReadTotalTimeoutConstant = 1;
+		timeouts.WriteTotalTimeoutMultiplier = 0;
+		timeouts.WriteTotalTimeoutConstant = 0;
+
+		if(SetCommTimeouts((HANDLE)_get_osfhandle(fd), &timeouts) == FALSE) {
+			logprintf(LOG_ERR, "error setting port %s time-outs");
+			raise(SIGINT);
+			uv_fs_req_cleanup(req);
+			FREE(req);
+			return;
+		}
 #else
-	COMMTIMEOUTS timeouts;
-	DCB port;
-
-	memset(&port, '\0', sizeof(port));
-
-	port.DCBlength = sizeof(port);
-	if(GetCommState((HANDLE)_get_osfhandle(fd), &port) == FALSE) {
-		logprintf(LOG_ERR, "cannot get comm state for port");
-		raise(SIGINT);
-		return;
-	}
-
-	if(BuildCommDCB("baud=57600 parity=n data=8 stop=1", &port) == FALSE) {
-		logprintf(LOG_ERR, "cannot build comm DCB for port\n");
-		raise(SIGINT);
-		return;
-	}
-
-	if(SetCommState((HANDLE)_get_osfhandle(fd), &port) == FALSE) {
-		logprintf(LOG_ERR, "cannot build comm DCB for port");
-		raise(SIGINT);
-		return;
-	}
-
-	timeouts.ReadIntervalTimeout = MAXDWORD;
-	timeouts.ReadTotalTimeoutMultiplier = 0;
-	timeouts.ReadTotalTimeoutConstant = 0;
-	timeouts.WriteTotalTimeoutMultiplier = 0;
-	timeouts.WriteTotalTimeoutConstant = 0;
-
-	if(SetCommTimeouts((HANDLE)_get_osfhandle(fd), &timeouts) == FALSE) {
-		logprintf(LOG_ERR, "error setting port %s time-outs");
-		raise(SIGINT);
-		return;
-	}
-
+		serial_interface_attribs(fd, B57600, 0);
 #endif
 
-	if(fd >= 0) {
 		uv_fs_t *read_req = NULL;
 		if((read_req = MALLOC(sizeof(uv_fs_t))) == NULL) {
 			OUT_OF_MEMORY
@@ -354,18 +369,30 @@ static void open_cb(uv_fs_t *req) {
 		uv_buf_t buf = uv_buf_init(data->rbuf, BUFFER_SIZE);
 
 		uv_fs_read(uv_default_loop(), read_req, fd, &buf, 1, -1, on_read);
+		clock_gettime(CLOCK_MONOTONIC, &timestamp.second);
 	} else {
-		logprintf(LOG_ERR, "error opening file: %s\n", uv_strerror((int)req->result));
+		logprintf(LOG_ERR, "error opening serial device: %s", uv_strerror((int)req->result));
 	}
+	uv_fs_req_cleanup(req);
+	FREE(req);
+}
+
+static void close_cb(uv_handle_t *handle) {
+	FREE(handle);
 }
 
 static unsigned short int nano433HwDeinit(void) {
 	dostop = 1;
+	uv_timer_stop(timer_req);
+	uv_close((uv_handle_t *)timer_req, close_cb);
 	return 0;
 }
 
 static unsigned short int nano433HwInit(void) {
 	logprintf(LOG_NOTICE, "initializing pilight usb nano");
+
+	dostop = 0;
+	dowrite = 0;
 
 	uv_fs_t *open_req = NULL;
 	if((open_req = MALLOC(sizeof(uv_fs_t))) == NULL) {
@@ -479,6 +506,13 @@ __attribute__((weak))
 void nano433Init(void) {
 	hardware_register(&nano433);
 	hardware_set_id(nano433, "433nano");
+
+	timer_req = MALLOC(sizeof(uv_timer_t));
+	if(timer_req == NULL) {
+		OUT_OF_MEMORY
+	}
+	uv_timer_init(uv_default_loop(), timer_req);
+	uv_timer_start(timer_req, reconnect, 1000, 1000);
 
 	options_add(&nano433->options, 'p', "comport", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 

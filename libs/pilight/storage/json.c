@@ -34,8 +34,7 @@ static char *configfile = NULL;
 static unsigned short has_config = 0;
 
 static void *_values_update(int reason, void *param) {
-	struct threadpool_tasks_t *task = param;
-	struct reason_config_update_t *data = task->userdata;
+	struct reason_config_update_t *data = param;
 
 	struct JsonNode *jcdevices = json_find_member(jconfig, "devices");
 	struct JsonNode *jcdev_childs = json_first_child(jcdevices);

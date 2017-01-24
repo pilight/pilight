@@ -73,8 +73,7 @@ static struct JsonNode *jhardware_cache = NULL;
 static struct JsonNode *jregistry_cache = NULL;
 
 static void *devices_update_cache(int reason, void *param) {
-	struct threadpool_tasks_t *task = param;
-	struct reason_config_update_t *data = task->userdata;
+	struct reason_config_update_t *data = param;
 
 	struct JsonNode *jcdev_childs = json_first_child(jdevices_cache);
 	struct JsonNode *jvalue = NULL;
@@ -118,19 +117,18 @@ static void *devices_update_cache(int reason, void *param) {
 }
 
 void *config_values_update(int reason, void *param) {
-	struct threadpool_tasks_t *task = param;
 	char *protoname = NULL, *origin = NULL, *message = NULL, *uuid = NULL, *settings = NULL;
 
-	switch(task->reason) {
+	switch(reason) {
 		case REASON_CODE_RECEIVED: {
-			struct reason_code_received_t *data = task->userdata;
+			struct reason_code_received_t *data = param;
 			protoname = data->protocol;
 			origin = data->origin;
 			message = data->message;
 			uuid = data->uuid;
 		} break;
 		case REASON_CODE_SENT: {
-			struct reason_code_sent_t *data = task->userdata;
+			struct reason_code_sent_t *data = param;
 			if(strlen(data->protocol) > 0) {
 				protoname = data->protocol;
 			}
@@ -255,20 +253,15 @@ void *config_values_update(int reason, void *param) {
 				uuidmatch = 1;
 			}
 			if(uuidmatch == 1) {
+				/*
+				 * Check if the received protocol is configured.
+				 */
 				jprotocols = json_find_member(jdevices, "protocol");
 				jchilds = json_first_child(jprotocols);
 				while(jchilds) {
 					if(jchilds->tag == JSON_STRING) {
-						struct protocols_t *tmp_protocols = protocols;
-						match = 0;
-						while(tmp_protocols) {
-							if(protocol_device_exists(tmp_protocols->listener, jchilds->string_) == 0) {
-								match = 1;
-								break;
-							}
-							tmp_protocols = tmp_protocols->next;
-						}
-						if(match == 1) {
+						if(protocol_device_exists(protocol, jchilds->string_) == 0) {
+							match = 1;
 							break;
 						}
 					}
@@ -289,7 +282,6 @@ void *config_values_update(int reason, void *param) {
 						}
 						opt = opt->next;
 					}
-
 					jids = json_find_member(jdevices, "id");
 					jchilds = json_first_child(jids);
 					while(jchilds) {
@@ -320,6 +312,7 @@ void *config_values_update(int reason, void *param) {
 					}
 
 					is_valid = 1;
+
 					if(match1 > 0 && match2 > 0 && match1 == match2) {
 						struct JsonNode *jcode = json_mkobject();
 						if(json_find_string(jdevices, "state", &stmp) == 0 &&
@@ -1474,7 +1467,11 @@ int settings_validate_settings(struct JsonNode *jsettings, int i) {
 #ifndef _WIN32
 			|| strcmp(jsettings->key, "pid-file") == 0
 #endif
-			|| strcmp(jsettings->key, "pem-file") == 0) {
+			|| strcmp(jsettings->key, "pem-file") == 0
+#ifdef WEBSERVER
+			|| strcmp(jsettings->key, "webserver-root") == 0
+#endif
+		) {
 		if(jsettings->tag != JSON_STRING) {
 			if(i > 0) {
 				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain an existing file", i, jsettings->key);
@@ -1486,12 +1483,43 @@ int settings_validate_settings(struct JsonNode *jsettings, int i) {
 			}
 			return -1;
 		} else {
-			if(path_exists(jsettings->string_) != EXIT_SUCCESS) {
+			char *dir = NULL;
+			char *cpy = STRDUP(jsettings->string_);
+			if(cpy == NULL) {
+				OUT_OF_MEMORY
+			}
+
+#ifdef _WIN32
+			char drive[255];
+			char directory[255];
+			char filebase[255];
+			char extension[255];
+
+			if(_splitpath_s(cpy, drive, 255, directory, 255,  filebase, 255, extension, 255) != 0) {
+				logprintf(LOG_ERR, "could not open logfile %s", log);
+				return -1;
+			}
+			dir = directory;
+#else
+			/*
+			 * FIXME: Replace dirname with custom threadsafe implementation
+			 */
+			atomiclock();
+			if((dir = dirname(cpy)) == NULL) {
+				logprintf(LOG_ERR, "could not open logfile %s", log);
+				atomicunlock();
+				return -1;
+			}
+			atomicunlock();
+#endif
+			if(path_exists(dir) != EXIT_SUCCESS) {
 				if(i > 0) {
 					logprintf(LOG_ERR, "config setting #%d \"%s\" must point to an existing folder", i, jsettings->key);
 				}
+				FREE(cpy);
 				return -1;
 			}
+			FREE(cpy);
 		}
 	} else if(strcmp(jsettings->key, "whitelist") == 0) {
 		if(jsettings->tag != JSON_STRING) {
@@ -1556,18 +1584,6 @@ int settings_validate_settings(struct JsonNode *jsettings, int i) {
 		} else if(jsettings->number_ < -1) {
 			if(i > 0) {
 				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number larger than 0", i, jsettings->key);
-			}
-			return -1;
-		}
-	} else if(strcmp(jsettings->key, "webserver-root") == 0) {
-		if(jsettings->tag != JSON_STRING) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a valid path", i, jsettings->key);
-			}
-			return -1;
-		} else if(!jsettings->string_ || path_exists(jsettings->string_) != 0) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a valid path", i, jsettings->key);
 			}
 			return -1;
 		}

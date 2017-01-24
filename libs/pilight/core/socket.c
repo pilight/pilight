@@ -166,14 +166,17 @@ static void client_remove(int fd) {
 
 			if(currP->data != NULL) {
 				struct uv_custom_poll_t *custom_poll_data = currP->data;
-				if(custom_poll_data->data != NULL) {
-					struct data_t *data = custom_poll_data->data;
-					if(data->len > 0) {
-						FREE(data->buffer);
+				if(custom_poll_data != NULL) {
+					if(custom_poll_data->data != NULL) {
+						struct data_t *data = custom_poll_data->data;
+						if(data->len > 0) {
+							FREE(data->buffer);
+						}
+						FREE(data);
 					}
-					FREE(data);
+
+					uv_custom_poll_free(custom_poll_data);
 				}
-				uv_custom_poll_free(custom_poll_data);
 			}
 			FREE(currP);
 			break;
@@ -389,9 +392,17 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	}
 	data1->fd = (int)client;
 	eventpool_trigger(REASON_SOCKET_CONNECTED, reason_socket_connected_free, data1);
-
 	uv_custom_read(req);
 	uv_custom_read(poll_req);
+}
+
+static void *socket_send_thread(int reason, void *param) {
+	struct reason_socket_send_t *data = param;
+
+	if(strcmp(data->type, "socket") == 0) {
+		socket_write(data->fd, data->buffer);
+	}
+	return NULL;
 }
 
 /* Start the socket server */
@@ -503,6 +514,8 @@ int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char
 
 	client_add(poll_req, sockfd, custom_poll_data);
 
+	eventpool_callback(REASON_SOCKET_SEND, socket_send_thread);
+
 	return sockfd;
 
 free:
@@ -519,7 +532,6 @@ free:
 	// socket_server = eventpool_socket_add("socket server", NULL, port, AF_INET, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_SERVER, server_callback, NULL, NULL);
 	// eventpool_callback(REASON_ADHOC_CONNECTED, adhoc_mode);
 	// eventpool_callback(REASON_ADHOC_DISCONNECTED, socket_restart);
-	// eventpool_callback(REASON_SOCKET_SEND, socket_send_thread);
 }
 
 unsigned int socket_get_port(void) {

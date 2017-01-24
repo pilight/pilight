@@ -70,6 +70,7 @@ static int main_gc(void) {
 	socket_gc();
 	protocol_gc();
 	eventpool_gc();
+	ssdp_gc();
 
 	log_shell_disable();
 	eventpool_gc();
