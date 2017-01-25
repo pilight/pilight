@@ -295,11 +295,11 @@ static void on_read(int fd, char *buf, ssize_t len, char **buf1, ssize_t *len1) 
 					goto close;
 				} break;
 			}
+
+			FREE(*buf1);
+			*len1 = 0;
 		}
 	}
-
-	FREE(*buf1);
-	*len1 = 0;
 
 	return;
 
