@@ -34,19 +34,13 @@
 
 #include "libs/pilight/protocols/protocol.h"
 
-#define CONNECT			1
-#define VALIDATE		2
-#define SEND				3
-#define SUCCESS			4
+#define VALIDATE		1
+#define SEND				2
+#define SUCCESS			3
 
 static uv_tty_t *tty_req = NULL;
 static uv_signal_t *signal_req = NULL;
-
-typedef struct data_t {
-	int steps;
-	char *buffer;
-	size_t buflen;
-} data_t;
+static int steps = VALIDATE;
 
 typedef struct pname_t {
 	char *name;
@@ -73,7 +67,7 @@ static struct JsonNode *code = NULL;
 static char *uuid = NULL;
 
 static void signal_cb(uv_signal_t *, int);
-static void on_write(uv_write_t *req, int status);
+static uv_timer_t *ssdp_reseek_req = NULL;
 
 static int main_gc(void) {
 	if(code != NULL) {
@@ -96,8 +90,11 @@ static int main_gc(void) {
 		FREE(uuid);
 	}
 
+	socket_gc();
 	protocol_gc();
 	eventpool_gc();
+	storage_gc();
+	ssdp_gc();
 
 	log_shell_disable();
 	log_gc();
@@ -132,112 +129,86 @@ static void alloc_cb(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
 	memset(buf->base, 0, len);
 }
 
-static void on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *rbuf) {
-  if(nread == -1) {
-    logprintf(LOG_ERR, "socket read failed");
-    return;
-  }
-	struct data_t *data = stream->data;
-	switch(data->steps) {
-		case VALIDATE: {
-			if(strncmp(rbuf->base, "{\"status\":\"success\"}", 20) == 0) {
-				data->steps = SUCCESS;
+static void on_read(int fd, char *buf, ssize_t len, char **buf1, ssize_t *len1) {
+	if(strcmp(buf, "1") != 0) {
+		if(socket_recv(buf, len, buf1, len1) > 0) {
+			switch(steps) {
+				case VALIDATE:
+					if(strncmp(*buf1, "{\"status\":\"success\"}", 20) == 0) {
+						steps = SUCCESS;
 
-				struct JsonNode *json = json_mkobject();
-				json_append_member(json, "action", json_mkstring("send"));
-				if(uuid != NULL) {
-					json_append_member(code, "uuid", json_mkstring(uuid));
-				}
-				json_append_member(json, "code", code);
+						struct JsonNode *json = json_mkobject();
+						json_append_member(json, "action", json_mkstring("send"));
+						if(uuid != NULL) {
+							json_append_member(code, "uuid", json_mkstring(uuid));
+						}
+						json_append_member(json, "code", code);
 
-				uv_write_t *write_req = MALLOC(sizeof(uv_write_t));
-				write_req->data = data;
-				char out[BUFFER_SIZE];
-				uv_buf_t wbuf = uv_buf_init(out, BUFFER_SIZE);
-
-				wbuf.base = json_stringify(json, NULL);
-				wbuf.len = strlen(wbuf.base);
-				
-				uv_write(write_req, stream, &wbuf, 1, on_write);
-				json_delete(json);
-				json_free(wbuf.base);
-				code = NULL;
+						char *out = json_stringify(json, NULL);
+						socket_write(fd, out);
+						json_delete(json);
+						json_free(out);
+						code = NULL;
+					}
+				break;
+				case SUCCESS: {
+					if(strncmp(*buf1, "{\"status\":\"success\"}", 20) != 0) {
+						logprintf(LOG_ERR, "failed to send codes");
+					}
+					goto close;
+				} break;
 			}
-			free(rbuf->base);
-		} break;
-		case SUCCESS: {
-			if(strncmp(rbuf->base, "{\"status\":\"success\"}", 20) != 0) {
-				logprintf(LOG_ERR, "failed to send codes");
-			}
-			signal_cb(NULL, SIGINT);
-			free(rbuf->base);
-			FREE(data);
-		} break;
-	}
-}
-
-
-static void on_write(uv_write_t *req, int status) {
-	struct data_t *data = req->data;
-	req->handle->data = data;
-	uv_read_start(req->handle, alloc_cb, on_read);
-	FREE(req);
-}
-
-static void on_connect(uv_connect_t *req, int status) {
-  if(status != 0) {
-    logprintf(LOG_ERR, "socket connect failed");
-    return;
+		}
 	}
 
-	uv_write_t *write_req = MALLOC(sizeof(uv_write_t));
-	char out[BUFFER_SIZE];
-	uv_buf_t buf = uv_buf_init(out, BUFFER_SIZE);
-	
+	FREE(*buf1);
+	*len1 = 0;
+
+	return;
+
+close:
+	FREE(*buf1);
+	*len1 = 0;
+	kill(getpid(), SIGINT);
+}
+
+static void *socket_disconnected(int reason, void *param) {
+	struct reason_socket_disconnected_t *data = param;
+
+	socket_close(data->fd);
+	signal_cb(NULL, SIGINT);
+
+	return NULL;
+}
+
+static void *socket_connected(int reason, void *param) {
+	struct reason_socket_connected_t *data = param;
+
 	connected = 1;
 
-	buf.len = sprintf(buf.base, "{\"action\":\"identify\"}");	
+	struct JsonNode *jclient = json_mkobject();
+	json_append_member(jclient, "action", json_mkstring("identify"));
 
-	struct data_t *data = NULL;
-	if((data = MALLOC(sizeof(struct data_t))) == NULL) {
-		OUT_OF_MEMORY
-	}
-	data->steps = VALIDATE;
-	data->buffer = NULL;
-	data->buflen = 0;
-	write_req->data = data;
-	uv_write(write_req, req->handle, &buf, 1, on_write);
+	char *out = json_stringify(jclient, NULL);
 
-	FREE(req);
+	socket_write(data->fd, out);
+
+	json_delete(jclient);
+	json_free(out);
+	return NULL;
 }
 
 static void connect_to_server(char *server, int port) {
-	struct sockaddr_in addr;
-	uv_tcp_t *client_req = NULL;
-	uv_connect_t *connect_req = NULL;	
+	socket_connect(server, port, on_read);
+
 	uv_timer_t *socket_timeout_req = NULL;
 	
-	if((client_req = MALLOC(sizeof(uv_tcp_t))) == NULL) {
-		OUT_OF_MEMORY
-	}
-
-	if((connect_req = MALLOC(sizeof(uv_connect_t))) == NULL) {
-		OUT_OF_MEMORY
-	}
-
 	if((socket_timeout_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
 		OUT_OF_MEMORY
 	}
 
-	int steps = CONNECT;
-	connect_req->data = &steps;
-
-	uv_tcp_init(uv_default_loop(), client_req);
-	uv_ip4_addr(server, port, &addr);
-	uv_tcp_connect(connect_req, client_req, (const struct sockaddr *)&addr, on_connect);
-
 	uv_timer_init(uv_default_loop(), socket_timeout_req);
-	uv_timer_start(socket_timeout_req, timeout_cb, 1000, 0);	
+	uv_timer_start(socket_timeout_req, timeout_cb, 1000, 0);
 }
 
 static int select_server(int server) {
@@ -253,6 +224,7 @@ static int select_server(int server) {
 	}
 	return -1;
 }
+
 static void *ssdp_found(int reason, void *param) {
 	struct reason_ssdp_received_t *data = param;
 	struct ssdp_list_t *node = NULL;
@@ -288,6 +260,7 @@ static void *ssdp_found(int reason, void *param) {
 		} else {
 			if(strcmp(data->name, instance) == 0) {
 				found = 1;
+				uv_timer_stop(ssdp_reseek_req);
 				connect_to_server(data->ip, data->port);
 			}
 		}
@@ -632,6 +605,8 @@ int main(int argc, char **argv) {
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
 	eventpool_callback(REASON_SSDP_RECEIVED, ssdp_found);
+	eventpool_callback(REASON_SOCKET_CONNECTED, socket_connected);
+	eventpool_callback(REASON_SOCKET_DISCONNECTED, socket_disconnected);
 
 	memset(raw, 0, MAXPULSESTREAMLENGTH-1);
 	protocol->raw = raw;
@@ -641,7 +616,6 @@ int main(int argc, char **argv) {
 			connect_to_server(server, port);
 		} else {
 			ssdp_seek();
-			uv_timer_t *ssdp_reseek_req = NULL;
 			if((ssdp_reseek_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
 				OUT_OF_MEMORY
 			}
