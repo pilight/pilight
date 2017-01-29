@@ -344,7 +344,7 @@ starttls:
 		if(strncmp(recvBuff, "235", 3) == 0) {
 			break;
 		}
-		if(strncmp(recvBuff, "451", 3) == 0) {
+		if(strncmp(recvBuff, "451", 1) == 0) {
 			logprintf(LOG_NOTICE, "SMTP: protocol violation while authenticating");
 			error = -1;
 			goto close;
@@ -356,6 +356,11 @@ starttls:
 		}
 		if(strncmp(recvBuff, "535", 3) == 0) {
 			logprintf(LOG_NOTICE, "SMTP: authentication failed: wrong user/password");
+			error = -1;
+			goto close;
+		}
+		if(strncmp(recvBuff, "500", 1) == 0) {
+			logprintf(LOG_NOTICE, "SMTP: neg. response - abort");
 			error = -1;
 			goto close;
 		}
