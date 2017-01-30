@@ -52,10 +52,10 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(const char *id, int unit, int state) {
+static void createMessage(const char *unit, int id, int state) {
 	unitec_switch->message = json_mkobject();
-	json_append_member(unitec_switch->message, "id", json_mkstring(id));
-	json_append_member(unitec_switch->message, "unit", json_mknumber(unit, 0));
+	json_append_member(unitec_switch->message, "id", json_mknumber(id, 0));
+	json_append_member(unitec_switch->message, "unit", json_mkstring(unit));
 	json_append_member(unitec_switch->message, "state", json_mkstring(state ? "on" : "off"));
 }
 
@@ -79,16 +79,16 @@ static void parseCode(void) {
 		frame[x] = unitec_switch->raw[x*2] > unitec_switch->raw[x*2+1];
 	}
 
-	int idn = binToDec(frame, 0, 19);
-	int unit = binToDec(frame, 20 + 0, 20 + 2) ^ 7;
+        int unitn = binToDec(frame, 0, 19);
+	int id = binToDec(frame, 20 + 0, 20 + 2) ^ 7;
 	int state = frame[20 + 3];
 
-	unit = unit == 4 ? 0 : (unit + 1);
+	id = id == 4 ? 0 : (id + 1);
 
-	char id[16];
-	sprintf(id, "X%X", idn);
+	char unit[16];
+	sprintf(unit, "X%X", unitn);
 
-	createMessage(id, unit, state);
+	createMessage(unit, id, state);
 }
 
 static void createLow(int s, int c) {
@@ -115,22 +115,22 @@ static void clearCode(void) {
 	createLow(0, 20 + 3 + 1);
 }
 
-static void createId(int idn) {
+static void createUnit(int unit) {
 
 	int pos = 0, len = 20;
-	for(;--len >= 0; idn >>= 1) {
-	    ((idn & 1) ? createHigh : createLow)(pos++, 1);
+	for(;--len >= 0; unit >>= 1) {
+	    ((unit & 1) ? createHigh : createLow)(pos++, 1);
 	}
 }
 
-static void createUnit(int unit) {
+static void createId(int id) {
 
-	unit = unit == 0 ? 4 : (unit - 1);
+	id = id == 0 ? 4 : (id - 1);
 
 	int pos = 20, len = 3;
-	for(; --len >= 0; unit >>= 1) {
+	for(; --len >= 0; id >>= 1) {
 	    // inverted:
-	    ((unit & 1) ? createLow : createHigh)(pos++, 1);
+	    ((id & 1) ? createLow : createHigh)(pos++, 1);
 	}
 }
 
@@ -146,13 +146,13 @@ static void createFooter(void) {
 }
 
 static int createCode(const struct JsonNode *code) {
-	const char *id = NULL;
-	int unit = -1;
+	const char *unit = NULL;
+	int id = -1;
 	int state = -1;
 	double itmp;
 
-	if(json_find_string(code, "id", &id) != 0) {
-		logprintf(LOG_ERR, "unitec_switch: missing --id argument");
+	if(json_find_string(code, "unit", &unit) != 0) {
+		logprintf(LOG_ERR, "unitec_switch: missing --unit argument");
 		return EXIT_FAILURE;
 	}
 
@@ -165,38 +165,38 @@ static int createCode(const struct JsonNode *code) {
 		return EXIT_FAILURE;
 	}
 
-	if(json_find_number(code, "unit", &itmp) == 0) {
-		unit = (int)itmp;
+	if(json_find_number(code, "id", &itmp) == 0) {
+		id = (int)itmp;
 	} else {
-		logprintf(LOG_ERR, "unitec_switch: missing --unit argument (1..4 or 0 for all)");
+		logprintf(LOG_ERR, "unitec_switch: missing --id argument (1..4 or 0 for all)");
 		return EXIT_FAILURE;
 	}
 
-	if(id[0] != 'X' && id[0] != 'x') {
-		logprintf(LOG_ERR, "unitec_switch: id must start with 'X' followed by hex-digits (0..9 and A-F).");
+	if(unit[0] != 'X' && unit[0] != 'x') {
+		logprintf(LOG_ERR, "unitec_switch: unit must start with 'X' followed by hex-digits (0..9 and A-F).");
 		return EXIT_FAILURE;
 	}
 	char *end = NULL;
-	int idn = strtol(id+1, &end, 16);
-	if(!end || end==id+1 || *end) {
-		logprintf(LOG_ERR, "unitec_switch: invalid char in id: %s ", end ? end : "?");
+	int unitn = strtol(unit+1, &end, 16);
+	if(!end || end==unit+1 || *end) {
+		logprintf(LOG_ERR, "unitec_switch: invalid char in unit: %s ", end ? end : "?");
 		return EXIT_FAILURE;
 	}
-	if(end -(id+1) > 5) {
-		logprintf(LOG_ERR, "unitec_switch: too long id. Max 5 digits allowed.");
-		return EXIT_FAILURE;
-	}
-
-	if(unit < 0 || unit > 4) {
-		logprintf(LOG_ERR, "unitec_switch: unit not in (1..4 or 0 for all)");
+	if (end -(unit+1) > 5) {
+		logprintf(LOG_ERR, "unitec_switch: unit too long. Max 5 digits allowed.");
 		return EXIT_FAILURE;
 	}
 
-	createMessage(id, unit, state);
+	if(id < 0 || id > 4) {
+		logprintf(LOG_ERR, "unitec_switch: id not in (1..4 or 0 for all)");
+		return EXIT_FAILURE;
+	}
+
+	createMessage(unit, id, state);
 
 	clearCode();
-	createId(idn);
-	createUnit(unit);
+	createId(id);
+	createUnit(unitn);
 	createState(state);
 	createFooter();
 
@@ -206,8 +206,8 @@ static int createCode(const struct JsonNode *code) {
 static void printHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
-	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code (1..4, 0=all)\n");
-	printf("\t -i --id=id\t\t\tcontrol a device with this id (Xhexdigits, e.g. 'X0')\n");
+	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code (Xhexdigits, e.g. 'X0')\n");
+	printf("\t -i --id=id\t\t\tcontrol a device with this id (1..4, 0=all)\n");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -227,8 +227,8 @@ void unitecSwitchInit(void) {
 
 	options_add(&unitec_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&unitec_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&unitec_switch->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-5]$");
-	options_add(&unitec_switch->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^X[0-9A-Fa-f]+$");
+	options_add(&unitec_switch->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^X[0-9A-Fa-f]+$");
+	options_add(&unitec_switch->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-4]$");
 
 	options_add(&unitec_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	options_add(&unitec_switch->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
