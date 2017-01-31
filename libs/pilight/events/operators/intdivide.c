@@ -29,7 +29,11 @@
 
 
 static void operatorIntDivideCallback(double a, double b, char **ret) {
-	sprintf(*ret, "%f", (a < 0 ? -floor(-a / b) : floor(a / b)));
+	if(a == 0 || b == 0) {
+		strcpy(*ret, "0.000000");
+	} else {
+		sprintf(*ret, "%.6f", (a < 0 ? -floor(-a / b) : floor(a / b)));
+	}
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -43,7 +47,7 @@ void operatorIntDivideInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "\\";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

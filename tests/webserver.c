@@ -397,6 +397,10 @@ static void test_webserver_get(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
+	if(gtc != NULL && gtc->failed == 1) {
+		return;
+	}
+
 	gtc = tc;
 	steps = 0;
 
@@ -407,6 +411,10 @@ static void test_webserver_get(CuTest *tc) {
 static void test_webserver_auth(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
+
+	if(gtc != NULL && gtc->failed == 1) {
+		return;
+	}
 
 	gtc = tc;
 	steps = 0;
@@ -421,6 +429,10 @@ static void test_webserver_websocket1(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
+	if(gtc != NULL && gtc->failed == 1) {
+		return;
+	}
+
 	gtc = tc;
 	steps = 0;
 
@@ -431,6 +443,10 @@ static void test_webserver_websocket1(CuTest *tc) {
 static void test_webserver_websocket2(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
+
+	if(gtc != NULL && gtc->failed == 1) {
+		return;
+	}
 
 	gtc = tc;
 	steps = 0;

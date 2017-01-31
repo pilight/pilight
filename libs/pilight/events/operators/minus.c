@@ -16,7 +16,7 @@
 #include "minus.h"
 
 static void operatorMinusCallback(double a, double b, char **ret) {
-	sprintf(*ret, "%f", (a - b));
+	sprintf(*ret, "%.6f", (a - b));
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -30,7 +30,7 @@ void operatorMinusInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "-";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
 	module->reqcommit = "87";
 }

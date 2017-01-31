@@ -187,12 +187,22 @@ static void test_callback(CuTest *tc) {
 static void test_eventpool_callback_nothreads(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
+
+	if(gtc != NULL && gtc->failed == 1) {
+		return;
+	}
+
 	test_callback(tc);
 }
 
 static void test_eventpool_callback_threaded(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
+
+	if(gtc != NULL && gtc->failed == 1) {
+		return;
+	}
+
 	test_callback(tc);
 }
 

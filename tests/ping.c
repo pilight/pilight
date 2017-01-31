@@ -328,6 +328,10 @@ static void test_ping_response(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
+	if(gtc != NULL && gtc->failed == 1) {
+		return;
+	}
+
 	gtc = tc;
 
 	run = RESPONSE;
@@ -338,6 +342,10 @@ static void test_ping_response(CuTest *tc) {
 static void test_ping_response_threaded(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
+
+	if(gtc != NULL && gtc->failed == 1) {
+		return;
+	}
 
 	gtc = tc;
 
