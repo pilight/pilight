@@ -1394,6 +1394,14 @@ static void socket_parse_data(int i, char *buffer) {
 					socket_write(sd, output);
 					json_free(output);
 					json_delete(jsend);
+					/* send version packet */ 
+					struct JsonNode *jsend_version = json_mkobject();
+					json_append_member(jsend_version, "version", json_mkstring(PILIGHT_VERSION));
+					char *output_version = json_stringify(jsend_version, NULL);
+					socket_write(sd, output_version);
+					json_free(output_version);
+					json_delete(jsend_version);
+
 				/*
 				 * Parse received codes from nodes
 				 */

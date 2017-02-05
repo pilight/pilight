@@ -3,13 +3,14 @@
 # Provides:          pilight-daemon
 # Required-Start:    $network $remote_fs $syslog
 # Required-Stop:     $remote_fs $syslog
-# Default-Start:     2 3 4 5
-# Default-Stop:      0 1 6
+# Default-Start:     3 4 5
+# Default-Stop:      0 1 2 6
 # Short-Description: Starts pilight-daemon
 # Description:       Starts pilight-daemon
-#                  
+#
 ### END INIT INFO
-# Author: sweet pi & CurlyMo
+# Author: sweet pi & CurlyMo & AngieSoft & wo-rasp
+# Do not start pilight in runlevel 2 without network
 
 # Do NOT "set -e"
 
