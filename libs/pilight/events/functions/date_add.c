@@ -71,9 +71,16 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	struct JsonNode *childs = json_first_child(arguments);
 	struct protocol_t *protocol = NULL;
 	struct tm tm;
-	char *p = *ret, *datetime = NULL, *interval = NULL, **array = NULL;
+	char *p = NULL, *datetime = NULL, *interval = NULL, **array = NULL;
 	int nrunits = (sizeof(units)/sizeof(units[0])), values[nrunits], error = 0;
 	int l = 0, i = 0, type = -1, match = 0, is_dev = 0;
+
+	if(ret == NULL || *ret == NULL) {
+		error = -1;
+		goto close;
+	}
+
+	p = *ret;
 
 	memset(&values, 0, nrunits);
 
@@ -83,11 +90,17 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 		goto close;
 	}
 
+	/*
+	 * TESTME
+	 */
 	if(devices_select(origin, childs->string_, NULL) == 0) {
 		is_dev = 1;
-		if(origin == ORIGIN_RULE) {
-			event_cache_device(obj, childs->string_);
-		}
+		/*
+		 * FIXME
+		 */
+		// if(origin == ORIGIN_RULE) {
+			// event_cache_device(obj, childs->string_);
+		// }
 		if(devices_select_protocol(origin, childs->string_, 0, &protocol) == 0) {
 			if(protocol->devtype == DATETIME) {
 				char *setting = NULL;
@@ -131,7 +144,11 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 
 	childs = childs->next;
 	if(childs == NULL) {
-		logprintf(LOG_ERR, "DATE_ADD requires two parameters e.g. DATE_ADD(datetime, 1 DAY)");
+		if(is_dev == 0) {
+			logprintf(LOG_ERR, "DATE_ADD requires two parameters e.g. DATE_ADD(2000-01-01 12:00:00, 1 DAY)");
+		} else {
+			logprintf(LOG_ERR, "DATE_ADD requires two parameters e.g. DATE_ADD(datetime, 1 DAY)");
+		}
 		error = -1;
 		goto close;
 	}
@@ -159,20 +176,22 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 				}
 			}
 		} else {
-			logprintf(LOG_ERR, "The DATE_ADD unit parameter requires a number and a unit e.g. \"1 DAY\" instead of \"%%Y-%%m-%%d %%H:%%M:%%S\"");
+			logprintf(LOG_ERR, "The DATE_ADD unit parameter requires a number and a unit e.g. \"1 DAY\"");
 			error = -1;
 			goto close;
 		}
 	} else {
-		logprintf(LOG_ERR, "The DATE_ADD unit parameter is formatted as e.g. \"1 DAY\" instead of \"%%Y-%%m-%%d %%H:%%M:%%S\"");
+		logprintf(LOG_ERR, "The DATE_ADD unit parameter is formatted as e.g. \"1 DAY\"");
 		error = -1;
 		goto close;
 	}
+
 	if(match == 0) {
 		logprintf(LOG_ERR, "DATE_ADD does not accept \"%s\" as a unit", array[1]);
 		error = -1;
 		goto close;
 	}
+
 	if(is_dev == 0) {
 		if(strptime(datetime, "%Y-%m-%d %H:%M:%S", &tm) == NULL) {
 			logprintf(LOG_ERR, "DATE_ADD requires the datetime parameter to be formatted as \"%%Y-%%m-%%d %%H:%%M:%%S\"");

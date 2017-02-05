@@ -51,7 +51,8 @@ static char response1[255] = {
 	0x3a, 0x22, 0x62, 0x61,
 	0x72, 0x22, 0x7d
 };
-static char response2[255] = { 
+
+static char response2[255] = {
 	0x81, 0x4c, 0x7b, 0x22, 0x64,
 	0x65, 0x76, 0x69, 0x63, 0x65,
 	0x73, 0x22, 0x3a, 0x7b, 0x7d,
@@ -103,7 +104,7 @@ static struct tests_t get_tests[] = {
 	{ "https://127.0.0.1:10443/pilight.css", 6065, "", 200 },
 	{ "https://127.0.0.1:10443/pilight.jquery.theme.css", 25683, "", 200 },
 	{ "https://127.0.0.1:10443/ajax-loader.gif", 4782, "", 200 },
-	{ "https://127.0.0.1:10443/config", 76, "application/json", 200 },	 
+	{ "https://127.0.0.1:10443/config", 76, "application/json", 200 },
 	{ "https://127.0.0.1:10443/nonexisting", 214, "text/html", 404 }
 };
 
@@ -206,12 +207,12 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			uv_custom_write(req);
 			uv_custom_close(req);
 		} break;
-	}	
+	}
 }
 
 static void write_cb(uv_poll_t *req) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
-	char buffer[1024];	
+	char buffer[1024];
 	int len = 0;
 
 	switch(steps) {
@@ -241,7 +242,7 @@ static void *test(void) {
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct sockaddr_in addr;
 	int r = 0, sockfd = 0;
-	
+
 #ifdef _WIN32
 	WSADATA wsa;
 
@@ -249,7 +250,7 @@ static void *test(void) {
 		logprintf(LOG_ERR, "WSAStartup");
 		exit(EXIT_FAILURE);
 	}
-#endif	
+#endif
 
 	r = uv_ip4_addr("127.0.0.1", 10080, &addr);
 	if(r != 0) {
@@ -310,7 +311,7 @@ free:
 	if(sockfd > 0) {
 		close(sockfd);
 	}
-	return NULL;	
+	return NULL;
 }
 
 static void *reason_broadcast_core_free(void *param) {
@@ -350,7 +351,7 @@ static void test_webserver(CuTest *tc) {
 
 	testnr = 0;
 
-	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	async_close_req = MALLOC(sizeof(uv_async_t));
 	if(async_close_req == NULL) {
@@ -358,7 +359,7 @@ static void test_webserver(CuTest *tc) {
 	}
 	uv_async_init(uv_default_loop(), async_close_req, async_close_cb);
 
-	ssl_init();	
+	ssl_init();
 
 	if(run == GET || run == AUTH) {
 		eventpool_init(EVENTPOOL_NO_THREADS);
@@ -455,7 +456,7 @@ static void test_webserver_websocket2(CuTest *tc) {
 	test_webserver(tc);
 }
 
-CuSuite *suite_webserver(void) {	
+CuSuite *suite_webserver(void) {
 	CuSuite *suite = CuSuiteNew();
 
 	SUITE_ADD_TEST(suite, test_webserver_get);

@@ -16,7 +16,7 @@
 #define PILIGHT_VERSION					"7.0"
 #define PULSE_DIV								34
 #define MAXPULSESTREAMLENGTH		512
-#define EPSILON									0.00001
+#define EPSILON									0.000001
 #define SHA256_ITERATIONS				25000
 
 #ifdef WEBSERVER

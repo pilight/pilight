@@ -41,6 +41,7 @@ CuSuite *suite_protocols_api_xbmc(void);
 CuSuite *suite_protocols_core(void);
 CuSuite *suite_protocols_generic(void);
 CuSuite *suite_event_operators(void);
+CuSuite *suite_event_functions(void);
 
 CuString *output = NULL;
 CuSuite *suite = NULL;
@@ -201,6 +202,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_protocols_core();
 	suites[nr++] = suite_protocols_generic();
 	suites[nr++] = suite_event_operators();
+	suites[nr++] = suite_event_functions();
 
 	for(i=0;i<nr;i++) {
 		CuSuiteAddSuite(suite, suites[i]);

@@ -28,8 +28,8 @@
 #include "modulus.h"
 
 static void operatorModulusCallback(double a, double b, char **ret) {
-	if(b <= 0) {
-		sprintf(*ret, "%d",  -1);
+	if(a == 0 || b == 0) {
+		sprintf(*ret, "%d",  0);
 	} else {
 		sprintf(*ret, "%.6f",  a - b * floor(a / b));
 	}

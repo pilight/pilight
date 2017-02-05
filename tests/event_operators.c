@@ -413,19 +413,19 @@ static void test_event_operator_modulus(CuTest *tc) {
 	CuAssertPtrEquals(tc, NULL, operator_modulus->callback_string);
 
 	operator_modulus->callback_number(1, 0, &p);
-	CuAssertStrEquals(tc, "-1", p);
+	CuAssertStrEquals(tc, "0", p);
 
 	operator_modulus->callback_number(0, 0, &p);
-	CuAssertStrEquals(tc, "-1", p);
+	CuAssertStrEquals(tc, "0", p);
 
 	operator_modulus->callback_number(2, 4, &p);
 	CuAssertStrEquals(tc, "2.000000", p);
 
 	operator_modulus->callback_number(-2, -4, &p);
-	CuAssertStrEquals(tc, "-1", p);
+	CuAssertStrEquals(tc, "-2.000000", p);
 
 	operator_modulus->callback_number(-2, -2, &p);
-	CuAssertStrEquals(tc, "-1", p);
+	CuAssertStrEquals(tc, "0.000000", p);
 
 	operator_modulus->callback_number(27, 16, &p);
 	CuAssertStrEquals(tc, "11.000000", p);

@@ -42,11 +42,17 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 		return -1;
 	}
 
+	/*
+	 * TESTME
+	 */
 	if(devices_select(origin, childs->string_, NULL) == 0) {
 		is_dev = 1;
-		if(origin == ORIGIN_RULE) {
-			event_cache_device(obj, childs->string_);
-		}
+		/*
+		 * FIXME
+		 */
+		// if(origin == ORIGIN_RULE) {
+			// event_cache_device(obj, childs->string_);
+		// }
 		if(devices_select_protocol(origin, childs->string_, 0, &protocol) == 0) {
 			if(protocol->devtype == DATETIME) {
 				char *setting = NULL;
@@ -98,6 +104,10 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 		logprintf(LOG_ERR, "DATE_FORMAT requires at least three parameters when passing a datetime string e.g. DATE_FORMAT(01-01-2015, %%d-%%m-%%Y, %%Y-%%m-%%d)");
 		return -1;
 	}
+
+	/*
+	 * TESTME
+	 */
 	if(childs->next != NULL && is_dev == 1) {
 		logprintf(LOG_ERR, "DATE_FORMAT requires at least two parameters e.g. DATE_FORMAT(datetime, %%Y-%%m-%%d)");
 		return -1;
@@ -128,10 +138,14 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	tm.tm_sec = second;
 	tm.tm_wday = weekday;
 
-	if(mktime(&tm) < 0) {
-		logprintf(LOG_ERR, "DATE_FORMAT error on mktime()");
+	struct tm tmcpy;
+	memcpy(&tmcpy, &tm, sizeof(struct tm));
+
+	if(mktime(&tmcpy) < 0) {
+		logprintf(LOG_ERR, "mktime: %s", strerror(errno));
 		return -1;
 	}
+
 	strftime(p, BUFFER_SIZE, childs->string_, &tm);
 
 	return 0;
