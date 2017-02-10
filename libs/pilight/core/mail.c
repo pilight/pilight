@@ -206,7 +206,7 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 					}
 				}
 
-				if(val == 501 && ch == 32) {
+				if( (val >= 400 && val <= 599) && ch == 32) {
 					array_free(&array, n);
 					uv_custom_close(req);
 					uv_custom_write(req);
@@ -243,20 +243,14 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			if(strncmp(buf, "235", 3) == 0) {
 				request->step = SMTP_STEP_SEND_FROM;
 			}
-			if(strncmp(buf, "451", 3) == 0) {
-				logprintf(LOG_NOTICE, "SMTP: protocol violation while authenticating");
+			if(strncmp(buf, "4xx", 1) == 0) {
+				logprintf(LOG_NOTICE, "SMTP: connection protocol issues - abort");
 				uv_custom_close(req);
 				uv_custom_write(req);
 				return;
 			}
-			if(strncmp(buf, "501", 3) == 0) {
-				logprintf(LOG_NOTICE, "SMTP: improperly base64 encoded user/password");
-				uv_custom_close(req);
-				uv_custom_write(req);
-				return;
-			}
-			if(strncmp(buf, "535", 3) == 0) {
-				logprintf(LOG_NOTICE, "SMTP: authentication failed: wrong user/password");
+			if(strncmp(buf, "5xx", 1) == 0) {
+				logprintf(LOG_NOTICE, "SMTP: negative response from remote server - abort");
 				uv_custom_close(req);
 				uv_custom_write(req);
 				return;
