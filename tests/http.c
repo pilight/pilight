@@ -238,11 +238,7 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 	}
 
 	if(testnr < sizeof(tests)/sizeof(tests[0])) {
-		if(threaded == 1) {
-			started = 0;
-			uv_thread_join(&pth1);
-			uv_thread_create(&pth1, test, NULL);
-		} else {
+		if(threaded == 0) {
 			test(NULL);
 		}
 	}
@@ -466,6 +462,7 @@ static void test_http(CuTest *tc) {
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	ssl_init();
+	CuAssertIntEquals(tc, 0, ssl_server_init_status());
 
 	test(NULL);
 
@@ -497,31 +494,30 @@ static void test_http_threaded(CuTest *tc) {
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
 
 	ssl_init();
+	CuAssertIntEquals(tc, 0, ssl_server_init_status());
 
-	threaded = 1;
-	uv_thread_create(&pth1, test, NULL);
+	while(testnr < sizeof(tests)/sizeof(tests[0])) {
+		threaded = 1;
 
-restart:
-	while(started == 0) {
-		usleep(10);
-	}
+		uv_thread_create(&pth1, test, NULL);
 
-	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-	uv_walk(uv_default_loop(), walk_cb, NULL);
-	uv_run(uv_default_loop(), UV_RUN_ONCE);
+		while(started == 0) {
+			usleep(10);
+		}
 
-	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-	}
+		uv_walk(uv_default_loop(), walk_cb, NULL);
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
 
-	if(testnr+1 < sizeof(tests)/sizeof(tests[0])) {
-		goto restart;
-	}
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		}
 
-	uv_thread_join(&pth1);
+		uv_thread_join(&pth1);
 
-	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
-		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		}
 	}
 
 	http_gc();

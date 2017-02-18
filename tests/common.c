@@ -594,6 +594,91 @@ static void test_file_get_contents(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
+static void test_calc_time_interval(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	memtrack();
+
+	struct timeval tv;
+	/*
+	 * Milliseconds
+	 */
+	calc_time_interval(1, 8, 8, &tv);
+	CuAssertIntEquals(tc, 0, tv.tv_sec);
+	CuAssertIntEquals(tc, 1, tv.tv_usec);
+
+	calc_time_interval(1, 100, 8, &tv);
+	CuAssertIntEquals(tc, 0, tv.tv_sec);
+	CuAssertIntEquals(tc, 12, tv.tv_usec);
+
+	calc_time_interval(1, 1000, 20, &tv);
+	CuAssertIntEquals(tc, 0, tv.tv_sec);
+	CuAssertIntEquals(tc, 50, tv.tv_usec);
+
+	/*
+	 * Seconds
+	 */
+	calc_time_interval(2, 1, 8, &tv);
+	CuAssertIntEquals(tc, 0, tv.tv_sec);
+	CuAssertIntEquals(tc, 125, tv.tv_usec);
+
+	calc_time_interval(2, 100, 8, &tv);
+	CuAssertIntEquals(tc, 12, tv.tv_sec);
+	CuAssertIntEquals(tc, 500, tv.tv_usec);
+
+	calc_time_interval(2, 1000, 20, &tv);
+	CuAssertIntEquals(tc, 50, tv.tv_sec);
+	CuAssertIntEquals(tc, 0, tv.tv_usec);
+
+	/*
+	 * Minutes
+	 */
+	calc_time_interval(3, 1, 8, &tv);
+	CuAssertIntEquals(tc, 7, tv.tv_sec);
+	CuAssertIntEquals(tc, 500, tv.tv_usec);
+
+	calc_time_interval(3, 100, 8, &tv);
+	CuAssertIntEquals(tc, 750, tv.tv_sec);
+	CuAssertIntEquals(tc, 0, tv.tv_usec);
+
+	calc_time_interval(3, 15, 20, &tv);
+	CuAssertIntEquals(tc, 45, tv.tv_sec);
+	CuAssertIntEquals(tc, 0, tv.tv_usec);
+
+	/*
+	 * Hours
+	 */
+	calc_time_interval(4, 1, 5, &tv);
+	CuAssertIntEquals(tc, 720, tv.tv_sec);
+	CuAssertIntEquals(tc, 0, tv.tv_usec);
+
+	calc_time_interval(4, 2, 8, &tv);
+	CuAssertIntEquals(tc, 900, tv.tv_sec);
+	CuAssertIntEquals(tc, 0, tv.tv_usec);
+
+	calc_time_interval(4, 15, 20, &tv);
+	CuAssertIntEquals(tc, 2700, tv.tv_sec);
+	CuAssertIntEquals(tc, 0, tv.tv_usec);
+
+	/*
+	 * Days
+	 */
+	calc_time_interval(5, 1, 5, &tv);
+	CuAssertIntEquals(tc, 17280, tv.tv_sec);
+	CuAssertIntEquals(tc, 0, tv.tv_usec);
+
+	calc_time_interval(5, 2, 8, &tv);
+	CuAssertIntEquals(tc, 21600, tv.tv_sec);
+	CuAssertIntEquals(tc, 0, tv.tv_usec);
+
+	calc_time_interval(5, 15, 20, &tv);
+	CuAssertIntEquals(tc, 64800, tv.tv_sec);
+	CuAssertIntEquals(tc, 0, tv.tv_usec);
+
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
 CuSuite *suite_common(void) {	
 	CuSuite *suite = CuSuiteNew();
 
@@ -617,5 +702,7 @@ CuSuite *suite_common(void) {
 	SUITE_ADD_TEST(suite, test_str_replace);
 	SUITE_ADD_TEST(suite, test_stricmp);
 	SUITE_ADD_TEST(suite, test_file_get_contents);
+	SUITE_ADD_TEST(suite, test_calc_time_interval);
+
 	return suite;
 }

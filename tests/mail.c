@@ -292,11 +292,7 @@ static void callback(int status) {
 	}
 
 	if(testnr < sizeof(tests)/sizeof(tests[0])) {
-		if(threaded == 1) {
-			started = 0;
-			uv_thread_join(&pth1);
-			uv_thread_create(&pth1, test, NULL);
-		} else {
+		if(threaded == 0) {
 			test(NULL);
 		}
 	}
@@ -585,30 +581,27 @@ static void test_mail_threaded(CuTest *tc) {
 		OUT_OF_MEMORY
 	}
 
-	threaded = 1;
-	uv_thread_create(&pth1, test, NULL);
+	while(testnr < sizeof(tests)/sizeof(tests[0])) {
+		threaded = 1;
+		uv_thread_create(&pth1, test, NULL);
 
-restart:
-	while(started == 0) {
-		usleep(10);
-	}
+		while(started == 0) {
+			usleep(10);
+		}
 
-	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-	uv_walk(uv_default_loop(), walk_cb, NULL);
-	uv_run(uv_default_loop(), UV_RUN_ONCE);
-
-	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-	}
+		uv_walk(uv_default_loop(), walk_cb, NULL);
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
 
-	if(testnr+1 < sizeof(tests)/sizeof(tests[0])) {
-		goto restart;
-	}
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		}
 
-	uv_thread_join(&pth1);
+		uv_thread_join(&pth1);
 
-	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
-		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		}
 	}
 
 	FREE(mail);
