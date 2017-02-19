@@ -36,7 +36,7 @@ static void test_inet_devs(CuTest *tc) {
 		CuAssertIntEquals(tc, len, fwrite(line, sizeof(char), len, f));
 	}
 	fclose(f);
-	
+
 	for(i=0;i<n;i++) {
 		FREE(devs[i]);
 		CuAssertPtrEquals(tc, NULL, devs[i]);
@@ -103,65 +103,208 @@ static void test_host2ip(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
+static void close_cb(uv_handle_t *handle) {
+	FREE(handle);
+}
+
+static void walk_cb(uv_handle_t *handle, void *arg) {
+	if(!uv_is_closing(handle)) {
+		uv_close(handle, close_cb);
+	}
+}
+
 static void test_whitelist_check(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
 	memtrack();
 
-	CuAssertIntEquals(tc, 0, whitelist_check("127.0.0.1"));
-	whitelist_free();
-	whitelistnr++;
+	{
+		FILE *f = fopen("network_whitelist.json", "w");
+		fprintf(f,
+			"{\"devices\":{},\"gui\":{},\"rules\":{},"\
+			"\"settings\":{\"whitelist\":\"1.1.1.1\"},"\
+			"\"hardware\":{},\"registry\":{}}"
+		);
+		fclose(f);
 
-	CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.140"));
-	whitelist_free();	
-	CuAssertIntEquals(tc, -1, whitelist_check("10.0.0.141"));
-	whitelist_free();	
-	whitelistnr++;
+		eventpool_init(EVENTPOOL_NO_THREADS);
+		storage_init();
+		CuAssertIntEquals(tc, 0, storage_read("network_whitelist.json", CONFIG_SETTINGS));
 
-	CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.141"));
-	whitelist_free();
-	whitelistnr++;
+		CuAssertIntEquals(tc, 0, whitelist_check("127.0.0.1"));
+		whitelist_free();
 
-	CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.141"));
-	CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.100"));
-	CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.254"));
-	CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.0"));
-	CuAssertIntEquals(tc, -1, whitelist_check("192.168.0.1"));
-	whitelist_free();	
-	whitelistnr++;
+		uv_walk(uv_default_loop(), walk_cb, NULL);
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
 
-	CuAssertIntEquals(tc, 0, whitelist_check("10.0.1.141"));
-	CuAssertIntEquals(tc, 0, whitelist_check("10.0.100.100"));
-	CuAssertIntEquals(tc, 0, whitelist_check("10.0.254.254"));
-	CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.0"));
-	CuAssertIntEquals(tc, -1, whitelist_check("192.168.0.1"));
-	whitelist_free();	
-	whitelistnr++;
+		storage_gc();
+		eventpool_gc();
+	}
 
-	CuAssertIntEquals(tc, 0, whitelist_check("10.1.1.141"));
-	CuAssertIntEquals(tc, 0, whitelist_check("10.100.100.100"));
-	CuAssertIntEquals(tc, 0, whitelist_check("10.254.254.254"));
-	CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.0"));
-	CuAssertIntEquals(tc, -1, whitelist_check("192.168.0.1"));
-	CuAssertIntEquals(tc, 0, whitelist_check("10.161.13.1"));
-	whitelist_free();	
-	whitelistnr++;
+	{
+		FILE *f = fopen("network_whitelist.json", "w");
+		fprintf(f,
+			"{\"devices\":{},\"gui\":{},\"rules\":{},"\
+			"\"settings\":{\"whitelist\":\"10.0.0.140\"},"\
+			"\"hardware\":{},\"registry\":{}}"
+		);
+		fclose(f);
 
-	CuAssertIntEquals(tc, 0, whitelist_check("10.1.1.141"));
-	CuAssertIntEquals(tc, 0, whitelist_check("10.100.100.100"));
-	CuAssertIntEquals(tc, 0, whitelist_check("10.254.254.254"));
-	CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.0"));
-	CuAssertIntEquals(tc, 0, whitelist_check("192.168.0.1"));
-	CuAssertIntEquals(tc, 0, whitelist_check("11.161.13.1"));
-	CuAssertIntEquals(tc, 0, whitelist_check("11.12.13.14"));
-	whitelist_free();	
-	whitelistnr++;
+		eventpool_init(EVENTPOOL_NO_THREADS);
+		storage_init();
+		CuAssertIntEquals(tc, 0, storage_read("network_whitelist.json", CONFIG_SETTINGS));	
+
+		CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.140"));
+		whitelist_free();
+		CuAssertIntEquals(tc, -1, whitelist_check("10.0.0.141"));
+		whitelist_free();
+
+		uv_walk(uv_default_loop(), walk_cb, NULL);
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		storage_gc();
+		eventpool_gc();
+	}
+
+	{
+		FILE *f = fopen("network_whitelist.json", "w");
+		fprintf(f,
+			"{\"devices\":{},\"gui\":{},\"rules\":{},"\
+			"\"settings\":{\"whitelist\":\"10.0.0.141\"},"\
+			"\"hardware\":{},\"registry\":{}}"
+		);
+		fclose(f);
+
+		eventpool_init(EVENTPOOL_NO_THREADS);
+		storage_init();
+		CuAssertIntEquals(tc, 0, storage_read("network_whitelist.json", CONFIG_SETTINGS));	
+
+		CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.141"));
+		whitelist_free();
+
+		uv_walk(uv_default_loop(), walk_cb, NULL);
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		storage_gc();
+		eventpool_gc();
+	}
+
+	{
+		FILE *f = fopen("network_whitelist.json", "w");
+		fprintf(f,
+			"{\"devices\":{},\"gui\":{},\"rules\":{},"\
+			"\"settings\":{\"whitelist\":\"10.0.0.*\"},"\
+			"\"hardware\":{},\"registry\":{}}"
+		);
+		fclose(f);
+
+		eventpool_init(EVENTPOOL_NO_THREADS);
+		storage_init();
+		CuAssertIntEquals(tc, 0, storage_read("network_whitelist.json", CONFIG_SETTINGS));	
+
+		CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.141"));
+		CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.100"));
+		CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.254"));
+		CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.0"));
+		CuAssertIntEquals(tc, -1, whitelist_check("192.168.0.1"));
+		whitelist_free();
+
+		uv_walk(uv_default_loop(), walk_cb, NULL);
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		storage_gc();
+		eventpool_gc();
+	}
+
+	{
+		FILE *f = fopen("network_whitelist.json", "w");
+		fprintf(f,
+			"{\"devices\":{},\"gui\":{},\"rules\":{},"\
+			"\"settings\":{\"whitelist\":\"10.0.*.*\"},"\
+			"\"hardware\":{},\"registry\":{}}"
+		);
+		fclose(f);
+
+		eventpool_init(EVENTPOOL_NO_THREADS);
+		storage_init();
+		CuAssertIntEquals(tc, 0, storage_read("network_whitelist.json", CONFIG_SETTINGS));	
+
+		CuAssertIntEquals(tc, 0, whitelist_check("10.0.1.141"));
+		CuAssertIntEquals(tc, 0, whitelist_check("10.0.100.100"));
+		CuAssertIntEquals(tc, 0, whitelist_check("10.0.254.254"));
+		CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.0"));
+		CuAssertIntEquals(tc, -1, whitelist_check("192.168.0.1"));
+		whitelist_free();
+
+		uv_walk(uv_default_loop(), walk_cb, NULL);
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		storage_gc();
+		eventpool_gc();
+	}
+
+	{
+		FILE *f = fopen("network_whitelist.json", "w");
+		fprintf(f,
+			"{\"devices\":{},\"gui\":{},\"rules\":{},"\
+			"\"settings\":{\"whitelist\":\"10.*.*.*\"},"\
+			"\"hardware\":{},\"registry\":{}}"
+		);
+		fclose(f);
+
+		eventpool_init(EVENTPOOL_NO_THREADS);
+		storage_init();
+		CuAssertIntEquals(tc, 0, storage_read("network_whitelist.json", CONFIG_SETTINGS));	
+
+		CuAssertIntEquals(tc, 0, whitelist_check("10.1.1.141"));
+		CuAssertIntEquals(tc, 0, whitelist_check("10.100.100.100"));
+		CuAssertIntEquals(tc, 0, whitelist_check("10.254.254.254"));
+		CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.0"));
+		CuAssertIntEquals(tc, -1, whitelist_check("192.168.0.1"));
+		CuAssertIntEquals(tc, 0, whitelist_check("10.161.13.1"));
+		whitelist_free();
+
+		uv_walk(uv_default_loop(), walk_cb, NULL);
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		storage_gc();
+		eventpool_gc();
+	}
+
+	{
+		FILE *f = fopen("network_whitelist.json", "w");
+		fprintf(f,
+			"{\"devices\":{},\"gui\":{},\"rules\":{},"\
+			"\"settings\":{\"whitelist\":\"*.*.*.*\"},"\
+			"\"hardware\":{},\"registry\":{}}"
+		);
+		fclose(f);
+
+		eventpool_init(EVENTPOOL_NO_THREADS);
+		storage_init();
+		CuAssertIntEquals(tc, 0, storage_read("network_whitelist.json", CONFIG_SETTINGS));	
+
+		CuAssertIntEquals(tc, 0, whitelist_check("10.1.1.141"));
+		CuAssertIntEquals(tc, 0, whitelist_check("10.100.100.100"));
+		CuAssertIntEquals(tc, 0, whitelist_check("10.254.254.254"));
+		CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.0"));
+		CuAssertIntEquals(tc, 0, whitelist_check("192.168.0.1"));
+		CuAssertIntEquals(tc, 0, whitelist_check("11.161.13.1"));
+		CuAssertIntEquals(tc, 0, whitelist_check("11.12.13.14"));
+		whitelist_free();
+
+		uv_walk(uv_default_loop(), walk_cb, NULL);
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		storage_gc();
+		eventpool_gc();
+	}
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
-CuSuite *suite_network(void) {	
+CuSuite *suite_network(void) {
 	CuSuite *suite = CuSuiteNew();
 
 	SUITE_ADD_TEST(suite, test_inet_devs);

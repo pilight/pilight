@@ -223,6 +223,10 @@ static void test_ssdp_server(CuTest *tc) {
 
 	gtc = tc;
 
+	eventpool_init(EVENTPOOL_NO_THREADS);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("ssdp.json", CONFIG_SETTINGS));	
+
 	ssdp_override("123.123.123.123", 1234);
 
 	ssdp_start();
@@ -254,6 +258,7 @@ static void test_ssdp_server(CuTest *tc) {
 
 	ssdp_override(NULL, -1);
 	eventpool_gc();
+	storage_gc();
 
 	CuAssertIntEquals(tc, 1, check);
 	CuAssertIntEquals(tc, 0, xfree());
@@ -262,6 +267,14 @@ static void test_ssdp_server(CuTest *tc) {
 CuSuite *suite_ssdp(void) {	
 	CuSuite *suite = CuSuiteNew();
 
+	FILE *f = fopen("ssdp.json", "w");
+	fprintf(f,
+		"{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"name\":\"Test\"},"\
+		"\"hardware\":{},\"registry\":{}}"
+	);
+	fclose(f);
+	
 	SUITE_ADD_TEST(suite, test_ssdp_client);
 	SUITE_ADD_TEST(suite, test_ssdp_server);
 

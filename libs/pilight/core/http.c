@@ -567,7 +567,6 @@ static void write_cb(uv_poll_t *req) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct request_t *request = custom_poll_data->data;
 	char *header = NULL;
-	int r = 0;
 
 	switch(request->steps) {
 		case STEP_WRITE: {

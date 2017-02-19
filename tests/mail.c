@@ -294,7 +294,11 @@ static void callback(int status) {
 	if(testnr < sizeof(tests)/sizeof(tests[0])) {
 		if(threaded == 0) {
 			test(NULL);
+		} else {
+			uv_stop(uv_default_loop());
 		}
+	} else {
+		uv_stop(uv_default_loop());
 	}
 }
 
@@ -539,6 +543,10 @@ static void test_mail(CuTest *tc) {
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
+	eventpool_init(EVENTPOOL_NO_THREADS);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("mail.json", CONFIG_SETTINGS));	
+
 	ssl_init();
 
 	if((mail = MALLOC(sizeof(struct mail_t))) == NULL) {
@@ -558,6 +566,8 @@ static void test_mail(CuTest *tc) {
 	FREE(mail);
 
 	ssl_gc();
+	storage_gc();
+	eventpool_gc();
 
 	CuAssertIntEquals(tc, 7, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
@@ -574,6 +584,10 @@ static void test_mail_threaded(CuTest *tc) {
 	memtrack();
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
+
+	eventpool_init(EVENTPOOL_NO_THREADS);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("mail.json", CONFIG_SETTINGS));	
 
 	ssl_init();	
 	
@@ -607,6 +621,8 @@ static void test_mail_threaded(CuTest *tc) {
 	FREE(mail);
 
 	ssl_gc();
+	storage_gc();
+	eventpool_gc();
 
 	CuAssertIntEquals(tc, 7, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
@@ -615,6 +631,14 @@ static void test_mail_threaded(CuTest *tc) {
 CuSuite *suite_mail(void) {	
 	CuSuite *suite = CuSuiteNew();
 
+	FILE *f = fopen("mail.json", "w");
+	fprintf(f,
+		"{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"pem-file\":\"../res/pilight.pem\"},"\
+		"\"hardware\":{},\"registry\":{}}"
+	);
+	fclose(f);	
+	
 	SUITE_ADD_TEST(suite, test_mail);
 	SUITE_ADD_TEST(suite, test_mail_threaded);
 

@@ -35,14 +35,14 @@ static CuTest *gtc = NULL;
 
 static int steps = 0;
 
-static char request[255] = { 0x81,
-	0x9b, 0xa0, 0x18, 0xa7, 0x15,
-	0xdb, 0x3a, 0xc6, 0x76, 0xd4,
-	0x71, 0xc8, 0x7b, 0x82, 0x22,
-	0x85, 0x67, 0xc5, 0x69, 0xd2,
-	0x70, 0xd3, 0x6c, 0x87, 0x76,
-	0xcf, 0x76, 0xc1, 0x7c, 0xc7,
-	0x3a, 0xda
+static char request[255] = { 
+	0x81, 0x9b, 0xa0, 0x18, 0xa7,
+	0x15, 0xdb, 0x3a, 0xc6, 0x76,
+	0xd4, 0x71, 0xc8, 0x7b, 0x82,
+	0x22, 0x85, 0x67, 0xc5, 0x69,
+	0xd2, 0x70, 0xd3, 0x6c, 0x87,
+	0x76, 0xcf, 0x76, 0xc1, 0x7c,
+	0xc7, 0x3a, 0xda
 };
 
 static char response1[255] = {
@@ -91,7 +91,7 @@ static struct tests_t get_tests[] = {
 	{ "http://127.0.0.1:10080/pilight.css", 6065, "", 200 },
 	{ "http://127.0.0.1:10080/pilight.jquery.theme.css", 25683, "", 200 },
 	{ "http://127.0.0.1:10080/ajax-loader.gif", 4782, "", 200 },
-	{ "http://127.0.0.1:10080/config", 76, "application/json", 200 },
+	{ "http://127.0.0.1:10080/config", 220, "application/json", 200 },
 	/*
 	 * Regular pilight ssl webgui loading until config call
 	 */
@@ -104,7 +104,7 @@ static struct tests_t get_tests[] = {
 	{ "https://127.0.0.1:10443/pilight.css", 6065, "", 200 },
 	{ "https://127.0.0.1:10443/pilight.jquery.theme.css", 25683, "", 200 },
 	{ "https://127.0.0.1:10443/ajax-loader.gif", 4782, "", 200 },
-	{ "https://127.0.0.1:10443/config", 76, "application/json", 200 },
+	{ "https://127.0.0.1:10443/config", 220, "application/json", 200 },
 	{ "https://127.0.0.1:10443/nonexisting", 214, "text/html", 404 }
 };
 
@@ -359,6 +359,9 @@ static void test_webserver(CuTest *tc) {
 	}
 	uv_async_init(uv_default_loop(), async_close_req, async_close_cb);
 
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("webserver.json", CONFIG_SETTINGS));	
+
 	ssl_init();
 
 	if(run == GET || run == AUTH) {
@@ -389,6 +392,7 @@ static void test_webserver(CuTest *tc) {
 		http_gc();
 	}
 	ssl_gc();
+	storage_gc();
 	eventpool_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
@@ -402,6 +406,15 @@ static void test_webserver_get(CuTest *tc) {
 		return;
 	}
 
+	FILE *f = fopen("webserver.json", "w");
+	fprintf(f,
+		"{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"pem-file\":\"../res/pilight.pem\",\"webserver-root\":\"../libs/webgui/\","\
+		"\"webserver-enable\":1,\"webserver-http-port\":10080,\"webserver-https-port\":10443},"\
+		"\"hardware\":{},\"registry\":{}}"
+	);
+	fclose(f);
+	
 	gtc = tc;
 	steps = 0;
 
@@ -417,13 +430,21 @@ static void test_webserver_auth(CuTest *tc) {
 		return;
 	}
 
+	FILE *f = fopen("webserver.json", "w");
+	fprintf(f,
+		"{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"pem-file\":\"../res/pilight.pem\",\"webserver-root\":\"../libs/webgui/\","\
+		"\"webserver-enable\":1,\"webserver-http-port\":10080,\"webserver-https-port\":10443,"\
+		"\"webserver-authentication\":[\"test\",\"5cc87eb5ab20e91ba99d213869f431a7aa701fc0cd548caccb076eb4712d4962\"]},"\
+		"\"hardware\":{},\"registry\":{}}"
+	);
+	fclose(f);
+
 	gtc = tc;
 	steps = 0;
 
 	run = AUTH;
-	config_enable |= CONFIG_AUTH;
 	test_webserver(tc);
-	config_enable &= ~CONFIG_AUTH;
 }
 
 static void test_webserver_websocket1(CuTest *tc) {
@@ -433,6 +454,15 @@ static void test_webserver_websocket1(CuTest *tc) {
 	if(gtc != NULL && gtc->failed == 1) {
 		return;
 	}
+	
+	FILE *f = fopen("webserver.json", "w");
+	fprintf(f,
+		"{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"pem-file\":\"../res/pilight.pem\",\"webserver-root\":\"../libs/webgui/\","\
+		"\"webserver-enable\":1,\"webserver-http-port\":10080,\"webserver-https-port\":10443},"\
+		"\"hardware\":{},\"registry\":{}}"
+	);
+	fclose(f);
 
 	gtc = tc;
 	steps = 0;
@@ -448,6 +478,15 @@ static void test_webserver_websocket2(CuTest *tc) {
 	if(gtc != NULL && gtc->failed == 1) {
 		return;
 	}
+
+	FILE *f = fopen("webserver.json", "w");
+	fprintf(f,
+		"{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"pem-file\":\"../res/pilight.pem\",\"webserver-root\":\"../libs/webgui/\","\
+		"\"webserver-enable\":1,\"webserver-http-port\":10080,\"webserver-https-port\":10443},"\
+		"\"hardware\":{},\"registry\":{}}"
+	);
+	fclose(f);
 
 	gtc = tc;
 	steps = 0;

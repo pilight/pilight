@@ -240,7 +240,11 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 	if(testnr < sizeof(tests)/sizeof(tests[0])) {
 		if(threaded == 0) {
 			test(NULL);
+		} else {
+			uv_stop(uv_default_loop());
 		}
+	} else {
+		uv_stop(uv_default_loop());
 	}
 }
 
@@ -461,6 +465,10 @@ static void test_http(CuTest *tc) {
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
+	eventpool_init(EVENTPOOL_NO_THREADS);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("http.json", CONFIG_SETTINGS));	
+
 	ssl_init();
 	CuAssertIntEquals(tc, 0, ssl_server_init_status());
 
@@ -476,6 +484,8 @@ static void test_http(CuTest *tc) {
 
 	http_gc();
 	ssl_gc();
+	storage_gc();
+	eventpool_gc();
 
 	CuAssertIntEquals(tc, 10, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
@@ -488,15 +498,20 @@ static void test_http_threaded(CuTest *tc) {
 	memtrack();
 
 	gtc = tc;
-	started = 0;
 	testnr = 0;
 	
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
+
+	eventpool_init(EVENTPOOL_NO_THREADS);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("http.json", CONFIG_SETTINGS));	
 
 	ssl_init();
 	CuAssertIntEquals(tc, 0, ssl_server_init_status());
 
 	while(testnr < sizeof(tests)/sizeof(tests[0])) {
+		started = 0;
+
 		threaded = 1;
 
 		uv_thread_create(&pth1, test, NULL);
@@ -506,6 +521,13 @@ static void test_http_threaded(CuTest *tc) {
 		}
 
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		/*
+		 * FIXME: http_gc depends on poll->data structure.
+		 * When running http_gc after walk_cb the poll
+		 * structure is already freed.
+		 */
+		http_gc();
+
 		uv_walk(uv_default_loop(), walk_cb, NULL);
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 
@@ -520,8 +542,9 @@ static void test_http_threaded(CuTest *tc) {
 		}
 	}
 
-	http_gc();
 	ssl_gc();
+	storage_gc();
+	eventpool_gc();
 
 	CuAssertIntEquals(tc, 10, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
@@ -529,6 +552,14 @@ static void test_http_threaded(CuTest *tc) {
 
 CuSuite *suite_http(void) {	
 	CuSuite *suite = CuSuiteNew();
+
+	FILE *f = fopen("http.json", "w");
+	fprintf(f,
+		"{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"pem-file\":\"../res/pilight.pem\"},"\
+		"\"hardware\":{},\"registry\":{}}"
+	);
+	fclose(f);
 
 	SUITE_ADD_TEST(suite, test_http);
 	SUITE_ADD_TEST(suite, test_http_threaded);

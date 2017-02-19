@@ -245,7 +245,7 @@ static void *thread(void *param) {
 }
 
 static int run(struct rules_actions_t *obj) {
-	threadpool_add_work(REASON_END, NULL, action_sendmail->name, 0, thread, NULL, (void *)obj);
+	// threadpool_add_work(REASON_END, NULL, action_sendmail->name, 0, thread, NULL, (void *)obj);
 	return 0;
 }
 

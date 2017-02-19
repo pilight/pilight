@@ -113,6 +113,7 @@ static void *devices_update_cache(int reason, void *param) {
 			jcdev_childs = jcdev_childs->next;
 		}
 	}
+
 	return NULL;
 }
 
@@ -166,12 +167,6 @@ void *config_values_update(int reason, void *param) {
 		jsettings = json_decode(settings);
 	}
 
-	struct reason_config_update_t *data = MALLOC(sizeof(struct reason_config_update_t));
-	if(data == NULL) {
-		OUT_OF_MEMORY
-	}
-	memset(data, 0, sizeof(struct reason_config_update_t));
-
 	struct protocol_t *protocol = NULL;
 	struct options_t *opt = NULL;
 	char *dev_uuid = NULL, *ori_uuid = NULL;
@@ -189,7 +184,7 @@ void *config_values_update(int reason, void *param) {
 		return NULL;
 	}
 
-	if(strlen(uuid) == 0) {
+	if(uuid == NULL || strlen(uuid) == 0) {
 		logprintf(LOG_ERR, "config values update message misses a uuid field");
 		json_delete(jmessage);
 		if(jsettings != NULL) {
@@ -197,6 +192,12 @@ void *config_values_update(int reason, void *param) {
 		}
 		return NULL;
 	}
+
+	struct reason_config_update_t *data = MALLOC(sizeof(struct reason_config_update_t));
+	if(data == NULL) {
+		OUT_OF_MEMORY
+	}
+	memset(data, 0, sizeof(struct reason_config_update_t));
 
 	/* Retrieve the used protocol */
 	struct protocols_t *pnode = protocols;
@@ -971,7 +972,7 @@ void devices_init_event_threads(struct JsonNode *jdevices, int i) {
 		return;
 	}
 
-	event_action_thread_init(nodes);
+	// event_action_thread_init(nodes);
 }
 
 void devices_init_protocol_threads(struct JsonNode *jdevices, int i) {
@@ -2074,7 +2075,7 @@ int storage_devices_validate(struct JsonNode *jdevices) {
 		if(devices_validate_id(jdevices, i) == -1) { return -1; }
 
 		devices_init_protocol_threads(jdevices, i);
-		devices_init_event_threads(jdevices, i);
+		// devices_init_event_threads(jdevices, i);
 
 		jdevices = jdevices->next;
 	}
@@ -2890,7 +2891,7 @@ int devices_gc(void) {
 
 	while(device) {
 		tmp_device = device;
-		event_action_thread_free(tmp_device);
+		// event_action_thread_free(tmp_device);
 		FREE(tmp_device->id);
 		if(tmp_device->action_thread != NULL) {
 			FREE(tmp_device->action_thread);

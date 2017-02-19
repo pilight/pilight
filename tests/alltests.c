@@ -42,98 +42,17 @@ CuSuite *suite_protocols_core(void);
 CuSuite *suite_protocols_generic(void);
 CuSuite *suite_event_operators(void);
 CuSuite *suite_event_functions(void);
+CuSuite *suite_event_actions_switch(void);
+CuSuite *suite_event_actions_toggle(void);
+CuSuite *suite_event_actions_label(void);
+CuSuite *suite_event_actions_dim(void);
 
 CuString *output = NULL;
 CuSuite *suite = NULL;
 CuSuite *suites[NRSUITS];
 
 pthread_t pth_main_id;
-static unsigned char passout[33];
-static char converted[65];
-static char password[65] = "test";
-static char username[65] = "test";
-
-char whitelist[10][16] = {
-	{ "1.1.1.1" },
-	{ "10.0.0.140" },
-	{ "10.0.0.141" },
-	{ "10.0.0.*" },
-	{ "10.0.*.*" },
-	{ "10.*.*.*" },
-	{ "*.*.*.*" },
-	{ 0 }
-};
-
-int whitelistnr = 0;
-int config_enable = 0;
 int nr = 0;
-
-int settings_select_string(enum origin_t a, char *b, char **c) {
-	// printf("settings_select_string: %s\n", b);
-	if(strcmp(b, "pem-file") == 0) {
-		*c = "../res/pilight.pem";
-		return 0;
-	} else if(strcmp(b, "name") == 0) {
-		*c = "Test";
-		return 0;
-	} else if(strcmp(b, "whitelist") == 0) {
-		*c = whitelist[whitelistnr];
-		return 0;
-	} else if(strcmp(b, "webserver-root") == 0) {
-		*c = "../libs/webgui/";
-		return 0;
-	} else if(strcmp(b, "pem-file") == 0) {
-		*c = "../res/pilight.pem";
-		return 0;
-	}
-	return -1;
-}
-
-int settings_select_number(enum origin_t a, char *b, double *c) {
-	if(strcmp(b, "webserver-enable") == 0) {
-		*c = 1;
-		return 0;
-	} else if(strcmp(b, "webserver-http-port") == 0) {
-		*c = 10080;
-		return 0;
-	} else if(strcmp(b, "webserver-https-port") == 0) {
-		*c = 10443;
-		return 0;
-	}
-	return -1;
-}
-
-int settings_select_string_element(enum origin_t a, char *b, int c, char **d) {
-	int i = 0, x = 0;
-	mbedtls_sha256_context ctx;
-
-	if((config_enable & CONFIG_AUTH) == CONFIG_AUTH && strcmp("webserver-authentication", b) == 0) {
-		if(c == 0) {
-			*d = username;
-			return 0;
-		} else if(c == 1) {			
-			for(i=0;i<SHA256_ITERATIONS;i++) {
-				mbedtls_sha256_init(&ctx);
-				mbedtls_sha256_starts(&ctx, 0);
-				mbedtls_sha256_update(&ctx, (unsigned char *)password, strlen((char *)password));
-				mbedtls_sha256_finish(&ctx, passout);
-				for(x=0;x<64;x+=2) {
-					sprintf(&password[x], "%02x", passout[x/2] );
-				}
-				mbedtls_sha256_free(&ctx);
-			}
-
-			for(x=0;x<64;x+=2) {
-				sprintf(&converted[x], "%02x", passout[x/2] );
-			}
-
-			*d = converted;
-			mbedtls_sha256_free(&ctx);
-			return 0;
-		}
-	}
-	return -1;
-}
 
 // void _logprintf(int prio, char *file, int line, const char *str, ...) {
 	// va_list ap;
@@ -156,6 +75,7 @@ int RunAllTests(void) {
 	pth_main_id = pthread_self();
 	memtrack();
 
+	assert(pthread_equal(pth_main_id, pthread_self()));
 	/*
 	 * Logging is asynchronous. If the log is being filled
 	 * when a test is already finished, xfree() is called
@@ -170,6 +90,9 @@ int RunAllTests(void) {
 	log_file_disable();
 	log_shell_disable();
 	
+	/*
+	 * Storage should be tested first
+	 */
 	suites[nr++] = suite_common();
 	suites[nr++] = suite_network();
 	suites[nr++] = suite_binary();
@@ -203,6 +126,10 @@ int RunAllTests(void) {
 	suites[nr++] = suite_protocols_generic();
 	suites[nr++] = suite_event_operators();
 	suites[nr++] = suite_event_functions();
+	suites[nr++] = suite_event_actions_switch();
+	suites[nr++] = suite_event_actions_toggle();
+	suites[nr++] = suite_event_actions_label();
+	suites[nr++] = suite_event_actions_dim();
 
 	for(i=0;i<nr;i++) {
 		CuSuiteAddSuite(suite, suites[i]);
