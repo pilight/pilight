@@ -57,6 +57,7 @@
 
 typedef struct http_clients_t {
 	uv_poll_t *req;
+	int fd;
 	struct uv_custom_poll_t *data;
 	struct http_clients_t *next;
 } http_clients_t;
@@ -128,6 +129,15 @@ int http_gc(void) {
 	while(http_clients) {
 		node = http_clients;
 
+		if(http_clients->fd > -1) {
+#ifdef _WIN32
+			shutdown(http_clients->fd, SD_BOTH);
+#else
+			shutdown(http_clients->fd, SHUT_RDWR);
+#endif
+			close(http_clients->fd);
+		}
+
 		struct uv_custom_poll_t *custom_poll_data = http_clients->data;
 		struct request_t *request = custom_poll_data->data;
 		if(request != NULL) {
@@ -158,12 +168,20 @@ static void http_client_add(uv_poll_t *req, struct uv_custom_poll_t *data) {
 #else
 	pthread_mutex_lock(&http_lock);
 #endif
+
+	int fd = -1, r = 0;
+
+	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
+		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
+	}
+
 	struct http_clients_t *node = MALLOC(sizeof(struct http_clients_t));
 	if(node == NULL) {
 		OUT_OF_MEMORY
 	}
 	node->req = req;
 	node->data = data;
+	node->fd = fd;
 
 	node->next = http_clients;
 	http_clients = node;
