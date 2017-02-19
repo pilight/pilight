@@ -269,7 +269,7 @@ static void http_wait(void *param) {
 	int doread = 0, dowrite = 0;
 	fd_set fdsread;
 	fd_set fdswrite;
-	
+
 	if((message = MALLOC(BUFSIZE)) == NULL) {
 		OUT_OF_MEMORY
 	}
@@ -467,7 +467,7 @@ static void test_http(CuTest *tc) {
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
 	storage_init();
-	CuAssertIntEquals(tc, 0, storage_read("http.json", CONFIG_SETTINGS));	
+	CuAssertIntEquals(tc, 0, storage_read("http.json", CONFIG_SETTINGS));
 
 	ssl_init();
 	CuAssertIntEquals(tc, 0, ssl_server_init_status());
@@ -499,12 +499,12 @@ static void test_http_threaded(CuTest *tc) {
 
 	gtc = tc;
 	testnr = 0;
-	
-	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
+
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
 	storage_init();
-	CuAssertIntEquals(tc, 0, storage_read("http.json", CONFIG_SETTINGS));	
+	CuAssertIntEquals(tc, 0, storage_read("http.json", CONFIG_SETTINGS));
 
 	ssl_init();
 	CuAssertIntEquals(tc, 0, ssl_server_init_status());
@@ -521,13 +521,6 @@ static void test_http_threaded(CuTest *tc) {
 		}
 
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-		/*
-		 * FIXME: http_gc depends on poll->data structure.
-		 * When running http_gc after walk_cb the poll
-		 * structure is already freed.
-		 */
-		http_gc();
-
 		uv_walk(uv_default_loop(), walk_cb, NULL);
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 
@@ -542,6 +535,7 @@ static void test_http_threaded(CuTest *tc) {
 		}
 	}
 
+	http_gc();
 	ssl_gc();
 	storage_gc();
 	eventpool_gc();
@@ -550,7 +544,7 @@ static void test_http_threaded(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
-CuSuite *suite_http(void) {	
+CuSuite *suite_http(void) {
 	CuSuite *suite = CuSuiteNew();
 
 	FILE *f = fopen("http.json", "w");

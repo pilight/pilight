@@ -57,6 +57,7 @@
 
 typedef struct http_clients_t {
 	uv_poll_t *req;
+	struct uv_custom_poll_t *data;
 	struct http_clients_t *next;
 } http_clients_t;
 
@@ -125,9 +126,20 @@ int http_gc(void) {
 	pthread_mutex_lock(&http_lock);
 #endif
 	while(http_clients) {
-		node = http_clients->next;
-		http_client_close(http_clients->req);
-		http_clients = node;
+		node = http_clients;
+
+		struct uv_custom_poll_t *custom_poll_data = http_clients->data;
+		struct request_t *request = custom_poll_data->data;
+		if(request != NULL) {
+			free_request(request);
+		}
+
+		if(custom_poll_data != NULL) {
+			uv_custom_poll_free(custom_poll_data);
+		}
+
+		http_clients = http_clients->next;
+		FREE(node);
 	}
 
 #ifdef _WIN32
@@ -140,7 +152,7 @@ int http_gc(void) {
 	return 1;
 }
 
-static void http_client_add(uv_poll_t *req) {
+static void http_client_add(uv_poll_t *req, struct uv_custom_poll_t *data) {
 #ifdef _WIN32
 	uv_mutex_lock(&http_lock);
 #else
@@ -151,6 +163,7 @@ static void http_client_add(uv_poll_t *req) {
 		OUT_OF_MEMORY
 	}
 	node->req = req;
+	node->data = data;
 
 	node->next = http_clients;
 	http_clients = node;
@@ -379,7 +392,7 @@ static void process_chunk(char **buf, ssize_t *size, struct request_t *request) 
 		if(request->chunksize == 0 && strstr(*buf, "\r\n") == NULL) {
 			break;
 		} else if(*size > 0 && strncmp(*buf, "0\r\n\r\n", 5) != 0) {
-			request->reading = 1; 
+			request->reading = 1;
 		} else {
 			break;
 		}
@@ -431,7 +444,7 @@ static void http_client_close(uv_poll_t *req) {
 	}
 
 	if(custom_poll_data != NULL) {
-		uv_custom_poll_free(custom_poll_data);	
+		uv_custom_poll_free(custom_poll_data);
 		req->data = NULL;
 	}
 }
@@ -619,7 +632,7 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 		pthread_mutex_init(&http_lock, &http_attr);
 #endif
 	}
-	
+
 #ifdef _WIN32
 	WSADATA wsa;
 
@@ -627,8 +640,8 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 		logprintf(LOG_ERR, "WSAStartup");
 		exit(EXIT_FAILURE);
 	}
-#endif	
-	
+#endif
+
 	if(prepare_request(&request, type, url, conttype, post, callback, userdata) == 0) {
 		r = host2ip(request->host, p);
 		if(r != 0) {
@@ -687,7 +700,7 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 			goto freeuv;
 		}
 
-		http_client_add(poll_req);
+		http_client_add(poll_req, custom_poll_data);
 		request->steps = STEP_WRITE;
 		uv_custom_write(poll_req);
 	}
@@ -702,7 +715,7 @@ freeuv:
 	if(sockfd > 0) {
 		close(sockfd);
 	}
-	return NULL;	
+	return NULL;
 }
 
 char *http_get_content(char *url, void (*callback)(int, char *, int, char *, void *), void *userdata) {
