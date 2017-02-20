@@ -1731,7 +1731,7 @@ int settings_validate_settings(struct JsonNode *jsettings, int i) {
 				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain an smtp host address", i, jsettings->key);
 			}
 			return -1;
-		} else if(strlen(jsettings->string_) > 0) {
+		} /*else if(strlen(jsettings->string_) > 0) {
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 			char validate[] = "^([a-zA-Z0-9\\_\\-]){2,20}(\\.([a-zA-Z0-9\\_\\-]){2,20}){2,3}$";
 			reti = regcomp(&regex, validate, REG_EXTENDED);
@@ -1751,14 +1751,9 @@ int settings_validate_settings(struct JsonNode *jsettings, int i) {
 			}
 			regfree(&regex);
 #endif
-		}
+		}*/
 	} else if(strcmp(jsettings->key, "smtp-port") == 0) {
 		if(jsettings->tag != JSON_NUMBER) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must be 25, 465 or 587", i, jsettings->key);
-			}
-			return -1;
-		} else if((int)jsettings->number_ != 25 && (int)jsettings->number_ != 465 && (int)jsettings->number_ != 587) {
 			if(i > 0) {
 				logprintf(LOG_ERR, "config setting #%d \"%s\" must be 25, 465 or 587", i, jsettings->key);
 			}

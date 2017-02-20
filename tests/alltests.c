@@ -46,6 +46,7 @@ CuSuite *suite_event_actions_switch(void);
 CuSuite *suite_event_actions_toggle(void);
 CuSuite *suite_event_actions_label(void);
 CuSuite *suite_event_actions_dim(void);
+CuSuite *suite_event_actions_mail(void);
 
 CuString *output = NULL;
 CuSuite *suite = NULL;
@@ -59,7 +60,7 @@ int nr = 0;
 	// char buffer[1024];
 
 	// memset(buffer, 0, 1024);
-	
+
 	// va_start(ap, str);
 	// vsnprintf(buffer, 1024, str, ap);
 	// va_end(ap);
@@ -89,7 +90,7 @@ int RunAllTests(void) {
 	 */
 	log_file_disable();
 	log_shell_disable();
-	
+
 	/*
 	 * Storage should be tested first
 	 */
@@ -130,6 +131,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_event_actions_toggle();
 	suites[nr++] = suite_event_actions_label();
 	suites[nr++] = suite_event_actions_dim();
+	suites[nr++] = suite_event_actions_mail();
 
 	for(i=0;i<nr;i++) {
 		CuSuiteAddSuite(suite, suites[i]);

@@ -85,7 +85,7 @@ typedef struct request_t {
 	int reading;
 	int sending;
 	int bytes_read;
-	void (*callback)(int);
+	void (*callback)(int, struct mail_t *);
 
 	struct mail_t *mail;
 
@@ -116,7 +116,7 @@ static void abort_cb(uv_poll_t *req) {
 	}
 
 	if(request != NULL && request->callback != NULL) {
-		request->callback(-1);
+		request->callback(-1, request->mail);
 	}
 
 	if(fd > -1) {
@@ -323,7 +323,7 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		case SMTP_STEP_RECV_QUIT: {
 			logprintf(LOG_INFO, "SMTP: successfully send mail");
 			if(request->callback != NULL) {
-				request->callback(0);
+				request->callback(0, request->mail);
 			}
 			if(!uv_is_closing((uv_handle_t *)req)) {
 				uv_close((uv_handle_t *)req, close_cb);
@@ -364,7 +364,7 @@ static void push_data(uv_poll_t *req, int step) {
 	request->reading = 1;
 
 	uv_custom_write(req);
-	uv_custom_read(req);	
+	uv_custom_read(req);
 }
 
 static void write_cb(uv_poll_t *req) {
@@ -520,7 +520,7 @@ static void write_cb(uv_poll_t *req) {
 	}
 }
 
-int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ssl, struct mail_t *mail, void (*callback)(int)) {
+int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ssl, struct mail_t *mail, void (*callback)(int, struct mail_t *)) {
 	struct request_t *request = NULL;
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct sockaddr_in addr;
@@ -543,7 +543,7 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 		logprintf(LOG_ERR, "SMTP: recipient not set");
 		return -1;
 	}
-	
+
 	if((request = MALLOC(sizeof(struct request_t))) == NULL) {
 		OUT_OF_MEMORY
 	}

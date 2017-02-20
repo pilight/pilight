@@ -95,7 +95,7 @@ static struct tests_t {
 				"250-ENHANCEDSTATUSCODES\r\n"
 				"250-PIPELINING\r\n"
 				"250-CHUNKING\r\n"
-				"250 SMTPUTF8\r\n",			
+				"250 SMTPUTF8\r\n",
 			"235 2.7.0 Accepted\r\n",
 			"250 2.1.0 OK im3sm19207876wjb.13 - gsmtp",
 			"250 2.1.5 OK im3sm19207876wjb.13 - gsmtp",
@@ -280,7 +280,7 @@ static char *to = "info@pilight.org";
 
 static void test(void *param);
 
-static void callback(int status) {
+static void callback(int status, struct mail_t *mail) {
 	CuAssertIntEquals(gtc, tests[testnr].status, status);
 
 	testnr++;
@@ -520,7 +520,7 @@ static void test(void *param) {
 	mail_start(tests[testnr].port);
 
 	uv_thread_create(&pth, mail_wait, NULL);
-	
+
 	mail->subject = subject;
 	mail->message = message;
 	mail->from = sender;
@@ -545,7 +545,7 @@ static void test_mail(CuTest *tc) {
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
 	storage_init();
-	CuAssertIntEquals(tc, 0, storage_read("mail.json", CONFIG_SETTINGS));	
+	CuAssertIntEquals(tc, 0, storage_read("mail.json", CONFIG_SETTINGS));
 
 	ssl_init();
 
@@ -580,17 +580,17 @@ static void test_mail_threaded(CuTest *tc) {
 	gtc = tc;
 	started = 0;
 	testnr = 0;
-	
+
 	memtrack();
 
-	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
 	storage_init();
-	CuAssertIntEquals(tc, 0, storage_read("mail.json", CONFIG_SETTINGS));	
+	CuAssertIntEquals(tc, 0, storage_read("mail.json", CONFIG_SETTINGS));
 
-	ssl_init();	
-	
+	ssl_init();
+
 	if((mail = MALLOC(sizeof(struct mail_t))) == NULL) {
 		OUT_OF_MEMORY
 	}
@@ -628,7 +628,7 @@ static void test_mail_threaded(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
-CuSuite *suite_mail(void) {	
+CuSuite *suite_mail(void) {
 	CuSuite *suite = CuSuiteNew();
 
 	FILE *f = fopen("mail.json", "w");
@@ -637,8 +637,8 @@ CuSuite *suite_mail(void) {
 		"\"settings\":{\"pem-file\":\"../res/pilight.pem\"},"\
 		"\"hardware\":{},\"registry\":{}}"
 	);
-	fclose(f);	
-	
+	fclose(f);
+
 	SUITE_ADD_TEST(suite, test_mail);
 	SUITE_ADD_TEST(suite, test_mail_threaded);
 

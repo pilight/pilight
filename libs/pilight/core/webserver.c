@@ -10,7 +10,7 @@
  * This webserver contains various code originally written by Sergey Lyubka
  * (from Cesenta) for Mongoose (https://github.com/cesanta/mongoose).
  * The code was either copied, adapted and/or stripped so it could be integrated
- * with the pilight eventpool and mbed TLS SSL library. 
+ * with the pilight eventpool and mbed TLS SSL library.
  *
  * The following functions are therefor licensed under GPLv2.
  *
@@ -43,7 +43,7 @@
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
-	#include <pwd.h>	
+	#include <pwd.h>
 	#include <arpa/inet.h>
 	#define __USE_UNIX98
 	#include <pthread.h>
@@ -138,7 +138,7 @@ static struct fcache_t *fcache;
 #else
 	static pthread_mutex_t webserver_lock;
 	static pthread_mutexattr_t webserver_attr;
-#endif	
+#endif
 static int lock_init = 0;
 static struct webserver_clients_t *webserver_clients = NULL;
 
@@ -248,12 +248,12 @@ const char *http_get_header(struct connection_t *conn, const char *s) {
 	int i = 0;
 
 	for(i = 0; i < conn->num_headers; i++) {
-    if(strcmp(s, conn->http_headers[i].name) == 0) {
-      return conn->http_headers[i].value;
+		if(strcmp(s, conn->http_headers[i].name) == 0) {
+			return conn->http_headers[i].value;
 		}
 	}
 
-  return NULL;
+	return NULL;
 }
 
 void send_auth_request(uv_poll_t *req) {
@@ -266,7 +266,7 @@ void send_auth_request(uv_poll_t *req) {
 	struct connection_t *conn = custom_poll_data->data;
 	char *a = "HTTP/1.1 401 Unauthorized\r\n"
 		"WWW-Authenticate: Basic realm=\"pilight\"\r\n\r\n";
-  conn->status_code = 401;
+	conn->status_code = 401;
 
 	iobuf_append(&custom_poll_data->send_iobuf, a, strlen(a));
 	uv_custom_write(req);
@@ -280,11 +280,11 @@ int authorize_input(uv_poll_t *req, char *username, char *password) {
 
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct connection_t *conn = custom_poll_data->data;
-  const char *hdr = NULL;
+	const char *hdr = NULL;
 	char **array = NULL, *decoded = NULL;
 	int n = 0;
 
-  if(conn == NULL) {
+	if(conn == NULL) {
 		return MG_FALSE;
 	}
 
@@ -327,7 +327,7 @@ int authorize_input(uv_poll_t *req, char *username, char *password) {
 	FREE(decoded);
 	array_free(&array, n);
 
-  return MG_FALSE;
+	return MG_FALSE;
 }
 
 static int auth_handler(uv_poll_t *req) {
@@ -446,9 +446,9 @@ static void write_chunk(uv_poll_t *req, char *buf, int len) {
 
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 
-  char chunk_size[50];
-  int n = snprintf(chunk_size, sizeof(chunk_size), "%X\r\n", len);
-	
+	char chunk_size[50];
+	int n = snprintf(chunk_size, sizeof(chunk_size), "%X\r\n", len);
+
 	iobuf_append(&custom_poll_data->send_iobuf, chunk_size, n);
 	iobuf_append(&custom_poll_data->send_iobuf, buf, len);
 	iobuf_append(&custom_poll_data->send_iobuf, "\r\n", 2);
@@ -468,7 +468,7 @@ static size_t send_data(uv_poll_t *req, char *mimetype, void *data, unsigned lon
 	iobuf_append(&custom_poll_data->send_iobuf, header, (int)(p-header));
 	iobuf_append(&custom_poll_data->send_iobuf, data, (int)data_len);
 
-  return 0;
+	return 0;
 }
 
 static size_t send_chunked_data(uv_poll_t *req, void *data, unsigned long data_len) {
@@ -486,7 +486,8 @@ static size_t send_chunked_data(uv_poll_t *req, void *data, unsigned long data_l
 		conn->flags = 1;
 	}
 	write_chunk(req, data, data_len);
-  return 0;
+
+	return 0;
 }
 
 static int parse_rest(uv_poll_t *req) {
@@ -650,7 +651,7 @@ static int file_read_cb(int fd, uv_poll_t *req) {
 
 	memset(&buffer, '\0', WEBSERVER_CHUNK_SIZE);
 	memset(&readset, 0, sizeof(fd_set));
-	
+
 	FD_SET(fd, &readset);
 
 	timeout.tv_sec = 0;
@@ -1074,24 +1075,24 @@ static int is_valid_http_method(const char *s) {
 }
 
 static void remove_double_dots_and_double_slashes(char *s) {
-  char *p = s;
+	char *p = s;
 
-  while(*s != '\0') {
-    *p++ = *s++;
-    if(s[-1] == '/' || s[-1] == '\\') {
-      // Skip all following slashes, backslashes and double-dots
-      while(s[0] != '\0') {
-        if(s[0] == '/' || s[0] == '\\') {
+	while(*s != '\0') {
+		*p++ = *s++;
+		if(s[-1] == '/' || s[-1] == '\\') {
+		// Skip all following slashes, backslashes and double-dots
+			while(s[0] != '\0') {
+				if(s[0] == '/' || s[0] == '\\') {
 					s++;
 				} else if(s[0] == '.' && s[1] == '.') {
 					s += 2;
 				} else {
 					break;
 				}
-      }
-    }
-  }
-  *p = '\0';
+			}
+		}
+	}
+	*p = '\0';
 }
 
 static void parse_http_headers(char **buf, struct connection_t *c) {
@@ -1107,28 +1108,28 @@ static void parse_http_headers(char **buf, struct connection_t *c) {
 }
 
 static int _urldecode(const char *src, int src_len, char *dst, int dst_len, int is_form_url_encoded) {
-  int i, j, a, b;
+	int i, j, a, b;
 
 #define HEXTOI(x) (isdigit(x) ? x - '0' : x - 'W')
 
-  for(i = j = 0; i < src_len && j < dst_len - 1; i++, j++) {
-    if(src[i] == '%' && i < src_len - 2 &&
-       isxdigit(*(const unsigned char *)(src + i + 1)) &&
-       isxdigit(*(const unsigned char *)(src + i + 2))) {
-      a = tolower(*(const unsigned char *)(src + i + 1));
-      b = tolower(*(const unsigned char *)(src + i + 2));
-      dst[j] = (char)((HEXTOI(a) << 4) | HEXTOI(b));
-      i += 2;
-    } else if(is_form_url_encoded && src[i] == '+') {
-      dst[j] = ' ';
-    } else {
-      dst[j] = src[i];
-    }
-  }
+	for(i = j = 0; i < src_len && j < dst_len - 1; i++, j++) {
+		if(src[i] == '%' && i < src_len - 2 &&
+			isxdigit(*(const unsigned char *)(src + i + 1)) &&
+			isxdigit(*(const unsigned char *)(src + i + 2))) {
+			a = tolower(*(const unsigned char *)(src + i + 1));
+			b = tolower(*(const unsigned char *)(src + i + 2));
+			dst[j] = (char)((HEXTOI(a) << 4) | HEXTOI(b));
+			i += 2;
+		} else if(is_form_url_encoded && src[i] == '+') {
+			dst[j] = ' ';
+		} else {
+			dst[j] = src[i];
+		}
+	}
 
-  dst[j] = '\0'; // Null-terminate the destination
+	dst[j] = '\0'; // Null-terminate the destination
 
-  return i >= src_len ? j : -1;
+	return i >= src_len ? j : -1;
 }
 
 int http_parse_request(char *buffer, struct connection_t *c) {
@@ -1136,32 +1137,33 @@ int http_parse_request(char *buffer, struct connection_t *c) {
 
 	while(*buffer != '\0' && isspace(*(unsigned char *)buffer)) {
 		buffer++;
-  }
+	}
+
 	c->request_method = skip(&buffer, " ");
 	c->uri = skip(&buffer, " ");
 	c->http_version = skip(&buffer, "\r\n");
 
-  is_request = is_valid_http_method(c->request_method);
-  if((is_request && memcmp(c->http_version, "HTTP/", 5) != 0) ||
-     (!is_request && memcmp(c->request_method, "HTTP/", 5) != 0)) {
-  } else {
-    if(is_request == 1) {
+	is_request = is_valid_http_method(c->request_method);
+	if((is_request && memcmp(c->http_version, "HTTP/", 5) != 0) ||
+		(!is_request && memcmp(c->request_method, "HTTP/", 5) != 0)) {
+	} else {
+		if(is_request == 1) {
 			c->http_version += 5;
-    } else {
+		} else {
 			c->status_code = atoi(c->uri);
-    }
-    parse_http_headers(&buffer, c);
+		}
+		parse_http_headers(&buffer, c);
 
-    if((c->query_string = strchr(c->uri, '?')) != NULL) {
-      *(char *)c->query_string++ = '\0';
-    }
-    n = (int)strlen(c->uri);
-    _urldecode(c->uri, n, (char *)c->uri, n + 1, 0);
+		if((c->query_string = strchr(c->uri, '?')) != NULL) {
+			*(char *)c->query_string++ = '\0';
+		}
+		n = (int)strlen(c->uri);
+		_urldecode(c->uri, n, (char *)c->uri, n + 1, 0);
 
-    if(*c->uri == '/' || *c->uri == '.') {
-      remove_double_dots_and_double_slashes((char *)c->uri);
-    }
-  }
+		if(*c->uri == '/' || *c->uri == '.') {
+			remove_double_dots_and_double_slashes((char *)c->uri);
+		}
+	}
 
 	return 0;
 }
@@ -1229,20 +1231,20 @@ static void send_websocket_handshake(uv_poll_t *req, const char *key) {
 	assert(pthread_equal(pth_main_id, pthread_self()));
 
 	struct uv_custom_poll_t *custom_poll_data = req->data;
-  static const char *magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-  unsigned char sha[20];
+	static const char *magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+	unsigned char sha[20];
 	char buf[500], *b64_sha = NULL, *p = (char *)sha;
 	mbedtls_sha1_context ctx;
 
 	memset(&sha, '\0', 20);
 
-  snprintf(buf, sizeof(buf), "%s%s", key, magic);
+	 snprintf(buf, sizeof(buf), "%s%s", key, magic);
 	mbedtls_sha1_init(&ctx);
 	mbedtls_sha1_starts(&ctx);
 	mbedtls_sha1_update(&ctx, (unsigned char *)buf, strlen(buf));
 	mbedtls_sha1_finish(&ctx, sha);
-  b64_sha = base64encode(p, 20);
-  int i = sprintf(buf,
+	 b64_sha = base64encode(p, 20);
+	int i = sprintf(buf,
               "HTTP/1.1 101 Web Socket Protocol Handshake\r\n"
               "Connection: Upgrade\r\n"
               "Upgrade: websocket\r\n"
@@ -1265,7 +1267,7 @@ static void send_websocket_handshake_if_requested(uv_poll_t *req) {
 
 	const char *ver = http_get_header(conn, "Sec-WebSocket-Version");
 	const char *key = http_get_header(conn, "Sec-WebSocket-Key");
-  if(ver != NULL && key != NULL) {
+	if(ver != NULL && key != NULL) {
 		conn->is_websocket = 1;
 
 		struct webserver_clients_t *tmp = webserver_clients;
@@ -1277,7 +1279,7 @@ static void send_websocket_handshake_if_requested(uv_poll_t *req) {
 			tmp = tmp->next;
 		}
 		send_websocket_handshake(req, key);
-  }
+	}
 }
 
 int websocket_read(uv_poll_t *req, unsigned char *buf, ssize_t buf_len) {
@@ -1387,7 +1389,7 @@ static void poll_close_cb(uv_poll_t *req) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct connection_t *conn = custom_poll_data->data;
 	int fd = -1, r = 0;
-	
+
 	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
 	}
@@ -1572,7 +1574,7 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			uv_custom_poll_free(custom_poll_data);
 			poll_req->data = NULL;
 		}
-		FREE(poll_req);		
+		FREE(poll_req);
 		return;
 	}
 
@@ -1637,7 +1639,7 @@ static void server_write_cb(uv_poll_t *req) {
 	}
 #endif
 
-	uv_custom_read(req);	
+	uv_custom_read(req);
 }
 
 static int webserver_init(int port, int is_ssl) {
@@ -1649,7 +1651,7 @@ static int webserver_init(int port, int is_ssl) {
 	struct sockaddr_in addr;
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	int r = 0, sockfd = 0, socklen = sizeof(addr);
-	
+
 #ifdef _WIN32
 	WSADATA wsa;
 
@@ -1675,8 +1677,8 @@ static int webserver_init(int port, int is_ssl) {
 	memset((char *)&addr, '\0', sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	addr.sin_port = htons(port);	
-	
+	addr.sin_port = htons(port);
+
 	if((r = bind(sockfd, (struct sockaddr *)&addr, sizeof(addr))) < 0) {
 		int x = 0;
 		if((x = getpeername(sockfd, (struct sockaddr *)&addr, (socklen_t *)&socklen)) == 0) {
@@ -1691,7 +1693,7 @@ static int webserver_init(int port, int is_ssl) {
 	if((listen(sockfd, 0)) < 0) {
 		logprintf(LOG_ERR, "listen: %s", strerror(errno));
 		close(sockfd);
-		return -1;	
+		return -1;
 	}
 
 	uv_poll_t *poll_req = NULL;
@@ -1723,7 +1725,7 @@ static int webserver_init(int port, int is_ssl) {
 			uv_custom_poll_free(custom_poll_data);
 			poll_req->data = NULL;
 		};
-		FREE(poll_req);		
+		FREE(poll_req);
 		return -1;
 	}
 
