@@ -200,8 +200,13 @@ int event_action_gc(void) {
 		event_actions = event_actions->next;
 		FREE(tmp_action);
 	}
-	if(event_actions != NULL) {
-		FREE(event_actions);
+
+	struct execution_t *tmp = NULL;
+	while(executions) {
+		tmp = executions;
+		FREE(tmp->name);
+		executions = executions->next;
+		FREE(tmp);
 	}
 
 	logprintf(LOG_DEBUG, "garbage collected event action library");
@@ -256,71 +261,71 @@ int event_action_get_execution_id(char *name, unsigned long *ret) {
 	return -1;
 }
 
-void event_action_thread_init(struct device_t *dev) {
+// void event_action_thread_init(struct device_t *dev) {
 
-	if((dev->action_thread = MALLOC(sizeof(struct event_action_thread_t))) == NULL) {
-		OUT_OF_MEMORY
-	}
+	// if((dev->action_thread = MALLOC(sizeof(struct event_action_thread_t))) == NULL) {
+		// OUT_OF_MEMORY
+	// }
 
-	dev->action_thread->running = 0;
-	dev->action_thread->obj = NULL;
-	dev->action_thread->action = NULL;
-}
+	// dev->action_thread->running = 0;
+	// dev->action_thread->obj = NULL;
+	// dev->action_thread->action = NULL;
+// }
 
-void event_action_thread_start(struct device_t *dev, struct event_actions_t *action, void *(*func)(void *), struct rules_actions_t *obj) {
-	struct event_action_thread_t *thread = dev->action_thread;
+// void event_action_thread_start(struct device_t *dev, struct event_actions_t *action, void *(*func)(void *), struct rules_actions_t *obj) {
+	// struct event_action_thread_t *thread = dev->action_thread;
 
-	if(thread->running == 1) {
-		logprintf(LOG_DEBUG, "overriding previous \"%s\" action for device \"%s\"", thread->action->name, dev->id);
-	}
+	// if(thread->running == 1) {
+		// logprintf(LOG_DEBUG, "overriding previous \"%s\" action for device \"%s\"", thread->action->name, dev->id);
+	// }
 
-	event_action_set_execution_id(dev->id);
+	// event_action_set_execution_id(dev->id);
 
-	thread->obj = obj;
-	thread->device = dev;
-	thread->action = action;
+	// thread->obj = obj;
+	// thread->device = dev;
+	// thread->action = action;
 
-	// threadpool_add_work(REASON_END, NULL, thread->action->name, 0, func, NULL, (void *)thread);
-}
+	// // threadpool_add_work(REASON_END, NULL, thread->action->name, 0, func, NULL, (void *)thread);
+// }
 
-void event_action_thread_stop(struct device_t *dev) {
+// void event_action_thread_stop(struct device_t *dev) {
 
-	struct event_action_thread_t *thread = NULL;
+	// struct event_action_thread_t *thread = NULL;
 
-	if(dev != NULL) {
-		thread = dev->action_thread;
-		if(thread->running == 1) {
-			logprintf(LOG_DEBUG, "aborting running \"%s\" action for device \"%s\"", thread->action->name, dev->id);
-			thread->action->gc((void *)thread);
-			event_action_set_execution_id(dev->id);
-		}
-	}
-}
+	// if(dev != NULL) {
+		// thread = dev->action_thread;
+		// if(thread->running == 1) {
+			// logprintf(LOG_DEBUG, "aborting running \"%s\" action for device \"%s\"", thread->action->name, dev->id);
+			// thread->action->gc((void *)thread);
+			// event_action_set_execution_id(dev->id);
+		// }
+	// }
+// }
 
-void event_action_thread_free(struct device_t *dev) {
+// void event_action_thread_free(struct device_t *dev) {
 
-	struct event_action_thread_t *thread = NULL;
+	// struct event_action_thread_t *thread = NULL;
 
-	if(dev != NULL) {
-		thread = dev->action_thread;
-		if(thread != NULL) {
-			if(thread->running == 1) {
-				event_action_set_execution_id(dev->id);
-				logprintf(LOG_DEBUG, "aborted running actions for device \"%s\"", dev->id);
-				thread->action->gc((void *)thread);
-			}
+	// if(dev != NULL) {
+		// thread = dev->action_thread;
+		// if(thread != NULL) {
+			// if(thread->running == 1) {
+				// event_action_set_execution_id(dev->id);
+				// logprintf(LOG_DEBUG, "aborted running actions for device \"%s\"", dev->id);
+				// thread->action->gc((void *)thread);
+			// }
 
-			FREE(dev->action_thread);
-		}
-	}
-}
+			// FREE(dev->action_thread);
+		// }
+	// }
+// }
 
-void event_action_started(struct event_action_thread_t *thread) {
-	thread->running = 1;
-	logprintf(LOG_INFO, "started \"%s\" action for device \"%s\"", thread->action->name, thread->device->id);
-}
+// void event_action_started(struct event_action_thread_t *thread) {
+	// thread->running = 1;
+	// logprintf(LOG_INFO, "started \"%s\" action for device \"%s\"", thread->action->name, thread->device->id);
+// }
 
-void event_action_stopped(struct event_action_thread_t *thread) {
-	thread->running = 0;
-	logprintf(LOG_INFO, "stopped \"%s\" action for device \"%s\"", thread->action->name, thread->device->id);
-}
+// void event_action_stopped(struct event_action_thread_t *thread) {
+	// thread->running = 0;
+	// logprintf(LOG_INFO, "stopped \"%s\" action for device \"%s\"", thread->action->name, thread->device->id);
+// }

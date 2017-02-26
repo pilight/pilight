@@ -1782,7 +1782,7 @@ void *events_loop(int reason, void *param) {
 			if(devices_select_struct(ORIGIN_MASTER, data1->devices[i], &dev) == 0) {
 				struct event_action_thread_t *thread = dev->action_thread;
 				if(thread->running == 1) {
-					event_action_thread_stop(dev);
+					// event_action_thread_stop(dev);
 				}
 			}
 		}

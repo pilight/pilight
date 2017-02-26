@@ -238,13 +238,13 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 	}
 
 	if(testnr < sizeof(tests)/sizeof(tests[0])) {
-		if(threaded == 1) {
-			started = 0;
-			uv_thread_join(&pth1);
-			uv_thread_create(&pth1, test, NULL);
-		} else {
+		if(threaded == 0) {
 			test(NULL);
+		} else {
+			uv_stop(uv_default_loop());
 		}
+	} else {
+		uv_stop(uv_default_loop());
 	}
 }
 
@@ -269,7 +269,7 @@ static void http_wait(void *param) {
 	int doread = 0, dowrite = 0;
 	fd_set fdsread;
 	fd_set fdswrite;
-	
+
 	if((message = MALLOC(BUFSIZE)) == NULL) {
 		OUT_OF_MEMORY
 	}
@@ -465,7 +465,12 @@ static void test_http(CuTest *tc) {
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
+	eventpool_init(EVENTPOOL_NO_THREADS);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("http.json", CONFIG_SETTINGS));
+
 	ssl_init();
+	CuAssertIntEquals(tc, 0, ssl_server_init_status());
 
 	test(NULL);
 
@@ -479,6 +484,8 @@ static void test_http(CuTest *tc) {
 
 	http_gc();
 	ssl_gc();
+	storage_gc();
+	eventpool_gc();
 
 	CuAssertIntEquals(tc, 10, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
@@ -491,48 +498,62 @@ static void test_http_threaded(CuTest *tc) {
 	memtrack();
 
 	gtc = tc;
-	started = 0;
 	testnr = 0;
-	
-	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
+
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
+
+	eventpool_init(EVENTPOOL_NO_THREADS);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("http.json", CONFIG_SETTINGS));
 
 	ssl_init();
+	CuAssertIntEquals(tc, 0, ssl_server_init_status());
 
-	threaded = 1;
-	uv_thread_create(&pth1, test, NULL);
+	while(testnr < sizeof(tests)/sizeof(tests[0])) {
+		started = 0;
 
-restart:
-	while(started == 0) {
-		usleep(10);
-	}
+		threaded = 1;
 
-	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-	uv_walk(uv_default_loop(), walk_cb, NULL);
-	uv_run(uv_default_loop(), UV_RUN_ONCE);
+		uv_thread_create(&pth1, test, NULL);
 
-	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+		while(started == 0) {
+			usleep(10);
+		}
+
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-	}
+		uv_walk(uv_default_loop(), walk_cb, NULL);
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
 
-	if(testnr+1 < sizeof(tests)/sizeof(tests[0])) {
-		goto restart;
-	}
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		}
 
-	uv_thread_join(&pth1);
+		uv_thread_join(&pth1);
 
-	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
-		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		}
 	}
 
 	http_gc();
 	ssl_gc();
+	storage_gc();
+	eventpool_gc();
 
 	CuAssertIntEquals(tc, 10, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
-CuSuite *suite_http(void) {	
+CuSuite *suite_http(void) {
 	CuSuite *suite = CuSuiteNew();
+
+	FILE *f = fopen("http.json", "w");
+	fprintf(f,
+		"{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"pem-file\":\"../res/pilight.pem\"},"\
+		"\"hardware\":{},\"registry\":{}}"
+	);
+	fclose(f);
 
 	SUITE_ADD_TEST(suite, test_http);
 	SUITE_ADD_TEST(suite, test_http_threaded);

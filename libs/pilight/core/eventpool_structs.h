@@ -49,6 +49,16 @@ typedef struct reason_code_sent_t {
 	int repeat;
 } reason_code_sent_t;
 
+typedef struct reason_code_sent_fail_t {
+	char message[1025];
+	char uuid[UUID_LENGTH+1];
+} reason_code_sent_failed_t;
+
+typedef struct reason_code_sent_success_t {
+	char message[1025];
+	char uuid[UUID_LENGTH+1];
+} reason_code_sent_success_t;
+
 typedef struct reason_socket_disconnected_t {
 	int fd;
 } reason_socket_disconnected_t;
@@ -108,4 +118,11 @@ typedef struct reason_config_update_t {
 	} values[256];
 	char *uuid;
 } reason_config_update_t;
+
+typedef struct reason_control_device_t {
+	char *dev;
+	char *state;
+	struct JsonNode *values;
+} reason_control_device_t;
+
 #endif

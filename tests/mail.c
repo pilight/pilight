@@ -95,7 +95,7 @@ static struct tests_t {
 				"250-ENHANCEDSTATUSCODES\r\n"
 				"250-PIPELINING\r\n"
 				"250-CHUNKING\r\n"
-				"250 SMTPUTF8\r\n",			
+				"250 SMTPUTF8\r\n",
 			"235 2.7.0 Accepted\r\n",
 			"250 2.1.0 OK im3sm19207876wjb.13 - gsmtp",
 			"250 2.1.5 OK im3sm19207876wjb.13 - gsmtp",
@@ -280,7 +280,7 @@ static char *to = "info@pilight.org";
 
 static void test(void *param);
 
-static void callback(int status) {
+static void callback(int status, struct mail_t *mail) {
 	CuAssertIntEquals(gtc, tests[testnr].status, status);
 
 	testnr++;
@@ -292,13 +292,13 @@ static void callback(int status) {
 	}
 
 	if(testnr < sizeof(tests)/sizeof(tests[0])) {
-		if(threaded == 1) {
-			started = 0;
-			uv_thread_join(&pth1);
-			uv_thread_create(&pth1, test, NULL);
-		} else {
+		if(threaded == 0) {
 			test(NULL);
+		} else {
+			uv_stop(uv_default_loop());
 		}
+	} else {
+		uv_stop(uv_default_loop());
 	}
 }
 
@@ -520,7 +520,7 @@ static void test(void *param) {
 	mail_start(tests[testnr].port);
 
 	uv_thread_create(&pth, mail_wait, NULL);
-	
+
 	mail->subject = subject;
 	mail->message = message;
 	mail->from = sender;
@@ -543,6 +543,10 @@ static void test_mail(CuTest *tc) {
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
+	eventpool_init(EVENTPOOL_NO_THREADS);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("mail.json", CONFIG_SETTINGS));
+
 	ssl_init();
 
 	if((mail = MALLOC(sizeof(struct mail_t))) == NULL) {
@@ -562,6 +566,8 @@ static void test_mail(CuTest *tc) {
 	FREE(mail);
 
 	ssl_gc();
+	storage_gc();
+	eventpool_gc();
 
 	CuAssertIntEquals(tc, 7, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
@@ -574,53 +580,64 @@ static void test_mail_threaded(CuTest *tc) {
 	gtc = tc;
 	started = 0;
 	testnr = 0;
-	
+
 	memtrack();
 
-	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
-	ssl_init();	
-	
+	eventpool_init(EVENTPOOL_NO_THREADS);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("mail.json", CONFIG_SETTINGS));
+
+	ssl_init();
+
 	if((mail = MALLOC(sizeof(struct mail_t))) == NULL) {
 		OUT_OF_MEMORY
 	}
 
-	threaded = 1;
-	uv_thread_create(&pth1, test, NULL);
+	while(testnr < sizeof(tests)/sizeof(tests[0])) {
+		threaded = 1;
+		uv_thread_create(&pth1, test, NULL);
 
-restart:
-	while(started == 0) {
-		usleep(10);
-	}
+		while(started == 0) {
+			usleep(10);
+		}
 
-	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-	uv_walk(uv_default_loop(), walk_cb, NULL);
-	uv_run(uv_default_loop(), UV_RUN_ONCE);
-
-	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-	}
+		uv_walk(uv_default_loop(), walk_cb, NULL);
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
 
-	if(testnr+1 < sizeof(tests)/sizeof(tests[0])) {
-		goto restart;
-	}
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		}
 
-	uv_thread_join(&pth1);
+		uv_thread_join(&pth1);
 
-	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
-		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		}
 	}
 
 	FREE(mail);
 
 	ssl_gc();
+	storage_gc();
+	eventpool_gc();
 
 	CuAssertIntEquals(tc, 7, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
-CuSuite *suite_mail(void) {	
+CuSuite *suite_mail(void) {
 	CuSuite *suite = CuSuiteNew();
+
+	FILE *f = fopen("mail.json", "w");
+	fprintf(f,
+		"{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"pem-file\":\"../res/pilight.pem\"},"\
+		"\"hardware\":{},\"registry\":{}}"
+	);
+	fclose(f);
 
 	SUITE_ADD_TEST(suite, test_mail);
 	SUITE_ADD_TEST(suite, test_mail_threaded);

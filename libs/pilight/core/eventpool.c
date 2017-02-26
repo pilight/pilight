@@ -935,7 +935,10 @@ static struct reasons_t {
 	int priority;
 } reasons[REASON_END+1] = {
 	{	REASON_SEND_CODE, 						"REASON_SEND_CODE",							0 },
+	{	REASON_CONTROL_DEVICE, 				"REASON_CONTROL_DEVICE",				0 },
 	{	REASON_CODE_SENT, 						"REASON_CODE_SENT",							0 },
+	{	REASON_SOCKET_SEND,						"REASON_CODE_SEND_FAIL",				0 },
+	{	REASON_SOCKET_SEND,						"REASON_CODE_SEND_SUCCESS",			0 },
 	{	REASON_CODE_RECEIVED, 				"REASON_CODE_RECEIVED",					0 },
 	{	REASON_RECEIVED_PULSETRAIN, 	"REASON_RECEIVED_PULSETRAIN",		0 },
 	{	REASON_BROADCAST, 						"REASON_BROADCAST",							0 },
@@ -977,27 +980,8 @@ static void fib(uv_work_t *req) {
 	
 	struct cpu_usage_t cpu_usage;
 	struct threadpool_data_t *data = req->data;
-	// if(pilight.debuglevel >= 2) {
-		// fprintf(stderr, "activated worker, executing %s\n", data->name);
-	// }
-	// if(pilight.debuglevel >= 1) {
-		// clock_gettime(CLOCK_MONOTONIC, &timestamp.first);
-	// }
-	// if(pilight.debuglevel >= 2) {
-		// getThreadCPUUsage(pthread_self(), &cpu_usage);
-	// }
-	data->func(data->reason, data->userdata);
 
-	// if(pilight.debuglevel >= 1) {
-		// if(pilight.debuglevel >= 2) {
-			// getThreadCPUUsage(pthread_self(), &cpu_usage);
-			// fprintf(stderr, "worker %f%% CPU", cpu_usage.cpu_per);
-		// }
-		// clock_gettime(CLOCK_MONOTONIC, &timestamp.second);
-		// logprintf(LOG_DEBUG, "task %s executed in %.6f seconds", data->name,
-			// ((double)timestamp.second.tv_sec + 1.0e-9*timestamp.second.tv_nsec) -
-			// ((double)timestamp.first.tv_sec + 1.0e-9*timestamp.first.tv_nsec));
-	// }
+	data->func(data->reason, data->userdata);
 
 	int x = 0;
 	if(data->ref != NULL) {
@@ -1040,6 +1024,15 @@ void eventpool_callback(int reason, void *(*func)(int, void *)) {
 }
 
 void eventpool_trigger(int reason, void *(*done)(void *), void *data) {
+#ifdef _WIN32
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+#else
+	struct sched_param sched;
+	memset(&sched, 0, sizeof(sched));
+	sched.sched_priority = 80;
+	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
+#endif
+
 	struct eventqueue_t *node = MALLOC(sizeof(struct eventqueue_t));
 	if(node == NULL) {
 		OUT_OF_MEMORY
@@ -1065,7 +1058,8 @@ void eventpool_trigger(int reason, void *(*done)(void *), void *data) {
 	uv_async_send(async_req);
 }
 
-static void eventpool_execute(uv_async_t *handle) {	/*
+static void eventpool_execute(uv_async_t *handle) {
+	/*
 	 * Make sure we execute in the main thread
 	 */
 	assert(pthread_equal(pth_main_id, pthread_self()));
@@ -1264,8 +1258,8 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
-
+	assert(pthread_equal(pth_main_id, pthread_self()));	
+	
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct iobuf_t *send_io = NULL;
 	char buffer[BUFFER_SIZE];
@@ -1655,7 +1649,8 @@ int uv_custom_write(uv_poll_t *req) {
 	return 0;
 }
 
-void eventpool_init(enum eventpool_threads_t t) {	/*
+void eventpool_init(enum eventpool_threads_t t) {
+	/*
 	 * Make sure we execute in the main thread
 	 */
 	assert(pthread_equal(pth_main_id, pthread_self()));

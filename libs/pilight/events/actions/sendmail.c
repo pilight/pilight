@@ -52,6 +52,17 @@ static int checkArguments(struct rules_actions_t *obj) {
 	regex_t regex;
 	int reti;
 #endif
+
+	if(obj == NULL) {
+		/* Internal error */
+		return -1;
+	}
+
+	if(obj->parsedargs == NULL) {
+		/* Internal error */
+		return -1;
+	}
+
 	jsubject = json_find_member(obj->parsedargs, "SUBJECT");
 	jmessage = json_find_member(obj->parsedargs, "MESSAGE");
 	jto = json_find_member(obj->parsedargs, "TO");
@@ -60,38 +71,54 @@ static int checkArguments(struct rules_actions_t *obj) {
 		logprintf(LOG_ERR, "sendmail action is missing a \"SUBJECT\"");
 		return -1;
 	}
+
 	if(jmessage == NULL) {
 		logprintf(LOG_ERR, "sendmail action is missing a \"MESSAGE\"");
 		return -1;
 	}
+
 	if(jto == NULL) {
 		logprintf(LOG_ERR, "sendmail action is missing a \"TO\"");
 		return -1;
 	}
+
 	nrvalues = 0;
 	if((jvalues = json_find_member(jsubject, "value")) != NULL) {
-		jchild = json_first_child(jvalues);
-		while(jchild) {
-			nrvalues++;
-			jchild = jchild->next;
+		if(jvalues->tag == JSON_ARRAY) {
+			jchild = json_first_child(jvalues);
+			while(jchild) {
+				nrvalues++;
+				jchild = jchild->next;
+			}
+		} else {
+			/* Internal error */
+			return -1;
 		}
 	}
-	if(nrvalues > 1) {
+	if(nrvalues != 1) {
 		logprintf(LOG_ERR, "sendmail action \"SUBJECT\" only takes one argument");
 		return -1;
 	}
+
 	nrvalues = 0;
 	if((jvalues = json_find_member(jmessage, "value")) != NULL) {
-		jchild = json_first_child(jvalues);
-		while(jchild) {
-			nrvalues++;
-			jchild = jchild->next;
+		if(jvalues->tag == JSON_ARRAY) {
+			jchild = json_first_child(jvalues);
+			while(jchild) {
+				nrvalues++;
+				jchild = jchild->next;
+			}
+		} else {
+			/* Internal error */
+			return -1;
 		}
 	}
+
 	if(nrvalues != 1) {
 		logprintf(LOG_ERR, "sendmail action \"MESSAGE\" only takes one argument");
 		return -1;
 	}
+
 	nrvalues = 0;
 	if((jvalues = json_find_member(jto, "value")) != NULL) {
 		jchild = json_first_child(jvalues);
@@ -100,31 +127,38 @@ static int checkArguments(struct rules_actions_t *obj) {
 			jchild = jchild->next;
 		}
 	}
-	if(nrvalues > 1) {
+
+	if(nrvalues != 1) {
 		logprintf(LOG_ERR, "sendmail action \"TO\" only takes one argument");
 		return -1;
 	}
-	jval = json_find_element(jvalues, 0);
-	if(jval->tag != JSON_STRING || jval->string_ == NULL) {
-		logprintf(LOG_ERR, "sendmail action \"TO\" must contain an e-mail address");
-		return -1;
-	} else if(strlen(jval->string_) > 0) {
-#if !defined(__FreeBSD__) && !defined(_WIN32)
-		char validate[] = "^[a-zA-Z0-9_.]+@[a-zA-Z0-9]+\\.+[a-zA-Z0-9]{2,3}$";
-		reti = regcomp(&regex, validate, REG_EXTENDED);
-		if(reti) {
-			logprintf(LOG_ERR, "could not compile regex for \"TO\"");
-			return -1;
-		}
-		reti = regexec(&regex, jval->string_, 0, NULL, 0);
-		if(reti == REG_NOMATCH || reti != 0) {
+
+	if((jval = json_find_element(jvalues, 0)) != NULL) {
+		if(jval->tag != JSON_STRING || jval->string_ == NULL) {
 			logprintf(LOG_ERR, "sendmail action \"TO\" must contain an e-mail address");
-			regfree(&regex);
 			return -1;
-		}
-		regfree(&regex);
+		} else if(strlen(jval->string_) > 0) {
+#if !defined(__FreeBSD__) && !defined(_WIN32)
+			char validate[] = "^[a-zA-Z0-9_.]+@[a-zA-Z0-9]+\\.+[a-zA-Z0-9]{2,3}$";
+			reti = regcomp(&regex, validate, REG_EXTENDED);
+			if(reti) {
+				logprintf(LOG_ERR, "could not compile regex for \"TO\"");
+				return -1;
+			}
+			reti = regexec(&regex, jval->string_, 0, NULL, 0);
+			if(reti == REG_NOMATCH || reti != 0) {
+				logprintf(LOG_ERR, "sendmail action \"TO\" must contain an e-mail address");
+				regfree(&regex);
+				return -1;
+			}
+			regfree(&regex);
 #endif
+		}
+	} else {
+		/* Internal error */
+		return -1;
 	}
+
 	// Check if mandatory settings are present in config
 	if(settings_select_string(ORIGIN_ACTION, "smtp-host", &stmp) != EXIT_SUCCESS) {
 		logprintf(LOG_ERR, "sendmail: setting \"smtp-host\" is missing in config");
@@ -146,21 +180,25 @@ static int checkArguments(struct rules_actions_t *obj) {
 		logprintf(LOG_ERR, "sendmail: setting \"smtp-sender\" is missing in config");
 		return -1;
 	}
+
 	return 0;
 }
 
-static void callback(int status) {
+static void callback(int status, struct mail_t *mail) {
 	if(status == 0) {
 		logprintf(LOG_INFO, "successfully sent sendmail action message");
 	} else {
 		logprintf(LOG_INFO, "failed to send sendmail action message");
 	}
+	FREE(mail->from);
+	FREE(mail->to);
+	FREE(mail->message);
+	FREE(mail->subject);
+	FREE(mail);
 }
 
-static void *thread(void *param) {
-	struct threadpool_tasks_t *task = param;
-	struct rules_actions_t *pth = task->userdata;
-	struct JsonNode *json = pth->parsedargs;
+static int run(struct rules_actions_t *obj) {
+	struct JsonNode *json = obj->parsedargs;
 
 	struct JsonNode *jsubject = NULL;
 	struct JsonNode *jmessage = NULL;
@@ -171,8 +209,6 @@ static void *thread(void *param) {
 	struct JsonNode *jval1 = NULL;
 	struct JsonNode *jval2 = NULL;
 	struct JsonNode *jval3 = NULL;
-
-	// event_action_started(pth);
 
 	struct mail_t *mail = MALLOC(sizeof(struct mail_t));
 	char *shost = NULL, *suser = NULL, *spassword = NULL, *stmp = NULL;
@@ -207,12 +243,10 @@ static void *thread(void *param) {
 				}
 				settings_select_string(ORIGIN_ACTION, "smtp-host", &shost);
 
-				/*
-				 * FIXME
-				 */
-				// if(settings_select_number(ORIGIN_ACTION, "smtp-port", &itmp) == 0) {
-					// sport = (int)itmp;
-				// }
+				if(settings_select_number(ORIGIN_ACTION, "smtp-port", &itmp) == 0) {
+					sport = (int)itmp;
+				}
+
 				settings_select_string(ORIGIN_ACTION, "smtp-user", &suser);
 				settings_select_string(ORIGIN_ACTION, "smtp-password", &spassword);
 
@@ -230,22 +264,16 @@ static void *thread(void *param) {
 				strcpy(mail->to, jval3->string_);
 
 				/*
-				 * FIXME
+				 * FIXME is_ssl
 				 */
-				// if(sendmail(shost, suser, spassword, sport, mail, callback) != 0) {
-					// logprintf(LOG_ERR, "sendmail action failed to send message \"%s\"", jval2->string_);
-				// }
+				if(sendmail(shost, suser, spassword, sport, 0, mail, callback) != 0) {
+					logprintf(LOG_ERR, "sendmail action failed to send message \"%s\"", jval2->string_);
+					return -1;
+				}
 			}
 		}
 	}
 
-	// event_action_stopped(pth);
-
-	return (void *)NULL;
-}
-
-static int run(struct rules_actions_t *obj) {
-	threadpool_add_work(REASON_END, NULL, action_sendmail->name, 0, thread, NULL, (void *)obj);
 	return 0;
 }
 
@@ -266,7 +294,7 @@ void actionSendmailInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "sendmail";
-	module->version = "2.0.1";
+	module->version = "2.1";
 	module->reqversion = "7.0";
 	module->reqcommit = "94";
 }

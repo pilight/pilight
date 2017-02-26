@@ -1088,3 +1088,49 @@ int file_get_contents(char *file, char **content) {
 	fclose(fp);
 	return 0;
 }
+
+/*
+ * 1: milliseconds
+ * 2: seconds
+ * 3: minutes
+ * 4: hours
+ * 5: days
+ */
+void calc_time_interval(int type, int seconds, int diff, struct timeval *tv) {
+	int divide = 0;
+
+	switch(type) {
+		case 1:
+			divide = (1000*1000);
+			seconds *= 1;
+		break;
+		case 2:
+			divide = (1000*1000);
+			seconds *= 1000;
+		break;
+		case 3:
+			seconds *= 60;
+		break;
+		case 4:
+			seconds *= (60*60);
+		break;
+		case 5:
+			seconds *= (60*60*24);
+		break;
+	}
+	if(type > 2) {
+		divide = 1000;
+		seconds *= divide;
+	}
+
+	tv->tv_sec = (int)((float)seconds / (float)diff) / divide;
+	tv->tv_usec = (int)((float)seconds / (float)diff) % divide;
+
+	if(tv->tv_usec <= 0 && tv->tv_sec == 0) {
+		tv->tv_usec = 1;
+	}
+	if(tv->tv_usec >= 1000) {
+		tv->tv_sec += tv->tv_usec / 1000;
+		tv->tv_usec = tv->tv_usec % 1000;
+	}
+}

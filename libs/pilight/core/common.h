@@ -76,5 +76,6 @@ int vercmp(char *val, char *ref);
 int str_replace(char *search, char *replace, char **str);
 int stricmp(char const *a, char const *b);
 int file_get_contents(char *file, char **content);
+void calc_time_interval(int type, int seconds, int diff, struct timeval *tv);
 
 #endif
