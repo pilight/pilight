@@ -31,6 +31,8 @@ if(document.location.protocol == "https:") {
 var language_en = {
 	off: "Off",
 	on: "On",
+	opened: "Opened",
+	closed: "Closed",
 	stopped: "Stopped",
 	started: "Started",
 	toggling: "Toggling",
@@ -50,6 +52,8 @@ var language_en = {
 var language_de = {
 	off: "Aus",
 	on: "Ein",
+	opened: "Geöffnet",
+	closed: "Geschlossen",
 	stopped: "Gestoppt",
 	started: "Gestartet",
 	toggling: "schaltend",
@@ -69,6 +73,8 @@ var language_de = {
 var language_nl = {
 	off: "Uit",
 	on: "Aan",
+	opened: "Open",
+	closed: "Gesloten",
 	stopped: "Gestopt",
 	started: "Gestart",
 	toggling: "Omzetten",
@@ -87,6 +93,8 @@ var language_nl = {
 var language_fr = {
 	off: "Eteint",
 	on: "Allumé",
+	opened: "Ouvert",
+	closed: "Fermé",
 	stopped: "Arrêté",
 	started: "Démarré",
 	toggling: "En cours",
@@ -353,6 +361,100 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 	}
 }
 
+function createContactElement(sTabId, sDevId, aValues) {
+	if($('#'+sDevId+'_contact').length == 0) {
+		if(bShowTabs) {
+			oTab = $('#'+sTabId).find('ul');
+		} else {
+			oTab = $('#all');
+		}
+		if('name' in aValues) {
+			oTab.append($('<li id="'+sDevId+'" class="contact" data-icon="false"><div class="name">'+aValues['name']+'</div><div id="'+sDevId+'_contact" class="contact" data-role="fieldcontain" data-type="horizontal"><fieldset data-role="controlgroup" class="controlgroup" data-type="horizontal" data-mini="true"><input type="radio" name="'+sDevId+'_contact" id="'+sDevId+'_contact_closed" value="closed" /><label for="'+sDevId+'_contact_closed">'+language.closed+'</label><input type="radio" name="'+sDevId+'_contact" id="'+sDevId+'_contact_opened" value="opened" /><label for="'+sDevId+'_contact_opened">'+language.opened+'</label></fieldset></div></li>'));
+		}
+		$("div").trigger("create");
+		$('#'+sDevId+'_contact_closed').checkboxradio();
+		$('#'+sDevId+'_contact_opened').checkboxradio();
+		$('#'+sDevId+'_contact_closed').bind("change", function(event, ui) {
+			event.stopPropagation();
+			if('confirm' in aValues && aValues['confirm']) {
+				if(window.confirm("Are you sure?") == false) {
+					return false;
+				}
+			}
+			i = 0;
+			oLabel = this.parentNode.getElementsByTagName('label')[0];
+			$(oLabel).removeClass('ui-btn-active');
+			x = window.setInterval(function() {
+				i++;
+				if(i%2 == 1)
+					$(oLabel).removeClass('ui-btn-active');
+				else
+					$(oLabel).addClass('ui-btn-active');
+				if(i==2)
+					window.clearInterval(x);
+			}, 100);
+
+			if(oWebsocket) {
+				if('all' in aValues && aValues['all'] == 1) {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+				} else {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}'
+				}
+				oWebsocket.send(json);
+			} else {
+				bSending = true;
+				if('all' in aValues && aValues['all'] == 1) {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value+'&values[all]=1');
+				} else {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value);
+				}
+				window.setTimeout(function() { bSending = false; }, 1000);
+			}
+		});
+		$('#'+sDevId+'_contact_opened').bind("change", function(event, ui) {
+			event.stopPropagation();
+			if('confirm' in aValues && aValues['confirm']) {
+				if(window.confirm("Are you sure?") == false) {
+					return false;
+				}
+			}
+			i = 0;
+			oLabel = this.parentNode.getElementsByTagName('label')[0];
+			$(oLabel).removeClass('ui-btn-active');
+			x = window.setInterval(function() {
+				i++;
+				if(i%2 == 1)
+					$(oLabel).removeClass('ui-btn-active');
+				else
+					$(oLabel).addClass('ui-btn-active');
+				if(i==2)
+					window.clearInterval(x);
+			}, 100);
+
+			if(oWebsocket) {
+				if('all' in aValues && aValues['all'] == 1) {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+				} else {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}'
+				}
+				oWebsocket.send(json);
+			} else {
+				bSending = true;
+				if('all' in aValues && aValues['all'] == 1) {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value+'&values[all]=1');
+				} else {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value);
+				}
+				window.setTimeout(function() { bSending = false; }, 1000);
+			}
+		});
+	}
+	$('#'+sDevId+'_contact_opened').checkboxradio('disable');
+	$('#'+sDevId+'_contact_closed').checkboxradio('disable');
+	oTab.listview();
+	oTab.listview("refresh");
+}
+
 function createScreenElement(sTabId, sDevId, aValues) {
 	if($('#'+sDevId+'_screen').length == 0) {
 		if(bShowTabs) {
@@ -396,7 +498,7 @@ function createScreenElement(sTabId, sDevId, aValues) {
 			} else {
 				bSending = true;
 				if('all' in aValues && aValues['all'] == 1) {
-					$.get(sHTTPProtocol+'://'+location.host+'/control/control?device='+sDevId+'&state='+this.value+'&values[all]=1');
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value+'&values[all]=1');
 				} else {
 					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value);
 				}
@@ -853,6 +955,8 @@ function createGUI(data) {
 			createWeatherElement(alphaNum(lindex), dindex, aValues);
 		} else if(aValues['type'] == 5) {
 			createScreenElement(alphaNum(lindex), dindex, aValues);
+		} else if(aValues['type'] == 6) {
+			createContactElement(alphaNum(lindex), dindex, aValues);
 		} else if(aValues['type'] == 7) {
 			createPendingSwitchElement(alphaNum(lindex), dindex, aValues);
 		} else if(aValues['type'] == 8) {
@@ -931,6 +1035,16 @@ function parseValues(data) {
 							$('#'+dvalues+'_screen_up').parent().find("label").addClass("ui-btn-active");
 						} else {
 							$('#'+dvalues+'_screen_down').parent().find("label").addClass("ui-btn-active");
+						}
+					}
+				} else if(iType == 6) {
+					if(vindex == 'state' && $('#'+dvalues+'_contact').length > 0) {
+						if(vvalues == 'opened') {
+							$('#'+dvalues+'_contact_opened').parent().find("label").addClass("ui-btn-active");
+							$('#'+dvalues+'_contact_closed').parent().find("label").removeClass("ui-btn-active");
+						} else {
+							$('#'+dvalues+'_contact_closed').parent().find("label").addClass("ui-btn-active");
+							$('#'+dvalues+'_contact_opened').parent().find("label").removeClass("ui-btn-active");
 						}
 					}
 				} else if(iType == 8) {
