@@ -70,6 +70,11 @@ static void parseCode(void) {
 	int n4 = 0, n5 = 0, n6 = 0, n7 = 0, n8 = 0;
 	int checksum = 1;
 
+	if(alecto_wx500->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "alecto_wx500: parsecode - invalid parameter passed %d", alecto_wx500->rawlen);
+		return;
+	}
+
 	for(x=1;x<alecto_wx500->rawlen;x+=2) {
 		if(alecto_wx500->raw[x] > AVG_PULSE) {
 			binary[i++] = 1;
@@ -304,7 +309,7 @@ void alectoWX500Init(void) {
 #ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	module->name = "alecto_wx500";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

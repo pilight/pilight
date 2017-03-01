@@ -81,6 +81,11 @@ static void parseCode(void) {
 	int binary[RAW_LENGTH/2], x = 0, dec_unit[4] = {0, 3, 1, 2};
 	int iParity=1, iParityData=-1; // init for even parity
 
+	if(quigg_gt7000->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "quigg_gt7000: parsecode - invalid parameter passed %d", quigg_gt7000->rawlen);
+		return;
+	}
+
 	for(x=0; x<quigg_gt7000->rawlen-1; x+=2) {
 		if(quigg_gt7000->raw[x+1] > PULSE_QUIGG_50) {
 			binary[x/2] = 1;
@@ -284,7 +289,7 @@ void quiggGT7000Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "quigg_gt7000";
-	module->version = "2.1";
+	module->version = "2.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

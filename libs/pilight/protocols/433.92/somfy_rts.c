@@ -55,8 +55,8 @@
 // #define PULSE_SOMFY_FOOTER	221	// 7531/PULSE_DIV, if last symbol is low plus _SHORT
 #define PULSE_SOMFY_FOOTER_L	(PULSE_SOMFY_FOOTER-25)*PULSE_DIV
 #define PULSE_SOMFY_FOOTER_H	(PULSE_SOMFY_FOOTER+25)*PULSE_DIV+PULSE_SOMFY_SHORT_H
-#define PULSE_SOMFY_FOOTER_L_1	(PULSE_SOMFY_FOOTER_1-5)*PULSE_DIV
-#define PULSE_SOMFY_FOOTER_H_1	(PULSE_SOMFY_FOOTER_1+5)*PULSE_DIV+PULSE_SOMFY_SHORT_H
+#define PULSE_SOMFY_FOOTER_L_1	(PULSE_SOMFY_FOOTER_1-25)*PULSE_DIV
+#define PULSE_SOMFY_FOOTER_H_1	(PULSE_SOMFY_FOOTER_1+25)*PULSE_DIV+PULSE_SOMFY_SHORT_H
 // Bin / Rawlength definitions
 // binlen Classic protocol: 56 - new_gen protocol: 56+24=80
 // rawlen Classic protocol: 73 .. 129  - new_gen protocol: 97 .. 177
@@ -75,7 +75,6 @@
 #define PULSE_SOMFY_WAKEUP_WAIT_1	89565
 #define RAW_LENGTH RAWLEN_SOMFY_PROT
 #define BIN_LENGTH BINLEN_SOMFY_PROT
-#define LEARN_REPEATS 4
 #define NORMAL_REPEATS 4
 
 int sDataTime = 0;
@@ -103,6 +102,7 @@ static int validate(void) {
 
 	if((somfy_rts->rawlen > MINRAWLEN_SOMFY_PROT) &&
 		(somfy_rts->rawlen < MAXRAWLEN_SOMFY_PROT)) {
+		// 27500, 32500 support
 		if(((somfy_rts->raw[somfy_rts->rawlen-1] > PULSE_SOMFY_FOOTER_L) &&
 				(somfy_rts->raw[somfy_rts->rawlen-1] < PULSE_SOMFY_FOOTER_H)) ||
 			((somfy_rts->raw[somfy_rts->rawlen-1] > PULSE_SOMFY_FOOTER_L_1) &&
@@ -126,7 +126,7 @@ static uint8_t codeChkSum (uint8_t *p_frame) {
 	return cksum;
 }
 
-static void createMessage(int address, int command, int rollingcode, int rollingkey) {
+static void createMessage(int address, int command, int rollingcode, int rollingkey, int repeats) {
 	char str [9];
 	somfy_rts->message = json_mkobject();
 	json_append_member(somfy_rts->message, "address", json_mknumber(address,0));
@@ -158,14 +158,13 @@ static void createMessage(int address, int command, int rollingcode, int rolling
 	if (rollingkey != -1) {
 		json_append_member(somfy_rts->message, "rollingkey", json_mknumber(rollingkey,0));
 	}
-	somfy_rts->txrpt = NORMAL_REPEATS;
 }
 
 static void parseCode(void) {
 	int i;
 	int pBin = 0, pRaw = 0;
 	int protocol_sync = 0, rDataLow = 0, rDataTime = 0;
-	int rollingcode = 0, rollingkey = 0, binary[MAXPULSESTREAMLENGTH] = { 0 };
+	int repeats = 0, rollingcode = 0, rollingkey = 0, binary[MAXPULSESTREAMLENGTH] = { 0 };
 	uint8_t dec_frame[BIN_ARRAY_SOMFY_PROT] = { 0 };
 	uint8_t frame[BIN_ARRAY_SOMFY_PROT] = { 0 };
 
@@ -214,12 +213,13 @@ static void parseCode(void) {
 			case 2:
 			// Determine if we have a rising/falling edge in the middle
 			rDataLow = -rDataLow;
-			if( somfy_rts->raw[pRaw] > PULSE_SOMFY_FOOTER_L && somfy_rts->raw[pRaw] < PULSE_SOMFY_FOOTER_H) {
+			if(    (somfy_rts->raw[pRaw] > PULSE_SOMFY_FOOTER_L && somfy_rts->raw[pRaw] < PULSE_SOMFY_FOOTER_H)
+				|| (somfy_rts->raw[pRaw] > PULSE_SOMFY_FOOTER_L_1 && somfy_rts->raw[pRaw] < PULSE_SOMFY_FOOTER_H_1) ) {
 				if (pBin==56) {
-					protocol_sync=4;	// We received all 56 classic frame bits
+					protocol_sync=4;	// We received all 56 classic frame bits plus 24 supplementary bits
 				} else {
-					if (pBin==56) {
-						protocol_sync=3;	// We received all 56 classic frame bits
+					if (pBin==80) {
+						protocol_sync=3;	// We received all 56 classic frame bits plus 24 supplementary bits
 					} else {
 						protocol_sync=96; // We should never end up here as binary bits are missing
 					}
@@ -247,9 +247,10 @@ static void parseCode(void) {
 			case 3:
 			// Determine if we have a rising/falling edge in the middle
 			rDataLow = -rDataLow;
-			if(somfy_rts->raw[pRaw] > PULSE_SOMFY_FOOTER_L && somfy_rts->raw[pRaw] < PULSE_SOMFY_FOOTER_H) {
-				if (pBin==112) {
-					protocol_sync=4;	// We received (56 classic) + (56 extended) frame bits
+			if(    (somfy_rts->raw[pRaw] > PULSE_SOMFY_FOOTER_L && somfy_rts->raw[pRaw] < PULSE_SOMFY_FOOTER_H)
+				|| (somfy_rts->raw[pRaw] > PULSE_SOMFY_FOOTER_L_1 && somfy_rts->raw[pRaw] < PULSE_SOMFY_FOOTER_H_1) ) {
+				if (pBin==80) {
+					protocol_sync=4;	// We received (56 classic) + (24 supplementary) frame bits
 				} else {
 					protocol_sync=97;	// We have to check why we end up here
 				}
@@ -288,7 +289,7 @@ static void parseCode(void) {
 			// to be implemented: extended protocol support
 			case 95:
 			// Reserved: handle new Generation Frame decoding 24 Bit
-			logprintf(LOG_DEBUG, "somfy_rts: Estended frames not yet supported: %d pRaw: %d - bin: %d", somfy_rts->raw[pRaw], pRaw, pBin);
+			logprintf(LOG_DEBUG, "somfy_rts: Extended frames not yet supported: %d pRaw: %d - bin: %d", somfy_rts->raw[pRaw], pRaw, pBin);
 			protocol_sync = 99;
 			break;
 			case 96:
@@ -342,7 +343,7 @@ static void parseCode(void) {
 		}
 
 		if ( ( key_left == 10 && 0 == cksum)) {
-			createMessage(address, command, rollingcode, rollingkey);
+			createMessage(address, command, rollingcode, rollingkey, repeats);
 		}
 	}
 }
@@ -505,14 +506,14 @@ static void createData(int iParam, int iLength) {
 
 static int createCode(JsonNode *code) {
 	int key_left = 160;
-	int rollingkey = -1;
+	int repeats = -1, rollingkey = -1, rollingcode = -1;
 	int command = -1, command_code = -1;
-	int rollingcode = -1;
 	int address = -1;
 	double itmp = -1;
 	uint8_t dec_frame[BIN_ARRAY_SOMFY_PROT] = { 0 }, frame[BIN_ARRAY_SOMFY_PROT] = { 0 }, i;
 
 	if(json_find_number(code, "address", &itmp) == 0)	address = (int)round(itmp);
+	if(json_find_number(code, "repeats", &itmp) == 0)	repeats = (int)round(itmp);
 	if(json_find_number(code, "rollingcode", &itmp) == 0)	rollingcode = (int)round(itmp);
 	if(json_find_number(code, "rollingkey", &itmp) == 0)	rollingkey = (int)round(itmp);
 
@@ -534,6 +535,12 @@ static int createCode(JsonNode *code) {
 	}
 	if (command_code != -1) {
 		command=command_code;
+	}
+
+	if (repeats != -1) {
+		somfy_rts->txrpt = repeats;
+	} else {
+		somfy_rts->txrpt = NORMAL_REPEATS;
 	}
 
 	if(address==-1 || command==-1) {
@@ -570,7 +577,7 @@ static int createCode(JsonNode *code) {
 			tmp = tmp->next;
 			}
 		}
-		createMessage(address, command, rollingcode, rollingkey);
+		createMessage(address, command, rollingcode, rollingkey, repeats);
 		createHeader();
 
 		dec_frame[0] = (uint8_t) ((key_left & 0xf0) | (rollingkey & 0xf));
@@ -602,6 +609,7 @@ static void printHelp(void) {
 	printf("\t -f --down\t\t\tCommand DOWN\n");
 	printf("\t -m --my\t\t\tCommand MY\n");
 	printf("\t -g --prog\t\t\tCommand PROG\n");
+	printf("\t -r --repeats\t\t\tSpecifiy number of repetitive frames\n");
 	printf("\t -c --rollingcode=rollingcode\t\t\tset rollingcode\n");
 	printf("\t -k --rollingkey=rollingkey\t\t\tset rollingkey\n");
 	printf("\t -n --command_code=command\t\t\tNumeric Command Code\n");
@@ -620,7 +628,7 @@ void somfy_rtsInit(void) {
 	somfy_rts->minrawlen = MINRAWLEN_SOMFY_PROT;
 	somfy_rts->maxrawlen = MAXRAWLEN_SOMFY_PROT;
 	somfy_rts->mingaplen = PULSE_SOMFY_FOOTER_L;
-	somfy_rts->maxgaplen = PULSE_SOMFY_FOOTER_H;
+	somfy_rts->maxgaplen = PULSE_SOMFY_FOOTER_H_1;
 	// Wakeup sequence
 	// Hardware Sync: 2416.2416 or 2416.2416.2416.2416.2416.2416.2416: 1st short Sync not yet implemented at send time
 	// START 4550.604.604 1st Data bit=0 or 4550.1208 1st Data bit=1
@@ -632,6 +640,7 @@ void somfy_rtsInit(void) {
 	options_add(&somfy_rts->options, 'a', "address", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,6}|[1-5][0-9]{6}|16[0-6][0-9]{5}|167[0-6][0-9]{4}|1677[0-6][0-9]{3}| 16777[0-1][0-9]{2}|1677720[0-9]|1677721[0-6])$");
 	options_add(&somfy_rts->options, 'c', "rollingcode", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$");
 	options_add(&somfy_rts->options, 'k', "rollingkey", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^([0-9]|1[0-5])$");
+	options_add(&somfy_rts->options, 'r', "repeats", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^([4-9]|1[0-9])$");
 	options_add(&somfy_rts->options, 'n', "command_code", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL,  "^([0-9]|1[0-5])$");
 	options_add(&somfy_rts->options, 't', "up", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&somfy_rts->options, 'f', "down", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
@@ -658,7 +667,7 @@ void somfy_rtsInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "somfy_rts";
-	module->version =  "1.0";
+	module->version =  "1.02";
 	module->reqversion =  "7.0";
 	module->reqcommit =  NULL;
 }

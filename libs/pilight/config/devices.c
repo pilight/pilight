@@ -251,7 +251,7 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 								while(opt) {
 									/* Check if there are values that can be updated */
 									if(strcmp(sptr->name, opt->name) == 0
-									   && (opt->conftype == DEVICES_VALUE)
+									   && (opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_OPTIONAL)
 									   && opt->argtype == OPTION_HAS_VALUE) {
 										memset(vstring_, '\0', sizeof(vstring_));
 										vnumber_ = -1;
@@ -303,7 +303,7 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 							while(opt) {
 								/* Check if there are values that can be updated */
 								if(strcmp(sptr->name, opt->name) == 0
-								   && (opt->conftype == DEVICES_VALUE)
+								   && (opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_OPTIONAL)
 								   && opt->argtype == OPTION_HAS_VALUE) {
 									int upd_value = 1;
 									memset(vstring_, '\0', sizeof(vstring_));
@@ -523,7 +523,7 @@ int devices_valid_value(char *sid, char *name, char *value) {
 		while(tmp_protocol) {
 			opt = tmp_protocol->listener->options;
 			while(opt) {
-				if(opt->conftype == DEVICES_VALUE && strcmp(name, opt->name) == 0) {
+				if((opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_OPTIONAL) && strcmp(name, opt->name) == 0) {
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 					if(opt->mask != NULL) {
 						reti = regcomp(&regex, opt->mask, REG_EXTENDED);

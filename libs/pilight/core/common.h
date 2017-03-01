@@ -44,7 +44,7 @@ int isrunning(const char *program);
 void atomicinit(void);
 void atomiclock(void);
 void atomicunlock(void);
-unsigned int explode(char *str, const char *delimiter, char ***output);
+unsigned int explode(const char *str, const char *delimiter, char ***output);
 int isNumeric(char *str);
 int nrDecimals(char *str);
 int name2uid(char const *name);
@@ -74,5 +74,6 @@ int vercmp(char *val, char *ref);
 int str_replace(char *search, char *replace, char **str);
 int strcicmp(char const *a, char const *b);
 int file_get_contents(char *file, char **content);
+int check_email_addr(const char *addr, int allow_lists, int check_domain_can_mail);
 
 #endif

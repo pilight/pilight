@@ -65,6 +65,11 @@ static void createMessage(int id, int state, int unit, int all) {
 static void parseCode(void) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
 
+	if(rc101->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "rc101: parsecode - invalid parameter passed %d", rc101->rawlen);
+		return;
+	}
+
 	for(i=0;i<rc101->rawlen; i+=2) {
 		if(rc101->raw[i] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[x++] = 1;
@@ -238,7 +243,7 @@ void rc101Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rc101";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

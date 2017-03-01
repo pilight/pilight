@@ -64,7 +64,7 @@ static int validate(void) {
 }
 
 static void parseCode(void) {
-	int i = 0, x = 0, type = 0, id = 0, binary[RAW_LENGTH/2];
+	int i = 0, x = 0, type = 0, id = 0, binary[MAX_RAW_LENGTH/2];
 	double temp_offset = 0.0, humi_offset = 0.0;
 	double humidity = 0.0, temperature = 0.0;
 	int n0 = 0, n1 = 0, n2 = 0, n3 = 0, n3b = 0;
@@ -72,6 +72,11 @@ static void parseCode(void) {
 	int n9 = 0, n10 = 0;
 	int y = 0;
 	int checksum = 1;
+
+	if(tfa30->rawlen>MAX_RAW_LENGTH) {
+		logprintf(LOG_ERR, "tfa30: parsecode - invalid parameter passed %d", tfa30->rawlen);
+		return;
+	}
 
 	if(tfa30->rawlen == 80) {         // create first nibble for raw length 80
 		for(y=0;y<4;y+=1) {
@@ -257,7 +262,7 @@ void tfa30Init(void) {
 #ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	module->name = "tfa30";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

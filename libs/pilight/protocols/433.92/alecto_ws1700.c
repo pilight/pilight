@@ -62,6 +62,11 @@ static void parseCode(void) {
 	double humi_offset = 0.0, temp_offset = 0.0;
 	double temperature = 0.0, humidity = 0.0;
 
+	if(alecto_ws1700->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "alecto_ws1700: parsecode - invalid parameter passed %d", alecto_ws1700->rawlen);
+		return;
+	}
+
 	for(x=1;x<alecto_ws1700->rawlen-1;x+=2) {
 		if(alecto_ws1700->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
@@ -201,7 +206,7 @@ void alectoWS1700Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "alecto_ws1700";
-	module->version = "2.2";
+	module->version = "2.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

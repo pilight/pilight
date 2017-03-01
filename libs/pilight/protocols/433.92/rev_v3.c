@@ -61,6 +61,11 @@ static void createMessage(int id, int unit, int state) {
 static void parseCode(void) {
 	int x = 0, i = 0, binary[RAW_LENGTH/4];
 
+	if(rev3_switch->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "rev3_switch: parsecode - invalid parameter passed %d", rev3_switch->rawlen);
+		return;
+	}
+
 	/* Convert the one's and zero's into binary */
 	for(x=0;x<rev3_switch->rawlen-2;x+=4) {
 		if(rev3_switch->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
@@ -223,7 +228,7 @@ void rev3Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rev3_switch";
-	module->version = "0.13";
+	module->version = "0.14";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
