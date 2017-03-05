@@ -573,7 +573,7 @@ static void prepare(struct rules_actions_t *obj, char *dev) {
 		OUT_OF_MEMORY
 	}
 	tp_work_req->data = data;
-	if(uv_queue_work(uv_default_loop(), tp_work_req, "action_switch", thread, thread_free) < 0) {
+	if(uv_queue_work(uv_default_loop(), tp_work_req, thread, thread_free) < 0) {
 		FREE(tp_work_req);
 	}
 
