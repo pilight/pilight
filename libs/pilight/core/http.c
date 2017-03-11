@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <ctype.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -53,6 +54,46 @@
 #define USERAGENT			"pilight"
 #define HTTP_POST			1
 #define HTTP_GET			0
+
+char *http_url_encode(char *url, char* encoded, int sizebuffer) {
+  char *up, *ep;
+  if ((encoded == NULL) || (sizebuffer == 0))
+  {
+    encoded = (char*) MALLOC(strlen(url)*3+1);
+    sizebuffer = strlen(encoded);
+    strcpy(encoded, "");
+  }
+
+  up = url;
+  ep = encoded;
+
+  while(*up)
+  {
+    if ((isalnum(*up)) ||
+        (*up == '_') ||
+        (*up == '-') ||
+        (*up == '.')) {
+      *ep++ = *up;
+    }
+    else if (*up == ' ') {
+      *ep++ = '+';
+    }
+    else {
+      char unicode[4];
+      char *u = unicode;
+      sprintf(unicode, "%%%x", *up);
+      while(*u) {
+        *ep++ = *u++;
+      }
+    }
+
+    up += 1;
+  }
+
+  *ep++ = 0;
+
+  return encoded;
+}
 
 char *http_process_request(char *url, int method, char **type, int *code, int *size, const char *contype, char *post) {
 	struct sockaddr_in serv_addr;

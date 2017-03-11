@@ -16,11 +16,12 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _HTTP_H_
-#define _HTTP_H_
+#ifndef _EVENT_ACTION_MAKER_H_
+#define _EVENT_ACTION_MAKER_H_
 
-char *http_get_content(char *url, char **type, int *code, int *size);
-char *http_post_content(char *url, char **type, int *code, int *size, const char *contype, char *post);
-char *http_url_encode(char *url, char* encoded, int sizebuffer);
+#include "../action.h"
+
+struct event_actions_t *action_maker;
+void actionMakerInit(void);
 
 #endif
