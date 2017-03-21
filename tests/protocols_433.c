@@ -88,7 +88,9 @@ static void test_protocols_433(CuTest *tc) {
 			/*
 			 * Check if the validator worked
 			 */
-			CuAssertIntEquals(tc, tests[x].raw[i].validate, protocol->validate());
+			if(protocol->validate != NULL) {
+				CuAssertIntEquals(tc, tests[x].raw[i].validate, protocol->validate());
+			}
 
 			if(tests[x].raw[i].validate == 0) {
 				protocol->parseCode(message);

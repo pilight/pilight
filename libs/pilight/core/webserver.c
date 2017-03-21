@@ -1636,8 +1636,8 @@ static void server_write_cb(uv_poll_t *req) {
 			logprintf(LOG_INFO, "regular webserver started on port: %d (fd %d)", ntohs(servaddr.sin_port), fd);
 #ifdef WEBSERVER_HTTPS
 		}
-	}
 #endif
+	}
 
 	uv_custom_read(req);
 }
