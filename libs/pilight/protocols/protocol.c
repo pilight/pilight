@@ -180,6 +180,7 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->options = NULL;
 	(*proto)->devices = NULL;
 
+	(*proto)->id = NULL;
 	(*proto)->rawlen = 0;
 	(*proto)->minrawlen = 0;
 	(*proto)->maxrawlen = 0;
@@ -188,11 +189,14 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->txrpt = 10;
 	(*proto)->rxrpt = 1;
 	(*proto)->hwtype = NONE;
+	(*proto)->devtype = RAW;
 	(*proto)->multipleId = 1;
 	(*proto)->config = 1;
 	(*proto)->masterOnly = 0;
+	(*proto)->options = NULL;
 	(*proto)->parseCode = NULL;
 	(*proto)->parseCommand = NULL;
+	(*proto)->validate = NULL;
 	(*proto)->createCode = NULL;
 	(*proto)->checkValues = NULL;
 	(*proto)->initDev = NULL;
