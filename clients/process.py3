@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright (C) 2017 CurlyMo and pilino1234
+# Copyright (C) 2017 curlymo and pilino1234
 #
 # This file is part of pilight.
 #
@@ -17,7 +17,7 @@
 # along with pilight. If not, see	<http://www.gnu.org/licenses/>
 #
 
-"""Example Python 2 client for pilight daemon socket API
+"""Example Python 3 client for pilight daemon socket API
 
 Runs a SSDP discovery for pilight daemons on the network, and connects to it.
 Identifies as a "receiver" type client, and prints received messages until
@@ -41,11 +41,11 @@ def discover(service, retries=1):
     """
 
     group = ("239.255.255.250", 1900)
-    message = "\r\n".join([
+    discover_message = "\r\n".join([
         'M-SEARCH * HTTP/1.1',
         'HOST: {0}:{1}'.format(*group),
         'MAN: "ssdp:discover"',
-        'ST: {st}', 'MX: 3', '', ''])
+        'ST: {st}', 'MX: 3', '', '']).format(st=service)
 
     ssdp_responses = {}
 
@@ -56,16 +56,16 @@ def discover(service, retries=1):
                         struct.pack('LL', 0, 10000))
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
-        sock.sendto(message.format(st=service), group)
+        sock.sendto(bytes(discover_message, "utf-8"), group)
 
         while True:
             try:
-                ssdp_responses[i] = sock.recv(1024)
+                ssdp_responses[i] = sock.recv(1024).decode("utf-8")
                 break
             except socket.timeout:
                 break
             except IOError:
-                print "no pilight ssdp connections found"
+                print("no pilight ssdp connections found")
                 break
 
     sock.close()
@@ -77,44 +77,43 @@ if __name__ == "__main__":
     RESPONSES = discover("urn:schemas-upnp-org:service:pilight:1")
 
     if len(RESPONSES) > 0:
-        for resp in RESPONSES:
-            locationsrc = re.search('Location:([0-9.]+):(.*)',
-                                    str(RESPONSES[0]), re.IGNORECASE)
+        for resp in RESPONSES:  # try all responses until one works
+            locationsrc = re.search("Location:([0-9.]+):(.*)",
+                                    str(RESPONSES[resp]), re.IGNORECASE)
 
             if locationsrc:
                 location = locationsrc.group(1)
                 port = locationsrc.group(2)
 
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            socket.setdefaulttimeout(0)
-            try:
-                s.connect((location, int(port)))
-            except ConnectionRefusedError:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    try:
+                        s.connect((location, int(port)))
+                    except ConnectionRefusedError:
                         # Connection was refused, try next SSDP response
-#                        print "connection refused"
-                continue
+                        print("connection refused")
+                        continue
 
-            s.send('{"action": "identify", "options": {"core": 1}}')
-            text = ""
-            while True:
-                line = s.recv(1024)
-                text += line
-                if "\n\n" in line[-2:]:
-                    text = text[:-2]
-                    break
+                    s.send(bytes('{"action": "identify", \
+                                   "options": {"receiver": 1}}', "utf-8"))
+                    response = ""
+                    while True:
+                        line = s.recv(1024).decode("utf-8")
+                        response += line
+                        if "\n\n" in line[-2:]:
+                            response = response[:-2]
+                            break
 
-            if text == '{"status":"success"}':
-                text = ""
-                while True:
-                    line = s.recv(1024)
-                    text += line
-                    if "\n\n" in line[-2:]:
-                        text = text[:-2]
-                        for f in iter(text.splitlines()):
-                            print f
-                        text = ""
-            elif text == '{"status":"failure"}':
-                # connection failed, try next SSDP response
-                print "connection failed"
-                continue
-            s.close()
+                    if response == '{"status":"success"}':
+                        message = ""
+                        while True:
+                            line = s.recv(1024).decode("utf-8")
+                            message += line
+                            if "\n\n" in line[-2:]:
+                                message = message[:-2]
+                                for f in iter(message.splitlines()):
+                                    print(f)
+                                message = ""
+                    elif response == '{"status":"failure"}':
+                        # connection failed, try next SSDP response
+                        print("connection failed")
+                        continue
