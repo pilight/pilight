@@ -589,7 +589,7 @@ void *receive_parse_code(void *param) {
 						}
 
 						/* Reset # of repeats after a certain delay */
-						if(((unsigned long long)protocol->second-(unsigned long long)protocol->first) > 500000) {
+						if(((unsigned long)protocol->second-(unsigned long)protocol->first) > 500000) {
 							protocol->repeats = 0;
 						}
 
