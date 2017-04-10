@@ -54,6 +54,7 @@ set(PROTOCOL_KAKU_SCREEN ON CACHE BOOL "support for the new KlikAanKlikUit scree
 set(PROTOCOL_LM75 ON CACHE BOOL "support for the lm75 i2c temperature sensor")
 set(PROTOCOL_LM76 ON CACHE BOOL "support for the lm76 i2c temperature sensor")
 set(PROTOCOL_LIRC ON CACHE BOOL "support for the Lirc API")
+set(PROTOCOL_LIVOLO_SWITCH ON CACHE BOOL "support for the Livolo switch protocol")
 set(PROTOCOL_LOGILINK_SWITCH ON CACHE BOOL "support for the Logilink switch protocol")
 set(PROTOCOL_MUMBI_SWITCH ON CACHE BOOL "support for the Mumbi switch protocol")
 set(PROTOCOL_NEXA_SWITCH ON CACHE BOOL "support for the Nexa switch protocol")
