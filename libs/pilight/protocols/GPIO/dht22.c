@@ -9,26 +9,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <dirent.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
 #include <sys/stat.h>
-#ifdef _WIN32
+#ifndef _WIN32
+	#include <unistd.h>
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
 #endif
-#include <pthread.h>
 
 #include "../../core/pilight.h"
 #include "../../core/common.h"
 #include "../../core/dso.h"
 #include "../../core/log.h"
-#include "../../core/threadpool.h"
 #include "../../core/eventpool.h"
 #include "../../core/binary.h"
 #include "../../core/gc.h"
@@ -75,115 +72,113 @@ static uint8_t sizecvt(const int read_value) {
 /*
  * FIXME
  */
-static void *thread(void *param) {
-	struct threadpool_tasks_t *task = param;
-	struct data_t *settings = task->userdata;
-	uint8_t laststate = HIGH;
-	uint8_t counter = 0;
-	uint8_t j = 0, i = 0;
+// static void *thread(void *param) {
+	// struct data_t *settings = param;
+	// uint8_t laststate = HIGH;
+	// uint8_t counter = 0;
+	// uint8_t j = 0, i = 0;
 
-	int x = 0, dht22_dat[5] = {0,0,0,0,0};
+	// int x = 0, dht22_dat[5] = {0,0,0,0,0};
 
-	// pull pin down for 18 milliseconds
-	pinMode(settings->id, PINMODE_OUTPUT);
-	digitalWrite(settings->id, HIGH);
-#ifdef _WIN32
-	SleepEx(500000, True);  // 500 ms
-#else	
-	usleep(500000);  // 500 ms
-#endif
-	// then pull it up for 40 microseconds
-	digitalWrite(settings->id, LOW);
-#ifdef _WIN32
-	SleepEx(20000, True);  // 500 ms
-#else	
-	usleep(20000);  // 500 ms
-#endif
-	// prepare to read the pin
-	pinMode(settings->id, PINMODE_INPUT);
+	// // pull pin down for 18 milliseconds
+	// pinMode(settings->id, PINMODE_OUTPUT);
+	// digitalWrite(settings->id, HIGH);
+// #ifdef _WIN32
+	// SleepEx(500000, True);  // 500 ms
+// #else	
+	// usleep(500000);  // 500 ms
+// #endif
+	// // then pull it up for 40 microseconds
+	// digitalWrite(settings->id, LOW);
+// #ifdef _WIN32
+	// SleepEx(20000, True);  // 500 ms
+// #else	
+	// usleep(20000);  // 500 ms
+// #endif
+	// // prepare to read the pin
+	// pinMode(settings->id, PINMODE_INPUT);
 
-	// detect change and read data
-	for(i=0;(i<MAXTIMINGS);i++) {
-		counter = 0;
-		delayMicroseconds(10);
+	// // detect change and read data
+	// for(i=0;(i<MAXTIMINGS);i++) {
+		// counter = 0;
+		// delayMicroseconds(10);
 
-		while((x = sizecvt(digitalRead(settings->id))) == laststate && x != -1) {
-			counter++;
-			delayMicroseconds(1);
-			if(counter == 255) {
-				break;
-			}
-		}
-		laststate = sizecvt(digitalRead(settings->id));
+		// while((x = sizecvt(digitalRead(settings->id))) == laststate && x != -1) {
+			// counter++;
+			// delayMicroseconds(1);
+			// if(counter == 255) {
+				// break;
+			// }
+		// }
+		// laststate = sizecvt(digitalRead(settings->id));
 
-		if(counter == 255) {
-			break;
-		}
+		// if(counter == 255) {
+			// break;
+		// }
 
-		// ignore first 3 transitions
-		if((i >= 4) && (i%2 == 0)) {
+		// // ignore first 3 transitions
+		// if((i >= 4) && (i%2 == 0)) {
 
-			// shove each bit into the storage bytes
-			dht22_dat[(int)((double)j/8)] <<= 1;
-			if(counter > 16)
-				dht22_dat[(int)((double)j/8)] |= 1;
-			j++;
-		}
-	}
+			// // shove each bit into the storage bytes
+			// dht22_dat[(int)((double)j/8)] <<= 1;
+			// if(counter > 16)
+				// dht22_dat[(int)((double)j/8)] |= 1;
+			// j++;
+		// }
+	// }
 
-	// check we read 40 bits (8bit x 5 ) + verify checksum in the last byte
-	// print it out if data is good
-	if((j >= 40) && (dht22_dat[4] == ((dht22_dat[0] + dht22_dat[1] + dht22_dat[2] + dht22_dat[3]) & 0xFF))) {
-		double h = dht22_dat[0] * 256 + dht22_dat[1];
-		double t = (dht22_dat[2] & 0x7F)* 256 + dht22_dat[3];
-		t += settings->temp_offset;
-		h += settings->humi_offset;
+	// // check we read 40 bits (8bit x 5 ) + verify checksum in the last byte
+	// // print it out if data is good
+	// if((j >= 40) && (dht22_dat[4] == ((dht22_dat[0] + dht22_dat[1] + dht22_dat[2] + dht22_dat[3]) & 0xFF))) {
+		// double h = dht22_dat[0] * 256 + dht22_dat[1];
+		// double t = (dht22_dat[2] & 0x7F)* 256 + dht22_dat[3];
+		// t += settings->temp_offset;
+		// h += settings->humi_offset;
 
-		if((dht22_dat[2] & 0x80) != 0)
-			t *= -1;
+		// if((dht22_dat[2] & 0x80) != 0)
+			// t *= -1;
 
-		struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
-		if(data == NULL) {
-			OUT_OF_MEMORY
-		}
-		snprintf(data->message, 1024, "{\"gpio\":%d,\"temperature\":%.1f,\"humidity\":%.1f}", settings->id, t/10, h/10);
-		strncpy(data->origin, "receiver", 255);
-		data->protocol = dht22->id;
-		if(strlen(pilight_uuid) > 0) {
-			data->uuid = pilight_uuid;
-		} else {
-			data->uuid = NULL;
-		}
-		data->repeat = 1;
-		eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
-	} else {
-		logprintf(LOG_DEBUG, "dht22 data checksum was wrong");
-	}
+		// struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
+		// if(data == NULL) {
+			// OUT_OF_MEMORY
+		// }
+		// snprintf(data->message, 1024, "{\"gpio\":%d,\"temperature\":%.1f,\"humidity\":%.1f}", settings->id, t/10, h/10);
+		// strncpy(data->origin, "receiver", 255);
+		// data->protocol = dht22->id;
+		// if(strlen(pilight_uuid) > 0) {
+			// data->uuid = pilight_uuid;
+		// } else {
+			// data->uuid = NULL;
+		// }
+		// data->repeat = 1;
+		// eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
+	// } else {
+		// logprintf(LOG_DEBUG, "dht22 data checksum was wrong");
+	// }
 
-	struct timeval tv;
-	tv.tv_sec = settings->interval;
-	tv.tv_usec = 0;
-	threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
+	// struct timeval tv;
+	// tv.tv_sec = settings->interval;
+	// tv.tv_usec = 0;
+	// threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
 
-	return (void *)NULL;
-}
+	// return (void *)NULL;
+// }
 
 static void *addDevice(int reason, void *param) {
-	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct data_t *node = NULL;
-	struct timeval tv;
+	// struct timeval tv;
 	int match = 0, interval = 10;
 	double itmp = 0.0;
 
-	if(task->userdata == NULL) {
+	if(param == NULL) {
 		return NULL;
 	}
 
-	if((jdevice = json_first_child(task->userdata)) == NULL) {
+	if((jdevice = json_first_child(param)) == NULL) {
 		return NULL;
 	}
 
@@ -235,9 +230,9 @@ static void *addDevice(int reason, void *param) {
 	node->next = data;
 	data = node;
 
-	tv.tv_sec = interval;
-	tv.tv_usec = 0;
-	threadpool_add_scheduled_work(jdevice->key, thread, tv, (void *)node);
+	// tv.tv_sec = interval;
+	// tv.tv_usec = 0;
+	// threadpool_add_scheduled_work(jdevice->key, thread, tv, (void *)node);
 
 	return NULL;
 }

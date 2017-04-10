@@ -293,8 +293,8 @@ static void http_wait(void *param) {
 		is_ssl = 0;
 	}
 	while(http_loop) {
-		tv.tv_sec = 0;
-		tv.tv_usec = 250000;
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
 
 		if(doquit == 2) {
 			http_loop = 0;
@@ -362,9 +362,6 @@ static void http_wait(void *param) {
 				}
 				CuAssertTrue(gtc, r >= 0);
 				CuAssertStrEquals(gtc, message, tests[testnr].recvmsg);
-
-				struct connection_t c;
-				http_parse_request(message, &c);
 				dowrite = 1;
 			}
 			if(FD_ISSET(http_client, &fdswrite)) {
@@ -434,6 +431,9 @@ static void http_start(int port) {
 }
 
 static void test(void *param) {
+	printf("[ - %-46s ]\n", tests[testnr].desc);
+	fflush(stdout);
+
 	http_loop = 1;
 	is_ssl_init = 0;
 	is_ssl = 0;

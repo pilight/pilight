@@ -408,13 +408,11 @@ void ssdp_start(void) {
 		logprintf(LOG_ERR, "uv_ip4_addr: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
 		goto close;
 	}
-#ifndef __FreeBSD__
 	r = uv_udp_bind(node->ssdp_req, (const struct sockaddr *)&addr, UV_UDP_REUSEADDR);
 	if(r != 0) {
 		logprintf(LOG_ERR, "uv_udp_bind: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
 		goto close;
 	}
-#endif
 	r = uv_udp_set_membership(node->ssdp_req, "239.255.255.250", NULL, UV_JOIN_GROUP);
 	if(r != 0) {
 		logprintf(LOG_ERR, "uv_udp_set_membership: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);

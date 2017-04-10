@@ -93,6 +93,9 @@ static void test_host2ip(CuTest *tc) {
 	char ip[255], *p = ip;
 	int r = 0;
 
+	/*
+	 * FIXME
+	 */
 	r = host2ip("localhost", p);
 	CuAssertIntEquals(tc, 0, r);
 
@@ -135,8 +138,13 @@ static void test_whitelist_check(CuTest *tc) {
 		CuAssertIntEquals(tc, 0, whitelist_check("127.0.0.1"));
 		whitelist_free();
 
+		uv_run(uv_default_loop(), UV_RUN_NOWAIT);
 		uv_walk(uv_default_loop(), walk_cb, NULL);
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		}
 
 		storage_gc();
 		eventpool_gc();
@@ -160,8 +168,13 @@ static void test_whitelist_check(CuTest *tc) {
 		CuAssertIntEquals(tc, -1, whitelist_check("10.0.0.141"));
 		whitelist_free();
 
+		uv_run(uv_default_loop(), UV_RUN_NOWAIT);
 		uv_walk(uv_default_loop(), walk_cb, NULL);
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		}
 
 		storage_gc();
 		eventpool_gc();
@@ -183,8 +196,13 @@ static void test_whitelist_check(CuTest *tc) {
 		CuAssertIntEquals(tc, 0, whitelist_check("10.0.0.141"));
 		whitelist_free();
 
+		uv_run(uv_default_loop(), UV_RUN_NOWAIT);
 		uv_walk(uv_default_loop(), walk_cb, NULL);
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		}
 
 		storage_gc();
 		eventpool_gc();
@@ -210,8 +228,13 @@ static void test_whitelist_check(CuTest *tc) {
 		CuAssertIntEquals(tc, -1, whitelist_check("192.168.0.1"));
 		whitelist_free();
 
+		uv_run(uv_default_loop(), UV_RUN_NOWAIT);
 		uv_walk(uv_default_loop(), walk_cb, NULL);
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		}
 
 		storage_gc();
 		eventpool_gc();
@@ -237,8 +260,13 @@ static void test_whitelist_check(CuTest *tc) {
 		CuAssertIntEquals(tc, -1, whitelist_check("192.168.0.1"));
 		whitelist_free();
 
+		uv_run(uv_default_loop(), UV_RUN_NOWAIT);
 		uv_walk(uv_default_loop(), walk_cb, NULL);
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		}
 
 		storage_gc();
 		eventpool_gc();
@@ -265,8 +293,13 @@ static void test_whitelist_check(CuTest *tc) {
 		CuAssertIntEquals(tc, 0, whitelist_check("10.161.13.1"));
 		whitelist_free();
 
+		uv_run(uv_default_loop(), UV_RUN_NOWAIT);
 		uv_walk(uv_default_loop(), walk_cb, NULL);
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		}
 
 		storage_gc();
 		eventpool_gc();
@@ -294,8 +327,13 @@ static void test_whitelist_check(CuTest *tc) {
 		CuAssertIntEquals(tc, 0, whitelist_check("11.12.13.14"));
 		whitelist_free();
 
+		uv_run(uv_default_loop(), UV_RUN_NOWAIT);
 		uv_walk(uv_default_loop(), walk_cb, NULL);
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		}
 
 		storage_gc();
 		eventpool_gc();

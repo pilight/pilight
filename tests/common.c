@@ -544,15 +544,6 @@ static void test_stricmp(CuTest *tc) {
 	n = stricmp("Hello World!", "hELLO wORLD!");
 	CuAssertIntEquals(tc, 0, n);
 
-	n = stricmp(NULL, "test");
-	CuAssertIntEquals(tc, -1, n);
-
-	n = stricmp("test", NULL);
-	CuAssertIntEquals(tc, -1, n);
-
-	n = stricmp(NULL, NULL);
-	CuAssertIntEquals(tc, -1, n);
-
 	CuAssertIntEquals(tc, 0, xfree());
 }
 

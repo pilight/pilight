@@ -8,22 +8,19 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <dirent.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
 #include <sys/stat.h>
 #ifndef _WIN32
+	#include <unistd.h>
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
 #endif
-#include <pthread.h>
 
-#include "../../core/threadpool.h"
 #include "../../core/eventpool.h"
 #include "../../core/pilight.h"
 #include "../../core/common.h"
@@ -313,7 +310,7 @@ static void *update(void *param) {
 		OUT_OF_MEMORY
 	}
 	work_req->data = settings;
-	uv_queue_work(uv_default_loop(), work_req, thread, thread_free);
+	uv_queue_work(uv_default_loop(), work_req, "wunderground", thread, thread_free);
 	if(time_override > -1) {
 		settings->update = time_override;
 	} else {
@@ -573,7 +570,7 @@ static int createCode(struct JsonNode *code, char *message) {
 						OUT_OF_MEMORY
 					}
 					work_req->data = tmp;
-					uv_queue_work(uv_default_loop(), work_req, thread, thread_free);
+					uv_queue_work(uv_default_loop(), work_req, "wunderground", thread, thread_free);
 
 					if(time_override > -1) {
 						tmp->update = time_override;

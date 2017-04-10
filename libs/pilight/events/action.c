@@ -21,7 +21,6 @@
 	#include <dirent.h>
 #endif
 
-#include "../core/threadpool.h"
 #include "../core/pilight.h"
 #include "../core/common.h"
 #include "../core/options.h"

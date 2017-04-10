@@ -86,7 +86,7 @@ static struct tests_t get_tests[] = {
 	{ "http://127.0.0.1:10080/jquery-2.1.4.min.js", 84345, "", 200 },
 	{ "http://127.0.0.1:10080/jquery.mobile-1.4.5.min.js", 200144, "", 200 },
 	{ "http://127.0.0.1:10080/moment.min.js", 35416, "", 200 },
-	{ "http://127.0.0.1:10080/pilight.js", 47542, "", 200 },
+	{ "http://127.0.0.1:10080/pilight.js", 47558, "", 200 },
 	{ "http://127.0.0.1:10080/jquery.mobile-1.4.5.min.css", 207466, "", 200 },
 	{ "http://127.0.0.1:10080/pilight.css", 6065, "", 200 },
 	{ "http://127.0.0.1:10080/pilight.jquery.theme.css", 25683, "", 200 },
@@ -99,7 +99,7 @@ static struct tests_t get_tests[] = {
 	{ "https://127.0.0.1:10443/jquery-2.1.4.min.js", 84345, "", 200 },
 	{ "https://127.0.0.1:10443/jquery.mobile-1.4.5.min.js", 200144, "", 200 },
 	{ "https://127.0.0.1:10443/moment.min.js", 35416, "", 200 },
-	{ "https://127.0.0.1:10443/pilight.js", 47542, "", 200 },
+	{ "https://127.0.0.1:10443/pilight.js", 47558, "", 200 },
 	{ "https://127.0.0.1:10443/jquery.mobile-1.4.5.min.css", 207466, "", 200 },
 	{ "https://127.0.0.1:10443/pilight.css", 6065, "", 200 },
 	{ "https://127.0.0.1:10443/pilight.jquery.theme.css", 25683, "", 200 },
@@ -144,7 +144,15 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 		CuAssertStrEquals(gtc, get_tests[testnr].type, type);
 
 		if(testnr+1 < len) {
-			http_get_content(get_tests[++testnr].url, callback, NULL);
+			char *file = STRDUP(get_tests[++testnr].url);
+			str_replace("127.0.0.1:", "..", &file);
+			str_replace("10080", "", &file);
+			str_replace("10443", "", &file);
+			printf("[ - %-46s ]\n", file);
+			fflush(stdout);
+			FREE(file);
+
+			http_get_content(get_tests[testnr].url, callback, NULL);
 		} else {
 			uv_async_send(async_close_req);
 		}
@@ -155,7 +163,15 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 		CuAssertStrEquals(gtc, auth_tests[testnr].type, type);
 
 		if(testnr+1 < len) {
-			http_get_content(auth_tests[++testnr].url, callback, NULL);
+			char *file = STRDUP(auth_tests[++testnr].url);
+			str_replace("127.0.0.1:", "..", &file);
+			str_replace("10080", "", &file);
+			str_replace("10443", "", &file);
+			printf("[ - %-46s ]\n", file);
+			fflush(stdout);
+			FREE(file);
+
+			http_get_content(auth_tests[testnr].url, callback, NULL);
 		} else {
 			uv_async_send(async_close_req);
 		}
@@ -309,7 +325,11 @@ static void *test(void) {
 
 free:
 	if(sockfd > 0) {
+#ifdef _WIN32
+		closesocket(sockfd);
+#else
 		close(sockfd);
+#endif
 	}
 	return NULL;
 }
@@ -373,8 +393,24 @@ static void test_webserver(CuTest *tc) {
 	webserver_start();
 
 	if(run == GET) {
+		char *file = STRDUP(get_tests[testnr].url);
+		str_replace("127.0.0.1:", "..", &file);
+		str_replace("10080", "", &file);
+		str_replace("10443", "", &file);
+		printf("[ - %-46s ]\n", file);
+		fflush(stdout);
+		FREE(file);
+
 		http_get_content(get_tests[testnr].url, callback, NULL);
 	} else if(run == AUTH) {
+		char *file = STRDUP(auth_tests[testnr].url);
+		str_replace("127.0.0.1:", "..", &file);
+		str_replace("10080", "", &file);
+		str_replace("10443", "", &file);
+		printf("[ - %-46s ]\n", file);
+		fflush(stdout);
+		FREE(file);
+
 		http_get_content(auth_tests[testnr].url, callback, NULL);
 	} else if(run == WEBSOCKET1 || run == WEBSOCKET2) {
 		test();

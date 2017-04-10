@@ -28,7 +28,7 @@ extern inline __s32 i2c_smbus_access(int fd, char rw, int cmd, int size, union i
 
 extern inline __s32 i2c_smbus_read_byte(int fd) {
 	union i2c_smbus_data data;
-	if(i2c_smbus_access(fd, I2C_SMBUS_READ, 0, I2C_SMBUS_BYTE, &data) <= 0) {
+	if(i2c_smbus_access(fd, I2C_SMBUS_READ, 0, I2C_SMBUS_BYTE, &data) < 0) {
 		return -1;
 	} else {
 		return 0x0FF & data.byte;
@@ -41,7 +41,7 @@ extern inline __s32 i2c_smbus_write_byte(int fd, int value) {
 
 extern inline __s32 i2c_smbus_read_byte_data(int fd, int cmd) {
 	union i2c_smbus_data data;
-	if(i2c_smbus_access(fd, I2C_SMBUS_READ, cmd, I2C_SMBUS_BYTE_DATA, &data) <= 0) {
+	if(i2c_smbus_access(fd, I2C_SMBUS_READ, cmd, I2C_SMBUS_BYTE_DATA, &data) < 0) {
 		return -1;
 	} else {
 		return 0x0FF & data.byte;
@@ -56,7 +56,7 @@ extern inline __s32 i2c_smbus_write_byte_data(int fd, int cmd, int value) {
 
 extern inline __s32 i2c_smbus_read_word_data(int fd, int cmd) {
 	union i2c_smbus_data data;
-	if(i2c_smbus_access(fd, I2C_SMBUS_READ, cmd, I2C_SMBUS_WORD_DATA, &data) <= 0) {
+	if(i2c_smbus_access(fd, I2C_SMBUS_READ, cmd, I2C_SMBUS_WORD_DATA, &data) < 0) {
 		return -1;
 	} else {
 		return 0x0FFFF & data.word;

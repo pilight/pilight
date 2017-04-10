@@ -19,12 +19,8 @@
 #include <math.h>
 #include <stdlib.h>
 
-#ifdef _WIN32
-	#include <winsock2.h>
-#else
-	#include <sys/time.h>
-	#include <unistd.h>
-#endif
+#include <sys/time.h>
+#include <unistd.h>
 
 #include "lirc.h"
 

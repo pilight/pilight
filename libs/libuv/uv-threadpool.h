@@ -28,6 +28,7 @@
 #define UV_THREADPOOL_H_
 
 struct uv__work {
+  char *name;
   void (*work)(struct uv__work *w);
   void (*done)(struct uv__work *w, int status);
   struct uv_loop_s* loop;

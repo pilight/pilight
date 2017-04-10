@@ -1271,7 +1271,8 @@ $(document).ready(function() {
 		/* Use an AJAX request to check if the user want to enforce
 		   an AJAX connection, or if he wants to use websockets */
 		$.get(sHTTPProtocol+'://'+location.host+'/config?internal&'+$.now(), function(txt) {
-			var data = $.parseJSON(txt);
+			console.log(txt);
+			var data = $.parseJSON(JSON.stringify(txt));
 			if('registry' in data) {
 				if('webgui' in data['registry'] &&
 					'tabs' in data['registry']['webgui']) {

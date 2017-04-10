@@ -17,7 +17,6 @@
 #include "../core/dso.h"
 #include "../core/log.h"
 #include "../core/json.h"
-#include "../core/threadpool.h"
 #include "../hardware/hardware.h"
 #include "../../wiringx/wiringX.h"
 #include "IRgpio.h"
@@ -59,10 +58,10 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 	}
 	switch(event) {
 		case EV_CONNECT_SUCCESS: {
-			eventpool_fd_enable_highpri(node);
+			// eventpool_fd_enable_highpri(node);
 		} break;
 		case EV_HIGHPRI: {
-			eventpool_fd_enable_highpri(node);
+			// eventpool_fd_enable_highpri(node);
 			uint8_t c = 0;
 
 			(void)read(node->fd, &c, 1);
@@ -96,11 +95,11 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 				}
 			}
 
-			eventpool_fd_enable_highpri(node);
+			// eventpool_fd_enable_highpri(node);
 		} break;
 		case EV_DISCONNECTED: {
 			FREE(node->userdata);
-			eventpool_fd_remove(node);
+			// eventpool_fd_remove(node);
 		} break;
 	}
 	return 0;
@@ -145,7 +144,7 @@ static unsigned short gpioIRHwInit(void *(*callback)(void *)) {
 		data->rptr = 0;
 		data->callback = callback;
 
-		eventpool_fd_add("IRgpio", fd, client_callback, NULL, data);
+		// eventpool_fd_add("IRgpio", fd, client_callback, NULL, data);
 	}
 
 	return EXIT_SUCCESS;

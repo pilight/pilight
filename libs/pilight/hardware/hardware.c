@@ -12,8 +12,8 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <unistd.h>
 #ifndef _WIN32
+	#include <unistd.h>
 	#include <regex.h>
 	#include <sys/ioctl.h>
 	#include <dlfcn.h>
@@ -21,11 +21,11 @@
 		#define __USE_UNIX98
 	#endif
 	#include <pthread.h>
+	#include <libgen.h>
+	#include <dirent.h>
 #endif
 #include <sys/stat.h>
 #include <time.h>
-#include <libgen.h>
-#include <dirent.h>
 
 #include "../core/pilight.h"
 #include "../core/common.h"

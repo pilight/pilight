@@ -28,12 +28,12 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#define JSON_NULL		0x1
-#define JSON_BOOL		0x2
-#define JSON_STRING	0x4
-#define JSON_NUMBER 0x8
-#define JSON_ARRAY	0x16
-#define JSON_OBJECT	0x23
+#define JSON_NULL		(0x1)
+#define JSON_BOOL		(0x1 << 1)
+#define JSON_STRING	(0x1 << 2)
+#define JSON_NUMBER (0x1 << 3)
+#define JSON_ARRAY	(0x1 << 4)
+#define JSON_OBJECT	(0x1 << 5)
 
 #define JsonTag			int
 

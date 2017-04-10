@@ -10,6 +10,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#ifndef _WIN32
+	#include <unistd.h>
+#else
+	#include <ws2tcpip.h>
+#endif
 
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
@@ -21,6 +26,7 @@ static uv_thread_t pth;
 static int ssdp_socket = 0;
 static int ssdp_loop = 1;
 static int check = 0;
+static int run = 0;
 static CuTest *gtc = NULL;
 
 static void close_cb(uv_handle_t *handle) {
@@ -32,6 +38,7 @@ static void async_close_cb(uv_async_t *handle) {
 		uv_close((uv_handle_t *)handle, close_cb);
 	}
 	uv_timer_stop(timer_req);
+
 	ssdp_gc();
 	uv_stop(uv_default_loop());
 }
@@ -128,7 +135,7 @@ static void ssdp_custom_server(void) {
 	r = setsockopt(ssdp_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(int));
 	CuAssertTrue(gtc, (r >= 0));
 
-	mreq.imr_multiaddr.s_addr = inet_addr("239.255.255.250");
+	inet_pton(AF_INET, "239.255.255.250", &mreq.imr_multiaddr.s_addr);
 	mreq.imr_interface.s_addr = htonl(INADDR_ANY);
 
 	r = setsockopt(ssdp_socket, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&mreq, sizeof(mreq));
@@ -164,6 +171,7 @@ static void test_ssdp_client(CuTest *tc) {
 
 	memtrack();
 
+	run = 0;
 	check = 0;
 
 	gtc = tc;
@@ -200,16 +208,24 @@ static void test_ssdp_client(CuTest *tc) {
 	uv_run(uv_default_loop(), UV_RUN_ONCE);
 
 	ssdp_loop = 0;
-	uv_thread_join(&pth);	
+	uv_thread_join(&pth);
 
 	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 	}
 
+	if(ssdp_socket > 0) {
+#ifdef _WIN32
+		closesocket(ssdp_socket);
+#else
+		close(ssdp_socket);
+#endif
+		ssdp_socket = 0;
+	}	
+	
 	eventpool_gc();
 
 	CuAssertIntEquals(tc, 1, check);
-
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -219,6 +235,7 @@ static void test_ssdp_server(CuTest *tc) {
 
 	memtrack();
 
+	run = 1;
 	check = 0;
 
 	gtc = tc;
@@ -243,7 +260,11 @@ static void test_ssdp_server(CuTest *tc) {
 	}
 
 	uv_timer_init(uv_default_loop(), timer_req);
-	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 250, 0);	
+	/*
+	 * Don't make this too quick so we can properly test the
+	 * timeout of the SSDP library itself.
+	 */
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);	
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
 	eventpool_callback(REASON_SSDP_RECEIVED, ssdp_found);

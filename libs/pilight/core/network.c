@@ -328,7 +328,7 @@ int host2ip(char *host, char *ip) {
 	for(p = servinfo; p != NULL; p = p->ai_next) {
 		memcpy(&h, &p->ai_addr, sizeof(struct sockaddr_in *));
 		memset(ip, '\0', INET_ADDRSTRLEN+1);
-		inet_ntop(AF_INET, (void *)&(h->sin_addr), ip, INET_ADDRSTRLEN+1);
+		uv_inet_ntop(AF_INET, (void *)&(h->sin_addr), ip, INET_ADDRSTRLEN+1);
 		if(strlen(ip) > 0) {
 			freeaddrinfo(servinfo);
 			return 0;

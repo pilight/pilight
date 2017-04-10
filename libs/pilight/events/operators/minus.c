@@ -9,14 +9,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#ifndef _WIN32
+	#include <unistd.h>
+#endif
 
 #include "../operator.h"
 #include "../../core/dso.h"
 #include "minus.h"
 
-static void operatorMinusCallback(double a, double b, char **ret) {
-	sprintf(*ret, "%.6f", (a - b));
+static void operatorMinusCallback(struct varcont_t *a, struct varcont_t *b, char **ret) {
+	struct varcont_t aa, *aaa = &aa;
+	struct varcont_t bb, *bbb = &bb;
+
+	memcpy(&aa, a, sizeof(struct varcont_t));
+	memcpy(&bb, b, sizeof(struct varcont_t));
+
+	cast2int(&aaa);
+	cast2int(&bbb);
+
+	sprintf(*ret, "%.6f", (aaa->number_ - bbb->number_));
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -24,7 +35,7 @@ __attribute__((weak))
 #endif
 void operatorMinusInit(void) {
 	event_operator_register(&operator_minus, "-");
-	operator_minus->callback_number = &operatorMinusCallback;
+	operator_minus->callback = &operatorMinusCallback;
 }
 
 #if defined(MODULE) && !defined(_WIN32)

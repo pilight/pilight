@@ -8,22 +8,19 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <dirent.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <math.h>
 #ifndef _WIN32
+	#include <unistd.h>
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
 #endif
-#include <pthread.h>
 
-#include "../../core/threadpool.h"
 #include "../../core/eventpool.h"
 #include "../../core/pilight.h"
 #include "../../core/ping.h"
@@ -34,6 +31,10 @@
 #include "../../core/json.h"
 #include "../../core/gc.h"
 #include "ping.h"
+
+/*
+ * FIXME
+ */
 
 typedef struct data_t {
 	char *name;
@@ -107,42 +108,40 @@ static void callback(char *a, int b) {
 	}
 }
 
-static void *thread(void *param) {
-	struct threadpool_tasks_t *task = param;
-	struct data_t *settings = task->userdata;
-	struct ping_list_t *iplist = NULL;
-	struct timeval tv;
+// static void *thread(void *param) {
+	// struct data_t *settings = param;
+	// struct ping_list_t *iplist = NULL;
+	// // struct timeval tv;
 
-	tv.tv_sec = settings->interval;
-	tv.tv_usec = 0;
-	threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
-	if(settings->polling == 1) {
-		logprintf(LOG_DEBUG, "ping is still searching for network device %s", settings->ip);
-		return NULL;
-	}
+	// // tv.tv_sec = settings->interval;
+	// // tv.tv_usec = 0;
+	// // threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
+	// if(settings->polling == 1) {
+		// logprintf(LOG_DEBUG, "ping is still searching for network device %s", settings->ip);
+		// return NULL;
+	// }
 
-	settings->polling = 1;
+	// settings->polling = 1;
 
-	logprintf(LOG_DEBUG, "ping is starting search for network device %s", settings->ip);
-	ping_add_host(&iplist, settings->ip);
-	ping(iplist, callback);
+	// logprintf(LOG_DEBUG, "ping is starting search for network device %s", settings->ip);
+	// ping_add_host(&iplist, settings->ip);
+	// ping(iplist, callback);
 
-	return (void *)NULL;
-}
+	// return (void *)NULL;
+// }
 
 static void *addDevice(int reason, void *param) {
-	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct data_t *node = NULL;
-	struct timeval tv;
+	// struct timeval tv;
 	char *tmp = NULL;
 	double itmp = 0;
 	int match = 0;
 
-	if(task->userdata == NULL) {
+	if(param == NULL) {
 		return NULL;
 	}
 
@@ -150,7 +149,7 @@ static void *addDevice(int reason, void *param) {
 		return NULL;
 	}
 
-	if((jdevice = json_first_child(task->userdata)) == NULL) {
+	if((jdevice = json_first_child(param)) == NULL) {
 		return NULL;
 	}
 
@@ -210,10 +209,10 @@ static void *addDevice(int reason, void *param) {
 	node->next = data;
 	data = node;
 
-	tv.tv_sec = 1;
-	tv.tv_usec = 0;
+	// tv.tv_sec = 1;
+	// tv.tv_usec = 0;
 
-	threadpool_add_scheduled_work(jdevice->key, thread, tv, (void *)node);
+	// threadpool_add_scheduled_work(jdevice->key, thread, tv, (void *)node);
 
 	return NULL;
 }

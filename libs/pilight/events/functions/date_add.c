@@ -9,12 +9,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/time.h>
 #ifndef __USE_XOPEN
 	#define __USE_XOPEN
 #endif
 #include <time.h>
+#ifndef _WIN32
+	#include <sys/time.h>
+	#include <unistd.h>
+#endif
 
 #ifdef _WIN32
 #include "../../core/strptime.h"
@@ -29,6 +31,8 @@
 #include "../../core/pilight.h"
 #include "../../core/datetime.h"
 #include "date_add.h"
+
+#define NRUNITS 6
 
 static struct units_t {
 	char name[255];
@@ -72,7 +76,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	struct protocol_t *protocol = NULL;
 	struct tm tm;
 	char *p = NULL, *datetime = NULL, *interval = NULL, **array = NULL;
-	int nrunits = (sizeof(units)/sizeof(units[0])), values[nrunits], error = 0;
+	int values[NRUNITS], error = 0;
 	int l = 0, i = 0, type = -1, match = 0, is_dev = 0;
 
 	if(ret == NULL || *ret == NULL) {
@@ -82,7 +86,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 
 	p = *ret;
 
-	memset(&values, 0, nrunits);
+	memset(&values, 0, NRUNITS);
 
 	if(childs == NULL) {
 		logprintf(LOG_ERR, "DATE_ADD requires two parameters e.g. DATE_ADD(datetime, 1 DAY)");
@@ -95,12 +99,9 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	 */
 	if(devices_select(origin, childs->string_, NULL) == 0) {
 		is_dev = 1;
-		/*
-		 * FIXME
-		 */
-		// if(origin == ORIGIN_RULE) {
-			// event_cache_device(obj, childs->string_);
-		// }
+		if(origin == ORIGIN_RULE) {
+			event_cache_device(obj, childs->string_);
+		}
 		if(devices_select_protocol(origin, childs->string_, 0, &protocol) == 0) {
 			if(protocol->devtype == DATETIME) {
 				char *setting = NULL;
@@ -167,7 +168,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	l = explode(interval, " ", &array);
 	if(l == 2) {
 		if(isNumeric(array[0]) == 0) {
-			for(i=0;i<nrunits;i++) {
+			for(i=0;i<NRUNITS;i++) {
 				if(strcmp(array[1], units[i].name) == 0) {
 					values[i] = atoi(array[0]);
 					type = units[i].id;
@@ -207,10 +208,11 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	int hour = tm.tm_hour;
 	int minute = tm.tm_min;
 	int second = tm.tm_sec;
+	int weekday = 0;
 
-	datefix(&year, &month, &day, &hour, &minute, &second);
+	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
 
-	snprintf(p, BUFFER_SIZE, "\"%04d-%02d-%02d %02d:%02d:%02d\"", year, month, day, hour, minute, second);
+	snprintf(p, BUFFER_SIZE, "%04d-%02d-%02d %02d:%02d:%02d", year, month, day, hour, minute, second);
 
 close:
 	array_free(&array, l);

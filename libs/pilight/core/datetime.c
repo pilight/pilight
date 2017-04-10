@@ -1430,8 +1430,8 @@ static const struct lc_timezone_rule *determine_applicable_rule(
 	 * Obtain the rule that applies to the start of the current year, but
 	 * also the set of rules that applies to the current.
 	 */
-	struct ruleset ruleset = { 0 };
-	// memset(&ruleset, 0, sizeof(ruleset));
+	struct ruleset ruleset;
+	memset(&ruleset, 0, sizeof(struct ruleset));
 	const struct lc_timezone_rule *unused;
 	ruleset_fill_with_year(&ruleset, &rules, &rules_count, std->tm_year, &match, &unused);
 
@@ -1700,7 +1700,13 @@ int localtime_l(time_t t, struct tm *result, char *timezone) {
 	return error;
 }
 
-void datefix(int *year, int *month, int *day, int *hour, int *minute, int *second) {
+static int dayofweek(int y, int m, int d)	{
+	static int t[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
+  y -= m < 3;
+  return (y + y/4 - y/100 + y/400 + t[m-1] + d) % 7;
+}
+
+void datefix(int *year, int *month, int *day, int *hour, int *minute, int *second, int *weekday) {
 	int months[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 	int i = 0;
 
@@ -1764,6 +1770,8 @@ void datefix(int *year, int *month, int *day, int *hour, int *minute, int *secon
 			}
 		}
 	}
+
+	*weekday = dayofweek(*year, *month, *day);
 }
 
 time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seconds) {

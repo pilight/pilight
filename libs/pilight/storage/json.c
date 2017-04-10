@@ -23,8 +23,8 @@
 #endif
 #include <sys/stat.h>
 #include <time.h>
-#include <libgen.h>
-#include <dirent.h>
+// #include <libgen.h>
+// #include <dirent.h>
 
 #include "../core/log.h"
 #include "json.h"

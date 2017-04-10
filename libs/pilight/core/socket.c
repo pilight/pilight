@@ -234,7 +234,8 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct data_t *data = custom_poll_data->data;
@@ -263,7 +264,7 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	if(*nread > 0) {
 		buf[*nread] = '\0';
 
-		data->read_cb(fd, buf, *nread, &data->buffer, &data->len);
+		data->read_cb((int)fd, buf, *nread, &data->buffer, &data->len);
 
 		*nread = 0;
 		uv_custom_read(req);
@@ -274,7 +275,8 @@ static void poll_close_cb(uv_poll_t *req) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	struct sockaddr_in addr;
 	socklen_t socklen = sizeof(addr);
@@ -293,16 +295,24 @@ static void poll_close_cb(uv_poll_t *req) {
 		if(getpeername(fd, (struct sockaddr *)&addr, &socklen) == 0) {
 #endif
 			memset(&buf, '\0', INET_ADDRSTRLEN+1);
-			inet_ntop(AF_INET, (void *)&(addr.sin_addr), buf, INET_ADDRSTRLEN+1);
+			uv_ip4_name((void *)&(addr.sin_addr), buf, INET_ADDRSTRLEN+1);
 			logprintf(LOG_DEBUG, "client disconnected, fd %d, ip %s, port %d", fd, buf, htons(addr.sin_port));
 		}
 
+		struct reason_socket_disconnected_t *data1 = MALLOC(sizeof(struct reason_socket_disconnected_t));
+		if(data1 == NULL) {
+			OUT_OF_MEMORY
+		}
+		data1->fd = (int)fd;
+		eventpool_trigger(REASON_SOCKET_DISCONNECTED, reason_socket_disconnected_free, data1);
+
 #ifdef _WIN32
 		shutdown(fd, SD_BOTH);
+		closesocket(fd);
 #else
 		shutdown(fd, SHUT_RDWR);
-#endif
 		close(fd);
+#endif
 	}
 
 	client_remove(fd);
@@ -314,7 +324,8 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	struct sockaddr_in servaddr;
 	struct uv_custom_poll_t *server_poll_data = req->data;
@@ -337,11 +348,15 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	}
 
 	memset(&buffer, '\0', INET_ADDRSTRLEN+1);
-	inet_ntop(AF_INET, (void *)&(servaddr.sin_addr), buffer, INET_ADDRSTRLEN+1);
+	uv_ip4_name((void *)&(servaddr.sin_addr), buffer, INET_ADDRSTRLEN+1);
 
 	if(socket_override_whitelist_check > -1 || whitelist_check(buffer) != 0) {
 		logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", buffer, ntohs(servaddr.sin_port));
+#ifdef _WIN32
+		closesocket(client);
+#else
 		close(client);
+#endif
 		return;
 	} else {
 		logprintf(LOG_DEBUG, "new client, fd: %d, ip: %s, port: %d", client, buffer, ntohs(servaddr.sin_port));
@@ -375,7 +390,11 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	r = uv_poll_init_socket(uv_default_loop(), poll_req, client);
 	if(r != 0) {
 		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
+#ifdef _WIN32
+		closesocket(fd);
+#else
 		close(fd);
+#endif
 		if(custom_poll_data != NULL) {
 			uv_custom_poll_free(custom_poll_data);
 			poll_req->data = NULL;
@@ -407,7 +426,8 @@ static void *socket_send_thread(int reason, void *param) {
 
 /* Start the socket server */
 int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char **, ssize_t *)) {
-	if(pthread_equal(pth_main_id, pthread_self()) == 0) {
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	if(uv_thread_equal(&pth_main_id, &pth_cur_id) == 0) {
 		logprintf(LOG_ERR, "webserver_start can only be started from the main thread");
 		return -1;
 	}
@@ -435,23 +455,30 @@ int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char
 
 	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
 		logprintf(LOG_ERR, "socket: %s", strerror(errno));
+#ifdef _WIN32
+		closesocket(sockfd);
+#else
 		close(sockfd);
+#endif
 		return -1;
 	}
 
-#ifdef _WIN32
 	unsigned long on = 1;
+
+#ifdef _WIN32
 	ioctlsocket(sockfd, FIONBIO, &on);
 #else
 	long arg = fcntl(sockfd, F_GETFL, NULL);
 	fcntl(sockfd, F_SETFL, arg | O_NONBLOCK);
 #endif
 
-	unsigned long on = 1;
-
 	if((r = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(int))) < 0) {
 		logprintf(LOG_ERR, "setsockopt: %s", strerror(errno));
+#ifdef _WIN32
+		closesocket(sockfd);
+#else
 		close(sockfd);
+#endif
 		return -1;
 	}
 
@@ -467,13 +494,21 @@ int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char
 		} else {
 			logprintf(LOG_ERR, "cannot bind to socket port, address already in use?");
 		}
+#ifdef _WIN32
+		closesocket(sockfd);
+#else
 		close(sockfd);
+#endif
 		return -1;
 	}
 
 	if((listen(sockfd, 0)) < 0) {
 		logprintf(LOG_ERR, "listen: %s", strerror(errno));
+#ifdef _WIN32
+		closesocket(sockfd);
+#else
 		close(sockfd);
+#endif
 		return -1;
 	}
 
@@ -520,7 +555,11 @@ int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char
 
 free:
 	if(sockfd > 0) {
+#ifdef _WIN32
+		closesocket(sockfd);
+#else
 		close(sockfd);
+#endif
 	}
 
 	return -1;

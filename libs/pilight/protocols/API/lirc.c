@@ -8,9 +8,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <dirent.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -21,6 +19,7 @@
 	#include <ws2tcpip.h>
 	#define MSG_NOSIGNAL 0
 #else
+	#include <unistd.h>
 	#include <sys/socket.h>
 	#include <sys/time.h>
 	#include <sys/un.h>
@@ -33,7 +32,6 @@
 #include <math.h>
 
 #include "../../core/eventpool.h"
-#include "../../core/threadpool.h"
 #include "../../core/pilight.h"
 #include "../../core/common.h"
 #include "../../core/socket.h"
@@ -237,7 +235,13 @@ void lircInit(void) {
 	lirc->gc=&gc;
 
 	memset(socket_path, '\0', BUFFER_SIZE);
-	strcpy(socket_path, "/dev/lircd");
+
+	char *dev = getenv("PILIGHT_LIRC_DEV");
+	if(dev == NULL) {
+		strcpy(socket_path, "/dev/lircd");
+	} else {
+		strcpy(socket_path, dev);
+	}
 	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
 #endif
 }

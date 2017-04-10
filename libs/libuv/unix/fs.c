@@ -114,6 +114,7 @@
 #define POST                                                                  \
   do {                                                                        \
     if (cb != NULL) {                                                         \
+      req->work_req.name = strdup(__FUNCTION__);                              \
       uv__work_submit(loop, &req->work_req, uv__fs_work, uv__fs_done);        \
       return 0;                                                               \
     }                                                                         \
@@ -262,7 +263,6 @@ static ssize_t uv__fs_open(uv_fs_t* req) {
   return r;
 }
 
-
 static ssize_t uv__fs_read(uv_fs_t* req) {
 #if defined(__linux__)
   static int no_preadv;
@@ -330,7 +330,6 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
 # endif
 #endif
   }
-
 done:
   return result;
 }

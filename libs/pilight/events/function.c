@@ -173,9 +173,6 @@ int event_function_gc(void) {
 		event_functions = event_functions->next;
 		FREE(tmp_function);
 	}
-	if(event_functions != NULL) {
-		FREE(event_functions);
-	}
 
 	logprintf(LOG_DEBUG, "garbage collected event function library");
 	return 0;

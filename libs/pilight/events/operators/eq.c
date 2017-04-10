@@ -9,20 +9,34 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
+#ifndef _WIN32
+	#include <unistd.h>
+#endif
 
 #include "../../core/pilight.h"
 #include "../operator.h"
 #include "../../core/dso.h"
 #include "eq.h"
 
-static void operatorEqCallback(double a, double b, char **ret) {
-	if(fabs(a-b) < EPSILON) {
+static void operatorEqCallback(struct varcont_t *a, struct varcont_t *b, char **ret) {
+	struct varcont_t aa, *aaa = &aa;
+	struct varcont_t bb, *bbb = &bb;
+
+	memcpy(&aa, a, sizeof(struct varcont_t));
+	memcpy(&bb, b, sizeof(struct varcont_t));
+
+	cast2str(&aaa);
+	cast2str(&bbb);
+
+	if(strcmp(aa.string_, bb.string_) == 0) {
 		strcpy(*ret, "1");
 	} else {
 		strcpy(*ret, "0");
 	}
+
+	FREE(aa.string_);
+	FREE(bb.string_);
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -30,7 +44,7 @@ __attribute__((weak))
 #endif
 void operatorEqInit(void) {
 	event_operator_register(&operator_eq, "==");
-	operator_eq->callback_number = &operatorEqCallback;
+	operator_eq->callback = &operatorEqCallback;
 }
 
 #if defined(MODULE) && !defined(_WIN32)

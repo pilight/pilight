@@ -9,17 +9,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#ifndef _WIN32
+	#include <unistd.h>
+#endif
 
 #include "../operator.h"
 #include "../../core/dso.h"
 #include "divide.h"
 
-static void operatorDivideCallback(double a, double b, char **ret) {
-	if(a == 0 || b == 0) {
+static void operatorDivideCallback(struct varcont_t *a, struct varcont_t *b, char **ret) {
+	struct varcont_t aa, *aaa = &aa;
+	struct varcont_t bb, *bbb = &bb;
+
+	memcpy(&aa, a, sizeof(struct varcont_t));
+	memcpy(&bb, b, sizeof(struct varcont_t));
+
+	cast2int(&aaa);
+	cast2int(&bbb);
+
+	if(aaa->number_ == 0 || bbb->number_ == 0) {
 		strcpy(*ret, "0.000000");
 	} else {
-		sprintf(*ret, "%.6f", (a / b));
+		sprintf(*ret, "%.6f", (aaa->number_ / bbb->number_));
 	}
 }
 
@@ -28,7 +39,7 @@ __attribute__((weak))
 #endif
 void operatorDivideInit(void) {
 	event_operator_register(&operator_divide, "/");
-	operator_divide->callback_number = &operatorDivideCallback;
+	operator_divide->callback = &operatorDivideCallback;
 }
 
 #if defined(MODULE) && !defined(_WIN32)

@@ -13,7 +13,7 @@
 #include "../core/common.h"
 
 void event_cache_device(struct rules_t *obj, char *device);
-int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varcont_t *varcont, int *rtype, unsigned short validate, enum origin_t origin);
+int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varcont, unsigned short validate, enum origin_t origin);
 int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short validate);
 int events_gc(void);
 void event_init(void);

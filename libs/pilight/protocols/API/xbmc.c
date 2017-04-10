@@ -8,9 +8,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <dirent.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -21,6 +19,7 @@
 	#include <ws2tcpip.h>
 	#define MSG_NOSIGNAL 0
 #else
+	#include <unistd.h>
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
@@ -31,11 +30,9 @@
 	#include <netdb.h>
 	#include <arpa/inet.h>
 #endif
-#include <pthread.h>
 #include <stdint.h>
 #include <math.h>
 
-#include "../../core/threadpool.h"
 #include "../../core/eventpool.h"
 #include "../../core/pilight.h"
 #include "../../core/network.h"

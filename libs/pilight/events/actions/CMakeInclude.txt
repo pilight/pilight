@@ -12,11 +12,11 @@ string(REPLACE "!" "\n" header4 ${headers})
 set(ACTION_HEADERS ${header4})
 configure_file(${PROJECT_SOURCE_DIR}/action_header.h.in ${PROJECT_SOURCE_DIR}/action_header.h)	
 
-execute_process(
-COMMAND grep -h "void .*Init(void)" ${${PROJECT_NAME}_sources}
-	WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-	RESULT_VARIABLE action_result
-	OUTPUT_VARIABLE action_init)
+foreach(source ${${PROJECT_NAME}_sources})
+	file(READ ${source} TMP)
+	string(REGEX MATCH "void[ ]+[A-Za-z0-9]+Init\\([a-z]+\\)[ ]+{\n" MATCHES "${TMP}")
+	list(APPEND action_init "${MATCHES}")
+endforeach(source)
 
 set(inits)
 foreach(init ${action_init})

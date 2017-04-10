@@ -10,8 +10,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <math.h>
+
+#ifndef _WIN32
+	#include <unistd.h>
+#endif
 
 #include "../../core/pilight.h"
 #include "../../core/common.h"

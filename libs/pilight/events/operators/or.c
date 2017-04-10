@@ -9,14 +9,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#ifndef _WIN32
+	#include <unistd.h>
+#endif
 
 #include "../operator.h"
 #include "../../core/dso.h"
 #include "or.h"
 
-static void operatorOrCallback(double a, double b, char **ret) {
-	if(a > 0 || b > 0) {
+static void operatorOrCallback(struct varcont_t *a, struct varcont_t *b, char **ret) {
+	struct varcont_t aa, *aaa = &aa;
+	struct varcont_t bb, *bbb = &bb;
+
+	memcpy(&aa, a, sizeof(struct varcont_t));
+	memcpy(&bb, b, sizeof(struct varcont_t));
+
+	cast2bool(&aaa);
+	cast2bool(&bbb);
+
+	if(aa.bool_ == 1 || bb.bool_ == 1) {
 		strcpy(*ret, "1");
 	} else {
 		strcpy(*ret, "0");
@@ -28,7 +39,7 @@ __attribute__((weak))
 #endif
 void operatorOrInit(void) {
 	event_operator_register(&operator_or, "OR");
-	operator_or->callback_number = &operatorOrCallback;
+	operator_or->callback = &operatorOrCallback;
 }
 
 #if defined(MODULE) && !defined(_WIN32)

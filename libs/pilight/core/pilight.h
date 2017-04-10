@@ -36,7 +36,7 @@ typedef enum origin_t {
 	ORIGIN_SSDP
 } origin_t;
 
-#include <pthread.h>
+#include "../../libuv/uv.h"
 
 #include "defines.h"
 #include "eventpool.h"
@@ -77,7 +77,7 @@ struct pilight_t {
 } pilight_t;
 
 extern struct pilight_t pilight;
-extern pthread_t pth_main_id;
+extern const uv_thread_t pth_main_id;
 extern char pilight_uuid[UUID_LENGTH];
 
 #endif

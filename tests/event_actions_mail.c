@@ -21,6 +21,7 @@
 #include "../libs/pilight/core/eventpool.h"
 #include "../libs/pilight/protocols/protocol.h"
 #include "../libs/pilight/events/action.h"
+#include "../libs/pilight/events/function.h"
 #include "../libs/pilight/events/actions/sendmail.h"
 #include "../libs/pilight/protocols/generic/generic_switch.h"
 #include "../libs/pilight/protocols/generic/generic_label.h"
@@ -37,6 +38,8 @@ static int mail_loop = 1;
 static int doquit = 0;
 static int check = 0;
 
+static uv_timer_t *timer_req = NULL;
+
 static struct rules_actions_t *obj = NULL;
 
 static struct tests_t {
@@ -46,8 +49,8 @@ static struct tests_t {
 	int status;
 	int recvmsgnr;
 	int sendmsgnr;
-	char sendmsg[12][255];
-	char recvmsg[12][255];
+	char sendmsg[12][1024];
+	char recvmsg[12][1024];
 } tests = {
 	"gmail plain", 10025, 0, 0, 0, 0, {
 		"220 smtp.gmail.com ESMTP im3sm19207876wjb.13 - gsmtp\r\n",
@@ -345,7 +348,14 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 			\"TO\":{\"value\":[\"info\"],\"order\":3}\
 		}");
 
+/*
+ * Due to missing regex capability
+ */
+#if defined(__FreeBSD__) || defined(_WIN32)
+		CuAssertIntEquals(tc, 0, action_sendmail->checkArguments(obj));
+#else
 		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
+#endif
 
 		json_delete(obj->parsedargs);
 		FREE(obj);
@@ -553,45 +563,22 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
-static void *reason_config_update_free(void *param) {
-	struct reason_config_update_t *data = param;
-	FREE(data);
-	return NULL;
-}
+static void stop(uv_timer_t *handle) {
+	uv_close((uv_handle_t *)handle, close_cb);
+	mail_loop = 0;
 
-static void *control_device(int reason, void *param) {
-	struct reason_control_device_t *data1 = param;
+#ifdef _WIN32
+	closesocket(mail_client);
+	closesocket(mail_server);
+#else
+	close(mail_client);
+	close(mail_server);
+#endif
 
-	steps++;
+	mail_client = 0;
+	mail_server = 0;
 
-	struct reason_config_update_t *data2 = MALLOC(sizeof(struct reason_config_update_t));
-	if(data2 == NULL) {
-		OUT_OF_MEMORY
-	}
-	memset(data2, 0, sizeof(struct reason_config_update_t));
-
-	data2->timestamp = 1;
-	strcpy(data2->values[data2->nrval].string_, data1->state);
-	strcpy(data2->values[data2->nrval].name, "state");
-	data2->values[data2->nrval].type = JSON_STRING;
-	data2->nrval++;
-	strcpy(data2->devices[data2->nrdev++], "switch");
-	strncpy(data2->origin, "update", 255);
-	data2->type = SWITCH;
-	data2->uuid = NULL;
-
-	eventpool_trigger(REASON_CONFIG_UPDATE, reason_config_update_free, data2);
-
-	if(steps == 1) {
-		CuAssertStrEquals(gtc, "on", data1->state);
-	}
-	if(steps == 2) {
-		CuAssertStrEquals(gtc, "off", data1->state);
-	}
-	if(steps == nrsteps) {
-		uv_stop(uv_default_loop());
-	}
-	return NULL;
+	uv_stop(uv_default_loop());
 }
 
 static void mail_wait(void *param) {
@@ -623,21 +610,19 @@ static void mail_wait(void *param) {
 	FD_SET((unsigned long)mail_server, &fdsread);
 
 	while(mail_loop) {
-		tv.tv_sec = 0;
-		tv.tv_usec = 250000;
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
 
 		if(doquit == 2) {
 			mail_loop = 0;
-#ifdef _WIN32
-			closesocket(mail_client);
-			closesocket(mail_server);
-#else
-			close(mail_client);
-			close(mail_server);
-#endif
-			mail_client = 0;
-			mail_server = 0;
-			break;
+
+			if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+				OUT_OF_MEMORY
+			}
+
+			uv_timer_init(uv_default_loop(), timer_req);
+			uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 100, 0);
+			doquit = 3;
 		}
 
 		dowrite = 0;
@@ -667,7 +652,7 @@ static void mail_wait(void *param) {
 					CuAssertTrue(gtc, mail_client > 0);
 
 					memset(message, '\0', INET_ADDRSTRLEN+1);
-					inet_ntop(AF_INET, (void *)&(addr.sin_addr), message, INET_ADDRSTRLEN+1);
+					uv_ip4_name((void *)&(addr.sin_addr), message, INET_ADDRSTRLEN+1);
 					dowrite = 1;
 				}
 			}
@@ -688,10 +673,10 @@ static void mail_wait(void *param) {
 				strcpy(message, tests.sendmsg[tests.sendmsgnr]);
 				len = strlen(message);
 				r = send(mail_client, message, len, 0);
+				CuAssertIntEquals(gtc, len, r);
 				if(doquit == 1) {
 					doquit = 2;
 				}
-				CuAssertIntEquals(gtc, len, r);
 				tests.sendmsgnr++;
 				doread = 1;
 				steps++;
@@ -711,6 +696,7 @@ clear:
 		check = 1;
 	}
 	uv_stop(uv_default_loop());
+
 	FREE(message);
 	return;
 }
@@ -761,7 +747,6 @@ static void test_event_actions_mail_run(CuTest *tc) {
 	gtc = tc;
 
 	eventpool_init(EVENTPOOL_THREADED);
-	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
 
 	mail_start(10025);
 	uv_thread_create(&pth, mail_wait, NULL);
@@ -809,9 +794,12 @@ static void test_event_actions_mail_run(CuTest *tc) {
 	FREE(obj);
 
 	event_action_gc();
+	event_function_gc();
 	protocol_gc();
 	storage_gc();
 	eventpool_gc();
+
+	uv_thread_join(&pth);
 
 	CuAssertIntEquals(tc, 1, check);
 	CuAssertIntEquals(tc, 0, xfree());

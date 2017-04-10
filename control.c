@@ -10,13 +10,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#ifdef _WIN32
-	#include <conio.h>
-	#include <pthread.h>
+
+#ifndef _WIN32
+#include <unistd.h>
 #endif
+
 
 #include "libs/libuv/uv.h"
 #include "libs/pilight/core/eventpool.h"
@@ -456,7 +456,8 @@ static void main_loop(int onclose) {
 }
 
 int main(int argc, char **argv) {
-	pth_main_id = pthread_self();
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	memcpy((void *)&pth_main_id, &pth_cur_id, sizeof(uv_thread_t));
 
 	struct options_t *options = NULL;
 	char *server = NULL, *fconfig = NULL;

@@ -38,18 +38,10 @@ static char add[1024];
 static char adapt[1024];
 static CuTest *gtc = NULL;
 static int steps = 0;
-static int request = 0;
-static int loops = 0;
 static int run = UPDATE;
-static uv_thread_t pth;
-
-static int http_client = 0;
-static int http_server = 0;
-static int http_loop = 1;
-static int doquit = 0;
-static int is_ssl = 0;
-static int is_ssl_init = 0;
-static mbedtls_ssl_context ssl_ctx;
+static int request = 0;
+static uv_buf_t buf1;
+static uv_buf_t buf2;
 
 typedef struct timestamp_t {
 	unsigned long first;
@@ -67,211 +59,6 @@ static void *done(void *param) {
 	return NULL;
 }
 
-static void http_wait(void *param) {
-	struct timeval tv;
-	struct sockaddr_in addr;
-	int addrlen = sizeof(addr);
-	char *message = NULL;
-	int n = 0, r = 0, len = 0;
-	int doread = 0, dowrite = 0;
-	fd_set fdsread;
-	fd_set fdswrite;
-	
-#ifdef _WIN32
-	unsigned long on = 1;
-	r = ioctlsocket(http_server, FIONBIO, &on);
-	CuAssertTrue(gtc, r >= 0);
-#else
-	long arg = fcntl(http_server, F_GETFL, NULL);
-	r = fcntl(http_server, F_SETFL, arg | O_NONBLOCK);
-	CuAssertTrue(gtc, r >= 0);
-#endif
-
-	FD_ZERO(&fdsread);
-	FD_ZERO(&fdswrite);
-
-	loops = 0;
-	
-	while(http_loop) {
-		FD_SET((unsigned long)http_server, &fdsread);
-		tv.tv_sec = 1;
-		tv.tv_usec = 0;
-
-		if(doquit == 2) {
-			http_loop = 0;
-#ifdef _WIN32
-			if(http_client > 0) {
-				closesocket(http_client);
-			}
-			closesocket(http_server);
-#else
-			if(http_client > 0) {
-				close(http_client);
-			}
-			close(http_server);
-#endif
-			http_client = 0;
-			http_server = 0;
-
-			break;
-		}
-
-		dowrite = 0;
-		doread = 0;
-		do {
-			if(http_client > http_server) {
-				n = select(http_client+1, &fdsread, &fdswrite, NULL, &tv);
-			} else {
-				n = select(http_server+1, &fdsread, &fdswrite, NULL, &tv);
-			}
-		} while(n == -1 && errno == EINTR && http_loop);
-
-		if(http_loop == 0) {
-			doquit = 2;
-			http_loop = 1;
-		}
-		if(n == 0 || doquit == 2) {
-			continue;
-		}
-
-		if(n == -1) {
-			goto clear;
-		} else if(n > 0) {
-			if(is_ssl == 1 && is_ssl_init == 0) {
-				is_ssl_init = 1;
-				r = mbedtls_ssl_setup(&ssl_ctx, &ssl_server_conf);
-				CuAssertTrue(gtc, r >= 0);
-
-				r = mbedtls_ssl_session_reset(&ssl_ctx);
-				CuAssertTrue(gtc, r >= 0);
-
-				mbedtls_ssl_set_bio(&ssl_ctx, &http_client, mbedtls_net_send, mbedtls_net_recv, NULL);
-			}
-			if(FD_ISSET(http_server, &fdsread)) {
-				FD_ZERO(&fdsread);
-				if(http_client == 0) {
-					http_client = accept(http_server, (struct sockaddr *)&addr, (socklen_t *)&addrlen);
-					CuAssertTrue(gtc, http_client > 0);
-					doread = 1;
-				}
-			}
-			if(FD_ISSET(http_client, &fdsread)) {
-				FD_ZERO(&fdsread);
-
-				if((message = MALLOC(BUFSIZE)) == NULL) {
-					OUT_OF_MEMORY
-				}
-				memset(message, '\0', BUFSIZE);
-				if(is_ssl == 1) {
-					r = mbedtls_ssl_read(&ssl_ctx, (unsigned char *)message, BUFSIZE);
-					if(r == MBEDTLS_ERR_SSL_WANT_READ) {
-						doread = 1;
-						goto next;
-					}
-				} else {
-					r = recv(http_client, message, BUFSIZE, 0);
-				}
-				CuAssertTrue(gtc, r >= 0);
-				if(request == 0) {
-					CuAssertStrEquals(gtc, "GET /api/abcdef123456/geolookup/conditions/q/nl/amsterdam.json HTTP/1.1\r\nHost: 127.0.0.1\r\nUser-Agent: pilight\r\nConnection: close\r\n\r\n", message);
-					request = 1;
-				} else if(request == 2) {
-					CuAssertStrEquals(gtc, "GET /api/abcdef123456/geolookup/astronomy/q/nl/amsterdam.json HTTP/1.1\r\nHost: 127.0.0.1\r\nUser-Agent: pilight\r\nConnection: close\r\n\r\n", message);
-					request = 3;
-				}
-				FREE(message);
-				dowrite = 1;
-			}
-			if(FD_ISSET(http_client, &fdswrite)) {
-				FD_ZERO(&fdswrite);
-				if((message = MALLOC(BUFSIZE)) == NULL) {
-					OUT_OF_MEMORY
-				}
-				/*
-				 * Actual raw wunderground http response
-				 */
-				if(request == 1) {
-					strcpy(message, conditions);
-					request = 2;
-				} else if(request == 3) {
-					strcpy(message, astronomy);
-					/*
-					 * Do quit if we have looped once.
-					 */
-					if(run == UPDATE || loops == 1) {
-						doquit = 2;
-					}
-					if(run == SUNRISE || run == SUNSET || run == MIDNIGHT) {
-						loops = 1;
-						request = 0;
-					}
-				}
-				len = strlen(message);
-
-				if(is_ssl == 1) {
-					r = mbedtls_ssl_write(&ssl_ctx, (unsigned char *)message, len);
-				} else {
-					r = send(http_client, message, len, 0);
-				}
-				CuAssertIntEquals(gtc, len, r);
-				doread = 1;
-
-#ifdef _WIN32
-				closesocket(http_client);
-#else
-				close(http_client);
-#endif
-				http_client = 0;
-				FREE(message); 
-			}
-		}
-next:
-		if(http_client > 0) {
-			if(dowrite == 1) {
-				FD_SET((unsigned long)http_client, &fdswrite);
-			}
-			if(doread == 1) {
-				FD_SET((unsigned long)http_client, &fdsread);
-			}
-		}
-	}
-
-clear:
-	return;
-}
-
-static void http_start(int port) {
-	struct sockaddr_in addr;
-	int opt = 1;
-	int r = 0;
-
-#ifdef _WIN32
-	WSADATA wsa;
-
-	if(WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
-		fprintf(stderr, "could not initialize new socket\n");
-		exit(EXIT_FAILURE);
-	}
-#endif
-
-	http_server = socket(AF_INET, SOCK_STREAM, 0);
-	CuAssertTrue(gtc, http_server >= 0);
-
-	memset((char *)&addr, '\0', sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	addr.sin_port = htons(port);
-
-	r = setsockopt(http_server, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(int));
-	CuAssertTrue(gtc, r >= 0);
-
-	r = bind(http_server, (struct sockaddr *)&addr, sizeof(addr));
-	CuAssertTrue(gtc, r >= 0);
-
-	r = listen(http_server, 0);
-	CuAssertTrue(gtc, r >= 0);
-}
-
 static void *received(int reason, void *param) {
 	struct reason_code_received_t *data = param;
 
@@ -282,6 +69,8 @@ static void *received(int reason, void *param) {
 
 	int duration = (int)((int)timestamp.second-(int)timestamp.first);
 	duration = (int)round((double)duration/1000000);
+
+	request = 0;
 
 	switch(run) {
 		case UPDATE:
@@ -432,8 +221,63 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 	}
 }
 
+static void alloc(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
+	buf->len = len;
+	buf->base = malloc(len);
+	CuAssertPtrNotNull(gtc, buf->base);
+	memset(buf->base, 0, len);
+}
+
+static void write_cb(uv_write_t *req, int status) {
+	CuAssertIntEquals(gtc, 0, status);
+	FREE(req);
+}
+
+static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
+	uv_read_stop(stream);
+	buf->base[nread] = '\0';
+
+	request++;
+	if(request == 1) {
+		CuAssertStrEquals(gtc, "GET /api/abcdef123456/geolookup/conditions/q/nl/amsterdam.json HTTP/1.1\r\nHost: 127.0.0.1\r\nUser-Agent: pilight\r\nConnection: close\r\n\r\n", buf->base);
+	} else if(request == 2) {
+		CuAssertStrEquals(gtc, "GET /api/abcdef123456/geolookup/astronomy/q/nl/amsterdam.json HTTP/1.1\r\nHost: 127.0.0.1\r\nUser-Agent: pilight\r\nConnection: close\r\n\r\n", buf->base);
+	}
+
+	uv_write_t *write_req = MALLOC(sizeof(uv_write_t));
+	CuAssertPtrNotNull(gtc, write_req);
+
+	int r = 0;
+	if(request == 1) {
+		buf1.base = conditions;
+		buf1.len = strlen(conditions);
+		r = uv_write(write_req, stream, &buf1, 1, write_cb);
+	} else if(request == 2) {
+		buf2.base = astronomy;
+		buf2.len = strlen(astronomy);		
+		r = uv_write(write_req, stream, &buf2, 1, write_cb);
+	}
+	CuAssertIntEquals(gtc, 0, r);
+	free(buf->base);
+}
+
+static void connection_cb(uv_stream_t *server_req, int status) {
+	uv_tcp_t *client_req = MALLOC(sizeof(uv_tcp_t));
+	CuAssertPtrNotNull(gtc, client_req);
+	CuAssertIntEquals(gtc, 0, status);
+	uv_tcp_init(uv_default_loop(), client_req);
+
+	int r = uv_accept(server_req, (uv_stream_t *)client_req);
+	CuAssertIntEquals(gtc, 0, r);
+	r = uv_read_start((uv_stream_t *)client_req, alloc, read_cb);
+	CuAssertIntEquals(gtc, 0, r);
+}
+
 static void test_protocols_api_wunderground(CuTest *tc) {
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
+
+	uv_tcp_t *server_req = MALLOC(sizeof(uv_tcp_t));
+	CuAssertPtrNotNull(tc, server_req);
 
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
@@ -450,6 +294,16 @@ static void test_protocols_api_wunderground(CuTest *tc) {
 	}
 	eventpool_callback(REASON_CODE_RECEIVED, received);
 
+	struct sockaddr_in addr;
+	int r = uv_ip4_addr("127.0.0.1", 10080, &addr);
+	CuAssertIntEquals(tc, r, 0);
+
+	uv_tcp_init(uv_default_loop(), server_req);
+	uv_tcp_bind(server_req, (const struct sockaddr *)&addr, 0);
+
+	r = uv_listen((uv_stream_t *)server_req, 128, connection_cb);
+	CuAssertIntEquals(tc, r, 0);
+
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
 	uv_run(uv_default_loop(), UV_RUN_ONCE);
@@ -457,8 +311,6 @@ static void test_protocols_api_wunderground(CuTest *tc) {
 	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 	}
-
-	uv_thread_join(&pth);
 
 	protocol_gc();
 	eventpool_gc();
@@ -474,20 +326,14 @@ static void test_protocols_api_wunderground_update(CuTest *tc) {
 
 	memtrack();	
 
-	steps = 0;
 	request = 0;
-	http_loop = 1;
-	doquit = 0;
-	
+	steps = 0;
+
 	wundergroundInit();
 
 	memset(&add, '\0', 1024);
 	memset(&adapt, '\0', 1024);
 
-	http_start(10080);
-
-	uv_thread_create(&pth, http_wait, NULL);
-	
 	strcpy(adapt, "{\"wunderground\":{\"time-override\":1484393226,\"url\":{\"astronomy\":\"http://127.0.0.1:10080/api/%s/geolookup/astronomy/q/%s/%s.json\",\"conditions\":\"http://127.0.0.1:10080/api/%s/geolookup/conditions/q/%s/%s.json\"}}}");
 	strcpy(add, "{\"test\":{\"protocol\":[\"wunderground\"],\"id\":[{\"api\":\"abcdef123456\",\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
 
@@ -507,20 +353,14 @@ static void test_protocols_api_wunderground_sunrise(CuTest *tc) {
 
 	memtrack();
 
-	steps = 0;
 	request = 0;
-	http_loop = 1;
-	doquit = 0;
+	steps = 0;
 
 	wundergroundInit();
 
 	memset(&add, '\0', 1024);
 	memset(&adapt, '\0', 1024);
 
-	http_start(10080);
-
-	uv_thread_create(&pth, http_wait, NULL);
-	
 	strcpy(adapt, "{\"wunderground\":{\"time-override\":1483778879,\"url\":{\"astronomy\":\"http://127.0.0.1:10080/api/%s/geolookup/astronomy/q/%s/%s.json\",\"conditions\":\"http://127.0.0.1:10080/api/%s/geolookup/conditions/q/%s/%s.json\"}}}");
 	strcpy(add, "{\"test\":{\"protocol\":[\"wunderground\"],\"id\":[{\"api\":\"abcdef123456\",\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
 
@@ -540,19 +380,14 @@ static void test_protocols_api_wunderground_sunset(CuTest *tc) {
 
 	memtrack();
 
+	request = 0;
 	steps = 0;
-	http_loop = 1;
-	doquit = 0;
 
 	wundergroundInit();
 
 	memset(&add, '\0', 1024);
 	memset(&adapt, '\0', 1024);
 
-	http_start(10080);
-
-	uv_thread_create(&pth, http_wait, NULL);
-	
 	strcpy(adapt, "{\"wunderground\":{\"time-override\":1483807559,\"url\":{\"astronomy\":\"http://127.0.0.1:10080/api/%s/geolookup/astronomy/q/%s/%s.json\",\"conditions\":\"http://127.0.0.1:10080/api/%s/geolookup/conditions/q/%s/%s.json\"}}}");
 	strcpy(add, "{\"test\":{\"protocol\":[\"wunderground\"],\"id\":[{\"api\":\"abcdef123456\",\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
 
@@ -572,19 +407,14 @@ static void test_protocols_api_wunderground_midnight(CuTest *tc) {
 
 	memtrack();
 
+	request = 0;
 	steps = 0;
-	http_loop = 1;
-	doquit = 0;
 
 	wundergroundInit();
 
 	memset(&add, '\0', 1024);
 	memset(&adapt, '\0', 1024);
 
-	http_start(10080);
-
-	uv_thread_create(&pth, http_wait, NULL);
-	
 	strcpy(adapt, "{\"wunderground\":{\"time-override\":1483833599,\"url\":{\"astronomy\":\"http://127.0.0.1:10080/api/%s/geolookup/astronomy/q/%s/%s.json\",\"conditions\":\"http://127.0.0.1:10080/api/%s/geolookup/conditions/q/%s/%s.json\"}}}");
 	strcpy(add, "{\"test\":{\"protocol\":[\"wunderground\"],\"id\":[{\"api\":\"abcdef123456\",\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
 

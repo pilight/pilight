@@ -12,12 +12,13 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <unistd.h>
 #include <ctype.h>
 #ifndef _WIN32
+	#include <unistd.h>
 	#include <regex.h>
 	#include <sys/ioctl.h>
 	#include <dlfcn.h>
+	#include <libgen.h>
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
@@ -25,8 +26,6 @@
 #endif
 #include <sys/stat.h>
 #include <time.h>
-#include <libgen.h>
-#include <dirent.h>
 #include <math.h>
 
 #include "../hardware/hardware.h"
@@ -35,7 +34,6 @@
 #include "../core/datetime.h"
 #include "../core/json.h"
 #include "../core/log.h"
-#include "../core/threadpool.h"
 #include "../events/events.h"
 #include "../events/action.h"
 #include "../../wiringx/wiringX.h"
@@ -141,10 +139,6 @@ void *config_values_update(int reason, void *param) {
 				settings = data->settings;
 			}
 			origin = data->origin;
-
-			int l = strlen(message);
-			memmove(&message[0], &message[10], l-10);
-			message[l-10] = '\0';
 		} break;
 		default: {
 			return NULL;
@@ -163,6 +157,13 @@ void *config_values_update(int reason, void *param) {
 	struct JsonNode *jids = NULL;
 	struct JsonNode *jtmp = NULL;
 
+	if((jtmp = json_first_child(jmessage)) != NULL && strcmp(jtmp->key, "message") == 0) {
+		struct JsonNode *jclone = NULL;
+		json_clone(jtmp, &jclone);
+		json_delete(jmessage);
+		jmessage = jclone;
+	}
+	
 	if(settings != NULL) {
 		jsettings = json_decode(settings);
 	}
@@ -399,13 +400,13 @@ void *config_values_update(int reason, void *param) {
 			jdevices = jdevices->next;
 		}
 	}
+
 	if(final_update == 1) {
 		strncpy(data->origin, "update", 255);
 		data->type = (int)protocol->devtype;
 		if(strlen(pilight_uuid) > 0 && (protocol->hwtype == SENSOR || protocol->hwtype == HWRELAY)) {
 			data->uuid = pilight_uuid;
 		}
-
 		eventpool_trigger(REASON_CONFIG_UPDATE, reason_config_update_free, data);
 	} else {
 		FREE(data);
@@ -1123,14 +1124,19 @@ int rules_struct_parse(struct JsonNode *jrules, int i) {
 		OUT_OF_MEMORY
 	}
 	strcpy(node->name, jrules->key);
+
+#ifndef _WIN32
 	clock_gettime(CLOCK_MONOTONIC, &node->timestamp.first);
+#endif
 	if(event_parse_rule(rule, node, 0, 1) == -1) {
 		have_error = -1;
 	}
+#ifndef _WIN32
 	clock_gettime(CLOCK_MONOTONIC, &node->timestamp.second);
 	logprintf(LOG_INFO, "rule #%d %s was parsed in %.6f seconds", node->nr, node->name,
 		((double)node->timestamp.second.tv_sec + 1.0e-9*node->timestamp.second.tv_nsec) -
 		((double)node->timestamp.first.tv_sec + 1.0e-9*node->timestamp.first.tv_nsec));
+#endif
 
 	node->status = 0;
 	if((node->rule = MALLOC(strlen(rule)+1)) == NULL) {

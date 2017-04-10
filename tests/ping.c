@@ -12,6 +12,8 @@
 #include <assert.h>
 #ifndef _WIN32
 	#include <unistd.h>
+#else
+	#include <ws2tcpip.h>
 #endif
 
 #include "../libs/pilight/core/CuTest.h"
@@ -157,7 +159,7 @@ static void ping_wait(void *param) {
 					struct sockaddr_in dst;
 					memset(&dst, 0, sizeof(struct sockaddr));
 					dst.sin_family = AF_INET;
-					dst.sin_addr.s_addr = inet_addr("127.0.0.1");
+					inet_pton(AF_INET, "127.0.0.1", &dst.sin_addr);
 					dst.sin_port = htons(0);
 
 					r = sendto(ping_socket, response, 40, 0, (struct sockaddr *)&dst, sizeof(dst));
@@ -365,9 +367,13 @@ CuSuite *suite_ping(void) {
 	SUITE_ADD_TEST(suite, test_ping_response);
 #endif
 
+#ifndef _WIN32
 	SUITE_ADD_TEST(suite, test_ping_localhost_threaded);
 	SUITE_ADD_TEST(suite, test_ping_timeout_threaded);
+#ifndef __FreeBSD__
 	SUITE_ADD_TEST(suite, test_ping_response_threaded);
+#endif
+#endif
 
 	return suite;
 }

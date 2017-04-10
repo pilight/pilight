@@ -51,9 +51,8 @@
 #define HTTP_POST			1
 #define HTTP_GET			0
 
-#define STEP_HANDSHAKE			0
-#define STEP_WRITE					1
-#define STEP_READ						2
+#define STEP_WRITE					0
+#define STEP_READ						1
 
 typedef struct http_clients_t {
 	uv_poll_t *req;
@@ -132,10 +131,11 @@ int http_gc(void) {
 		if(http_clients->fd > -1) {
 #ifdef _WIN32
 			shutdown(http_clients->fd, SD_BOTH);
+			closesocket(http_clients->fd);
 #else
 			shutdown(http_clients->fd, SHUT_RDWR);
-#endif
 			close(http_clients->fd);
+#endif
 		}
 
 		struct uv_custom_poll_t *custom_poll_data = http_clients->data;
@@ -330,7 +330,7 @@ static void append_to_header(char **header, char *data, ...) {
 	if(*header != NULL) {
 		pos = strlen(*header);
 	}
-	va_copy(apcpy, ap);
+	// va_copy(apcpy, ap);
 	va_start(apcpy, data);
 #ifdef _WIN32
 	bytes = _vscprintf(data, apcpy);
@@ -421,7 +421,8 @@ static void close_cb(uv_handle_t *handle) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	FREE(handle);
 }
@@ -430,7 +431,8 @@ static void http_client_close(uv_poll_t *req) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct request_t *request = custom_poll_data->data;
@@ -443,10 +445,11 @@ static void http_client_close(uv_poll_t *req) {
 	if(fd > -1) {
 #ifdef _WIN32
 		shutdown(fd, SD_BOTH);
+		closesocket(fd);
 #else
 		shutdown(fd, SHUT_RDWR);
-#endif
 		close(fd);
+#endif
 	}
 
 	http_client_remove(req);
@@ -475,7 +478,8 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct request_t *request = custom_poll_data->data;
@@ -593,7 +597,8 @@ static void write_cb(uv_poll_t *req) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct request_t *request = custom_poll_data->data;
@@ -662,6 +667,7 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 
 	if(prepare_request(&request, type, url, conttype, post, callback, userdata) == 0) {
 		r = host2ip(request->host, p);
+		
 		if(r != 0) {
 			logprintf(LOG_ERR, "host2ip");
 			goto freeuv;
@@ -672,7 +678,6 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 			logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
 			goto freeuv;
 		}
-
 		/*
 		 * Partly bypass libuv in case of ssl connections
 		 */
@@ -720,7 +725,7 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 
 		http_client_add(poll_req, custom_poll_data);
 		request->steps = STEP_WRITE;
-		uv_custom_write(poll_req);
+		uv_custom_write(poll_req);		
 	}
 
 	return NULL;
@@ -731,7 +736,11 @@ freeuv:
 	FREE(request);
 
 	if(sockfd > 0) {
+#ifdef _WIN32
+		closesocket(sockfd);
+#else
 		close(sockfd);
+#endif
 	}
 	return NULL;
 }

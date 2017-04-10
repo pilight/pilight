@@ -28,29 +28,55 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	file(GLOB ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/*.c")
 	file(GLOB ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/*.h")
 
-	set(${PROJECT_NAME}_files 
-		${pilight_protocols_433.92_files}
-		${pilight_protocols_ir_files}
-		${pilight_protocols_api_files}
-		${pilight_protocols_zwave_files}
-		${pilight_protocols_generic_files}
-		${pilight_protocols_network_files}
-		${pilight_protocols_gpio_files}
-		${pilight_protocols_core_files}
-		${${PROJECT_NAME}_sources}
-		${${PROJECT_NAME}_headers}
-	CACHE INTERNAL "")
+	if(WIN32)
+		set(${PROJECT_NAME}_files 
+			${pilight_protocols_433.92_files}
+			${pilight_protocols_api_files}
+			${pilight_protocols_zwave_files}
+			${pilight_protocols_generic_files}
+			${pilight_protocols_network_files}
+			${pilight_protocols_gpio_files}
+			${pilight_protocols_core_files}
+			${${PROJECT_NAME}_sources}
+			${${PROJECT_NAME}_headers}
+		CACHE INTERNAL "")
+	else()
+		set(${PROJECT_NAME}_files 
+			${pilight_protocols_433.92_files}
+			${pilight_protocols_ir_files}
+			${pilight_protocols_api_files}
+			${pilight_protocols_zwave_files}
+			${pilight_protocols_generic_files}
+			${pilight_protocols_network_files}
+			${pilight_protocols_gpio_files}
+			${pilight_protocols_core_files}
+			${${PROJECT_NAME}_sources}
+			${${PROJECT_NAME}_headers}
+		CACHE INTERNAL "")
+	endif()
 else()
-	set(${PROJECT_NAME}_files 
-		${pilight_protocols_433.92_files}
-		${pilight_protocols_ir_files}
-		${pilight_protocols_api_files}
-		${pilight_protocols_zwave_files}
-		${pilight_protocols_generic_files}
-		${pilight_protocols_network_files}
-		${pilight_protocols_gpio_files}
-		${pilight_protocols_core_files}
-	)	
+	if(WIN32)
+		set(${PROJECT_NAME}_files 
+			${pilight_protocols_433.92_files}
+			${pilight_protocols_api_files}
+			${pilight_protocols_zwave_files}
+			${pilight_protocols_generic_files}
+			${pilight_protocols_network_files}
+			${pilight_protocols_gpio_files}
+			${pilight_protocols_core_files}
+		)
+	else()
+		set(${PROJECT_NAME}_files 
+			${pilight_protocols_433.92_files}
+			${pilight_protocols_ir_files}
+			${pilight_protocols_api_files}
+			${pilight_protocols_zwave_files}
+			${pilight_protocols_generic_files}
+			${pilight_protocols_network_files}
+			${pilight_protocols_gpio_files}
+			${pilight_protocols_core_files}
+		)
+	endif()
 
 	foreach(file ${${PROJECT_NAME}_files})
 		get_filename_component(name ${file} NAME_WE)

@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 #ifdef _WIN32
 	#if _WIN32_WINNT < 0x0501
 		#undef _WIN32_WINNT
@@ -181,6 +182,13 @@ unsigned int explode(char *str, const char *delimiter, char ***output) {
 }
 
 #ifdef _WIN32
+void usleep(unsigned long value) {
+	struct timeval tv;
+	tv.tv_sec = value / 1000000;
+	tv.tv_usec = value % 1000000;
+	select(0, NULL, NULL, NULL, &tv);
+}
+
 int gettimeofday(struct timeval *tp, struct timezone *tzp) {
 	// Note: some broken versions only have 8 trailing zero's, the correct epoch has 9 trailing zero's
 	static const uint64_t EPOCH = ((uint64_t) 116444736000000000ULL);
@@ -1043,9 +1051,8 @@ int str_replace(char *search, char *replace, char **str) {
 }
 
 int stricmp(char const *a, char const *b) {
-	if(a == NULL || b == NULL) {
-		return -1;
-	}
+	assert(a != NULL && b != NULL);
+
 	for(;; a++, b++) {
 		int d = tolower(*a) - tolower(*b);
 		if(d != 0 || !*a) {

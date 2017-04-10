@@ -8,21 +8,21 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <dirent.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 #ifndef __USE_XOPEN
 	#define __USE_XOPEN
 #endif
 #include <time.h>
 #include <math.h>
+#ifndef _WIN32
+	#include <unistd.h>
+	#include <sys/time.h>
+#endif
 
-#include "../../core/threadpool.h"
 #include "../../core/pilight.h"
 #include "../../core/common.h"
 #include "../../core/ntp.h"
@@ -141,10 +141,10 @@ static void *thread(void *param) {
 	} else {
 		t = time(NULL);
 	}
-	/*
-	 * FIXME
-	 */	
-	// t -= getntpdiff();
+
+	if(isntpsynced() == 0) {
+		t -= getntpdiff();
+	}
 
 	if(localtime_l(t, &tm, settings->tz) == 0) {
 		int year = tm.tm_year+1900;

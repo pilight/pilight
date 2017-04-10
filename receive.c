@@ -9,13 +9,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
-#ifdef _WIN32
-	#include <conio.h>
-	#include <pthread.h>
-#else
+#ifndef _WIN32
+	#include <unistd.h>
 	#include <sys/socket.h>
 #endif
 #include <sys/types.h>
@@ -111,18 +108,26 @@ static void on_read(int fd, char *buf, ssize_t len, char **buf1, ssize_t *len1) 
 				int n = explode(*buf1, "\n", &array), i = 0;
 				for(i=0;i<n;i++) {
 					struct JsonNode *json = json_decode(array[i]);
-					char *out = json_stringify(json, "\t");
-					printf("%s\n", out);
-					json_delete(json);
-					json_free(out);
+					if(json != NULL) {
+						char *out = json_stringify(json, "\t");
+						printf("%s\n", out);
+						json_delete(json);
+						json_free(out);
+					} else {
+						logprintf(LOG_ERR, "invalid JSON received: %s", buf);
+					}
 				}
 				array_free(&array, n);
 			} else {
 				struct JsonNode *json = json_decode(*buf1);
-				char *out = json_stringify(json, "\t");
-				printf("%s\n", out);
-				json_delete(json);
-				json_free(out);
+				if(json != NULL) {
+					char *out = json_stringify(json, "\t");
+					printf("%s\n", out);
+					json_delete(json);
+					json_free(out);
+				} else {
+					logprintf(LOG_ERR, "invalid JSON received: %s", buf);
+				}
 			}
 			FREE(*buf1);
 			*len1 = 0;
@@ -283,7 +288,8 @@ static void main_loop(int onclose) {
 }
 
 int main(int argc, char **argv) {
-	pth_main_id = pthread_self();
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	memcpy((void *)&pth_main_id, &pth_cur_id, sizeof(uv_thread_t));
 
 	log_init();
 	log_shell_enable();

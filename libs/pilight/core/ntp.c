@@ -41,9 +41,9 @@
 
 #include "../../libuv/uv.h"
 #include "network.h"
+#include "ntp.h"
 #include "socket.h"
 #include "pilight.h"
-#include "threadpool.h"
 #include "eventpool.h"
 #include "common.h"
 #include "log.h"
@@ -78,11 +78,19 @@ typedef struct data_t {
 	uv_timer_t *timer;
 } data_t;
 
+static int nr = 0;
+static int started = 0;
+static int synced = 1;
+static int init = 0;
+static int diff = 0;
+static uv_timer_t *timer_req = NULL;
+
 static void close_cb(uv_handle_t *handle) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	FREE(handle);
 }
@@ -91,11 +99,14 @@ static void ntp_timeout(uv_timer_t *param) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	struct data_t *data = param->data;
 	void (*callback)(int, time_t) = data->callback;
-	callback(-1, 0);
+	if(callback != NULL) {
+		callback(-1, 0);
+	}
 
 	if(!uv_is_closing((uv_handle_t *)param)) {
 		uv_close((uv_handle_t *)param, close_cb);
@@ -106,13 +117,21 @@ static void ntp_timeout(uv_timer_t *param) {
 	if(data != NULL) {
 		FREE(data);
 	}
+
+	logprintf(LOG_INFO, "could not sync with ntp server: %s", ntp_servers.server[nr].host);
+}
+
+static void restart(uv_timer_t *req) {
+	nr = 0;
+	ntpsync();
 }
 
 static void on_read(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const struct sockaddr *addr, unsigned int port) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	struct pkt msg;	
 	struct data_t *data = stream->data;
@@ -126,7 +145,15 @@ static void on_read(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const st
 			(msg.rec).Ul_f.Xl_f = (int)ntohl((unsigned int)(msg.rec).Ul_f.Xl_f);
 
 			unsigned int adj = 2208988800u;
-			callback(0, (time_t)(msg.rec.Ul_i.Xl_ui - adj));
+			unsigned long ntptime = (time_t)(msg.rec.Ul_i.Xl_ui - adj);
+			diff = (int)(time(NULL) - ntptime);
+
+			synced = 0;
+			if(callback != NULL) {
+				callback(0, (time_t)(msg.rec.Ul_i.Xl_ui - adj));
+			}
+			logprintf(LOG_INFO, "time offset found of %d seconds", diff);
+			uv_timer_start(timer_req, restart, 86400*1000, 0);
 
 			if(!uv_is_closing((uv_handle_t *)stream)) {
 				uv_close((uv_handle_t *)stream, close_cb);
@@ -139,6 +166,7 @@ static void on_read(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const st
 			}
 		}
 		free(buf->base);
+		return;
 	}
 }
 
@@ -146,7 +174,8 @@ static void alloc(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	buf->len = len;
 	buf->base = malloc(len);
@@ -157,20 +186,30 @@ static void on_send(uv_udp_send_t *req, int status) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	FREE(req);
 }
 
-int ntpsync(char *server, void (*callback)(int, time_t)) {
+static void loop(uv_timer_t *req) {
 	/*
 	 * Make sure we are called from the main thread
 	 */
-	if(pthread_equal(pth_main_id, pthread_self()) == 0) {
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	if(uv_thread_equal(&pth_main_id, &pth_cur_id) == 0) {
 		logprintf(LOG_ERR, "ntpsync can only be started from the main thread");
-		return -1;
+		return;
 	}
 
+	if(init == 0) {
+		if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+			OUT_OF_MEMORY
+		}
+		uv_timer_init(uv_default_loop(), timer_req);
+		init = 1;
+	}
+	
 	struct sockaddr_in addr;
 	struct data_t *data = NULL;
 	uv_udp_t *client_req = NULL;
@@ -189,16 +228,16 @@ int ntpsync(char *server, void (*callback)(int, time_t)) {
 	}
 #endif
 
-	r = host2ip(server, p);
+	r = host2ip(ntp_servers.server[nr].host, p);
 	if(r != 0) {
 		logprintf(LOG_ERR, "host2ip");
-		return -1;
+		return;
 	}
 
-	r = uv_ip4_addr(ip, 123, &addr);
+	r = uv_ip4_addr(ip, ntp_servers.server[nr].port, &addr);
 	if(r != 0) {
 		logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
-		return -1;
+		return;
 	}
 	if((client_req = MALLOC(sizeof(uv_udp_t))) == NULL) {
 		OUT_OF_MEMORY
@@ -208,7 +247,7 @@ int ntpsync(char *server, void (*callback)(int, time_t)) {
 	if(r != 0) {
 		logprintf(LOG_ERR, "uv_udp_init: %s", uv_strerror(r));
 		FREE(client_req);
-		return -1;
+		return;
 	}
 
 	if((send_req = MALLOC(sizeof(uv_udp_send_t))) == NULL) {
@@ -224,7 +263,7 @@ int ntpsync(char *server, void (*callback)(int, time_t)) {
 	}
 
 	memset(data, 0, sizeof(struct data_t));
-	data->callback = callback;
+	data->callback = ntp_servers.callback;
 	data->stream = client_req;
 	data->timer = timeout_req;
 
@@ -242,7 +281,7 @@ int ntpsync(char *server, void (*callback)(int, time_t)) {
 		logprintf(LOG_ERR, "uv_udp_send: %s", uv_strerror(r));
 		FREE(send_req);
 		FREE(client_req);
-		return -1;
+		return;
 	}
 
 	timeout_req->data = data;
@@ -255,9 +294,33 @@ int ntpsync(char *server, void (*callback)(int, time_t)) {
 		logprintf(LOG_ERR, "uv_udp_recv_start: %s", uv_strerror(r));
 		FREE(send_req);
 		FREE(client_req);
-		return -1;
+		return;
 	}
-	logprintf(LOG_DEBUG, "syncing with ntp-server %s", server);
+	logprintf(LOG_DEBUG, "syncing with ntp-server %s", ntp_servers.server[nr].host);
 
-	return 0;
+	if(nr+1 < ntp_servers.nrservers) {
+		uv_timer_start(timer_req, loop, 1.5*1000, 0);
+		nr++;
+	} else {
+		nr = 0;
+		uv_timer_start(timer_req, loop, 10*1000, 0);
+	}
+
+	return;
+}
+
+void ntpsync(void) {
+	if(started == 1) {
+		return;
+	}
+	started = 1;
+	loop(NULL);
+}
+	
+int getntpdiff(void) {
+	return diff;
+}
+
+int isntpsynced(void) {
+	return synced;
 }

@@ -7,20 +7,18 @@
 */
 
 #include <errno.h>
-#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
-#include <pthread.h>
-#include <sys/time.h>
 
 #ifdef _WIN32
 	#define STRICT
 	#define WIN32_LEAN_AND_MEAN
 	#include <windows.h>
 #else
+	#include <sys/time.h>
+	#include <unistd.h>
 	#include <termios.h>
 #endif
 
@@ -31,7 +29,6 @@
 #include "../core/log.h"
 #include "../core/dso.h"
 #include "../core/firmware.h"
-#include "../core/threadpool.h"
 #include "../protocols/protocol.h"
 #include "433nano.h"
 
@@ -52,6 +49,14 @@ typedef struct data1_t {
 	char buf[BUFFER_SIZE];
 } data1_t;
 
+static struct data1_t data1;
+
+typedef struct data2_t {
+	char message[1025];
+	char uuid[UUID_LENGTH+1];
+	int fd;
+} data2_t;
+
 typedef struct timestamp_t {
 	struct timespec first;
 	struct timespec second;
@@ -61,12 +66,23 @@ static struct timestamp_t timestamp;
 
 static uv_timer_t *timer_req = NULL;
 static char com[255];
-static int dopause = 0;
 static int dowrite = 0;
 static int dostop = 0;
 
 static void *reason_received_pulsetrain_free(void *param) {
 	struct reason_received_pulsetrain_t *data = param;
+	FREE(data);
+	return NULL;
+}
+
+static void *reason_send_code_fail_free(void *param) {
+	struct reason_send_code_fail_t *data = param;
+	FREE(data);
+	return NULL;
+}
+
+static void *reason_send_code_success_free(void *param) {
+	struct reason_send_code_success_free *data = param;
 	FREE(data);
 	return NULL;
 }
@@ -106,11 +122,29 @@ static int serial_interface_attribs(int fd, speed_t speed, tcflag_t parity) {
 }
 #endif
 
-static void on_write(uv_fs_t *req) {
+static void on_write_init(uv_fs_t *req) {
 	if(req->result < 0) {
 		logprintf(LOG_ERR, "write error: %s", uv_strerror((int)req->result));
 	}
 	uv_fs_req_cleanup(req);
+	FREE(req);
+}
+
+static void on_write_code(uv_fs_t *req) {
+	struct data2_t *data = req->data;
+	if(req->result < 0) {
+		struct reason_code_sent_fail_t *data1 = MALLOC(sizeof(struct reason_code_sent_fail_t));
+		strcpy(data1->message, data->message);
+		strcpy(data1->uuid, data->uuid);
+		eventpool_trigger(REASON_CODE_SEND_FAIL, reason_send_code_fail_free, data1);
+	} else {
+		struct reason_code_sent_success_t *data1 = MALLOC(sizeof(struct reason_code_sent_success_t));
+		strcpy(data1->message, data->message);
+		strcpy(data1->uuid, data->uuid);
+		eventpool_trigger(REASON_CODE_SEND_SUCCESS, reason_send_code_success_free, data1);
+	}
+	uv_fs_req_cleanup(req);
+	FREE(data);
 	FREE(req);
 }
 
@@ -197,8 +231,36 @@ static void reconnect(uv_timer_t *timer_req) {
 	nano433->init();
 }
 
+#ifdef _WIN32
+/* http://stackoverflow.com/a/38212960 */
+#define CLOCK_MONOTONIC 0
+#define BILLION (1E9)
+static BOOL g_first_time = 1;
+static LARGE_INTEGER g_counts_per_sec;
+
+int clock_gettime(int dummy, struct timespec *ct) {
+	LARGE_INTEGER count;
+
+	if(g_first_time) {
+		g_first_time = 0;
+
+		if(0 == QueryPerformanceFrequency(&g_counts_per_sec)) {
+			g_counts_per_sec.QuadPart = 0;
+		}
+	}
+
+	if((NULL == ct) || (g_counts_per_sec.QuadPart <= 0) || (0 == QueryPerformanceCounter(&count))) {
+		return -1;
+	}
+
+	ct->tv_sec = count.QuadPart / g_counts_per_sec.QuadPart;
+	ct->tv_nsec = ((count.QuadPart % g_counts_per_sec.QuadPart) * BILLION) / g_counts_per_sec.QuadPart;
+
+	return 0;
+}
+#endif
+
 static void on_read(uv_fs_t *req) {
-	struct data1_t *data = req->data;
 	unsigned int len = req->result, pos = 0;
 	char *p = NULL;
 	if(len < 0) {
@@ -214,39 +276,37 @@ static void on_read(uv_fs_t *req) {
 		}
 		if(len > 0) {
 			if(dowrite == 0) {
-				if(data->rbuf[0] == 10) {
+				if(data1.rbuf[0] == 10) {
 					dowrite = 1;
 				}
 			}
-			if(data->rbuf[0] != 10) {
-				while((pos++ < len) && (data->rbuf[pos] == '\n'));
+			if(data1.rbuf[0] != 10) {
+				while((pos++ < len) && (data1.rbuf[pos] == '\n'));
 				pos--;
-				memcpy(&data->buf[data->ptr], &data->rbuf[pos], len-pos);
-				if((p = strstr(data->rbuf, "@")) != NULL) {
-					data->ptr += (p-data->rbuf);
-					data->buf[++data->ptr] = '\0';
+				memcpy(&data1.buf[data1.ptr], &data1.rbuf[pos], len-pos);
+				if((p = strstr(data1.rbuf, "@")) != NULL) {
+					data1.ptr += (p-data1.rbuf);
+					data1.buf[++data1.ptr] = '\0';
 
-					if(dopause == 0) {
-						parse_code(data->buf, data->ptr);
-					}
+					parse_code(data1.buf, data1.ptr);
 
-					data->ptr = 0;
-					memset(data->buf, 0, BUFFER_SIZE);
+					data1.ptr = 0;
+					memset(data1.buf, 0, BUFFER_SIZE);
 				} else {
-					data->ptr += len;
+					data1.ptr += len;
 				}
 			}
 
 			if(dowrite == 1) {
 				dowrite = 2;
 
-				memset(&data->wbuf, 0, BUFFER_SIZE);
+				memset(&data1.wbuf, 0, BUFFER_SIZE);
 				uv_fs_t *write_req = NULL;
 				if((write_req = MALLOC(sizeof(uv_fs_t))) == NULL) {
 					OUT_OF_MEMORY
 				}
 
-				uv_buf_t wbuf = uv_buf_init(data->wbuf, BUFFER_SIZE);
+				uv_buf_t wbuf = uv_buf_init(data1.wbuf, BUFFER_SIZE);
 
 				struct protocols_t *tmp = protocols;
 				while(tmp) {
@@ -269,25 +329,24 @@ static void on_read(uv_fs_t *req) {
 
 				wbuf.len = snprintf(wbuf.base, MAXPULSESTREAMLENGTH, "s:%d,%d,%d,%d@", nano433->minrawlen, nano433->maxrawlen, nano433->mingaplen, nano433->maxgaplen);
 
-				uv_fs_write(uv_default_loop(), write_req, data->fd, &wbuf, 1, -1, on_write);
+				uv_fs_write(uv_default_loop(), write_req, data1.fd, &wbuf, 1, -1, on_write_init);
 			}
 		}
 
-		memset(&data->rbuf, 0, BUFFER_SIZE);
-		uv_buf_t rbuf = uv_buf_init(data->rbuf, BUFFER_SIZE);
+		memset(&data1.rbuf, 0, BUFFER_SIZE);
+		uv_buf_t rbuf = uv_buf_init(data1.rbuf, BUFFER_SIZE);
 		if(dostop == 0) {
-			uv_fs_read(uv_default_loop(), req, data->fd, &rbuf, 1, -1, on_read);
+			uv_fs_read(uv_default_loop(), req, data1.fd, &rbuf, 1, -1, on_read);
 		} else {
 			uv_fs_t *close_req = NULL;
 			if((close_req = MALLOC(sizeof(uv_fs_t))) == NULL) {
 				OUT_OF_MEMORY
 			}
-			uv_fs_close(uv_default_loop(), close_req, data->fd, NULL);
+			uv_fs_close(uv_default_loop(), close_req, data1.fd, NULL);
 			uv_fs_req_cleanup(req);
 			uv_fs_req_cleanup(close_req);
 			FREE(req);
 			FREE(close_req);
-			FREE(data);
 		}
 	}
 }
@@ -354,19 +413,11 @@ static void open_cb(uv_fs_t *req) {
 			OUT_OF_MEMORY
 		}
 
-		struct data1_t *data = NULL;
-		if((data = MALLOC(sizeof(struct data1_t))) == NULL) {
-			OUT_OF_MEMORY
-		}
+		memset(&data1, 0, sizeof(struct data1_t));
+		data1.fd = fd;
+		data1.ptr = 0;
 
-		memset(&data->rbuf, 0, BUFFER_SIZE);
-		memset(&data->wbuf, 0, BUFFER_SIZE);
-		memset(&data->buf, 0, BUFFER_SIZE);
-		data->fd = fd;
-		data->ptr = 0;
-		read_req->data = data;
-
-		uv_buf_t buf = uv_buf_init(data->rbuf, BUFFER_SIZE);
+		uv_buf_t buf = uv_buf_init(data1.rbuf, BUFFER_SIZE);
 
 		uv_fs_read(uv_default_loop(), read_req, fd, &buf, 1, -1, on_read);
 		clock_gettime(CLOCK_MONOTONIC, &timestamp.second);
@@ -383,13 +434,101 @@ static void close_cb(uv_handle_t *handle) {
 
 static unsigned short int nano433HwDeinit(void) {
 	dostop = 1;
-	uv_timer_stop(timer_req);
-	uv_close((uv_handle_t *)timer_req, close_cb);
+	if(timer_req != NULL) {
+		uv_timer_stop(timer_req);
+		uv_close((uv_handle_t *)timer_req, close_cb);
+	}
+	return 0;
+}
+
+static void *nano433Send(int reason, void *param) {
+	struct reason_send_code_t *data = param;
+	int *code = data->pulses;
+	int rawlen = data->rawlen;
+	int repeats = data->txrpt;
+
+	unsigned int i = 0, x = 0, y = 0, len = 0, nrpulses = 0;
+	int pulses[10], match = 0;
+	char c[16], send[MAXPULSESTREAMLENGTH+1];
+
+	memset(send, 0, MAXPULSESTREAMLENGTH);
+	strncpy(&send[0], "c:", 2);
+	len += 2;
+
+	for(i=0;i<rawlen;i++) {
+		match = -1;
+		for(x=0;x<nrpulses;x++) {
+			if(pulses[x] == code[i]) {
+				match = (int)x;
+				break;
+			}
+		}
+		if(match == -1) {
+			pulses[nrpulses] = code[i];
+			match = (int)nrpulses;
+			nrpulses++;
+		}
+		if(match < 10) {
+			send[len++] = (char)(((int)'0')+match);
+		} else {
+			logprintf(LOG_ERR, "too many distinct pulses for pilight usb nano to send");
+			return NULL;
+		}
+	}
+
+	strncpy(&send[len], ";p:", 3);
+	len += 3;
+	for(i=0;i<nrpulses;i++) {
+		y = (unsigned int)snprintf(c, sizeof(c), "%d", pulses[i]);
+		strncpy(&send[len], c, y);
+		len += y;
+		if(i+1 < nrpulses) {
+			strncpy(&send[len++], ",", 1);
+		}
+	}
+	strncpy(&send[len], ";r:", 3);
+	len += 3;
+	y = (unsigned int)snprintf(c, sizeof(c), "%d", repeats);
+	strncpy(&send[len], c, y);
+	len += y;
+	strncpy(&send[len], "@", 3);
+	len += 3;
+
+	memset(&data1.wbuf, 0, BUFFER_SIZE);
+	uv_fs_t *write_req = NULL;
+	if((write_req = MALLOC(sizeof(uv_fs_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	uv_buf_t wbuf = uv_buf_init(data1.wbuf, BUFFER_SIZE);
+
+	strcpy(wbuf.base, send);
+	wbuf.len = len;
+
+	struct data2_t *data2 = MALLOC(sizeof(struct data2_t));
+	if(data2 == NULL) {
+		OUT_OF_MEMORY
+	}
+	strcpy(data2->message, data->message);
+	strcpy(data2->uuid, data->uuid);
+	write_req->data = data2;
+
+	uv_fs_write(uv_default_loop(), write_req, data1.fd, &wbuf, 1, -1, on_write_code);
+
 	return 0;
 }
 
 static unsigned short int nano433HwInit(void) {
 	logprintf(LOG_NOTICE, "initializing pilight usb nano");
+
+	if(timer_req == NULL) {
+		timer_req = MALLOC(sizeof(uv_timer_t));
+		if(timer_req == NULL) {
+			OUT_OF_MEMORY
+		}
+		uv_timer_init(uv_default_loop(), timer_req);
+		uv_timer_start(timer_req, reconnect, 1000, 1000);
+	}
 
 	dostop = 0;
 	dowrite = 0;
@@ -410,83 +549,9 @@ static unsigned short int nano433HwInit(void) {
 	uv_fs_open(uv_default_loop(), open_req, com, O_RDWR, 0, open_cb);
 #endif
 
+	eventpool_callback(REASON_SEND_CODE, nano433Send);
+
 	return EXIT_SUCCESS;
-}
-
-static int nano433Send(int *code, int rawlen, int repeats) {
-	// unsigned int i = 0, x = 0, y = 0, len = 0, nrpulses = 0;
-	// int pulses[10], match = 0;
-	// char c[16], send[MAXPULSESTREAMLENGTH+1];
-
-	// memset(send, 0, MAXPULSESTREAMLENGTH);
-	// strncpy(&send[0], "c:", 2);
-	// len += 2;
-
-	// for(i=0;i<rawlen;i++) {
-		// match = -1;
-		// for(x=0;x<nrpulses;x++) {
-			// if(pulses[x] == code[i]) {
-				// match = (int)x;
-				// break;
-			// }
-		// }
-		// if(match == -1) {
-			// pulses[nrpulses] = code[i];
-			// match = (int)nrpulses;
-			// nrpulses++;
-		// }
-		// if(match < 10) {
-			// send[len++] = (char)(((int)'0')+match);
-		// } else {
-			// logprintf(LOG_ERR, "too many distinct pulses for pilight usb nano to send");
-			// return EXIT_FAILURE;
-		// }
-	// }
-
-	// strncpy(&send[len], ";p:", 3);
-	// len += 3;
-	// for(i=0;i<nrpulses;i++) {
-		// y = (unsigned int)snprintf(c, sizeof(c), "%d", pulses[i]);
-		// strncpy(&send[len], c, y);
-		// len += y;
-		// if(i+1 < nrpulses) {
-			// strncpy(&send[len++], ",", 1);
-		// }
-	// }
-	// strncpy(&send[len], ";r:", 3);
-	// len += 3;
-	// y = (unsigned int)snprintf(c, sizeof(c), "%d", repeats);
-	// strncpy(&send[len], c, y);
-	// len += y;
-	// strncpy(&send[len], "@", 3);
-	// len += 3;
-
-	// eventpool_fd_write(fd, send, len);
-
-	// struct timeval tv;
-	// gettimeofday(&tv, NULL);
-	// timestamp.first = timestamp.second;
-	// timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
-
-	// if(((int)timestamp.second-(int)timestamp.first) < 1000000) {
-// #ifdef _WIN32
-		// SleepEx(1000, TRUE);
-// #else
-		// sleep(1);
-// #endif
-	// }
-
-	return 0;
-}
-
-static void *receiveStop(int reason, void *param) {
-	dopause = 1;
-	return NULL;
-}
-
-static void *receiveStart(int reason, void *param) {
-	dopause = 0;
-	return NULL;
 }
 
 static unsigned short nano433Settings(JsonNode *json) {
@@ -507,13 +572,6 @@ void nano433Init(void) {
 	hardware_register(&nano433);
 	hardware_set_id(nano433, "433nano");
 
-	timer_req = MALLOC(sizeof(uv_timer_t));
-	if(timer_req == NULL) {
-		OUT_OF_MEMORY
-	}
-	uv_timer_init(uv_default_loop(), timer_req);
-	uv_timer_start(timer_req, reconnect, 1000, 1000);
-
 	options_add(&nano433->options, 'p', "comport", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 
 	nano433->minrawlen = 1000;
@@ -525,11 +583,7 @@ void nano433Init(void) {
 	nano433->comtype=COMPLSTRAIN;
 	nano433->init=&nano433HwInit;
 	nano433->deinit=&nano433HwDeinit;
-	nano433->sendOOK=&nano433Send;
 	nano433->settings=&nano433Settings;
-
-	eventpool_callback(REASON_SEND_BEGIN, receiveStop);
-	eventpool_callback(REASON_SEND_END, receiveStart);
 }
 
 #if defined(MODULE) && !defined(_WIN32)

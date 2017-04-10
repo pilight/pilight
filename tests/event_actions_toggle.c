@@ -342,7 +342,7 @@ static void test_event_actions_toggle_run(CuTest *tc) {
 
 	gtc = tc;
 
-	eventpool_init(EVENTPOOL_THREADED);
+	eventpool_init(EVENTPOOL_NO_THREADS);
 	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
 
 	genericSwitchInit();
@@ -372,7 +372,7 @@ static void test_event_actions_toggle_run(CuTest *tc) {
 	int x = 0;
 	for(x=0;x<10;x++) {
 		uv_run(uv_default_loop(), UV_RUN_NOWAIT);
-		usleep(10);
+		usleep(100);
 	}
 
 	CuAssertIntEquals(tc, 0, action_toggle->run(obj));

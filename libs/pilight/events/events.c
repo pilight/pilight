@@ -31,7 +31,6 @@
 #include "../core/json.h"
 #include "../core/ssdp.h"
 #include "../core/socket.h"
-#include "../core/threadpool.h"
 
 #include "../protocols/protocol.h"
 #include "../storage/storage.h"
@@ -75,6 +74,9 @@ int events_gc(void) {
 	return 1;
 }
 
+/*
+ * TESTME: Check if right devices are chached.
+ */
 void event_cache_device(struct rules_t *obj, char *device) {
 	int exists = 0;
 	int o = 0;
@@ -100,42 +102,6 @@ void event_cache_device(struct rules_t *obj, char *device) {
 	}
 }
 
-// static int event_store_val_ptr(struct rules_t *obj, char *device, char *name, struct devices_settings_t *settings) {
-
-	// struct rules_values_t *tmp_values = obj->values;
-	// int match = 0;
-	// while(tmp_values) {
-		// if(strcmp(tmp_values->device, device) == 0 &&
-		   // strcmp(tmp_values->name, name) == 0) {
-				// match = 1;
-				// break;
-		// }
-		// tmp_values = tmp_values->next;
-	// }
-
-	// if(match == 0) {
-		// if((tmp_values = MALLOC(sizeof(rules_values_t))) == NULL) {
-			// OUT_OF_MEMORY
-		// }
-		// tmp_values->next = NULL;
-		// if((tmp_values->name = MALLOC(strlen(name)+1)) == NULL) {
-			// FREE(tmp_values);
-			// OUT_OF_MEMORY
-		// }
-		// strcpy(tmp_values->name, name);
-		// if((tmp_values->device = MALLOC(strlen(device)+1)) == NULL) {
-			// FREE(tmp_values->name);
-			// FREE(tmp_values);
-			// OUT_OF_MEMORY
-		// }
-		// strcpy(tmp_values->device, device);
-		// tmp_values->settings = settings;
-		// tmp_values->next = obj->values;
-		// obj->values = tmp_values;
-	// }
-	// return 0;
-// }
-
 /* This functions checks if the defined event variable
    is part of one of devices in the config. If it is,
    replace the variable with the actual value */
@@ -146,41 +112,31 @@ void event_cache_device(struct rules_t *obj, char *device) {
 	0: Found variable and filled varcont
 	1: Did not find variable and did not fill varcont
 */
-int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varcont_t *varcont, int *rtype, unsigned short validate, enum origin_t origin) {
+int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varcont, unsigned short validate, enum origin_t origin) {
 	int recvtype = 0;
-	int cached = 0;
+	// int cached = 0;
 	if(strcmp(true_, "1") != 0) {
 		strcpy(true_, "1");
 	}
 	if(strcmp(dot_, ".") != 0) {
 		strcpy(dot_, ".");
 	}
-	if(strcmp(false_, "1") != 0) {
-		strcpy(false_, "1");
+	if(strcmp(false_, "0") != 0) {
+		strcpy(false_, "0");
 	}
 	if(strcmp(var, "1") == 0 || strcmp(var, "0") == 0 ||
 		 strcmp(var, "true") == 0 ||
 		 strcmp(var, "false") == 0) {
-		if(type == JSON_NUMBER) {
-			if(strcmp(var, "true") == 0) {
-				varcont->number_ = 1;
-			} else if(strcmp(var, "false") == 0) {
-				varcont->number_ = 0;
-			} else {
-				varcont->number_ = atof(var);
-			}
-			varcont->decimals_ = 0;
-			*rtype = JSON_NUMBER;
-		} else if(type == JSON_STRING) {
-			if(strcmp(var, "true") == 0) {
-				varcont->string_ = true_;
-			} else if(strcmp(var, "false") == 0) {
-				varcont->string_ = false_;
-			} else {
-				varcont->string_ = var;
-			}
-			*rtype = JSON_STRING;
+		if(strcmp(var, "true") == 0) {
+			varcont->number_ = 1;
+		} else if(strcmp(var, "false") == 0) {
+			varcont->number_ = 0;
+		} else {
+			varcont->number_ = atof(var);
 		}
+		varcont->decimals_ = 0;
+		varcont->type_ = JSON_NUMBER;
+
 		return 0;
 	}
 
@@ -200,309 +156,188 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 		if(n < 2) {
 			varcont->string_ = dot_;
 			array_free(&array, n);
-			*rtype = JSON_STRING;
+			varcont->type_ = JSON_STRING;
 			return 0;
 		}
 
-		char *device = MALLOC(strlen(array[0])+1);
-		if(device == NULL) {
-			OUT_OF_MEMORY
-		}
-		strcpy(device, array[0]);
+		char *device = array[0];
+		char *name = array[1];
 
-		char *name = MALLOC(strlen(array[1])+1);
-		if(name == NULL) {
-			OUT_OF_MEMORY
+		recvtype = 0;
+		struct protocols_t *tmp_protocols = protocols;
+		if(devices_select(ORIGIN_MASTER, device, NULL) == 0) {
+			recvtype = 1;
 		}
-		strcpy(name, array[1]);
-
-		array_free(&array, n);
-
-		/* Check if the values are not already cached */
-		if(obj != NULL) {
-			/*
-			 * FIXME
-			 */
-			// struct rules_values_t *tmp_values = obj->values;
-			// while(tmp_values) {
-				// if(strcmp(tmp_values->device, device) == 0 &&
-					 // strcmp(tmp_values->name, name) == 0) {
-						// if(tmp_values->settings->values->type != type && (type != (JSON_NUMBER | JSON_STRING))) {
-							// if(type == JSON_STRING) {
-								// logprintf(LOG_ERR, "rule #%d invalid: trying to compare a integer variable \"%s.%s\" to a string", obj->nr, device, name);
-								// *rtype = -1;
-								// return -1;
-							// } else if(type == JSON_NUMBER) {
-								// logprintf(LOG_ERR, "rule #%d invalid: trying to compare a string variable \"%s.%s\" to an integer", obj->nr, device, name);
-								// *rtype = -1;
-								// return -1;
-							// }
-						// }
-						// if(tmp_values->settings->values->type == JSON_STRING) {
-							// varcont->string_ = tmp_values->settings->values->string_;
-							// *rtype = JSON_STRING;
-						// } else if(tmp_values->settings->values->type == JSON_NUMBER) {
-							// varcont->number_ = tmp_values->settings->values->number_;
-							// varcont->decimals_ = tmp_values->settings->values->decimals;
-							// *rtype = JSON_NUMBER;
-						// }
-						// cached = 1;
-						// return 0;
-				// }
-				// tmp_values = tmp_values->next;
-			// }
-		}
-		if(cached == 0) {
-			unsigned int match1 = 0, match2 = 0, match3 = 0, has_state = 0;
-			recvtype = 0;
-			struct protocols_t *tmp_protocols = protocols;
-			if(devices_select(ORIGIN_MASTER, device, NULL) == 0) {
-				recvtype = 1;
-			}
-			if(recvtype == 0) {
-				while(tmp_protocols) {
-					if(strcmp(tmp_protocols->listener->id, device) == 0) {
-						recvtype = 2;
-						break;
-					}
-					tmp_protocols = tmp_protocols->next;
+		if(recvtype == 0) {
+			while(tmp_protocols) {
+				if(strcmp(tmp_protocols->listener->id, device) == 0) {
+					recvtype = 2;
+					break;
 				}
+				tmp_protocols = tmp_protocols->next;
 			}
-			if(recvtype == 2) {
-				if(validate == 1) {
-					if(origin == ORIGIN_RULE) {
-						event_cache_device(obj, device);
+		}
+
+		unsigned int match1 = 0, match2 = 0, has_state = 0;
+
+		if(recvtype == 2) {
+			if(validate == 1) {
+				if(origin == ORIGIN_RULE) {
+					event_cache_device(obj, device);
+				}
+				if(strcmp(name, "repeats") != 0 && strcmp(name, "uuid") != 0) {
+					struct options_t *options = tmp_protocols->listener->options;
+					while(options) {
+						if(options->conftype == DEVICES_STATE) {
+							has_state = 1;
+						}
+						if(strcmp(options->name, name) == 0) {
+							match2 = 1;
+						}
+						options = options->next;
 					}
-					if(strcmp(name, "repeats") != 0 && strcmp(name, "uuid") != 0) {
-						struct options_t *options = tmp_protocols->listener->options;
-						while(options) {
-							if(options->conftype == DEVICES_STATE) {
-								has_state = 1;
-							}
-							if(strcmp(options->name, name) == 0) {
-								if(options->vartype != type) {
-									if(options->vartype == JSON_STRING) {
-										logprintf(LOG_ERR, "rule #%d invalid: trying to compare a string variable \"%s.%s\" to an integer", obj->nr, device, name);
-									} else {
-										logprintf(LOG_ERR, "rule #%d invalid: trying to compare an integer variable \"%s.%s\" to a string", obj->nr, device, name);
-									}
-									varcont->string_ = NULL;
-									varcont->number_ = 0;
-									varcont->decimals_ = 0;
-									*rtype = -1;
-									FREE(device);
-									FREE(name);
-									return -1;
-								}
-								match2 = 1;
-							}
-							options = options->next;
-						}
-						if(match2 == 0 && ((!(strcmp(name, "state") == 0 && has_state == 1)) || (strcmp(name, "state") != 0))) {
-							logprintf(LOG_ERR, "rule #%d invalid: protocol \"%s\" has no field \"%s\"", obj->nr, device, name);
-							varcont->string_ = NULL;
-							varcont->number_ = 0;
-							varcont->decimals_ = 0;
-							*rtype = -1;
-							FREE(device);
-							FREE(name);
-							return -1;
-						}
-					} else if(!(strcmp(name, "repeats") == 0 || strcmp(name, "uuid") == 0)) {
+					if(match2 == 0 && ((!(strcmp(name, "state") == 0 && has_state == 1)) || (strcmp(name, "state") != 0))) {
 						logprintf(LOG_ERR, "rule #%d invalid: protocol \"%s\" has no field \"%s\"", obj->nr, device, name);
 						varcont->string_ = NULL;
 						varcont->number_ = 0;
 						varcont->decimals_ = 0;
-						*rtype = -1;
-						FREE(device);
-						FREE(name);
+						array_free(&array, n);
 						return -1;
 					}
+				} else if(!(strcmp(name, "repeats") == 0 || strcmp(name, "uuid") == 0)) {
+					logprintf(LOG_ERR, "rule #%d invalid: protocol \"%s\" has no field \"%s\"", obj->nr, device, name);
+					varcont->string_ = NULL;
+					varcont->number_ = 0;
+					varcont->decimals_ = 0;
+					array_free(&array, n);
+					return -1;
 				}
-				struct JsonNode *jmessage = NULL, *jnode = NULL;
-				if(obj->jtrigger != NULL) {
-					if(((jnode = json_find_member(obj->jtrigger, name)) != NULL) ||
-					   ((jmessage = json_find_member(obj->jtrigger, "message")) != NULL &&
-						 (jnode = json_find_member(jmessage, name)) != NULL)) {
-						if(jnode->tag == JSON_STRING) {
-							varcont->string_ = jnode->string_;
-							*rtype = JSON_STRING;
-							FREE(device);
-							FREE(name);
-							return 0;
-						} else if(jnode->tag == JSON_NUMBER) {
-							varcont->number_ = jnode->number_;
-							varcont->decimals_ = jnode->decimals_;
-							*rtype = JSON_NUMBER;
-							FREE(device);
-							FREE(name);
-							return 0;
-						}
-					}
-				}
-				*rtype = -1;
-				FREE(device);
-				FREE(name);
-				return 1;				
-			} else if(recvtype == 1) {
-				if(validate == 1) {
-					if(origin == ORIGIN_RULE) {
-						event_cache_device(obj, device);
-					}
-					struct protocol_t *tmp = NULL;
-					i = 0;
-					while(devices_select_protocol(ORIGIN_MASTER, device, i++, &tmp) == 0) {
-						struct options_t *opt = tmp->options;
-						while(opt) {
-							if(opt->conftype == DEVICES_STATE && strcmp("state", name) == 0) {
-								match1 = 1;
-								match2 = 1;
-								match3 = 1;
-								break;
-							} else if(strcmp(opt->name, name) == 0) {
-								match1 = 1;
-								if(opt->vartype == (JSON_NUMBER | JSON_STRING)) {
-									break;
-								}
-								if(opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_STATE || opt->conftype == DEVICES_SETTING) {
-									match2 = 1;
-									if(type == (JSON_STRING | JSON_NUMBER)) {
-										match3 = 1;
-									} else if(opt->vartype == JSON_STRING && type == JSON_STRING) {
-										match3 = 1;
-									} else if(opt->vartype == JSON_NUMBER && type == JSON_NUMBER) {
-										match3 = 1;
-									}
-									break;
-								}
-							}
-							opt = opt->next;
-						}
-					}
-					if(match1 == 0) {
-						logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" has no variable \"%s\"", obj->nr, device, name);
-					} else if(match2 == 0) {
-						logprintf(LOG_ERR, "rule #%d invalid: variable \"%s\" of device \"%s\" cannot be used in event rules", obj->nr, name, device);
-					} else if(match3 == 0) {
-						logprintf(LOG_ERR, "rule #%d invalid: trying to compare a integer variable \"%s.%s\" to a string", obj->nr, device, name);
-					}
-					if(match1 == 0 || match2 == 0 || match3 == 0) {
-						varcont->string_ = NULL;
-						varcont->number_ = 0;
-						varcont->decimals_ = 0;
-						*rtype = -1;
-						FREE(device);
-						FREE(name);
-						return -1;
+			}
+			struct JsonNode *jmessage = NULL, *jnode = NULL;
+			if(obj->jtrigger != NULL) {
+				if(((jnode = json_find_member(obj->jtrigger, name)) != NULL) ||
+					 ((jmessage = json_find_member(obj->jtrigger, "message")) != NULL &&
+					 (jnode = json_find_member(jmessage, name)) != NULL)) {
+					if(jnode->tag == JSON_STRING) {
+						varcont->string_ = jnode->string_;
+						varcont->type_ = JSON_STRING;
+						array_free(&array, n);
+						return 0;
+					} else if(jnode->tag == JSON_NUMBER) {
+						varcont->number_ = jnode->number_;
+						varcont->decimals_ = jnode->decimals_;
+						varcont->type_ = JSON_NUMBER;
+						array_free(&array, n);
+						return 0;
 					}
 				}
-				char *setting = NULL;
-				struct varcont_t val;
-				// int match = 0;
+			}
+			array_free(&array, n);
+			return 1;
+		} else if(recvtype == 1) {
+			if(validate == 1) {
+				if(origin == ORIGIN_RULE) {
+					event_cache_device(obj, device);
+				}
+				struct protocol_t *tmp = NULL;
 				i = 0;
-
-				while(devices_select_settings(ORIGIN_MASTER, device, i++, &setting, &val) == 0) {
-					if(strcmp(setting, name) == 0) {
-						if(val.type_ == JSON_STRING) {
-							if(type == JSON_STRING || type == (JSON_NUMBER | JSON_STRING)) {
-								/* Cache values for faster future lookup */
-								// if(obj != NULL) {
-									// event_store_val_ptr(obj, device, name, tmp_settings);
-								// }
-								varcont->string_ = val.string_;
-								*rtype = JSON_STRING;
-								FREE(device);
-								FREE(name);
-								return 0;
-							} else {
-								logprintf(LOG_ERR, "rule #%d invalid: trying to compare integer variable \"%s.%s\" to a string", obj->nr, device, name);
-								varcont->string_ = NULL;
-								*rtype = -1;
-								FREE(device);
-								FREE(name);
-								return -1;
-							}
-						} else if(val.type_ == JSON_NUMBER) {
-							if(type == JSON_NUMBER || type == (JSON_NUMBER | JSON_STRING)) {
-								/* Cache values for faster future lookup */
-								// if(obj != NULL) {
-									// event_store_val_ptr(obj, device, name, tmp_settings);
-								// }
-								varcont->number_ = val.number_;
-								varcont->decimals_ = val.decimals_;
-								*rtype = JSON_NUMBER;
-								FREE(device);
-								FREE(name);
-								return 0;
-							} else {
-								logprintf(LOG_ERR, "rule #%d invalid: trying to compare string variable \"%s.%s\" to an integer", obj->nr, device, name);
-								varcont->number_ = 0;
-								varcont->decimals_ = 0;
-								*rtype = -1;
-								FREE(device);
-								FREE(name);
-								return -1;
+				while(devices_select_protocol(ORIGIN_MASTER, device, i++, &tmp) == 0) {
+					struct options_t *opt = tmp->options;
+					while(opt) {
+						if(opt->conftype == DEVICES_STATE && strcmp("state", name) == 0) {
+							match1 = 1;
+							match2 = 1;
+							break;
+						} else if(strcmp(opt->name, name) == 0) {
+							match1 = 1;
+							if(opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_STATE || opt->conftype == DEVICES_SETTING) {
+								match2 = 1;
+								break;
 							}
 						}
+						opt = opt->next;
 					}
 				}
-				logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" has no variable \"%s\"", obj->nr, device, name);
-				varcont->string_ = NULL;
-				varcont->number_ = 0;
-				varcont->decimals_ = 0;
-				*rtype = -1;
-				FREE(device);
-				FREE(name);
-				return -1;
-			} /*else {
-				logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" does not exist in the config", obj->nr, device);
-				varcont->string_ = NULL;
-				varcont->number_ = 0;
-				varcont->decimals_ = 0;
-				return -1;
-			}*/
+				if(match1 == 0) {
+					logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" has no variable \"%s\"", obj->nr, device, name);
+				} else if(match2 == 0) {
+					logprintf(LOG_ERR, "rule #%d invalid: variable \"%s\" of device \"%s\" cannot be used in event rules", obj->nr, name, device);
+				}
+				if(match1 == 0 || match2 == 0) {
+					varcont->string_ = NULL;
+					varcont->number_ = 0;
+					varcont->decimals_ = 0;
+					array_free(&array, n);
+					return -1;
+				}
+			}
+			char *setting = NULL;
+			struct varcont_t val;
+			i = 0;
+
+			while(devices_select_settings(ORIGIN_MASTER, device, i++, &setting, &val) == 0) {
+				if(strcmp(setting, name) == 0) {
+					if(val.type_ == JSON_STRING) {
+						/* Cache values for faster future lookup */
+						// if(obj != NULL) {
+							// event_store_val_ptr(obj, device, name, tmp_settings);
+						// }
+						varcont->string_ = val.string_;
+						varcont->type_ = JSON_STRING;
+						array_free(&array, n);
+						return 0;
+					} else if(val.type_ == JSON_NUMBER) {
+						/* Cache values for faster future lookup */
+						// if(obj != NULL) {
+							// event_store_val_ptr(obj, device, name, tmp_settings);
+						// }
+						varcont->number_ = val.number_;
+						varcont->decimals_ = val.decimals_;
+						varcont->type_ = JSON_NUMBER;
+						array_free(&array, n);
+						return 0;
+					}
+				}
+			}
+			logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" has no variable \"%s\"", obj->nr, device, name);
+			varcont->string_ = NULL;
+			varcont->number_ = 0;
+			varcont->decimals_ = 0;
+			array_free(&array, n);
+			return -1;
 		}
-		FREE(device);
-		FREE(name);
-	}/* else if(nrdots > 2) {
+		/*
+		 * '21.00' comparison should be allowed and not be seen as config device
+		 */
+		/*else {
+			logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" does not exist in the config", obj->nr, device);
+			varcont->string_ = NULL;
+			varcont->number_ = 0;
+			varcont->decimals_ = 0;
+			array_free(&array, n);
+			return -1;
+		}*/
+		array_free(&array, n);
+	} else if(nrdots > 2) {
 		logprintf(LOG_ERR, "rule #%d invalid: variable \"%s\" is invalid", obj->nr, var);
 		varcont->string_ = NULL;
 		varcont->number_ = 0;
 		varcont->decimals_ = 0;
 		return -1;
-	} */
+	}
 
-	if(type == JSON_STRING) {
-		if(isNumeric(var) == 0) {
-			varcont->string_ = NULL;
-			logprintf(LOG_ERR, "rule #%d invalid: trying to compare integer variable \"%s\" to a string", obj->nr, var);
-			*rtype = -1;
-			return -1;
-		} else {
-			varcont->string_ = var;
-			*rtype = JSON_STRING;
-		}
-	} else if(type == JSON_NUMBER) {
-		if(isNumeric(var) == 0) {
-			varcont->number_ = atof(var);
-			varcont->decimals_ = nrDecimals(var);
-			*rtype = JSON_NUMBER;
-		} else {
-			logprintf(LOG_ERR, "rule #%d invalid: trying to compare string variable \"%s\" to an integer", obj->nr, var);
-			varcont->number_ = 0;
-			varcont->decimals_ = 0;
-			*rtype = -1;
-			return -1;
-		}
-	} else if(type == (JSON_STRING | JSON_NUMBER)) {
-		*rtype = -1;
-		return 1;
+	if(isNumeric(var) == 0) {
+		varcont->number_ = atof(var);
+		varcont->decimals_ = nrDecimals(var);
+		varcont->type_ = JSON_NUMBER;
+	} else {
+		varcont->string_ = var;
+		varcont->type_ = JSON_STRING;
 	}
 	return 0;				
 }
 
 static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsigned short validate) {
-
 	int hooks = 0, res = 0;
 	unsigned long buflen = MEMBUFFER, len = 0, i = 0;
 	char *subrule = MALLOC(buflen);
@@ -533,12 +368,16 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 			if(len > 0) {
 				unsigned long z = 1;
 				char *replace = MALLOC(len+3);
+				if(replace == NULL) {
+					OUT_OF_MEMORY
+				}
 
 				subrule[len-1] = '\0';
 
 				sprintf(replace, "(%s)", subrule);
 				replace[len+2] = '\0';
-				/* If successful, the variable subrule will be
+
+				/* If successfull, the variable subrule will be
 				   replaced with the outcome of the formula */
 				if((res = event_parse_rule(subrule, obj, depth, validate)) > -1) {
 					z = strlen(subrule);
@@ -571,9 +410,7 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 	return 0;
 }
 
-
 static int event_remove_hooks(char **rule, struct rules_t *obj, int depth) {
-
 	int hooks = 0;
 	char *tmp = *rule;
 	unsigned long len = strlen(tmp), i = 0;
@@ -600,13 +437,14 @@ static int event_remove_hooks(char **rule, struct rules_t *obj, int depth) {
 static int event_parse_function(char **rule, struct rules_t *obj, unsigned short validate, enum origin_t origin) {
 	struct JsonNode *arguments = NULL;
 	struct event_functions_t *tmp_function = event_functions;
+	struct varcont_t v;
 	char *tmp = *rule, *ca = NULL;
 	char *ohook = strstr(tmp, "("), *chook = strstr(tmp, ")");
 	char *subfunction = NULL, *function = NULL, *name = NULL, *output = NULL;
 	size_t pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0, pos5 = 0;
 	unsigned long buflen = MEMBUFFER;
 	int	error = 0, i = 0, fl = 0, nl = 0;
-	int hooks = 0, len = 0, nested = 0;
+	int hooks = 0, len = 0, nested = 0, ret = 0, has_quote[2] = {0}, had_quote = 0;
 
 	if(ohook == NULL && chook == NULL) {
 		return 1;
@@ -659,7 +497,9 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 				subfunction[len++] = tmp[i+1];
 				if(buflen <= len) {
 					buflen *= 2;
-					subfunction = REALLOC(subfunction, buflen);
+					if((subfunction = REALLOC(subfunction, buflen)) == NULL) {
+						OUT_OF_MEMORY
+					}
 					memset(&subfunction[len], '\0', buflen-(unsigned long)len);
 				}
 			} else {
@@ -734,26 +574,105 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 	arguments = json_mkarray();
 	pos4 = pos3+1;
 	for(i=pos3+1;i<(pos3+(fl-nl));i++) {
+		if(tmp[i] == '\'') {
+			has_quote[0] ^= 1;
+			had_quote = 1;
+		}
+		if(tmp[i] == '"') {
+			has_quote[1] ^= 1;
+			had_quote = 1;
+		}
+		if(has_quote[0] == 1 || has_quote[1] == 1) {
+			continue;
+		}
 		if(tmp[i] == ',') {
 			while(tmp[i] == ' ') {
 				i++;
 			}
-			tmp[i] = '\0';
-			json_append_element(arguments, json_mkstring(&tmp[pos4]));
-			tmp[i] = ',';
+			tmp[i-had_quote] = '\0';
+			ret = event_lookup_variable(&tmp[pos4+had_quote], obj, &v, validate, origin);
+			if(ret == 0) {
+				if(v.type_ == JSON_STRING) {
+					json_append_element(arguments, json_mkstring(v.string_));
+				}
+				if(v.type_ == JSON_NUMBER) {
+					json_append_element(arguments, json_mknumber(v.number_, v.decimals_));
+				}
+			} else {
+				json_append_element(arguments, json_mkstring(&tmp[pos4+had_quote]));
+			}
+			if(had_quote == 1) {
+				tmp[i-had_quote] = '\'';
+			} else {
+				tmp[i] = ',';
+			}
 			i++;
 			while(tmp[i] == ' ') {
 				i++;
 			}
 			pos4 = i;
+			if(tmp[i] == '\'' || tmp[i] == '"' || had_quote == 1) {
+				i -= 1;
+			}
+			had_quote = 0;
 		}
 	}
+	has_quote[0] = 0;
+	has_quote[1] = 0;
+	had_quote = 0;
+	if(strstr(&tmp[pos4], "'") != NULL) {
+		while(tmp[pos4++] != '\'');
+		if(tmp[pos4-1] == '\'') {
+			has_quote[0] = 1;
+			had_quote = 1;
+		}
+	}
+	if(strstr(&tmp[pos4], "'") != NULL && has_quote[0] == 1) {
+		while(tmp[(i--)-1] != '\'');
+		i++;
+		has_quote[0] = 0;
+	}
+	if(had_quote == 0) {
+		if(strstr(&tmp[pos4], "\"") != NULL) {
+			while(tmp[pos4++] != '"');
+			if(tmp[pos4-1] == '"') {
+				has_quote[1] = 1;
+				had_quote = 1;
+			}
+		}
+		if(strstr(&tmp[pos4], "\"") != NULL && has_quote[1] == 1) {
+			while(tmp[(i--)-1] != '"');
+			i++;
+			has_quote[1] = 0;
+		}
+	}
+	if(has_quote[0] == 1 || has_quote[1] == 1) {
+		logprintf(LOG_ERR, "rule #%d invalid: unterminated quote", obj->nr, name);
+		return -1;
+	}
+
 	int t = tmp[i-1];
 	tmp[i-1] = '\0';
-	json_append_element(arguments, json_mkstring(&tmp[pos4]));
+	if(had_quote == 0) {
+		ret = event_lookup_variable(&tmp[pos4], obj, &v, validate, origin);
+		if(ret == 0) {
+			if(v.type_ == JSON_STRING) {
+				json_append_element(arguments, json_mkstring(v.string_));
+			}
+			if(v.type_ == JSON_NUMBER) {
+				json_append_element(arguments, json_mknumber(v.number_, v.decimals_));
+			}
+		} else {
+			json_append_element(arguments, json_mkstring(&tmp[pos4]));
+		}
+	}	else {
+		json_append_element(arguments, json_mkstring(&tmp[pos4]));
+	}
 	tmp[i-1] = t;
 
-	output = MALLOC(BUFFER_SIZE);
+	if((output = MALLOC(BUFFER_SIZE)) == NULL) {
+		OUT_OF_MEMORY
+	}
 	memset(output, '\0', BUFFER_SIZE);
 
 	int match = 0;
@@ -793,11 +712,10 @@ close:
 }
 
 static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsigned short validate) {
-
 	struct varcont_t v1;
 	struct varcont_t v2;
 	char *var1 = NULL, *func = NULL, *var2 = NULL, *tmp = *rule, *search = NULL;
-	int element = 0, i = 0, match = 0, error = 0, hasquote = 0, hadquote = 0, rtype = 0;
+	int element = 0, i = 0, match = 0, error = 0, hasquote[2] = {0}, hadquote[2] = {0};
 	char var1quotes[2], var2quotes[2], funcquotes[2];
 	unsigned long len = strlen(tmp), pos = 0, word = 0;
 	char *res = MALLOC(255);
@@ -810,6 +728,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 	memset(&v2, '\0', sizeof(struct varcont_t));
 
 	memset(res, '\0', 255);
+	
 	var1quotes[0] = '\0';
 	var2quotes[0] = '\0';
 	funcquotes[0] = '\0';
@@ -828,52 +747,71 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 	while(pos <= len) {
 		/* If we encounter a space we have the formula part */
 		if(tmp[pos] == '"') {
-			hasquote ^= 1;
-			if(hasquote == 1) {
+			hasquote[0] ^= 1;
+			if(hasquote[0] == 1) {
 				word++;
 			} else {
-				hadquote = 1;
+				hadquote[0] = 1;
 			}
 		}
-		if(hasquote == 0 && (tmp[pos] == ' ' || pos == len)) {
+		if(tmp[pos] == '\'') {
+			hasquote[1] ^= 1;
+			if(hasquote[1] == 1) {
+				word++;
+			} else {
+				hadquote[1] = 1;
+			}
+		}
+		if(hasquote[0] == 0 && hasquote[1] == 0 && (tmp[pos] == ' ' || pos == len)) {
 			switch(element) {
 				/* The first value of three is always the first variable.
 				   The second value is always the function.
 				   The third value of the three is always the second variable (or second formula).
 				*/
 				case 0:
-					if(hadquote == 1) {
+					if(hadquote[0] == 1) {
 						strcpy(var1quotes, "\"");
+					}
+					if(hadquote[1] == 1) {
+						strcpy(var1quotes, "'");
 					}
 					if((var1 = REALLOC(var1, ((pos-word)+1))) == NULL) {
 						OUT_OF_MEMORY
 					}
 					memset(var1, '\0', ((pos-word)+1));
-					strncpy(var1, &tmp[word], (pos-word)-hadquote);
+					strncpy(var1, &tmp[word], (pos-word)-hadquote[0]-hadquote[1]);
 				break;
 				case 1:
-					if(hadquote == 1) {
+					if(hadquote[0] == 1) {
 						strcpy(funcquotes, "\"");
+					}
+					if(hadquote[1] == 1) {
+						strcpy(funcquotes, "'");
 					}
 					if((func = REALLOC(func, ((pos-word)+1))) == NULL) {
 						OUT_OF_MEMORY
 					}
 					memset(func, '\0', ((pos-word)+1));
-					strncpy(func, &tmp[word], (pos-word)-hadquote);
+					strncpy(func, &tmp[word], (pos-word)-hadquote[0]-hadquote[1]);
 				break;
 				case 2:
-					if(hadquote == 1) {
+					if(hadquote[0] == 1) {
 						strcpy(var2quotes, "\"");
+					}
+					if(hadquote[1] == 1) {
+						strcpy(var2quotes, "'");
 					}
 					if((var2 = REALLOC(var2, ((pos-word)+1))) == NULL) {
 						OUT_OF_MEMORY;
 					}
 					memset(var2, '\0', ((pos-word)+1));
-					strncpy(var2, &tmp[word], (pos-word)-hadquote);
+					strncpy(var2, &tmp[word], (pos-word)-hadquote[0]-hadquote[1]);
 
 					unsigned long l = (strlen(var1)+strlen(var2)+strlen(func))+2;
 					/* search parameter, null-terminator, and potential quotes */
-					search = REALLOC(search, (l+1+6));
+					if((search = REALLOC(search, (l+1+6))) == NULL) {
+						OUT_OF_MEMORY
+					}
 					memset(search, '\0', l+1);
 					l = (unsigned long)sprintf(search, "%s%s%s %s%s%s %s%s%s",
 						var1quotes, var1, var1quotes,
@@ -882,14 +820,14 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 				break;
 				default:;
 			}
-			hadquote = 0;
+			hadquote[0] = 0;
+			hadquote[1] = 0;
 			word = pos+1;
 			element++;
 			if(element > 2) {
 				element = 0;
 			}
 		}
-
 		if(func != NULL && strlen(func) > 0 &&
 		   var1 != NULL  && strlen(var1) > 0 &&
 		   var2 != NULL  && strlen(var2) > 0) {
@@ -899,53 +837,24 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 			if(pilight.debuglevel >= 2) {
 				fprintf(stderr, "%s / %s / %s\n", var1, func, var2);
 			}
+
 			i = 0;
 			/* Check if the operator exists */
 			match = 0;
 			struct event_operators_t *tmp_operator = event_operators;
 			while(tmp_operator) {
-				int type = 0;
-				if(tmp_operator->callback_number) {
-					type = JSON_NUMBER;
-				} else {
-					type = JSON_STRING;
-				}
-
 				if(strcmp(func, tmp_operator->name) == 0) {
 					match = 1;
 					int ret1 = 0, ret2 = 0;
-					if(tmp_operator->callback_string != NULL) {
-						ret1 = event_lookup_variable(var1, obj, type, &v1, &rtype, validate, ORIGIN_RULE);
-						ret2 = event_lookup_variable(var2, obj, type, &v2, &rtype, validate, ORIGIN_RULE);
-						if(rtype != type) {
+					if(tmp_operator->callback != NULL) {
+						ret1 = event_lookup_variable(var1, obj, &v1, validate, ORIGIN_RULE);
+						ret2 = event_lookup_variable(var2, obj, &v2, validate, ORIGIN_RULE);
+						if(ret1 == -1 || ret2 == -1) {
 							error = -1;
 							goto close;
-						} else if(ret1 == -1 || ret2 == -1) {
-							error = -1;
-							goto close;
-						} else if(v1.string_ != NULL && v2.string_ != NULL) {
+						} else if(ret1 == 0 && ret2 == 0) {
 							/* Solve the formula */
-							tmp_operator->callback_string(v1.string_, v2.string_, &res);
-						} else {
-							error = 0;
-							goto close;
-						}
-					} else if(tmp_operator->callback_number != NULL) {
-						/* Continue with regular numeric operator parsing */
-						ret1 = event_lookup_variable(var1, obj, type, &v1, &rtype, validate, ORIGIN_RULE);
-						ret2 = event_lookup_variable(var2, obj, type, &v2, &rtype, validate, ORIGIN_RULE);
-						if(rtype != type) {
-							error = -1;
-							goto close;
-						} else if(ret1 == -1 || ret2 == -1) {
-							error = -1;
-							goto close;
-						} else if(ret1 == 1 || ret2 == 1) {
-							error = 0;
-							goto close;
-						} else {
-							/* Solve the formula */
-							tmp_operator->callback_number(v1.number_, v2.number_, &res);
+							tmp_operator->callback(&v1, &v2, &res);
 						}
 					}
 					if(res != 0) {
@@ -954,6 +863,9 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 								     0 AND 1 AND 0
 						*/
 						char *p = MALLOC(strlen(res)+1);
+						if(p == NULL) {
+							OUT_OF_MEMORY
+						}
 						strcpy(p, res);
 						unsigned long r = 0;
 						// printf("replace %s with %s in %s\n", search, p, tmp);
@@ -997,16 +909,16 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 
 close:
 	FREE(res);
-	if(var1 != NULL ) {
+	if(var1 != NULL) {
 		FREE(var1);
 		var1 = NULL;
-	} if(func != NULL ) {
+	} if(func != NULL) {
 		FREE(func);
 		func = NULL;
-	} if(var2 != NULL ) {
+	} if(var2 != NULL) {
 		FREE(var2);
 		var2 = NULL;
-	} if(search != NULL ) {
+	} if(search != NULL) {
 		FREE(search);
 		search = NULL;
 	}
@@ -1018,7 +930,7 @@ static int event_parse_action_arguments(char **arguments, struct rules_t *obj, i
 	struct varcont_t v;
 	char *tmp = NULL;
 	int i = 0, error = 0, a = 0, b = 0, len = strlen((*arguments));
-	int vallen = 0, ret = 0, nlen = 0, type = 0;
+	int vallen = 0, ret = 0, nlen = 0;
 
 	while(i < len && (*arguments)[i] != '\0') {
 		if((*arguments)[i] == '(') {
@@ -1046,12 +958,12 @@ static int event_parse_action_arguments(char **arguments, struct rules_t *obj, i
 				tmp[(b-a)] = '\0';
 
 				memset(&v, 0, sizeof(v));
-				ret = event_lookup_variable(tmp, obj, JSON_STRING | JSON_NUMBER, &v, &type, validate, ORIGIN_ACTION);
+				ret = event_lookup_variable(tmp, obj, &v, validate, ORIGIN_ACTION);
 
 				if(ret == 0) {
-					if(type == JSON_NUMBER) {
+					if(v.type_ == JSON_NUMBER) {
 						vallen = snprintf(NULL, 0, "%.*f", v.decimals_, v.number_);
-					} else if(type == JSON_STRING) {
+					} else if(v.type_ == JSON_STRING) {
 						vallen = strlen(v.string_);
 					} else {
 						error = -1;
@@ -1068,9 +980,9 @@ static int event_parse_action_arguments(char **arguments, struct rules_t *obj, i
 					}
 					memmove(&(*arguments)[a+vallen], &(*arguments)[b], nlen-(a+vallen));
 
-					if(type == JSON_NUMBER) {
+					if(v.type_ == JSON_NUMBER) {
 						snprintf(&(*arguments)[a], vallen+1, "%.*f", v.decimals_, v.number_);
-					} else if(type == JSON_STRING) {
+					} else if(v.type_ == JSON_STRING) {
 						snprintf(&(*arguments)[a], vallen+1, "%s", v.string_);
 					}
 
@@ -1495,55 +1407,34 @@ int event_parse_condition(char **rule, struct rules_t *obj, int depth, unsigned 
 
 	strncpy(subrule, tmp, pos);
 	subrule[pos-1] = '\0';
-	// for(i=0;i<pos;i++) {
-		// if(subrule[i] == '"') {
-			// hasquote ^= 1;
-		// }
-		// if(hasquote == 0 && (subrule[i] == ' ')) {
-			// nrspaces++;
-		// }
-	// }
-	/*
-	 * Only "1", "0", "True", "False" or
-	 * "1 == 1", "datetime.hour < 18.00" is valid here.
-	 */
-	// if(nrspaces != 2 && nrspaces != 0) {
-		// logprintf(LOG_ERR, "rule #%d invalid: could not parse \"%s\"", obj->nr, subrule);
-		// error = -1;
-	// } else {
-		if(event_parse_formula(&subrule, obj, depth, validate) == -1) {
-			error = -1;
+
+	if(event_parse_formula(&subrule, obj, depth, validate) == -1) {
+		error = -1;
+	} else {
+		size_t len = strlen(tmp);
+		if(type == AND) {
+			pos += 4;
 		} else {
-			size_t len = strlen(tmp);
-			if(type == AND) {
-				pos += 4;
-			} else {
-				pos += 3;
-			}
-			memmove(tmp, &tmp[pos], len-pos);
-			tmp[len-pos] = '\0';
-			error = atoi(subrule);
+			pos += 3;
 		}
-	// }
+		memmove(tmp, &tmp[pos], len-pos);
+		tmp[len-pos] = '\0';
+		error = atoi(subrule);
+	}
+
 	FREE(subrule);
 	return error;
 }
 
 int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short validate) {
-
 	char *tloc = 0, *condition = NULL, *action = NULL;
 	unsigned int tpos = 0, rlen = strlen(rule), tlen = 0;
 	int x = 0, nrhooks = 0, error = 0, i = 0;
 	int type_or = 0, type_and = 0;
 
-	/* Replace all dual+ spaces with a single space */
+	/* Replace all dual spaces with a single space */
 	rule = uniq_space(rule);
 	while(x < rlen) {
-		// if(strncmp(&rule[x], "  ", 2) == 0) {
-			// logprintf(LOG_ERR, "rule #%d invalid: multiple spaces in a row", nr);
-			// error = -1;
-			// goto close;
-		// }
 		if(rule[x] == '(') {
 			nrhooks++;
 		}
@@ -1652,6 +1543,7 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 		}
 		i++;
 	}
+
 	if(error > 0) {
 		error = 0;
 	}
@@ -1662,6 +1554,7 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 		}
 		condition[0] = '0';
 		condition[1] = '\0';
+
 	/* Skip this part when the condition only contains "1" or "0" */
 	} else if(strlen(condition) > 1) {
 		if(pilight.debuglevel >= 2) {
@@ -1676,6 +1569,7 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 			fprintf(stderr, "skip (%s) %s\n", (ltype == AND) ? "AND" : "OR", condition);
 		}
 	}
+
 	obj->status = atoi(condition);
 	if(validate == 1 && depth == 0 && event_parse_action(action, obj, validate) != 0) {
 		logprintf(LOG_ERR, "rule #%d invalid: invalid action", obj->nr);
@@ -1714,34 +1608,50 @@ struct rule_list_t {
 	struct rules_t **rules;
 } rule_list_t;
 
-void *events_iterate(void *param) {
+static void fib_free(uv_work_t *req, int status) {
+	FREE(req);
+}
+
+static void events_iterate(uv_work_t *req) {
 	running = 1;
-	struct threadpool_tasks_t *task = param;
-	struct rule_list_t *list = task->userdata;
+	struct rule_list_t *list = req->data;
 	struct rules_t *tmp_rules = NULL;
 	char *str = NULL;
 
 	tmp_rules = list->rules[list->ptr++];
 
-	// clock_gettime(CLOCK_MONOTONIC, &tmp_rules->timestamp.first);
-	// if((str = MALLOC(strlen(tmp_rules->rule)+1)) == NULL) {
-		// OUT_OF_MEMORY
-	// }
+	if((str = MALLOC(strlen(tmp_rules->rule)+1)) == NULL) {
+		OUT_OF_MEMORY
+	}
 	strcpy(str, tmp_rules->rule);
+#ifndef WIN32
+	clock_gettime(CLOCK_MONOTONIC, &tmp_rules->timestamp.first);
+#endif
 	if(event_parse_rule(str, tmp_rules, 0, 0) == 0) {
 		if(tmp_rules->status == 1) {
 			logprintf(LOG_INFO, "executed rule: %s", tmp_rules->name);
 		}
 	}
-	// clock_gettime(CLOCK_MONOTONIC, &tmp_rules->timestamp.second);
-	// logprintf(LOG_DEBUG, "rule #%d %s was parsed in %.6f seconds", tmp_rules->nr, tmp_rules->name,
-		// ((double)tmp_rules->timestamp.second.tv_sec + 1.0e-9*tmp_rules->timestamp.second.tv_nsec) -
-		// ((double)tmp_rules->timestamp.first.tv_sec + 1.0e-9*tmp_rules->timestamp.first.tv_nsec));
+#ifndef WIN32
+	clock_gettime(CLOCK_MONOTONIC, &tmp_rules->timestamp.second);
+	logprintf(LOG_DEBUG, "rule #%d %s was parsed in %.6f seconds", tmp_rules->nr, tmp_rules->name,
+		((double)tmp_rules->timestamp.second.tv_sec + 1.0e-9*tmp_rules->timestamp.second.tv_nsec) -
+		((double)tmp_rules->timestamp.first.tv_sec + 1.0e-9*tmp_rules->timestamp.first.tv_nsec));
+#endif
 	FREE(str);
 
 	tmp_rules->status = 0;
 	if(list->ptr < list->nr) {
-		// threadpool_add_work(REASON_END, NULL, "rules loop", 0, events_iterate, NULL, (void *)task->userdata);
+		uv_work_t *tp_work_req = MALLOC(sizeof(uv_work_t));
+		if(tp_work_req == NULL) {
+			OUT_OF_MEMORY
+		}
+		tp_work_req->data = list;
+		if(uv_queue_work(uv_default_loop(), tp_work_req, "rules loop", events_iterate, fib_free) < 0) {
+			/*
+			 * FIXME
+			 */
+		}
 	} else {
 		int i = 0;
 		for(i=0;i<list->nr;i++) {
@@ -1754,74 +1664,52 @@ void *events_iterate(void *param) {
 		FREE(list);
 	}
 	running = 0;
-	return NULL;
+	return;
 }
 
 void *events_loop(int reason, void *param) {
-	struct threadpool_tasks_t *task = param;
-	struct reason_config_update_t *data1 = NULL;
-	struct reason_code_received_t *data2 = NULL;
-	struct device_t *dev = NULL;
 	struct rules_t *tmp_rules = NULL;
 	struct rule_list_t *list = NULL;
-	unsigned short match = 0;
-	unsigned int i = 0, x = 0;
+	struct reason_config_update_t *data1 = NULL;
+	struct reason_code_received_t *data2 = NULL;
+	int i = 0, x = 0, match = 0;
 
 	running = 1;
 
-	switch(task->reason) {
+	switch(reason) {
 		case REASON_CODE_RECEIVED: {
-			data2 = task->userdata;
+			data2 = param;
 		} break;
 		case REASON_CONFIG_UPDATE: {
-			data1 = task->userdata;
+			data1 = param;
 		} break;
 	}
-	if(task->reason == REASON_CONFIG_UPDATE) {
-		for(i=0;i<data1->nrdev;i++) {
-			if(devices_select_struct(ORIGIN_MASTER, data1->devices[i], &dev) == 0) {
-				struct event_action_thread_t *thread = dev->action_thread;
-				if(thread->running == 1) {
-					// event_action_thread_stop(dev);
-				}
-			}
-		}
-	}
-
-
+	
 	if(rules_select_struct(ORIGIN_MASTER, NULL, &tmp_rules) == 0) {
 		while(tmp_rules) {
 			if(tmp_rules->active == 1) {
-				match = 0;
-
-				if(task->reason == REASON_CONFIG_UPDATE) {
-					/* Only run those events that affect the updates devices */
-					for(x=0;x<data1->nrdev;x++) {
-						for(i=0;i<tmp_rules->nrdevices;i++) {
-							if(data1->devices[x] && strcmp(data1->devices[x], tmp_rules->devices[i]) == 0) {
-								if(devices_select_struct(ORIGIN_MASTER, data1->devices[x], &dev) == 0) {
-									// if(dev->lastrule == tmp_rules->nr &&
-										// tmp_rules->nr == dev->prevrule &&
-										// dev->lastrule == dev->prevrule) {
-										// logprintf(LOG_ERR, "skipped rule #%d because of an infinite loop triggered by device %s", tmp_rules->nr, jchilds->string_);
-									// } else {
-										match = 1;
-									// }
-								} else {
+				if(tmp_rules->nrdevices == 0) {
+					match = 1;
+				} else {
+					if(reason == REASON_CONFIG_UPDATE) {
+						/* Only run those events that affect the updates devices */
+						for(x=0;x<data1->nrdev;x++) {
+							for(i=0;i<tmp_rules->nrdevices;i++) {
+								if(data1->devices[x] && strcmp(data1->devices[x], tmp_rules->devices[i]) == 0) {
 									match = 1;
+									break;
 								}
-								break;
 							}
 						}
 					}
-				}
-				if(task->reason == REASON_CODE_RECEIVED) {
-					if(strcmp(data2->origin, "sender") == 0 || strcmp(data2->origin, "receiver") == 0) {
-						for(i=0;i<tmp_rules->nrdevices;i++) {
-							if(strcmp(tmp_rules->devices[i], data2->protocol) == 0) {
-								match = 1;
-								tmp_rules->jtrigger = json_decode(data2->message);
-								break;
+					if(reason == REASON_CODE_RECEIVED) {
+						if(strcmp(data2->origin, "sender") == 0 || strcmp(data2->origin, "receiver") == 0) {
+							for(i=0;i<tmp_rules->nrdevices;i++) {
+								if(strcmp(tmp_rules->devices[i], data2->protocol) == 0) {
+									match = 1;
+									tmp_rules->jtrigger = json_decode(data2->message);
+									break;
+								}
 							}
 						}
 					}
@@ -1850,7 +1738,21 @@ void *events_loop(int reason, void *param) {
 		}
 	}
 	if(list != NULL && list->nr > 0) {
-		// threadpool_add_work(REASON_END, NULL, "rules loop", 0, events_iterate, NULL, (void *)list);
+		uv_work_t *tp_work_req = MALLOC(sizeof(uv_work_t));
+		if(tp_work_req == NULL) {
+			OUT_OF_MEMORY
+		}
+		tp_work_req->data = list;
+		if(uv_queue_work(uv_default_loop(), tp_work_req, "rules loop", events_iterate, fib_free) < 0) {
+			/*
+			 * FIXME
+			 */
+			// if(node[i]->done != NULL) {
+				// node[i]->done((void *)node[i]->userdata);
+			// }
+			// FREE(tpdata);
+			// FREE(node[i]->ref);
+		}
 	}
 
 	running = 0;

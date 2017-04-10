@@ -529,7 +529,6 @@ int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
 #ifndef NDEBUG
   base_socket = INVALID_SOCKET;
 #endif
-	printf("goed\n");
   if (WSAIoctl(socket,
                SIO_BASE_HANDLE,
                NULL,

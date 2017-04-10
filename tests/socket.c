@@ -30,6 +30,7 @@
 #endif
 
 #include "../libs/pilight/core/CuTest.h"
+#include "../libs/pilight/core/log.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/network.h"
 #include "../libs/pilight/core/socket.h"
@@ -41,13 +42,13 @@
 #define SERVER			1
 #define BIGCONTENT	2
 
+static char sbuffer[65536+1];
 static int client_fd = 0;
 static int server_fd = 0;
 static int check = 0;
 static int reject = 0;
 static int run = CLIENT;
 static uv_timer_t *timer_req = NULL;
-static uv_timer_t *timer_req1 = NULL;
 static uv_async_t *async_close_req = NULL;
 static uv_tcp_t *client_req = NULL;
 static char *data1 = NULL;
@@ -140,7 +141,7 @@ static void dosend(int fd) {
 
 	if(getpeername(fd, (struct sockaddr *)&addr, (socklen_t *)&socklen) == 0) {
 		memset(&buf, '\0', INET_ADDRSTRLEN+1);
-		inet_ntop(AF_INET, (void *)&(addr.sin_addr), buf, INET_ADDRSTRLEN+1);
+		uv_ip4_name((void *)&(addr.sin_addr), buf, INET_ADDRSTRLEN+1);
 
 		if(run == SERVER || run == CLIENT) {
 			if(htons(addr.sin_port) != 15001) {
@@ -179,14 +180,13 @@ static void *socket_connected(int reason, void *param) {
 	dosend(data->fd);
 
 	if(run == SERVER) {
-		timer_req1 = MALLOC(sizeof(uv_timer_t));
+		uv_timer_t *timer_req1 = MALLOC(sizeof(uv_timer_t));
 		CuAssertPtrNotNull(gtc, timer_req1);
 
 		struct data_t *data1 = MALLOC(sizeof(struct data_t));
 		CuAssertPtrNotNull(gtc, data1);
 		data1->fd = data->fd;
 		timer_req1->data = data1;
-
 		uv_timer_init(uv_default_loop(), timer_req1);
 		uv_timer_start(timer_req1, (void (*)(uv_timer_t *))resend, 250, 0);
 	}
@@ -200,14 +200,13 @@ static void stop(void) {
 
 static void alloc_cb(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
 	buf->len = len;
-	if((buf->base = malloc(len)) == NULL) {
-		OUT_OF_MEMORY
-	}
+	buf->base = sbuffer;
 	memset(buf->base, 0, len);
 }
 
 static void on_read(uv_stream_t *server_req, ssize_t nread, const uv_buf_t *buf) {
 	uv_os_fd_t fd;
+
 	if(nread < -1) {
 		/*
 		 * Disconnected by server
@@ -236,10 +235,10 @@ static void on_read(uv_stream_t *server_req, ssize_t nread, const uv_buf_t *buf)
 	int r = uv_fileno((uv_handle_t *)server_req, &fd);
 	CuAssertIntEquals(gtc, 0, r);
 
-	free(buf->base);
+	// free(buf->base);
 
 #ifdef _WIN32
-	closesocket(fd);
+	closesocket((SOCKET)fd);
 #else
 	close(fd);
 #endif
@@ -373,6 +372,7 @@ static void test_socket_reject_client(CuTest *tc) {
 
 	eventpool_gc();
 
+	socket_override(-1);
 	CuAssertIntEquals(tc, 1, reject);
 	CuAssertIntEquals(tc, 0, check);
 	CuAssertIntEquals(tc, 0, xfree());
@@ -418,7 +418,6 @@ static void test_socket_server(CuTest *tc) {
 	}
 
 	eventpool_gc();
-	socket_override(-1);
 
 	CuAssertIntEquals(tc, 1, check);
 	CuAssertIntEquals(tc, 0, xfree());

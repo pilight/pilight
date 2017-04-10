@@ -9,13 +9,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <errno.h>
+#ifndef _WIN32
+	#include <unistd.h>
+#endif
 
 #include "../../core/pilight.h"
 #include "../../core/options.h"
-#include "../../core/threadpool.h"
-// #include "../../core/timerpool.h"
 #include "../../protocols/protocol.h"
 #include "../../core/log.h"
 #include "../../core/dso.h"
@@ -922,7 +922,7 @@ static void prepare(struct rules_actions_t *obj, char *dev) {
 		OUT_OF_MEMORY
 	}
 	tp_work_req->data = data;
-	if(uv_queue_work(uv_default_loop(), tp_work_req, thread, thread_free) < 0) {
+	if(uv_queue_work(uv_default_loop(), tp_work_req, "action_dim", thread, thread_free) < 0) {
 		FREE(tp_work_req);
 	}
 

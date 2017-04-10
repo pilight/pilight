@@ -10,4 +10,4 @@
 
 struct pilight_t pilight;
 char pilight_uuid[UUID_LENGTH];
-pthread_t pth_main_id;
+const uv_thread_t pth_main_id;

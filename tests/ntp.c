@@ -23,10 +23,8 @@
 #include "alltests.h"
 
 static uv_thread_t pth;
-static uv_thread_t pth1;
 static int ntp_socket = 0;
 static int ntp_loop = 1;
-static int started = 0;
 
 static char request[48] = {
 	0xe3, 0x00, 0x00, 0x00,
@@ -59,10 +57,18 @@ static char response[48] = {
 };
 
 static CuTest *gtc = NULL;
+static int steps = 0;
 
 static void callback(int status, time_t ntptime) {
-	CuAssertIntEquals(gtc, 1481748729, ntptime);
-	ntp_loop = 0;
+	steps++;
+	if(steps == 1) {
+		CuAssertULongEquals(gtc, 0, (unsigned long)ntptime);
+	}
+	if(steps == 2) {
+		CuAssertULongEquals(gtc, 1481748729, (unsigned long)ntptime);
+		ntp_loop = 0;
+		uv_stop(uv_default_loop());
+	}
 }
 
 static void close_cb(uv_handle_t *handle) {
@@ -76,7 +82,6 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 		uv_close(handle, close_cb);
 	}
 }
-
 
 static void ntp_wait(void *param) {
 	struct timeval tv;
@@ -158,7 +163,7 @@ static void ntp_custom_server(void) {
 	memset((char *)&addr, '\0', sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	addr.sin_port = htons(123);
+	addr.sin_port = htons(10123);
 
 	r = setsockopt(ntp_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(int));
 	CuAssertTrue(gtc, (r >= 0));
@@ -177,11 +182,23 @@ static void test_ntp(CuTest *tc) {
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
 
+	steps = 0;
+	ntp_loop = 1;
+
 	ntp_custom_server();
 	
 	uv_thread_create(&pth, ntp_wait, NULL);
 
-	CuAssertIntEquals(tc, 0, ntpsync("127.0.0.1", callback));
+	strcpy(ntp_servers.server[0].host, "0.0.0.0");
+	ntp_servers.server[0].port = 10124;
+	ntp_servers.callback = callback;
+
+	strcpy(ntp_servers.server[1].host, "127.0.0.1");
+	ntp_servers.server[1].port = 10123;
+
+	ntp_servers.nrservers = 2;
+
+	ntpsync();
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -193,46 +210,14 @@ static void test_ntp(CuTest *tc) {
 
 	uv_thread_join(&pth);
 
-	CuAssertIntEquals(tc, 0, xfree());
-}
-
-static void thread(void *param) {
-	uv_thread_create(&pth, ntp_wait, NULL);
-
-	CuAssertIntEquals(gtc, -1, ntpsync("127.0.0.1", callback));
-
-	started = 1;
-}
-
-static void test_ntp_threaded(CuTest *tc) {
-	printf("[ %-48s ]\n", __FUNCTION__);
-	fflush(stdout);
-
-	gtc = tc;
-
-	memtrack();
-
-	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
-
-	ntp_custom_server();
-
-	uv_thread_create(&pth1, thread, NULL);
-
-	while(started == 0) {
-		usleep(10);
+	if(ntp_socket > 0) {
+#ifdef _WIN32
+		closesocket(ntp_socket);
+#else
+		close(ntp_socket);
+#endif
+		ntp_socket = 0;
 	}
-
-	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-	uv_walk(uv_default_loop(), walk_cb, NULL);
-	uv_run(uv_default_loop(), UV_RUN_ONCE);
-
-	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
-		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-	}
-
-	uv_thread_join(&pth);
-	uv_thread_join(&pth1);
-
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -240,7 +225,6 @@ CuSuite *suite_ntp(void) {
 	CuSuite *suite = CuSuiteNew();
 
 	SUITE_ADD_TEST(suite, test_ntp);
-	SUITE_ADD_TEST(suite, test_ntp_threaded);
 
 	return suite;
 }

@@ -26,6 +26,8 @@ typedef struct cpu_usage_t {
 int proc_gc(void);
 double getCPUUsage(void);
 double getRAMUsage(void);
-// void getThreadCPUUsage(pthread_t pth, struct cpu_usage_t *cpu_usage);
+#ifndef _WIN32
+void getThreadCPUUsage(pthread_t pth, struct cpu_usage_t *cpu_usage);
+#endif
 
 #endif

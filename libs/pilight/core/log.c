@@ -40,7 +40,6 @@ struct logqueue_t {
 } logqueue_t;
 
 static uv_mutex_t logqueue_lock;
-// static pthread_mutexattr_t logqueue_attr;
 static int pthinitialized = 0;
 
 static struct logqueue_t *logqueue = NULL;
@@ -96,8 +95,10 @@ int log_gc(void) {
 	shelllog = 0;
 	filelog = 0;
 
-	/* Flush log queue to pilight.err file */
-	uv_mutex_lock(&logqueue_lock);
+	if(pthinitialized == 1) {
+		/* Flush log queue to pilight.err file */
+		uv_mutex_lock(&logqueue_lock);
+	}
 	while(logqueue) {
 		struct logqueue_t *tmp = logqueue;
 
@@ -108,7 +109,10 @@ int log_gc(void) {
 		FREE(tmp->buffer);
 		FREE(tmp);
 	}
-	uv_mutex_unlock(&logqueue_lock);
+
+	if(pthinitialized == 1) {
+		uv_mutex_unlock(&logqueue_lock);
+	}
 
 	if(logfile != NULL) {
 		FREE(logfile);
@@ -119,9 +123,6 @@ int log_gc(void) {
 
 static void loginitlock(void) {
 	if(pthinitialized == 0) {
-		// pthread_mutexattr_init(&logqueue_attr);
-		// pthread_mutexattr_settype(&logqueue_attr, PTHREAD_MUTEX_RECURSIVE);
-		// pthread_mutex_init(&logqueue_lock, &logqueue_attr);
 		uv_mutex_init(&logqueue_lock);
 		pthinitialized = 1;
 	}	
@@ -181,7 +182,11 @@ void _logprintf(int prio, char *file, int line, const char *str, ...) {
 			break;
 		}
 
-		va_copy(apcpy, ap);
+// #ifdef _WIN32
+		// apcpy = ap;
+// #else
+		// va_copy(apcpy, ap);
+// #endif
 		va_start(apcpy, str);
 #ifdef _WIN32
 		len = _vscprintf(str, apcpy);

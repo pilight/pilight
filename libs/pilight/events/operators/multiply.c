@@ -9,14 +9,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#ifndef _WIN32
+	#include <unistd.h>
+#endif
 
 #include "../operator.h"
 #include "../../core/dso.h"
 #include "multiply.h"
 
-static void operatorMultiplyCallback(double a, double b, char **ret) {
-	sprintf(*ret, "%f", (a * b));
+static void operatorMultiplyCallback(struct varcont_t *a, struct varcont_t *b, char **ret) {
+	struct varcont_t aa, *aaa = &aa;
+	struct varcont_t bb, *bbb = &bb;
+
+	memcpy(&aa, a, sizeof(struct varcont_t));
+	memcpy(&bb, b, sizeof(struct varcont_t));
+
+	cast2int(&aaa);
+	cast2int(&bbb);
+
+	sprintf(*ret, "%.6f", (aaa->number_ * bbb->number_));
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -24,7 +35,7 @@ __attribute__((weak))
 #endif
 void operatorMultiplyInit(void) {
 	event_operator_register(&operator_multiply, "*");
-	operator_multiply->callback_number = &operatorMultiplyCallback;
+	operator_multiply->callback = &operatorMultiplyCallback;
 }
 
 #if defined(MODULE) && !defined(_WIN32)

@@ -14,7 +14,7 @@ char *coord2tz(double, double);
 time_t datetime2ts(int, int, int, int, int, int);
 int tzoffset(char *, char *, double *);
 int isdst(time_t, char *);
-void datefix(int *, int *, int *, int *, int *, int *);
+void datefix(int *, int *, int *, int *, int *, int *, int *);
 void datetime_init(void);
 int localtime_l(time_t, struct tm *, char *);
 

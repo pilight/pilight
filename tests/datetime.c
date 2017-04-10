@@ -444,78 +444,78 @@ static void test_datefix(CuTest *tc) {
 
 	datetime_init();
 
-	int year = 0, month = 0, day = 0;
+	int year = 0, month = 0, day = 0, weekday = 0;
 	int hour = 0, minute = 0, second = 0;
 	char result[255];
 
-	datefix(&year, &month, &day, &hour, &minute, &second);
-	sprintf(result, "%d %d %d %d %d %d", year, month, day, hour, minute, second);
-	CuAssertStrEquals(tc, "-1 11 30 0 0 0", result);
+	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
+	sprintf(result, "%d %d %d %d %d %d %d", year, month, day, hour, minute, second, weekday);
+	CuAssertStrEquals(tc, "-1 11 30 0 0 0 3", result);
 
 	year = 2016; month = 9; day = 27; hour = 21; minute = 28; second = 59;
-	datefix(&year, &month, &day, &hour, &minute, &second);
-	sprintf(result, "%d %d %d %d %d %d", year, month, day, hour, minute, second);
-	CuAssertStrEquals(tc, "2016 9 27 21 28 59", result);
+	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
+	sprintf(result, "%d %d %d %d %d %d %d", year, month, day, hour, minute, second, weekday);
+	CuAssertStrEquals(tc, "2016 9 27 21 28 59 2", result);
 
 	year = 2016; month = 13; day = 27; hour = 21; minute = 28; second = 59;
-	datefix(&year, &month, &day, &hour, &minute, &second);
-	sprintf(result, "%d %d %d %d %d %d", year, month, day, hour, minute, second);
-	CuAssertStrEquals(tc, "2017 1 27 21 28 59", result);
+	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
+	sprintf(result, "%d %d %d %d %d %d %d", year, month, day, hour, minute, second, weekday);
+	CuAssertStrEquals(tc, "2017 1 27 21 28 59 5", result);
 
 	year = 2016; month = 12; day = 32; hour = 21; minute = 28; second = 59;
-	datefix(&year, &month, &day, &hour, &minute, &second);
-	sprintf(result, "%d %d %d %d %d %d", year, month, day, hour, minute, second);
-	CuAssertStrEquals(tc, "2017 1 1 21 28 59", result);
+	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
+	sprintf(result, "%d %d %d %d %d %d %d", year, month, day, hour, minute, second, weekday);
+	CuAssertStrEquals(tc, "2017 1 1 21 28 59 0", result);
 
 	year = 2015; month = 2; day = 29; hour = 21; minute = 28; second = 59;
-	datefix(&year, &month, &day, &hour, &minute, &second);
-	sprintf(result, "%d %d %d %d %d %d", year, month, day, hour, minute, second);
-	CuAssertStrEquals(tc, "2015 3 1 21 28 59", result);
+	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
+	sprintf(result, "%d %d %d %d %d %d %d", year, month, day, hour, minute, second, weekday);
+	CuAssertStrEquals(tc, "2015 3 1 21 28 59 0", result);
 
 	year = 2016; month = 9; day = 27; hour = 25; minute = 28; second = 59;
-	datefix(&year, &month, &day, &hour, &minute, &second);
-	sprintf(result, "%d %d %d %d %d %d", year, month, day, hour, minute, second);
-	CuAssertStrEquals(tc, "2016 9 28 1 28 59", result);
+	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
+	sprintf(result, "%d %d %d %d %d %d %d", year, month, day, hour, minute, second, weekday);
+	CuAssertStrEquals(tc, "2016 9 28 1 28 59 3", result);
 
 	year = 2016; month = 9; day = 27; hour = 21; minute = 61; second = 59;
-	datefix(&year, &month, &day, &hour, &minute, &second);
-	sprintf(result, "%d %d %d %d %d %d", year, month, day, hour, minute, second);
-	CuAssertStrEquals(tc, "2016 9 27 22 1 59", result);
+	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
+	sprintf(result, "%d %d %d %d %d %d %d", year, month, day, hour, minute, second, weekday);
+	CuAssertStrEquals(tc, "2016 9 27 22 1 59 2", result);
 
 	year = 2016; month = 9; day = 27; hour = 21; minute = 28; second = 61;
-	datefix(&year, &month, &day, &hour, &minute, &second);
-	sprintf(result, "%d %d %d %d %d %d", year, month, day, hour, minute, second);
-	CuAssertStrEquals(tc, "2016 9 27 21 29 1", result);
+	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
+	sprintf(result, "%d %d %d %d %d %d %d", year, month, day, hour, minute, second, weekday);
+	CuAssertStrEquals(tc, "2016 9 27 21 29 1 2", result);
 
 	year = 2016; month = -1; day = 27; hour = 21; minute = 28; second = 59;
-	datefix(&year, &month, &day, &hour, &minute, &second);
-	sprintf(result, "%d %d %d %d %d %d", year, month, day, hour, minute, second);
-	CuAssertStrEquals(tc, "2015 11 27 21 28 59", result);
+	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
+	sprintf(result, "%d %d %d %d %d %d %d", year, month, day, hour, minute, second, weekday);
+	CuAssertStrEquals(tc, "2015 11 27 21 28 59 5", result);
 
 	year = 2016; month = 9; day = -10; hour = 21; minute = 28; second = 59;
-	datefix(&year, &month, &day, &hour, &minute, &second);
-	sprintf(result, "%d %d %d %d %d %d", year, month, day, hour, minute, second);
-	CuAssertStrEquals(tc, "2016 8 21 21 28 59", result);
+	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
+	sprintf(result, "%d %d %d %d %d %d %d", year, month, day, hour, minute, second, weekday);
+	CuAssertStrEquals(tc, "2016 8 21 21 28 59 0", result);
 
 	year = 2016; month = 9; day = -365; hour = 21; minute = 28; second = 59;
-	datefix(&year, &month, &day, &hour, &minute, &second);
-	sprintf(result, "%d %d %d %d %d %d", year, month, day, hour, minute, second);
-	CuAssertStrEquals(tc, "2015 9 1 21 28 59", result);
+	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
+	sprintf(result, "%d %d %d %d %d %d %d", year, month, day, hour, minute, second, weekday);
+	CuAssertStrEquals(tc, "2015 9 1 21 28 59 2", result);
 
 	year = 2016; month = 9; day = 27; hour = -128; minute = 28; second = 59;
-	datefix(&year, &month, &day, &hour, &minute, &second);
-	sprintf(result, "%d %d %d %d %d %d", year, month, day, hour, minute, second);
-	CuAssertStrEquals(tc, "2016 9 21 16 28 59", result);
+	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
+	sprintf(result, "%d %d %d %d %d %d %d", year, month, day, hour, minute, second, weekday);
+	CuAssertStrEquals(tc, "2016 9 21 16 28 59 3", result);
 
 	year = 2016; month = 9; day = 27; hour = 21; minute = -1; second = 59;
-	datefix(&year, &month, &day, &hour, &minute, &second);
-	sprintf(result, "%d %d %d %d %d %d", year, month, day, hour, minute, second);
-	CuAssertStrEquals(tc, "2016 9 27 20 59 59", result);
+	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
+	sprintf(result, "%d %d %d %d %d %d %d", year, month, day, hour, minute, second, weekday);
+	CuAssertStrEquals(tc, "2016 9 27 20 59 59 2", result);
 
 	year = 2016; month = 9; day = 27; hour = 21; minute = 28; second = -1;
-	datefix(&year, &month, &day, &hour, &minute, &second);
-	sprintf(result, "%d %d %d %d %d %d", year, month, day, hour, minute, second);
-	CuAssertStrEquals(tc, "2016 9 27 21 27 59", result);
+	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
+	sprintf(result, "%d %d %d %d %d %d %d", year, month, day, hour, minute, second, weekday);
+	CuAssertStrEquals(tc, "2016 9 27 21 27 59 2", result);
 
 	datetime_gc();
 

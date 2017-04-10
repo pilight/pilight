@@ -10,16 +10,16 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <errno.h>
 #include <string.h>
 #include <fcntl.h>
 #include <time.h>
 #ifndef _WIN32
+	#include <unistd.h>
 	#include <termios.h>
 	#include <sys/ioctl.h>
+	#include <sys/time.h>
 #endif
-#include <sys/time.h>
 #include <sys/types.h>
 #if !defined(__FreeBSD__) && !defined(_WIN32) && !defined(__sun)
 	#include <linux/spi/spidev.h>
@@ -78,6 +78,16 @@ static struct spi_t spi[2] = {
 #endif
 
 #ifdef _WIN32
+struct timeval {
+	unsigned long tv_sec;
+	unsigned long tv_usec;
+} timeval;
+
+# define timercmp(a, b, CMP)                                                  \
+  (((a)->tv_sec == (b)->tv_sec) ?                                             \
+   ((a)->tv_usec CMP (b)->tv_usec) :                                          \
+   ((a)->tv_sec CMP (b)->tv_sec))
+
 #define timeradd(a, b, result) \
 	do { \
 		(result)->tv_sec = (a)->tv_sec + (b)->tv_sec; \
@@ -120,8 +130,11 @@ static void delayMicrosecondsHard(unsigned int howLong) {
 }
 
 void delayMicroseconds(unsigned int howLong) {
+#ifdef _WIN32
+	delayMicrosecondsHard(howLong);
+#else
 	struct timespec sleeper;
-#if defined(_WIN32) || defined(__sun)
+#if defined(__sun)
 	long int uSecs = howLong % 1000000;
 	unsigned int wSecs = howLong / 1000000;
 #else
@@ -134,7 +147,7 @@ void delayMicroseconds(unsigned int howLong) {
 	} else if(howLong  < 100) {
 		delayMicrosecondsHard(howLong);
 	} else {
-#if defined(_WIN32) || defined(__sun)
+#if defined(__sun)
 		sleeper.tv_sec = wSecs;
 #else
 		sleeper.tv_sec = (__time_t)wSecs;	
@@ -142,6 +155,7 @@ void delayMicroseconds(unsigned int howLong) {
 		sleeper.tv_nsec = (long)(uSecs * 1000L);
 		nanosleep(&sleeper, NULL);
 	}
+#endif
 }
 
 void wiringXDefaultLog(int prio, char *file, int line, const char *format_str, ...) {

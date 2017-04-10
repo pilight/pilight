@@ -8,22 +8,19 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <dirent.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
 #include <sys/stat.h>
 #ifndef _WIN32
+	#include <unistd.h>
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
 #endif
-#include <pthread.h>
 
-#include "../../core/threadpool.h"
 #include "../../core/pilight.h"
 #include "../../core/common.h"
 #include "../../core/dso.h"
@@ -108,7 +105,8 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 								struct tm current;
 								memset(&current, '\0', sizeof(struct tm));
 #ifdef _WIN32
-								current = gmtime(&timenow);
+								struct tm *tmp = gmtime(&timenow);
+								memcpy(&current, tmp, sizeof(struct tm));
 #else
 								gmtime_r(&timenow, &current);
 #endif
@@ -124,18 +122,19 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 								time_t a = (time_t)sunrise;
 								memset(&tm_rise, '\0', sizeof(struct tm));
 #ifdef _WIN32
-								tm_rise = gmtime(&a);
+								tmp = gmtime(&a);
+								memcpy(&tm_rise, tmp, sizeof(struct tm));
 #else
 								gmtime_r(&a, &tm_rise);
 #endif
 								a = (time_t)sunset;
 								memset(&tm_set, '\0', sizeof(struct tm));
 #ifdef _WIN32
-								tm_set = gmtime(&a);
+								tmp = gmtime(&a);
+								memcpy(&tm_set, tmp, sizeof(struct tm));
 #else
 								gmtime_r(&a, &tm_set);
 #endif
-
 								if(timenow > (int)round(sunrise) && timenow < (int)round(sunset)) {
 									_sun = "rise";
 								} else {
@@ -147,7 +146,7 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 									OUT_OF_MEMORY
 								};
 								snprintf(data->message, 1024,
-									"{\"location\":\"%s\",\"country\":\"%s\",\"temperature\":%.2f,\"humidity\":%.2f,\"update\":0,\"sunrise\":%.2f,\"sunset\":%.2f,\"sun\":%s}",
+									"{\"location\":\"%s\",\"country\":\"%s\",\"temperature\":%.2f,\"humidity\":%.2f,\"update\":0,\"sunrise\":%.2f,\"sunset\":%.2f,\"sun\":\"%s\"}",
 									settings->location, settings->country, temp, humi, ((double)((tm_rise.tm_hour*100)+tm_rise.tm_min)/100), ((double)((tm_set.tm_hour*100)+tm_set.tm_min)/100), _sun
 								);
 								strncpy(data->origin, "receiver", 255);
@@ -239,7 +238,7 @@ static void *update(void *param) {
 		OUT_OF_MEMORY
 	}
 	work_req->data = settings;
-	uv_queue_work(uv_default_loop(), work_req, thread, thread_free);
+	uv_queue_work(uv_default_loop(), work_req, "openweathermap", thread, thread_free);
 	if(time_override > -1) {
 		settings->update = time_override;
 	} else {
@@ -430,7 +429,6 @@ static void *addDevice(int reason, void *param) {
 	 * to make sure pilight is actually running.
 	 */
 	uv_timer_start(node->update_timer_req, (void (*)(uv_timer_t *))update, 3000, -1);
-
 	return NULL;
 }
 
@@ -477,7 +475,7 @@ static int createCode(struct JsonNode *code, char *message) {
 						OUT_OF_MEMORY
 					}
 					work_req->data = tmp;
-					uv_queue_work(uv_default_loop(), work_req, thread, thread_free);
+					uv_queue_work(uv_default_loop(), work_req, "openweathermap", thread, thread_free);
 
 					if(time_override > -1) {
 						tmp->update = time_override;

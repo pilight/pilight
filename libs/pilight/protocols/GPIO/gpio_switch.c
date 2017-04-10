@@ -10,8 +10,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <math.h>
+
+#ifndef _WIN32
+	#include <unistd.h>
+#endif
 
 #include "../../core/pilight.h"
 #include "../../core/common.h"
@@ -19,7 +22,6 @@
 #include "../../core/log.h"
 #include "../../core/gc.h"
 #include "../../core/eventpool.h"
-#include "../../core/threadpool.h"
 #include "../protocol.h"
 #include "gpio_switch.h"
 
@@ -58,39 +60,38 @@ static void createMessage(int gpio, int state) {
 	eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
 }
 
-static int client_callback(struct eventpool_fd_t *node, int event) {
-	struct data_t *data = node->userdata;
+// static int client_callback(struct eventpool_fd_t *node, int event) {
+	// struct data_t *data = node->userdata;
 
-	switch(event) {
-		case EV_CONNECT_SUCCESS: {
-			eventpool_fd_enable_highpri(node);
-		} break;
-		case EV_HIGHPRI: {
-			uint8_t c = 0;
-			unsigned int nstate = 0;
+	// switch(event) {
+		// case EV_CONNECT_SUCCESS: {
+			// eventpool_fd_enable_highpri(node);
+		// } break;
+		// case EV_HIGHPRI: {
+			// uint8_t c = 0;
+			// unsigned int nstate = 0;
 
-			(void)read(node->fd, &c, 1);
-			lseek(node->fd, 0, SEEK_SET);
+			// (void)read(node->fd, &c, 1);
+			// lseek(node->fd, 0, SEEK_SET);
 
-			nstate = digitalRead(data->id);
+			// nstate = digitalRead(data->id);
 
-			if(nstate != data->state) {
-				data->state = nstate;
-				createMessage(data->id, data->state);
-			}
+			// if(nstate != data->state) {
+				// data->state = nstate;
+				// createMessage(data->id, data->state);
+			// }
 
-			eventpool_fd_enable_highpri(node);
-		} break;
-		case EV_DISCONNECTED: {
-			FREE(node->userdata);
-			eventpool_fd_remove(node);
-		} break;
-	}
-	return 0;
-}
+			// eventpool_fd_enable_highpri(node);
+		// } break;
+		// case EV_DISCONNECTED: {
+			// FREE(node->userdata);
+			// eventpool_fd_remove(node);
+		// } break;
+	// }
+	// return 0;
+// }
 
 static void *addDevice(int reason, void *param) {
-	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jid = NULL;
@@ -99,11 +100,11 @@ static void *addDevice(int reason, void *param) {
 	int match = 0;
 	double itmp = 0.0;
 
-	if(task->userdata == NULL) {
+	if(param == NULL) {
 		return NULL;
 	}
 
-	if((jdevice = json_first_child(task->userdata)) == NULL) {
+	if((jdevice = json_first_child(param)) == NULL) {
 		return NULL;
 	}
 
@@ -138,12 +139,12 @@ static void *addDevice(int reason, void *param) {
 
 	createMessage(node->id, node->state);
 
-	int fd = wiringXSelectableFd(node->id);
+	// int fd = wiringXSelectableFd(node->id);
 
 	node->next = data;
 	data = node;
 
-	eventpool_fd_add("gpio_switch", fd, client_callback, NULL, data);
+	// eventpool_fd_add("gpio_switch", fd, client_callback, NULL, data);
 
 	return NULL;
 }

@@ -8,9 +8,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <dirent.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <math.h>
@@ -22,6 +20,7 @@
 	#include <ws2tcpip.h>
 	#define MSG_NOSIGNAL 0
 #else
+	#include <unistd.h>
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
@@ -32,11 +31,9 @@
 	#include <netdb.h>
 	#include <arpa/inet.h>
 #endif
-#include <pthread.h>
 #include <stdint.h>
 #include <time.h>
 
-#include "../../core/threadpool.h"
 #include "../../core/pilight.h"
 #include "../../core/socket.h"
 #include "../../core/common.h"
@@ -111,11 +108,10 @@ static void *thread(void *param) {
 	} else {
 		t = time(NULL);
 	}
-	/*
-	 * FIXME
-	 * - Add the ntp time difference
-	 */
-	//t -= getntpdiff();
+
+	if(isntpsynced() == 0) {
+		t -= getntpdiff();
+	}
 
 	/* Get UTC time */
 	if(localtime_l(t, &tm, settings->tz) == 0) {
@@ -191,6 +187,7 @@ static void *addDevice(int reason, void *param) {
 		OUT_OF_MEMORY
 	}
 	memset(node, '\0', sizeof(struct data_t));
+	node->interval = 1;
 
 	if((jid = json_find_member(jdevice, "id"))) {
 		jchild = json_first_child(jid);
@@ -230,6 +227,7 @@ static void *addDevice(int reason, void *param) {
 	}
 	node->timer_req->data = node;
 	uv_timer_init(uv_default_loop(), node->timer_req);
+
 	uv_timer_start(node->timer_req, (void (*)(uv_timer_t *))thread, node->interval*1000, node->interval*1000);
 
 	return NULL;

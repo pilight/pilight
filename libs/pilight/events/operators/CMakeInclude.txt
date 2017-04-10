@@ -12,14 +12,14 @@ string(REPLACE "!" "\n" header4 ${headers})
 set(OPERATOR_HEADERS ${header4})
 configure_file(${PROJECT_SOURCE_DIR}/operator_header.h.in ${PROJECT_SOURCE_DIR}/operator_header.h)	
 
-execute_process(
-COMMAND grep -h "void .*Init(void)" ${${PROJECT_NAME}_sources}
-	WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-	RESULT_VARIABLE action_result
-	OUTPUT_VARIABLE action_init)
+foreach(source ${${PROJECT_NAME}_sources})
+	file(READ ${source} TMP)
+	string(REGEX MATCH "void[ ]+[A-Za-z0-9]+Init\\([a-z]+\\)[ ]+{\n" MATCHES "${TMP}")
+	list(APPEND operator_init "${MATCHES}")
+endforeach(source)
 
 set(inits)
-foreach(init ${action_init})
+foreach(init ${operator_init})
 	string(REPLACE "void " "	" init1 ${init})
 	string(REPLACE "(void) {" "()!" init2 ${init1})
 	list(APPEND inits ${init2})

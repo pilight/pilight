@@ -28,10 +28,8 @@ typedef enum {
 	COMAPI
 } communication_t;
 
-// #include <pthread.h>
 #include "../core/options.h"
 #include "../core/json.h"
-#include "../core/threadpool.h"
 #include "defines.h"
 
 typedef struct rawcode_t {

@@ -79,6 +79,13 @@ static void *received(int reason, void *param) {
 			CuAssertStrEquals(gtc,
 				"{\"longitude\":4.895168,\"latitude\":52.370216,\"year\":2017,\"month\":1,\"day\":6,\"weekday\":6,\"hour\":13,\"minute\":15,\"second\":5,\"dst\":0}",
 				data->message);
+			if(steps > 0) {
+				CuAssertIntEquals(gtc, 1, duration);
+			}
+			if(steps == 2) {
+				uv_stop(uv_default_loop());
+			}
+			steps++;
 		break;
 		case SUNRISESET_AMS:
 			CuAssertStrEquals(gtc,
@@ -171,7 +178,8 @@ static void *received(int reason, void *param) {
 
 	if(device != SUNRISESET_RISE &&
 		 device != SUNRISESET_MIDNIGHT &&
-		 device != SUNRISESET_SET) {
+		 device != SUNRISESET_SET &&
+		 device != DATETIME) {
 		uv_stop(uv_default_loop());
 	}
 
@@ -247,6 +255,8 @@ static void test_protocols_api_datetime(CuTest *tc) {
 	fflush(stdout);
 	
 	gtc = tc;
+
+	steps = 0;
 
 	memtrack();	
 

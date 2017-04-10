@@ -109,7 +109,7 @@ static void test_event_function_date_add(CuTest *tc) {
 		json_append_element(json, json_mkstring("1 YEAR"));
 
 		CuAssertIntEquals(tc, 0, function_date_add->run(NULL, json, &p, 0));
-		CuAssertStrEquals(tc, "\"2017-03-01 21:49:49\"", ret);
+		CuAssertStrEquals(tc, "2017-03-01 21:49:49", ret);
 		json_delete(json);
 
 		json = json_mkarray();
@@ -117,7 +117,7 @@ static void test_event_function_date_add(CuTest *tc) {
 		json_append_element(json, json_mkstring("-1 YEAR"));
 
 		CuAssertIntEquals(tc, 0, function_date_add->run(NULL, json, &p, 0));
-		CuAssertStrEquals(tc, "\"2015-03-01 21:49:49\"", ret);
+		CuAssertStrEquals(tc, "2015-03-01 21:49:49", ret);
 		json_delete(json);
 
 		/*
@@ -128,7 +128,7 @@ static void test_event_function_date_add(CuTest *tc) {
 		json_append_element(json, json_mkstring("1 MONTH"));
 
 		CuAssertIntEquals(tc, 0, function_date_add->run(NULL, json, &p, 0));
-		CuAssertStrEquals(tc, "\"2016-03-02 21:49:49\"", ret);
+		CuAssertStrEquals(tc, "2016-03-02 21:49:49", ret);
 		json_delete(json);
 
 		json = json_mkarray();
@@ -136,7 +136,7 @@ static void test_event_function_date_add(CuTest *tc) {
 		json_append_element(json, json_mkstring("-1 MONTH"));
 
 		CuAssertIntEquals(tc, 0, function_date_add->run(NULL, json, &p, 0));
-		CuAssertStrEquals(tc, "\"2015-12-31 21:49:49\"", ret);
+		CuAssertStrEquals(tc, "2015-12-31 21:49:49", ret);
 		json_delete(json);
 
 		/*
@@ -147,7 +147,7 @@ static void test_event_function_date_add(CuTest *tc) {
 		json_append_element(json, json_mkstring("1 DAY"));
 
 		CuAssertIntEquals(tc, 0, function_date_add->run(NULL, json, &p, 0));
-		CuAssertStrEquals(tc, "\"2017-03-01 21:49:49\"", ret);
+		CuAssertStrEquals(tc, "2017-03-01 21:49:49", ret);
 		json_delete(json);
 
 		json = json_mkarray();
@@ -155,7 +155,7 @@ static void test_event_function_date_add(CuTest *tc) {
 		json_append_element(json, json_mkstring("-1 DAY"));
 
 		CuAssertIntEquals(tc, 0, function_date_add->run(NULL, json, &p, 0));
-		CuAssertStrEquals(tc, "\"2017-02-27 21:49:49\"", ret);
+		CuAssertStrEquals(tc, "2017-02-27 21:49:49", ret);
 		json_delete(json);
 
 		/*
@@ -166,7 +166,7 @@ static void test_event_function_date_add(CuTest *tc) {
 		json_append_element(json, json_mkstring("1 HOUR"));
 
 		CuAssertIntEquals(tc, 0, function_date_add->run(NULL, json, &p, 0));
-		CuAssertStrEquals(tc, "\"2017-03-01 00:49:49\"", ret);
+		CuAssertStrEquals(tc, "2017-03-01 00:49:49", ret);
 		json_delete(json);
 
 		json = json_mkarray();
@@ -174,7 +174,7 @@ static void test_event_function_date_add(CuTest *tc) {
 		json_append_element(json, json_mkstring("-1 HOUR"));
 
 		CuAssertIntEquals(tc, 0, function_date_add->run(NULL, json, &p, 0));
-		CuAssertStrEquals(tc, "\"2016-02-29 23:49:49\"", ret);
+		CuAssertStrEquals(tc, "2016-02-29 23:49:49", ret);
 		json_delete(json);
 
 		/*
@@ -185,7 +185,7 @@ static void test_event_function_date_add(CuTest *tc) {
 		json_append_element(json, json_mkstring("1 MINUTE"));
 
 		CuAssertIntEquals(tc, 0, function_date_add->run(NULL, json, &p, 0));
-		CuAssertStrEquals(tc, "\"2017-03-01 00:00:49\"", ret);
+		CuAssertStrEquals(tc, "2017-03-01 00:00:49", ret);
 		json_delete(json);
 
 		json = json_mkarray();
@@ -193,7 +193,7 @@ static void test_event_function_date_add(CuTest *tc) {
 		json_append_element(json, json_mkstring("-1 MINUTE"));
 
 		CuAssertIntEquals(tc, 0, function_date_add->run(NULL, json, &p, 0));
-		CuAssertStrEquals(tc, "\"2016-02-29 23:59:49\"", ret);
+		CuAssertStrEquals(tc, "2016-02-29 23:59:49", ret);
 		json_delete(json);
 
 		/*
@@ -204,7 +204,7 @@ static void test_event_function_date_add(CuTest *tc) {
 		json_append_element(json, json_mkstring("1 SECOND"));
 
 		CuAssertIntEquals(tc, 0, function_date_add->run(NULL, json, &p, 0));
-		CuAssertStrEquals(tc, "\"2017-03-01 00:00:00\"", ret);
+		CuAssertStrEquals(tc, "2017-03-01 00:00:00", ret);
 		json_delete(json);
 
 		json = json_mkarray();
@@ -212,7 +212,7 @@ static void test_event_function_date_add(CuTest *tc) {
 		json_append_element(json, json_mkstring("-1 SECOND"));
 
 		CuAssertIntEquals(tc, 0, function_date_add->run(NULL, json, &p, 0));
-		CuAssertStrEquals(tc, "\"2016-02-29 23:59:59\"", ret);
+		CuAssertStrEquals(tc, "2016-02-29 23:59:59", ret);
 		json_delete(json);
 	}
 
@@ -280,6 +280,18 @@ static void test_event_function_date_format(CuTest *tc) {
 
 		CuAssertIntEquals(tc, -1, function_date_format->run(NULL, json, &p, 0));
 		json_delete(json);
+
+		/*
+		 * Too many values with numeric
+		 */
+		json = json_mkarray();
+		json_append_element(json, json_mknumber(1943, 0));
+		json_append_element(json, json_mkstring("-02-29 21:49:49"));
+		json_append_element(json, json_mkstring("%Y-%m-%d %H:%M:%S"));
+		json_append_element(json, json_mkstring("%H.%M.%S %d/%m/%Y"));
+
+		CuAssertIntEquals(tc, -1, function_date_format->run(NULL, json, &p, 0));
+		json_delete(json);
 	}
 
 	/*
@@ -303,6 +315,24 @@ static void test_event_function_date_format(CuTest *tc) {
 		CuAssertIntEquals(tc, 0, function_date_format->run(NULL, json, &p, 0));
 		CuAssertStrEquals(tc, "Mon Feb 29 21:49:49 2016", ret);
 		json_delete(json);
+
+		json = json_mkarray();
+		json_append_element(json, json_mkstring("2016-02-29"));
+		json_append_element(json, json_mkstring("%Y-%m-%d"));
+		json_append_element(json, json_mkstring("%d"));
+
+		CuAssertIntEquals(tc, 0, function_date_format->run(NULL, json, &p, 0));
+		CuAssertStrEquals(tc, "29", ret);
+		json_delete(json);
+
+		json = json_mkarray();
+		json_append_element(json, json_mkstring("2016,02,29"));
+		json_append_element(json, json_mkstring("%Y,%m,%d"));
+		json_append_element(json, json_mkstring("%d"));
+
+		CuAssertIntEquals(tc, 0, function_date_format->run(NULL, json, &p, 0));
+		CuAssertStrEquals(tc, "29", ret);
+		json_delete(json);
 	}
 
 	event_function_gc();
@@ -315,7 +345,7 @@ static void test_event_function_random(CuTest *tc) {
 	fflush(stdout);
 
 	char ret[255], *p = ret;
-	int res[2][10] = { { 0 }, { 0 } };
+	unsigned int res[2][11] = { { 0 }, { 0 } };
 
 	memtrack();
 
@@ -328,7 +358,7 @@ static void test_event_function_random(CuTest *tc) {
 		/*
 		 * Missing json parameters
 		 */
-		CuAssertIntEquals(tc, -1, function_date_format->run(NULL, NULL, &p, 0));
+		CuAssertIntEquals(tc, -1, function_random->run(NULL, NULL, &p, 0));
 
 		/*
 		 * Invalid json parameters
@@ -336,7 +366,7 @@ static void test_event_function_random(CuTest *tc) {
 		struct JsonNode *json = json_mkarray();
 		json_append_element(json, json_mkstring("0"));
 
-		CuAssertIntEquals(tc, -1, function_date_format->run(NULL, json, &p, 0));
+		CuAssertIntEquals(tc, -1, function_random->run(NULL, json, &p, 0));
 		json_delete(json);
 
 		/*
@@ -347,7 +377,7 @@ static void test_event_function_random(CuTest *tc) {
 		json_append_element(json, json_mkstring("1"));
 		json_append_element(json, json_mkstring("2"));
 
-		CuAssertIntEquals(tc, -1, function_date_format->run(NULL, json, &p, 0));
+		CuAssertIntEquals(tc, -1, function_random->run(NULL, json, &p, 0));
 		json_delete(json);
 
 		/*
@@ -357,7 +387,7 @@ static void test_event_function_random(CuTest *tc) {
 		json_append_element(json, json_mknumber(0, 0));
 		json_append_element(json, json_mknumber(1, 0));
 
-		CuAssertIntEquals(tc, -1, function_date_format->run(NULL, json, &p, 0));
+		CuAssertIntEquals(tc, 0, function_random->run(NULL, json, &p, 0));
 		json_delete(json);
 
 		/*
@@ -367,7 +397,7 @@ static void test_event_function_random(CuTest *tc) {
 		json_append_element(json, json_mkstring("a"));
 		json_append_element(json, json_mkstring("b"));
 
-		CuAssertIntEquals(tc, -1, function_date_format->run(NULL, json, &p, 0));
+		CuAssertIntEquals(tc, -1, function_random->run(NULL, json, &p, 0));
 		json_delete(json);
 	}
 
@@ -381,14 +411,14 @@ static void test_event_function_random(CuTest *tc) {
 			json_append_element(json, json_mkstring("0"));
 			json_append_element(json, json_mkstring("10"));
 
-			CuAssertIntEquals(tc, 0, function_date_format->run(NULL, json, &p, 0));
+			CuAssertIntEquals(tc, 0, function_random->run(NULL, json, &p, 0));
 			CuAssertTrue(tc, (atoi(p) >= 0 && atoi(p) <= 10));
 			res[0][atoi(p)]++;
 			json_delete(json);
 		}
 
 		for(i=0;i<10;i++) {
-			CuAssertTrue(tc, (res[0][i] > 800) && (res[0][1] < 1000));
+			CuAssertTrue(tc, (res[0][i] > 600) && (res[0][i] < 1200));
 		}
 
 		i = 0;
@@ -397,14 +427,15 @@ static void test_event_function_random(CuTest *tc) {
 			json_append_element(json, json_mkstring("0"));
 			json_append_element(json, json_mkstring("10"));
 
-			CuAssertIntEquals(tc, 0, function_date_format->run(NULL, json, &p, 0));
-			CuAssertTrue(tc, (atoi(p) >= 0 && atoi(p) <= 10));
-			res[1][atoi(p)]++;
+			CuAssertIntEquals(tc, 0, function_random->run(NULL, json, &p, 0));
+			int z = atoi(p);
+			CuAssertTrue(tc, (z >= 0 && z <= 10));
+			res[1][z]++;
 			json_delete(json);
 		}
 
 		for(i=0;i<10;i++) {
-			CuAssertTrue(tc, (res[1][i] > 800) && (res[1][1] < 1000));
+			CuAssertTrue(tc, (res[1][i] > 600) && (res[1][i] < 1200));
 		}
 	}
 

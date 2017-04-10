@@ -54,15 +54,8 @@ static char *commands[11] = {
 };
 
 static CuTest *gtc = NULL;
-static uv_thread_t pth;
-static int xbmc_client = 0;
-static int xbmc_server = 0;
-static int xbmc_loop = 1;
 static int loops = 0;
-static int doquit = 0;
 static int x = 0;
-
-static void start(int port);
 
 static void close_cb(uv_handle_t *handle) {
 	FREE(handle);
@@ -76,41 +69,42 @@ static void *done(void *param) {
 static void *received(int reason, void *param) {
 	struct reason_code_received_t *data = param;
 
-	switch(x++) {
-		case 0:
-			CuAssertStrEquals(gtc, "{\"action\":\"play\",\"media\":\"song\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
-		break;
-		case 1:
-			CuAssertStrEquals(gtc, "{\"action\":\"pause\",\"media\":\"song\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
-		break;
-		case 2:
-		case 5:
-		case 8:
-			CuAssertStrEquals(gtc, "{\"action\":\"home\",\"media\":\"none\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
-		break;
-		case 3:
-			CuAssertStrEquals(gtc, "{\"action\":\"play\",\"media\":\"movie\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
-		break;
-		case 4:
-			CuAssertStrEquals(gtc, "{\"action\":\"pause\",\"media\":\"movie\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
-		break;
-		case 6:
-			CuAssertStrEquals(gtc, "{\"action\":\"play\",\"media\":\"episode\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
-		break;
-		case 7:
-			CuAssertStrEquals(gtc, "{\"action\":\"pause\",\"media\":\"episode\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
-		break;
-		case 9:
-			CuAssertStrEquals(gtc, "{\"action\":\"active\",\"media\":\"screensaver\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
-		break;
-		case 10:
-			CuAssertStrEquals(gtc, "{\"action\":\"inactive\",\"media\":\"screensaver\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
-			doquit = 1;
-		break;
-		case 11:
-			CuAssertStrEquals(gtc, "{\"action\":\"shutdown\",\"media\":\"none\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
-			x = 0;
-		break;
+	if(loops < 2) {
+		switch(x++) {
+			case 0:
+				CuAssertStrEquals(gtc, "{\"action\":\"play\",\"media\":\"song\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
+			break;
+			case 1:
+				CuAssertStrEquals(gtc, "{\"action\":\"pause\",\"media\":\"song\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
+			break;
+			case 2:
+			case 5:
+			case 8:
+				CuAssertStrEquals(gtc, "{\"action\":\"home\",\"media\":\"none\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
+			break;
+			case 3:
+				CuAssertStrEquals(gtc, "{\"action\":\"play\",\"media\":\"movie\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
+			break;
+			case 4:
+				CuAssertStrEquals(gtc, "{\"action\":\"pause\",\"media\":\"movie\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
+			break;
+			case 6:
+				CuAssertStrEquals(gtc, "{\"action\":\"play\",\"media\":\"episode\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
+			break;
+			case 7:
+				CuAssertStrEquals(gtc, "{\"action\":\"pause\",\"media\":\"episode\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
+			break;
+			case 9:
+				CuAssertStrEquals(gtc, "{\"action\":\"active\",\"media\":\"screensaver\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
+			break;
+			case 10:
+				CuAssertStrEquals(gtc, "{\"action\":\"inactive\",\"media\":\"screensaver\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
+			break;
+			case 11:
+				CuAssertStrEquals(gtc, "{\"action\":\"shutdown\",\"media\":\"none\",\"server\":\"127.0.0.1\",\"port\":19090}", data->message);
+				x = 0;
+			break;
+		}
 	}
 
 	return NULL;
@@ -122,162 +116,57 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 	}
 }
 
-static void wait(void *param) {
-	struct timeval tv;
-	struct sockaddr_in addr;
-	int addrlen = sizeof(addr);
-	char *message = NULL;
-	int n = 0, r = 0, len = 0;
-	fd_set fdsread;
-	fd_set fdswrite;
-
-#ifdef _WIN32
-	unsigned long on = 1;
-	r = ioctlsocket(xbmc_server, FIONBIO, &on);
-	CuAssertTrue(gtc, r >= 0);
-#else
-	long arg = fcntl(xbmc_server, F_GETFL, NULL);
-	r = fcntl(xbmc_server, F_SETFL, arg | O_NONBLOCK);
-	CuAssertTrue(gtc, r >= 0);
-#endif
-
-	FD_ZERO(&fdsread);
-	FD_ZERO(&fdswrite);
-
-	while(xbmc_loop) {
-		FD_SET((unsigned long)xbmc_server, &fdsread);
-		tv.tv_sec = 0;
-		tv.tv_usec = 1000;
-
-		if(doquit == 2) {
-			xbmc_loop = 0;
-#ifdef _WIN32
-			if(xbmc_client > 0) {
-				closesocket(xbmc_client);
-			}
-			closesocket(xbmc_server);
-#else
-			if(xbmc_client > 0) {
-				close(xbmc_client);
-			}
-			close(xbmc_server);
-#endif
-			xbmc_client = 0;
-			xbmc_server = 0;
-
-			uv_stop(uv_default_loop());
-			break;
-		} else if(doquit == 1) {
-			cmdnr = 0;
-			doquit = 0;
-			loops++;
-
-			char msg[128];
-			sprintf(msg, "%s%d", "- round ", loops);
-			printf("[ %-48s ]\n", msg);
-			fflush(stdout);
-
-#ifdef _WIN32
-			closesocket(xbmc_client);
-#else
-			close(xbmc_client);
-#endif
-			xbmc_client = 0;
-		}
-
-		do {
-			if(xbmc_client > xbmc_server) {
-				n = select(xbmc_client+1, &fdsread, &fdswrite, NULL, &tv);
-			} else {
-				n = select(xbmc_server+1, &fdsread, &fdswrite, NULL, &tv);
-			}
-		} while(n == -1 && errno == EINTR && xbmc_loop);
-
-		if(xbmc_loop == 0) {
-			doquit = 2;
-			xbmc_loop = 1;
-		}
-
-		if(n == 0 || doquit == 2) {
-			if(xbmc_client > 0) {
-				FD_SET((unsigned long)xbmc_client, &fdswrite);
-			}
-			continue;
-		}
-
-		if(n == -1) {
-			goto clear;
-		} else if(n > 0) {
-			if(FD_ISSET(xbmc_server, &fdsread)) {
-				FD_ZERO(&fdsread);
-				if(xbmc_client == 0) {
-					xbmc_client = accept(xbmc_server, (struct sockaddr *)&addr, (socklen_t *)&addrlen);
-					CuAssertTrue(gtc, xbmc_client > 0);
-				}
-			}
-			if(FD_ISSET(xbmc_client, &fdswrite)) {
-				FD_ZERO(&fdswrite);
-				if((message = MALLOC(BUFSIZE)) == NULL) {
-					OUT_OF_MEMORY
-				}
-				/*
-				 * Actual raw openweathermap http response
-				 */
-				strcpy(message, commands[cmdnr++]);
-				len = strlen(message);
-
-				r = send(xbmc_client, message, len, 0);
-				CuAssertIntEquals(gtc, len, r);
-
-				if(cmdnr < (sizeof(commands)/sizeof(commands[0]))) {
-				} else {
-					if(loops > 1) {
-						doquit = 2;
-					}
-				}
-				FREE(message);
-			}
-		}
-	}
-
-clear:
-	return;
+static void write_cb(uv_write_t *req, int status) {
+	CuAssertIntEquals(gtc, 0, status);
+	FREE(req);
 }
 
-static void start(int port) {
-	struct sockaddr_in addr;
-	int opt = 1;
-	int r = 0;
+static void rewrite(uv_timer_t *timer_req) {
+	uv_tcp_t *client_req = timer_req->data;
+	uv_write_t *write_req = MALLOC(sizeof(uv_write_t));
+	CuAssertPtrNotNull(gtc, write_req);	
+	char buffer[BUFFER_SIZE];
+	strcpy(buffer, commands[cmdnr++]);
+	int len = strlen(buffer);
+	uv_buf_t buf1 = uv_buf_init(buffer, len);
 
-	x = 0;
-	loops = 0;
-	cmdnr = 0;
+	int r = uv_write(write_req, (uv_stream_t *)client_req, &buf1, 1, write_cb);
+	CuAssertIntEquals(gtc, 0, r);
 
-#ifdef _WIN32
-	WSADATA wsa;
-
-	if(WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
-		fprintf(stderr, "could not initialize new socket\n");
-		exit(EXIT_FAILURE);
+	if(cmdnr == (sizeof(commands)/sizeof(commands[0]))) {
+		uv_close((uv_handle_t *)client_req, close_cb);
+		uv_timer_stop(timer_req);
 	}
-#endif
+}
 
-	xbmc_server = socket(AF_INET, SOCK_STREAM, 0);
-	CuAssertTrue(gtc, xbmc_server >= 0);
+static void connection_cb(uv_stream_t *server_req, int status) {
+	if(loops == 2) {
+		uv_stop(uv_default_loop());
+		return;
+	}
 
-	memset((char *)&addr, '\0', sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	addr.sin_port = htons(port);
+	uv_tcp_t *client_req = MALLOC(sizeof(uv_tcp_t));
+	CuAssertPtrNotNull(gtc, client_req);
+	CuAssertIntEquals(gtc, 0, status);
+	uv_tcp_init(uv_default_loop(), client_req);
 
-	r = setsockopt(xbmc_server, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(int));
-	CuAssertTrue(gtc, r >= 0);
+	int r = uv_accept(server_req, (uv_stream_t *)client_req);
+	CuAssertIntEquals(gtc, 0, r);
 
-	r = bind(xbmc_server, (struct sockaddr *)&addr, sizeof(addr));
-	CuAssertTrue(gtc, r >= 0);
+	uv_timer_t *timer_req = NULL;
+	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
 
-	r = listen(xbmc_server, 0);
-	CuAssertTrue(gtc, r >= 0);
+	char msg[128];
+	sprintf(msg, "%s%d", "- round ", ++loops);
+	printf("[ %-48s ]\n", msg);
+	fflush(stdout);
+
+	cmdnr = 0;
+	timer_req->data = client_req;
+	uv_timer_init(uv_default_loop(), timer_req);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))rewrite, 100, 100);	
 }
 
 static void test_protocols_api_xbmc(CuTest *tc) {
@@ -288,11 +177,20 @@ static void test_protocols_api_xbmc(CuTest *tc) {
 
 	gtc = tc;
 
+	uv_tcp_t *server_req = MALLOC(sizeof(uv_tcp_t));
+	CuAssertPtrNotNull(tc, server_req);
+
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
+	
+	struct sockaddr_in addr;
+	int r = uv_ip4_addr("127.0.0.1", 19090, &addr);
+	CuAssertIntEquals(tc, r, 0);
 
-	start(19090);
+	uv_tcp_init(uv_default_loop(), server_req);
+	uv_tcp_bind(server_req, (const struct sockaddr *)&addr, 0);
 
-	uv_thread_create(&pth, wait, NULL);
+	r = uv_listen((uv_stream_t *)server_req, 128, connection_cb);
+	CuAssertIntEquals(tc, r, 0);	
 
 	xbmcInit();
 
@@ -310,8 +208,6 @@ static void test_protocols_api_xbmc(CuTest *tc) {
 	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 	}
-
-	uv_thread_join(&pth);
 
 	eventpool_gc();
 	protocol_gc();

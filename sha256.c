@@ -12,22 +12,21 @@
 #include <signal.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <unistd.h>
 #ifdef _WIN32
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
 	#define MSG_NOSIGNAL 0
 #else
+	#include <unistd.h>
 	#include <sys/socket.h>
 	#include <sys/time.h>
 	#include <netinet/in.h>
 	#include <netinet/tcp.h>
 	#include <netdb.h>
 	#include <arpa/inet.h>
+	#include <sys/time.h>
 #endif
-#include <pthread.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 #include <ctype.h>
 
 #include "libs/libuv/uv.h"
@@ -63,7 +62,8 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 }
 
 int main(int argc, char **argv) {
-	pth_main_id = pthread_self();
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	memcpy((void *)&pth_main_id, &pth_cur_id, sizeof(uv_thread_t));
 
 	pilight.process = PROCESS_CLIENT;
 

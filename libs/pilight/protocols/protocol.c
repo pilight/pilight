@@ -9,8 +9,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dirent.h>
-#include <sys/time.h>
 #include <sys/stat.h>
 #ifndef _WIN32
 	#ifdef __mips__
@@ -18,7 +16,6 @@
 	#endif
 #endif
 #define __USE_UNIX98
-#include <pthread.h>
 
 #include "../core/pilight.h"
 #include "../core/common.h"

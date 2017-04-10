@@ -9,9 +9,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#ifndef _WIN32
+	#include <unistd.h>
+#endif
 
-#include "../../core/threadpool.h"
 #include "../../core/options.h"
 #include "../../core/log.h"
 #include "../../core/dso.h"
@@ -101,74 +102,74 @@ static int checkArguments(struct rules_actions_t *obj) {
 	return 0;
 }
 
-static void callback(int ret, char *data, int len, char *mime, void *userdata) {
-	if(ret == 200) {
-		logprintf(LOG_DEBUG, "pushbullet action succeeded with message: %s", data);
-	} else {
-		logprintf(LOG_NOTICE, "pushbullet action failed (%d) with message: %s", ret, data);
-	}
-}
+// static void callback(int ret, char *data, int len, char *mime, void *userdata) {
+	// if(ret == 200) {
+		// logprintf(LOG_DEBUG, "pushbullet action succeeded with message: %s", data);
+	// } else {
+		// logprintf(LOG_NOTICE, "pushbullet action failed (%d) with message: %s", ret, data);
+	// }
+// }
 
-static void *thread(void *param) {
-	struct threadpool_tasks_t *task = param;
-	struct rules_actions_t *pth = task->userdata;
-	struct JsonNode *json = pth->parsedargs;
+// static void *thread(void *param) {
+	// struct threadpool_tasks_t *task = param;
+	// struct rules_actions_t *pth = task->userdata;
+	// struct JsonNode *json = pth->parsedargs;
 
-	struct JsonNode *jtitle = NULL;
-	struct JsonNode *jbody = NULL;
-	struct JsonNode *jtype = NULL;
-	struct JsonNode *jtoken = NULL;
-	struct JsonNode *jvalues1 = NULL;
-	struct JsonNode *jvalues2 = NULL;
-	struct JsonNode *jvalues3 = NULL;
-	struct JsonNode *jvalues4 = NULL;
-	struct JsonNode *jval1 = NULL;
-	struct JsonNode *jval2 = NULL;
-	struct JsonNode *jval3 = NULL;
-	struct JsonNode *jval4 = NULL;
+	// struct JsonNode *jtitle = NULL;
+	// struct JsonNode *jbody = NULL;
+	// struct JsonNode *jtype = NULL;
+	// struct JsonNode *jtoken = NULL;
+	// struct JsonNode *jvalues1 = NULL;
+	// struct JsonNode *jvalues2 = NULL;
+	// struct JsonNode *jvalues3 = NULL;
+	// struct JsonNode *jvalues4 = NULL;
+	// struct JsonNode *jval1 = NULL;
+	// struct JsonNode *jval2 = NULL;
+	// struct JsonNode *jval3 = NULL;
+	// struct JsonNode *jval4 = NULL;
 
-	char url[1024];
+	// char url[1024];
 
-	jtitle = json_find_member(json, "TITLE");
-	jbody = json_find_member(json, "BODY");
-	jtoken = json_find_member(json, "TOKEN");
-	jtype = json_find_member(json, "TYPE");
+	// jtitle = json_find_member(json, "TITLE");
+	// jbody = json_find_member(json, "BODY");
+	// jtoken = json_find_member(json, "TOKEN");
+	// jtype = json_find_member(json, "TYPE");
 
-	if(jtitle != NULL && jbody != NULL && jtoken != NULL && jtype != NULL) {
-		jvalues1 = json_find_member(jtitle, "value");
-		jvalues2 = json_find_member(jbody, "value");
-		jvalues3 = json_find_member(jtoken, "value");
-		jvalues4 = json_find_member(jtype, "value");
-		if(jvalues1 != NULL && jvalues2 != NULL && jvalues3 != NULL && jvalues4 != NULL) {
-			jval1 = json_find_element(jvalues1, 0);
-			jval2 = json_find_element(jvalues2, 0);
-			jval3 = json_find_element(jvalues3, 0);
-			jval4 = json_find_element(jvalues4, 0);
-			if(jval1 != NULL && jval2 != NULL && jval3 != NULL && jval4 != NULL &&
-			 jval1->tag == JSON_STRING && jval2->tag == JSON_STRING &&
-			 jval3->tag == JSON_STRING && jval4->tag == JSON_STRING) {
-				snprintf(url, 1024, "https://%s@api.pushbullet.com/v2/pushes", jval3->string_);
+	// if(jtitle != NULL && jbody != NULL && jtoken != NULL && jtype != NULL) {
+		// jvalues1 = json_find_member(jtitle, "value");
+		// jvalues2 = json_find_member(jbody, "value");
+		// jvalues3 = json_find_member(jtoken, "value");
+		// jvalues4 = json_find_member(jtype, "value");
+		// if(jvalues1 != NULL && jvalues2 != NULL && jvalues3 != NULL && jvalues4 != NULL) {
+			// jval1 = json_find_element(jvalues1, 0);
+			// jval2 = json_find_element(jvalues2, 0);
+			// jval3 = json_find_element(jvalues3, 0);
+			// jval4 = json_find_element(jvalues4, 0);
+			// if(jval1 != NULL && jval2 != NULL && jval3 != NULL && jval4 != NULL &&
+			 // jval1->tag == JSON_STRING && jval2->tag == JSON_STRING &&
+			 // jval3->tag == JSON_STRING && jval4->tag == JSON_STRING) {
+				// snprintf(url, 1024, "https://%s@api.pushbullet.com/v2/pushes", jval3->string_);
 
-				struct JsonNode *code = json_mkobject();
-				json_append_member(code, "type", json_mkstring(jval4->string_));
-				json_append_member(code, "title", json_mkstring(jval1->string_));
-				json_append_member(code, "body", json_mkstring(jval2->string_));
+				// struct JsonNode *code = json_mkobject();
+				// json_append_member(code, "type", json_mkstring(jval4->string_));
+				// json_append_member(code, "title", json_mkstring(jval1->string_));
+				// json_append_member(code, "body", json_mkstring(jval2->string_));
 
-				char *content = json_stringify(code, "\t");
-				json_delete(code);
+				// char *content = json_stringify(code, "\t");
+				// json_delete(code);
 
-				http_post_content(url, "application/json", content, callback, NULL);
+				// http_post_content(url, "application/json", content, callback, NULL);
 
-				json_free(content);
-			}
-		}
-	}
+				// json_free(content);
+			// }
+		// }
+	// }
 
-	return (void *)NULL;
-}
+	// return (void *)NULL;
+// }
 
 static int run(struct rules_actions_t *obj) {
-	threadpool_add_work(REASON_END, NULL, action_pushbullet->name, 0, thread, NULL, (void *)obj);
+	// threadpool_add_work(REASON_END, NULL, action_pushbullet->name, 0, thread, NULL, (void *)obj);
 
 	return 0;
 }

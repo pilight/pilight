@@ -65,7 +65,11 @@ static void *received(int reason, void *param) {
 		uv_close((uv_handle_t *)client_req, close_cb);
 		
 		uv_fs_t req;
+#ifdef __FreeBSD__
+		uv_fs_unlink(uv_default_loop(), &req, "/tmp/lircd", NULL);
+#else
 		uv_fs_unlink(uv_default_loop(), &req, "/dev/lircd", NULL);
+#endif
 
 		if(loop < 2) {
 			loop++;
@@ -145,7 +149,11 @@ static void start(void) {
 	r = uv_pipe_init(uv_default_loop(), pipe_req, 1);
 	CuAssertIntEquals(gtc, 0, r);
 
+#ifdef __FreeBSD__
+	r = uv_pipe_bind(pipe_req, "/tmp/lircd");
+#else
 	r = uv_pipe_bind(pipe_req, "/dev/lircd");
+#endif
 	CuAssertIntEquals(gtc, 0, r);
 
 	r = uv_listen((uv_stream_t *)pipe_req, 128, connect_cb);
@@ -166,6 +174,9 @@ static void test_protocols_api_lirc(CuTest *tc) {
 
 	start();
 
+#ifdef __FreeBSD__
+	setenv("PILIGHT_LIRC_DEV", "/tmp/lircd", 1);
+#endif
 	lircInit();
 
 	char *add = "{\"test\":{\"protocol\":[\"lirc\"],\"id\":[{\"remote\":\"logitech\"}],\"code\":\"000000037ff07bde\",\"repeat\":1,\"button\":\"KEY_ARROWLEFT\"}}";

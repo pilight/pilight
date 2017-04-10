@@ -99,6 +99,35 @@ enum eventpool_threads_t {
 #define REASON_LOG										30
 #define REASON_END										31
 
+typedef struct threadpool_data_t {
+	int reason;
+	int priority;
+	char name[255];
+	uv_sem_t *ref;
+	void *userdata;
+	void *(*func)(int, void *);
+	void *(*done)(void *);
+} threadpool_data_t;
+
+typedef struct threadpool_tasks_t {
+	unsigned long id;
+	char *name;
+	void *(*func)(int, void *);
+	void *(*done)(void *);
+	uv_sem_t *ref;
+	int priority;
+	int reason;
+
+	struct {
+		struct timespec first;
+		struct timespec second;
+	}	timestamp;
+
+	void *userdata;
+
+	struct threadpool_tasks_t *next;
+} threadpool_tasks_t;
+
 typedef struct eventpool_listener_t {
 	void *(*func)(int, void *);
 	void *userdata;

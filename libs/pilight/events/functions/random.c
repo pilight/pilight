@@ -9,8 +9,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/time.h>
+
+#ifndef _WIN32
+	#include <unistd.h>
+#endif
 
 #include "../../core/options.h"
 #include "../../core/log.h"
@@ -37,8 +39,10 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 			logprintf(LOG_ERR, "RANDOM requires both parameters to be numeric values e.g. RANDOM(1, 10)");
 			return -1;
 		}
+	} else if(childs->tag == JSON_NUMBER) {
+		min = childs->number_;
 	} else {
-		logprintf(LOG_ERR, "RANDOM requires both parameters to be passed as JSON_STRING");
+		logprintf(LOG_ERR, "RANDOM requires both parameters to be numeric values e.g. RANDOM(1, 10)");
 		return -1;
 	}
 
@@ -55,8 +59,10 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 			logprintf(LOG_ERR, "RANDOM requires both parameters to be numeric values e.g. RANDOM(1, 10)");
 			return -1;
 		}
+	} else if(childs->tag == JSON_NUMBER) {
+		max = childs->number_;
 	} else {
-		logprintf(LOG_ERR, "RANDOM requires both parameters to be passed as JSON_STRING");
+		logprintf(LOG_ERR, "RANDOM requires both parameters to be numeric values e.g. RANDOM(1, 10)");
 		return -1;
 	}
 

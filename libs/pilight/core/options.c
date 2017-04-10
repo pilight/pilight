@@ -26,8 +26,12 @@ static char *gctmp = NULL;
 
 int options_gc(void) {
 
-	FREE(longarg);
-	FREE(shortarg);
+	if(longarg != NULL) {
+		FREE(longarg);
+	}
+	if(shortarg != NULL) {
+		FREE(shortarg);
+	}
 	if(gctmp != NULL) {
 		FREE(gctmp);
 	}

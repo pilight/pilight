@@ -22,7 +22,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		set(${PROJECT_NAME}_files ${${PROJECT_NAME}_files} ${openzwave_files} CACHE INTERNAL "")
 	endif()
 
-	if(${IR} MATCHES "ON")
+	if(${IR} MATCHES "ON" AND NOT WIN32)
 		add_subdirectory(lirc)	
 		set(${PROJECT_NAME}_files ${${PROJECT_NAME}_files} ${lirc_files} CACHE INTERNAL "")
 	endif()

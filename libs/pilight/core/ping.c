@@ -131,13 +131,13 @@ int reply_cb(void *param, struct io_status_block *io_status, unsigned long reser
 		unsigned long ipaddr = INADDR_NONE;
 
 		strcpy(data->ip, data->nodes->ip);
-		ipaddr = inet_addr(data->nodes->ip);
+		inet_pton(AF_INET, data->nodes->ip, &ipaddr);
 
 		data->nodes = data->nodes->next;
 		int ret = IcmpSendEcho2(data->file, NULL, (FARPROC)reply_cb, data, ipaddr, send_data, sizeof(send_data), NULL, data->reply.buffer, data->reply.size, 1000);
 		int error = WSAGetLastError();
 		if(error != ERROR_IO_PENDING) {
-			logprintf(LOG_ERR, "IcmpSendEcho2: %d\n", WSAGetLastError());
+			logprintf(LOG_ERR, "IcmpSendEcho2: %d", error);
 			FREE(data);
 			return -1;
 		}
@@ -147,6 +147,12 @@ int reply_cb(void *param, struct io_status_block *io_status, unsigned long reser
 }
 
 int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
+
 	unsigned long ipaddr = INADDR_NONE;
 	struct data_t *data = MALLOC(sizeof(struct data_t));
 	if(data == NULL) {
@@ -172,16 +178,17 @@ int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
 	}
 
 	strcpy(data->ip, data->nodes->ip);
-	ipaddr = inet_addr(data->nodes->ip);
+	inet_pton(AF_INET, data->nodes->ip, &ipaddr);
 	data->nodes = data->nodes->next;
 
 	int ret = IcmpSendEcho2(data->file, NULL, (FARPROC)reply_cb, data, ipaddr, send_data, sizeof(send_data), NULL, data->reply.buffer, data->reply.size, 1000);
 	int error = WSAGetLastError();
 	if(error != ERROR_IO_PENDING) {
-		logprintf(LOG_ERR, "IcmpSendEcho2: %d\n", WSAGetLastError());
+		logprintf(LOG_ERR, "IcmpSendEcho2: %d",error);
 		FREE(data);
 		return -1;
 	}
+	return 0;
 }
 #else
 /*
@@ -272,7 +279,8 @@ static void close_cb(uv_handle_t *handle) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	FREE(handle);
 }
@@ -281,7 +289,8 @@ static void custom_close_cb(uv_poll_t *req) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct data_t *data = custom_poll_data->data;
@@ -345,7 +354,7 @@ static void write_cb(uv_poll_t *req) {
 	memset(&dst, 0, sizeof(struct sockaddr));
 
 	dst.sin_family = AF_INET;
-	dst.sin_addr.s_addr = inet_addr(data->nodes->ip);
+	inet_pton(AF_INET, data->nodes->ip, &dst.sin_addr);
 	dst.sin_port = htons(0);	
 	
 	if((i = sendto(fd, packet, cc, 0, (struct sockaddr *)&dst, sizeof(dst))) < 0) {
@@ -391,7 +400,8 @@ static void write_cb(uv_poll_t *req) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct data_t *data = custom_poll_data->data;
@@ -447,11 +457,12 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct data_t *data = custom_poll_data->data;
-	char buf2[1500];
+	unsigned char buf2[1500];
 	struct ip *ip = (struct ip *)buf2;
 	struct icmp *icmp = (struct icmp *)(ip + 1);
 	char buf1[INET_ADDRSTRLEN+1];
@@ -466,11 +477,22 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	if(*nread == 40) {
 		memcpy(&buf2, buf, 40);
 
+		/*
+		 * In case of inconsistancies between ip_src
+		 * and ip_src->s_addr, synchronize ip_src
+		 * to ip_src->s_addr
+		 */
+		int i = 0;
+		for(i=0;i<4;i++) {
+			if(((unsigned char *)&ip->ip_src)[i] != ((const unsigned char *)(&((struct sockaddr_in *)&ip->ip_src)->sin_addr))[i]) {
+				((unsigned char *)(&((struct sockaddr_in *)&ip->ip_src)->sin_addr))[i] = ((unsigned char *)&ip->ip_src)[i];
+			}
+		}
 		icmp = (struct icmp *)(buf2 + (ip->ip_hl << 2));
 
 		memset(&buf1, '\0', INET_ADDRSTRLEN+1);
 
-		inet_ntop(AF_INET, (void *)&(ip->ip_src), buf1, INET_ADDRSTRLEN+1);
+		uv_ip4_name((struct sockaddr_in *)&ip->ip_src, buf1, INET_ADDRSTRLEN+1);
 		if(icmp->icmp_type == ICMP_ECHOREPLY || icmp->icmp_type == ICMP_ECHO) {
 			struct ping_list_t *tmp = data->iplist;
 			while(tmp) {

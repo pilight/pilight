@@ -19,8 +19,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
+#ifndef _WIN32
+	#include <unistd.h>
+#endif
 
 #include "../../core/log.h"
 #include "../operator.h"
@@ -28,11 +30,20 @@
 #include "intdivide.h"
 
 
-static void operatorIntDivideCallback(double a, double b, char **ret) {
-	if(a == 0 || b == 0) {
+static void operatorIntDivideCallback(struct varcont_t *a, struct varcont_t *b, char **ret) {
+	struct varcont_t aa, *aaa = &aa;
+	struct varcont_t bb, *bbb = &bb;
+
+	memcpy(&aa, a, sizeof(struct varcont_t));
+	memcpy(&bb, b, sizeof(struct varcont_t));
+
+	cast2int(&aaa);
+	cast2int(&bbb);
+
+	if(aaa->number_ == 0 || bbb->number_ == 0) {
 		strcpy(*ret, "0.000000");
 	} else {
-		sprintf(*ret, "%.6f", (a < 0 ? -floor(-a / b) : floor(a / b)));
+		sprintf(*ret, "%.6f", (aaa->number_ < 0 ? -floor(-aaa->number_ / bbb->number_) : floor(aaa->number_ / bbb->number_)));
 	}
 }
 
@@ -41,7 +52,7 @@ __attribute__((weak))
 #endif
 void operatorIntDivideInit(void) {
 	event_operator_register(&operator_int_divide, "\\");
-	operator_int_divide->callback_number = &operatorIntDivideCallback;
+	operator_int_divide->callback = &operatorIntDivideCallback;
 }
 
 #if defined(MODULE) && !defined(_WIN32)

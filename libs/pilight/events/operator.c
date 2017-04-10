@@ -160,8 +160,8 @@ void event_operator_register(struct event_operators_t **op, const char *name) {
 	}
 	strcpy((*op)->name, name);
 
-	(*op)->callback_string = NULL;
-	(*op)->callback_number = NULL;
+	(*op)->callback = NULL;
+	// (*op)->callback_number = NULL;
 
 	(*op)->next = event_operators;
 	event_operators = (*op);

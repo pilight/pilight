@@ -8,6 +8,7 @@
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/network.h"
 #include "../libs/mbedtls/mbedtls/sha256.h"
+#include "../libs/libuv/uv.h"
 
 #include "alltests.h"
 #include "gplv3.h"
@@ -40,6 +41,7 @@ CuSuite *suite_protocols_api_lirc(void);
 CuSuite *suite_protocols_api_xbmc(void);
 CuSuite *suite_protocols_core(void);
 CuSuite *suite_protocols_generic(void);
+CuSuite *suite_protocols_i2c(void);
 CuSuite *suite_event_operators(void);
 CuSuite *suite_event_functions(void);
 CuSuite *suite_event_actions_switch(void);
@@ -47,12 +49,13 @@ CuSuite *suite_event_actions_toggle(void);
 CuSuite *suite_event_actions_label(void);
 CuSuite *suite_event_actions_dim(void);
 CuSuite *suite_event_actions_mail(void);
+CuSuite *suite_events(void);
 
 CuString *output = NULL;
 CuSuite *suite = NULL;
 CuSuite *suites[NRSUITS];
 
-pthread_t pth_main_id;
+const uv_thread_t pth_main_id;
 int nr = 0;
 
 // void _logprintf(int prio, char *file, int line, const char *str, ...) {
@@ -73,10 +76,11 @@ int RunAllTests(void) {
 	output = CuStringNew();
 	suite = CuSuiteNew();
 
-	pth_main_id = pthread_self();
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	memcpy((void *)&pth_main_id, &pth_cur_id, sizeof(uv_thread_t));
+
 	memtrack();
 
-	assert(pthread_equal(pth_main_id, pthread_self()));
 	/*
 	 * Logging is asynchronous. If the log is being filled
 	 * when a test is already finished, xfree() is called
@@ -102,16 +106,11 @@ int RunAllTests(void) {
 	suites[nr++] = suite_sha256cache();
 	suites[nr++] = suite_strptime();
 	suites[nr++] = suite_options();
-	suites[nr++] = suite_dso();
+	// suites[nr++] = suite_dso(); // Fix the dll creation
 	suites[nr++] = suite_eventpool();
 	suites[nr++] = suite_log();
-	/*
-	 * FIXME:
-	 * When SSDP is started before ping
-	 * ping will not work properly.
-	 */
-	suites[nr++] = suite_ping();
 	suites[nr++] = suite_ssdp();
+	suites[nr++] = suite_ping();
 	suites[nr++] = suite_ntp();
 	suites[nr++] = suite_http();
 	suites[nr++] = suite_mail();
@@ -119,12 +118,17 @@ int RunAllTests(void) {
 	suites[nr++] = suite_socket();
 	suites[nr++] = suite_protocols_433();
 	suites[nr++] = suite_protocols_api();
+#ifndef _WIN32
 	suites[nr++] = suite_protocols_api_lirc();
+#endif
 	suites[nr++] = suite_protocols_api_xbmc();
 	suites[nr++] = suite_protocols_api_openweathermap();
 	suites[nr++] = suite_protocols_api_wunderground();
 	suites[nr++] = suite_protocols_core();
 	suites[nr++] = suite_protocols_generic();
+#ifdef __linux__
+	suites[nr++] = suite_protocols_i2c();
+#endif
 	suites[nr++] = suite_event_operators();
 	suites[nr++] = suite_event_functions();
 	suites[nr++] = suite_event_actions_switch();
@@ -132,6 +136,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_event_actions_label();
 	suites[nr++] = suite_event_actions_dim();
 	suites[nr++] = suite_event_actions_mail();
+	suites[nr++] = suite_events();
 
 	for(i=0;i<nr;i++) {
 		CuSuiteAddSuite(suite, suites[i]);

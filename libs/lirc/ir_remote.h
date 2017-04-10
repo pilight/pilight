@@ -19,10 +19,8 @@
 #include <math.h>
 #include <stdlib.h>
 
-#ifndef _WIN32
-	#include <sys/time.h>
-	#include <unistd.h>
-#endif
+#include <sys/time.h>
+#include <unistd.h>
 
 #include "lirc.h"
 #include "ir_remote_types.h"

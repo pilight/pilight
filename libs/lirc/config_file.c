@@ -21,12 +21,8 @@
 #include <fcntl.h>
 #include <ctype.h>
 
-#ifdef _WIN32
-	#include "../pilight/core/dirname.h"
-#else
-	#include <unistd.h>
-	#include <libgen.h>
-#endif
+#include <unistd.h>
+#include <libgen.h>
 
 #include "../pilight/core/log.h"
 #include "../pilight/core/mem.h"

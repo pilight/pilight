@@ -96,7 +96,8 @@ static void close_cb(uv_handle_t *handle) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	FREE(handle);
 }
@@ -105,7 +106,8 @@ static void abort_cb(uv_poll_t *req) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct request_t *request = custom_poll_data->data;
@@ -122,10 +124,11 @@ static void abort_cb(uv_poll_t *req) {
 	if(fd > -1) {
 #ifdef _WIN32
 		shutdown(fd, SD_BOTH);
+		closesocket(fd);
 #else
 		shutdown(fd, SHUT_RDWR);
-#endif
 		close(fd);
+#endif
 	}
 
 	uv_poll_stop(req);
@@ -146,7 +149,8 @@ static void custom_close_cb(uv_poll_t *req) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	abort_cb(req);
 }
@@ -155,7 +159,8 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct request_t *request = custom_poll_data->data;
@@ -325,11 +330,14 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			if(request->callback != NULL) {
 				request->callback(0, request->mail);
 			}
-			if(!uv_is_closing((uv_handle_t *)req)) {
-				uv_close((uv_handle_t *)req, close_cb);
-			}
-			uv_custom_poll_free(custom_poll_data);
-			FREE(request);
+			request->callback = NULL;
+			uv_custom_close(req);
+			uv_custom_write(req);
+			// if(!uv_is_closing((uv_handle_t *)req)) {
+				// uv_close((uv_handle_t *)req, close_cb);
+			// }
+			// uv_custom_poll_free(custom_poll_data);
+			// FREE(request);
 			return;
 		} break;
 		case SMTP_STEP_RECV_STARTTLS: {
@@ -349,7 +357,8 @@ static void push_data(uv_poll_t *req, int step) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct request_t *request = custom_poll_data->data;
@@ -371,7 +380,8 @@ static void write_cb(uv_poll_t *req) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
-	assert(pthread_equal(pth_main_id, pthread_self()));
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct request_t *request = custom_poll_data->data;
@@ -381,7 +391,7 @@ static void write_cb(uv_poll_t *req) {
 			push_data(req, SMTP_STEP_RECV_WELCOME);
 		} break;
 		case SMTP_STEP_SEND_HELLO: {
-			request->content_len = strlen("EHLO ")+strlen(USERAGENT)+3;
+			request->content_len = strlen("EHLO \r\n")+strlen(USERAGENT)+1;
 			if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
 				OUT_OF_MEMORY
 			}
@@ -404,7 +414,7 @@ static void write_cb(uv_poll_t *req) {
 			hash = base64encode(authstr, request->content_len);
 			FREE(authstr);
 
-			request->content_len = strlen("AUTH PLAIN ")+strlen(hash)+3;
+			request->content_len = strlen("AUTH PLAIN \r\n")+strlen(hash)+1;
 			if((request->content = REALLOC(request->content, request->content_len+4)) == NULL) {
 				OUT_OF_MEMORY
 			}
@@ -634,7 +644,11 @@ freeuv:
 	FREE(request);
 free:
 	if(sockfd > 0) {
+#ifdef _WIN32
+		closesocket(sockfd);
+#else
 		close(sockfd);
+#endif
 	}
 	return -1;
 }

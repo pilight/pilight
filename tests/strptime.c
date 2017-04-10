@@ -14,6 +14,7 @@
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/strptime.h"
+#include "../libs/pilight/core/datetime.h"
 
 #include "alltests.h"
 

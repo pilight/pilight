@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <errno.h>
@@ -17,8 +16,11 @@
 #include <math.h>
 #include <string.h>
 
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+
 #include "libs/libuv/uv.h"
-#include "libs/pilight/core/threadpool.h"
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/network.h"
 #include "libs/pilight/core/log.h"
@@ -163,7 +165,8 @@ static void main_loop(int onclose) {
 }
 
 int main(int argc, char **argv) {
-	pth_main_id = pthread_self();
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	memcpy((void *)&pth_main_id, &pth_cur_id, sizeof(uv_thread_t));
 
 	struct options_t *options = NULL;
 	char *args = NULL;

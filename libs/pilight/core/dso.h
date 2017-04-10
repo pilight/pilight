@@ -12,7 +12,7 @@
 typedef struct dso_t {
 	void *handle;
 	char *name;
-	ssize_t size;
+	unsigned long size;
 	struct dso_t *next;
 } dso_t;
 

@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <dirent.h>
 #include <sys/stat.h>
 
 #include "../../../lirc/config_file.h"

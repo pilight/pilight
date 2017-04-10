@@ -9,10 +9,12 @@
 #ifndef _EVENT_OPERATOR_H_
 #define _EVENT_OPERATOR_H_
 
+#include "../core/common.h"
+
 typedef struct event_operators_t {
 	char *name;
-	void (*callback_string)(char *a, char *b, char **ret);
-	void (*callback_number)(double a, double b, char **ret);
+	void (*callback)(struct varcont_t *a, struct varcont_t *b, char **ret);
+	// void (*callback_number)(double a, double b, char **ret);
 	unsigned short type;
 	struct event_operators_t *next;
 } event_operators_t;

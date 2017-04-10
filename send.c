@@ -11,16 +11,13 @@
 #include <stdarg.h>
 #include <string.h>
 #include <signal.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#ifdef _WIN32
-	#include <conio.h>
-	#include <pthread.h>
+#ifndef _WIN32
+	#include <unistd.h>
 #endif
 
 #include "libs/libuv/uv.h"
-#include "libs/pilight/core/threadpool.h"
 #include "libs/pilight/core/eventpool.h"
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/common.h"
@@ -355,7 +352,8 @@ static void main_loop(int onclose) {
 }
 
 int main(int argc, char **argv) {
-	pth_main_id = pthread_self();
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	memcpy((void *)&pth_main_id, &pth_cur_id, sizeof(uv_thread_t));
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
@@ -403,9 +401,11 @@ int main(int argc, char **argv) {
 	options_add(&options, 'U', "uuid", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[a-zA-Z0-9]{4}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{6}");
 
 	/* Get the protocol to be used */
-	while(1) {
+	int loop = 1;
+	while(loop) {
 		int c;
 		c = options_parse(&options, argc, argv, 0, &args);
+
 		if(c == -1)
 			break;
 		if(c == -2)
@@ -427,6 +427,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'H':
 				help = 1;
+				loop = 0;
 			break;
 			case 'I':
 				if((instance = MALLOC(strlen(args)+1)) == NULL) {

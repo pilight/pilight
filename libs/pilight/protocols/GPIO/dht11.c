@@ -9,26 +9,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <dirent.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
 #include <sys/stat.h>
 #ifndef _WIN32
+	#include <unistd.h>
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
 #endif
-#include <pthread.h>
 
 #include "../../core/pilight.h"
 #include "../../core/common.h"
 #include "../../core/dso.h"
 #include "../../core/log.h"
-#include "../../core/threadpool.h"
 #include "../../core/eventpool.h"
 #include "../../core/binary.h"
 #include "../../core/gc.h"
@@ -76,8 +73,7 @@ static void *reason_code_received_free(void *param) {
  * FIXME
  */
 static void *thread(void *param) {
-	struct threadpool_tasks_t *task = param;
-	struct data_t *settings = task->userdata;
+	struct data_t *settings = param;
 	uint8_t laststate = HIGH;
 	uint8_t counter = 0;
 	uint8_t j = 0, i = 0;
@@ -157,16 +153,15 @@ static void *thread(void *param) {
 		logprintf(LOG_DEBUG, "dht11 data checksum was wrong");
 	}
 
-	struct timeval tv;
-	tv.tv_sec = settings->interval;
-	tv.tv_usec = 0;
-	threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
+	// struct timeval tv;
+	// tv.tv_sec = settings->interval;
+	// tv.tv_usec = 0;
+	// threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
 
 	return (void *)NULL;
 }
 
 static void *addDevice(int reason, void *param) {
-	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jid = NULL;
@@ -176,11 +171,11 @@ static void *addDevice(int reason, void *param) {
 	int match = 0, interval = 10;
 	double itmp = 0.0;
 
-	if(task->userdata == NULL) {
+	if(param == NULL) {
 		return NULL;
 	}
 
-	if((jdevice = json_first_child(task->userdata)) == NULL) {
+	if((jdevice = json_first_child(param)) == NULL) {
 		return NULL;
 	}
 
@@ -232,9 +227,9 @@ static void *addDevice(int reason, void *param) {
 	node->next = data;
 	data = node;
 
-	tv.tv_sec = interval;
-	tv.tv_usec = 0;
-	threadpool_add_scheduled_work(jdevice->key, thread, tv, (void *)node);
+	// tv.tv_sec = interval;
+	// tv.tv_usec = 0;
+	// threadpool_add_scheduled_work(jdevice->key, thread, tv, (void *)node);
 
 	return NULL;
 }
