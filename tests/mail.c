@@ -36,8 +36,8 @@ static struct tests_t {
 	int status;
 	int recvmsgnr;
 	int sendmsgnr;
-	char sendmsg[12][255];
-	char recvmsg[12][255];
+	char sendmsg[12][1024];
+	char recvmsg[12][1024];
 } tests[] = {
 	{ "gmail plain", 10025, 0, 0, 0, 0, {
 			"220 smtp.gmail.com ESMTP im3sm19207876wjb.13 - gsmtp\r\n",
@@ -164,7 +164,7 @@ static struct tests_t {
 			"QUIT\r\n"
 		}
 	},
-	{ "tele2 full ssl", 10587, 0, 0, 0, 0, {
+	{ "tele2 plain", 10587, 0, 0, 0, 0, {
 			"220 smtp04.tele2.isp-net.nl ESMTP Postfix (Linux)\r\n",
 			"250-smtp04.tele2.isp-net.nl\r\n"
 				"250-PIPELINING\r\n"
@@ -269,6 +269,7 @@ static int mail_loop = 1;
 static int steps = 0;
 static int threaded = 0;
 static int started = 0;
+static int received = 0;
 static struct mail_t *mail = NULL;
 
 static char *sender = "info@pilight.org";
@@ -279,26 +280,50 @@ static char *message = "test";
 static char *to = "info@pilight.org";
 
 static void test(void *param);
+uv_timer_t *timer_req = NULL;
+
+static void close_cb(uv_handle_t *handle) {
+	if(handle != NULL) {
+		FREE(handle);
+	}
+}
+
+static void stop(uv_timer_t *handle) {
+	uv_close((uv_handle_t *)handle, close_cb);
+	mail_loop = 0;
+
+	if(is_ssl == 1) {
+		mbedtls_ssl_free(&ssl_ctx);
+	}
+
+	uv_stop(uv_default_loop());
+	uv_thread_join(&pth);
+}
 
 static void callback(int status, struct mail_t *mail) {
 	CuAssertIntEquals(gtc, tests[testnr].status, status);
 
 	testnr++;
 
-	doquit = 2;
-	uv_thread_join(&pth);
-	if(is_ssl == 1) {
-		mbedtls_ssl_free(&ssl_ctx);
+	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY
 	}
 
-	if(testnr < sizeof(tests)/sizeof(tests[0])) {
-		if(threaded == 0) {
-			test(NULL);
-		} else {
-			uv_stop(uv_default_loop());
-		}
-	} else {
-		uv_stop(uv_default_loop());
+	uv_timer_init(uv_default_loop(), timer_req);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 100, 0);
+
+	if(status == -1) {
+		mail_loop = 0;
+
+#ifdef _WIN32
+		closesocket(mail_client);
+		closesocket(mail_server);
+#else
+		close(mail_client);
+		close(mail_server);
+#endif
+		mail_client = 0;
+		mail_server = 0;
 	}
 }
 
@@ -312,7 +337,7 @@ static void mail_wait(void *param) {
 	fd_set fdsread;
 	fd_set fdswrite;
 
-	if((message = MALLOC(BUFFER_SIZE)) == NULL) {
+	if((message = MALLOC(BUFFER_SIZE+1)) == NULL) {
 		OUT_OF_MEMORY
 	}
 
@@ -336,11 +361,12 @@ static void mail_wait(void *param) {
 		is_ssl = 0;
 	}
 	while(mail_loop) {
-		tv.tv_sec = 0;
-		tv.tv_usec = 250000;
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
 
 		if(doquit == 2) {
 			mail_loop = 0;
+
 #ifdef _WIN32
 			closesocket(mail_client);
 			closesocket(mail_server);
@@ -350,6 +376,7 @@ static void mail_wait(void *param) {
 #endif
 			mail_client = 0;
 			mail_server = 0;
+
 			break;
 		}
 
@@ -389,8 +416,8 @@ static void mail_wait(void *param) {
 					mail_client = accept(mail_server, (struct sockaddr *)&addr, (socklen_t *)&addrlen);
 					CuAssertTrue(gtc, mail_client > 0);
 
-					memset(message, '\0', INET_ADDRSTRLEN+1);
-					inet_ntop(AF_INET, (void *)&(addr.sin_addr), message, INET_ADDRSTRLEN+1);
+					memset(message, '\0', BUFFER_SIZE);
+					uv_ip4_name((void *)&(addr.sin_addr), message, BUFFER_SIZE);
 					dowrite = 1;
 				}
 			}
@@ -406,6 +433,7 @@ static void mail_wait(void *param) {
 				} else {
 					r = recv(mail_client, message, BUFFER_SIZE, 0);
 				}
+
 				CuAssertTrue(gtc, r >= 0);
 				CuAssertStrEquals(gtc, tests[testnr].recvmsg[tests[testnr].recvmsgnr++], message);
 				if(strstr(message, "EHLO") != NULL && is_ssl_init == 1) {
@@ -434,6 +462,7 @@ static void mail_wait(void *param) {
 				} else {
 					r = send(mail_client, message, len, 0);
 				}
+				received = 0;
 				if(doquit == 1) {
 					doquit = 2;
 				}
@@ -487,12 +516,6 @@ static void mail_start(int port) {
 
 	r = listen(mail_server, 0);
 	CuAssertTrue(gtc, r >= 0);
-}
-
-static void close_cb(uv_handle_t *handle) {
-	if(handle != NULL) {
-		FREE(handle);
-	}
 }
 
 static void walk_cb(uv_handle_t *handle, void *arg) {
@@ -553,14 +576,22 @@ static void test_mail(CuTest *tc) {
 		OUT_OF_MEMORY
 	}
 
-	test(NULL);
+	while(testnr < sizeof(tests)/sizeof(tests[0])) {
+		printf("[ - %-46s ]\n", tests[testnr].desc);
+		fflush(stdout);
 
-	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-	uv_walk(uv_default_loop(), walk_cb, NULL);
-	uv_run(uv_default_loop(), UV_RUN_ONCE);
+		threaded = 0;
+		test(NULL);
 
-	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		uv_walk(uv_default_loop(), walk_cb, NULL);
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		}
+
+		uv_thread_join(&pth);
 	}
 
 	FREE(mail);
@@ -596,6 +627,9 @@ static void test_mail_threaded(CuTest *tc) {
 	}
 
 	while(testnr < sizeof(tests)/sizeof(tests[0])) {
+		printf("[ - %-46s ]\n", tests[testnr].desc);
+		fflush(stdout);
+
 		threaded = 1;
 		uv_thread_create(&pth1, test, NULL);
 

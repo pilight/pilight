@@ -50,11 +50,11 @@ static struct data_t *data = NULL;
 static char source_path[21];
 
 #ifndef _WIN32
-static void *reason_code_received_free(void *param) {
-	struct reason_code_received_t *data = param;
-	FREE(data);
-	return NULL;
-}
+// static void *reason_code_received_free(void *param) {
+	// struct reason_code_received_t *data = param;
+	// FREE(data);
+	// return NULL;
+// }
 #endif
 
 // static void *thread(void *param) {
@@ -139,8 +139,8 @@ static void *addDevice(int reason, void *param) {
 	struct data_t *node = NULL;
 	// struct timeval tv;
 	char *stmp = NULL;
-	int match = 0, interval = 10;
-	double itmp = 0.0;
+	int match = 0/*, interval = 10*/;
+	// double itmp = 0.0;
 
 #ifndef _WIN32
 	struct dirent *file = NULL;
@@ -190,8 +190,8 @@ static void *addDevice(int reason, void *param) {
 		}
 	}
 
-	if(json_find_number(jdevice, "poll-interval", &itmp) == 0)
-		interval = (int)round(itmp);
+	// if(json_find_number(jdevice, "poll-interval", &itmp) == 0)
+		// interval = (int)round(itmp);
 
 #ifndef _WIN32
 	if((node->sensor = REALLOC(node->sensor, strlen(source_path)+strlen(node->id)+5)) == NULL) {
@@ -228,7 +228,7 @@ static void *addDevice(int reason, void *param) {
 
 	json_find_number(jdevice, "temperature-offset", &node->temp_offset);
 
-	node->interval = interval;
+	// node->interval = interval;
 
 	node->next = data;
 	data = node;

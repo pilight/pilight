@@ -15,6 +15,7 @@
 
 #include "../operator.h"
 #include "../../core/dso.h"
+#include "../../core/cast.h"
 #include "or.h"
 
 static void operatorOrCallback(struct varcont_t *a, struct varcont_t *b, char **ret) {

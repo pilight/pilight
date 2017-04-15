@@ -52,114 +52,114 @@ typedef struct data_t {
 
 static struct data_t *data = NULL;
 
-static uint8_t sizecvt(const int read_value) {
-	/* digitalRead() and friends from wiringx are defined as returning a value
-	   < 256. However, they are returned as int() types. This is a safety function */
-	if(read_value > 255 || read_value < 0) {
-		logprintf(LOG_NOTICE, "invalid data from wiringX library");
-		return -1;
-	}
+// static uint8_t sizecvt(const int read_value) {
+	// /* digitalRead() and friends from wiringx are defined as returning a value
+	   // < 256. However, they are returned as int() types. This is a safety function */
+	// if(read_value > 255 || read_value < 0) {
+		// logprintf(LOG_NOTICE, "invalid data from wiringX library");
+		// return -1;
+	// }
 
-	return (uint8_t)read_value;
-}
+	// return (uint8_t)read_value;
+// }
 
-static void *reason_code_received_free(void *param) {
-	struct reason_code_received_t *data = param;
-	FREE(data);
-	return NULL;
-}
+// static void *reason_code_received_free(void *param) {
+	// struct reason_code_received_t *data = param;
+	// FREE(data);
+	// return NULL;
+// }
 
 /*
  * FIXME
  */
-static void *thread(void *param) {
-	struct data_t *settings = param;
-	uint8_t laststate = HIGH;
-	uint8_t counter = 0;
-	uint8_t j = 0, i = 0;
+// static void *thread(void *param) {
+	// struct data_t *settings = param;
+	// uint8_t laststate = HIGH;
+	// uint8_t counter = 0;
+	// uint8_t j = 0, i = 0;
 
-	int x = 0, dht11_dat[5] = {0,0,0,0,0};
+	// int x = 0, dht11_dat[5] = {0,0,0,0,0};
 
-	// pull pin down for 18 milliseconds
-	pinMode(settings->id, PINMODE_OUTPUT);
-	digitalWrite(settings->id, HIGH);
-#ifdef _WIN32
-	SleepEx(500000, True);  // 500 ms
-#else	
-	usleep(500000);  // 500 ms
-#endif
-	// then pull it up for 40 microseconds
-	digitalWrite(settings->id, LOW);
-#ifdef _WIN32
-	SleepEx(20000, True);  // 500 ms
-#else	
-	usleep(20000);  // 500 ms
-#endif
-	// prepare to read the pin
-	pinMode(settings->id, PINMODE_INPUT);
+	// // pull pin down for 18 milliseconds
+	// pinMode(settings->id, PINMODE_OUTPUT);
+	// digitalWrite(settings->id, HIGH);
+// #ifdef _WIN32
+	// SleepEx(500000, True);  // 500 ms
+// #else
+	// usleep(500000);  // 500 ms
+// #endif
+	// // then pull it up for 40 microseconds
+	// digitalWrite(settings->id, LOW);
+// #ifdef _WIN32
+	// SleepEx(20000, True);  // 500 ms
+// #else
+	// usleep(20000);  // 500 ms
+// #endif
+	// // prepare to read the pin
+	// pinMode(settings->id, PINMODE_INPUT);
 
-	// detect change and read data
-	for(i=0;(i<MAXTIMINGS); i++) {
-		counter = 0;
-		delayMicroseconds(10);
+	// // detect change and read data
+	// for(i=0;(i<MAXTIMINGS); i++) {
+		// counter = 0;
+		// delayMicroseconds(10);
 
-		while((x = sizecvt(digitalRead(settings->id))) == laststate && x != -1) {
-			counter++;
-			delayMicroseconds(1);
-			if(counter == 255) {
-				break;
-			}
-		}
-		laststate = sizecvt(digitalRead(settings->id));
+		// while((x = sizecvt(digitalRead(settings->id))) == laststate && x != -1) {
+			// counter++;
+			// delayMicroseconds(1);
+			// if(counter == 255) {
+				// break;
+			// }
+		// }
+		// laststate = sizecvt(digitalRead(settings->id));
 
-		if(counter == 255) {
-			break;
-		}
+		// if(counter == 255) {
+			// break;
+		// }
 
-		// ignore first 3 transitions
-		if((i >= 4) && (i%2 == 0)) {
+		// // ignore first 3 transitions
+		// if((i >= 4) && (i%2 == 0)) {
 
-			// shove each bit into the storage bytes
-			dht11_dat[(int)((double)j/8)] <<= 1;
-			if(counter > 16)
-				dht11_dat[(int)((double)j/8)] |= 1;
-			j++;
-		}
-	}
+			// // shove each bit into the storage bytes
+			// dht11_dat[(int)((double)j/8)] <<= 1;
+			// if(counter > 16)
+				// dht11_dat[(int)((double)j/8)] |= 1;
+			// j++;
+		// }
+	// }
 
-	// check we read 40 bits (8bit x 5 ) + verify checksum in the last byte
-	// print it out if data is good
-	if((j >= 40) && (dht11_dat[4] == ((dht11_dat[0] + dht11_dat[1] + dht11_dat[2] + dht11_dat[3]) & 0xFF))) {
-		double h = dht11_dat[0];
-		double t = dht11_dat[2];
-		t += settings->temp_offset;
-		h += settings->humi_offset;
+	// // check we read 40 bits (8bit x 5 ) + verify checksum in the last byte
+	// // print it out if data is good
+	// if((j >= 40) && (dht11_dat[4] == ((dht11_dat[0] + dht11_dat[1] + dht11_dat[2] + dht11_dat[3]) & 0xFF))) {
+		// double h = dht11_dat[0];
+		// double t = dht11_dat[2];
+		// t += settings->temp_offset;
+		// h += settings->humi_offset;
 
-		struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
-		if(data == NULL) {
-			OUT_OF_MEMORY
-		}
-		snprintf(data->message, 1024, "{\"gpio\":%d,\"temperature\":%.1f,\"humidity\":%.1f}", settings->id, t, h);
-		strncpy(data->origin, "receiver", 255);
-		data->protocol = dht11->id;
-		if(strlen(pilight_uuid) > 0) {
-			data->uuid = pilight_uuid;
-		} else {
-			data->uuid = NULL;
-		}
-		data->repeat = 1;
-		eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
-	} else {
-		logprintf(LOG_DEBUG, "dht11 data checksum was wrong");
-	}
+		// struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
+		// if(data == NULL) {
+			// OUT_OF_MEMORY
+		// }
+		// snprintf(data->message, 1024, "{\"gpio\":%d,\"temperature\":%.1f,\"humidity\":%.1f}", settings->id, t, h);
+		// strncpy(data->origin, "receiver", 255);
+		// data->protocol = dht11->id;
+		// if(strlen(pilight_uuid) > 0) {
+			// data->uuid = pilight_uuid;
+		// } else {
+			// data->uuid = NULL;
+		// }
+		// data->repeat = 1;
+		// eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
+	// } else {
+		// logprintf(LOG_DEBUG, "dht11 data checksum was wrong");
+	// }
 
-	// struct timeval tv;
-	// tv.tv_sec = settings->interval;
-	// tv.tv_usec = 0;
-	// threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
+	// // struct timeval tv;
+	// // tv.tv_sec = settings->interval;
+	// // tv.tv_usec = 0;
+	// // threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
 
-	return (void *)NULL;
-}
+	// return (void *)NULL;
+// }
 
 static void *addDevice(int reason, void *param) {
 	struct JsonNode *jdevice = NULL;
@@ -167,7 +167,7 @@ static void *addDevice(int reason, void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct data_t *node = NULL;
-	struct timeval tv;
+	// struct timeval tv;
 	int match = 0, interval = 10;
 	double itmp = 0.0;
 

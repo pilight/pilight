@@ -2053,7 +2053,6 @@ clear:
 int main(int argc, char **argv) {
 	const uv_thread_t pth_cur_id = uv_thread_self();
 	memcpy((void *)&pth_main_id, &pth_cur_id, sizeof(uv_thread_t));
-	memtrack();
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
 

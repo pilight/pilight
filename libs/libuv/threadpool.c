@@ -21,6 +21,9 @@
 
 #include "uv-common.h"
 
+#include "../libs/pilight/core/pilight.h"
+#include "../libs/pilight/core/proc.h"
+
 #if !defined(_WIN32)
 # include "unix/internal.h"
 #else
@@ -52,6 +55,16 @@ static QUEUE exit_message;
 static QUEUE wq;
 static volatile int initialized;
 
+typedef struct data_t {
+  int nr;
+
+  struct {
+    struct timespec first;
+    struct timespec second;
+  } timestamp;
+
+  struct cpu_usage_t cpu_usage;
+} data_t;
 
 static void uv__cancelled(struct uv__work* w) {
   abort();
@@ -65,7 +78,9 @@ static void worker(void* arg) {
   struct uv__work* w;
   QUEUE* q;
 
-  (void) arg;
+#ifndef _WIN32
+  struct data_t *data = arg;
+#endif
 
   for (;;) {
     uv_mutex_lock(&mutex);
@@ -92,8 +107,30 @@ static void worker(void* arg) {
       break;
 
     w = QUEUE_DATA(q, struct uv__work, wq);
+
+#ifndef _WIN32
+    if(pilight.debuglevel >= 2) {
+      getThreadCPUUsage(pthread_self(), &data->cpu_usage);
+      clock_gettime(CLOCK_MONOTONIC, &data->timestamp.first);
+    }
+#endif
     w->work(w);
 
+#ifndef _WIN32
+    if(pilight.debuglevel >= 2) {
+      clock_gettime(CLOCK_MONOTONIC, &data->timestamp.second);
+      getThreadCPUUsage(pthread_self(), &data->cpu_usage);
+      fprintf(stderr, "worker %d, executed %s in %.6f sec using %f%% CPU\n",
+        data->nr,
+        w->name,
+        ((double)data->timestamp.second.tv_sec + 1.0e-9*data->timestamp.second.tv_nsec) -
+        ((double)data->timestamp.first.tv_sec + 1.0e-9*data->timestamp.first.tv_nsec),
+        data->cpu_usage.cpu_per
+      );
+    }
+#endif
+
+    free(w->name);
     uv_mutex_lock(&w->loop->wq_mutex);
     w->work = NULL;  /* Signal uv_cancel() that the work req is done
                         executing. */
@@ -101,6 +138,9 @@ static void worker(void* arg) {
     uv_async_send(&w->loop->wq_async);
     uv_mutex_unlock(&w->loop->wq_mutex);
   }
+#ifndef _WIN32
+  free(data);
+#endif
 }
 
 
@@ -169,9 +209,18 @@ static void init_once(void) {
 
   QUEUE_INIT(&wq);
 
-  for (i = 0; i < nthreads; i++)
+  for (i = 0; i < nthreads; i++) {
+#ifndef _WIN32
+    struct data_t *data = malloc(sizeof(struct data_t));
+    memset(data, '\0', sizeof(struct data_t));
+    data->nr = i;
+    if (uv_thread_create(threads + i, worker, data))
+      abort();
+#else
     if (uv_thread_create(threads + i, worker, NULL))
       abort();
+#endif
+	}
 
   initialized = 1;
 }
@@ -260,6 +309,7 @@ static void uv__queue_done(struct uv__work* w, int err) {
 
 int uv_queue_work(uv_loop_t* loop,
                   uv_work_t* req,
+                  char *name,
                   uv_work_cb work_cb,
                   uv_after_work_cb after_work_cb) {
   if (work_cb == NULL)
@@ -269,6 +319,7 @@ int uv_queue_work(uv_loop_t* loop,
   req->loop = loop;
   req->work_cb = work_cb;
   req->after_work_cb = after_work_cb;
+  req->work_req.name = strdup(name);
   uv__work_submit(loop, &req->work_req, uv__queue_work, uv__queue_done);
   return 0;
 }

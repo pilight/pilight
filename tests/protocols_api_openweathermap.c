@@ -85,7 +85,7 @@ static void *received(int reason, void *param) {
 				case 1: {
 					CuAssertIntEquals(gtc, 0, duration);
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":set}",
+						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"set\"}",
 						data->message);
 					uv_stop(uv_default_loop());
 				} break;
@@ -106,7 +106,7 @@ static void *received(int reason, void *param) {
 					 * After two seconds the first message should be received
 					 */
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":set}",
+						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"set\"}",
 						data->message);
 					/*
 					 * Shift time to after sunrise and check if we get a
@@ -124,7 +124,7 @@ static void *received(int reason, void *param) {
 					 * After one second the sunrise notification should be sent
 					 */
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":rise}",
+						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"rise\"}",
 						data->message);
 					uv_stop(uv_default_loop());
 				} break;
@@ -145,7 +145,7 @@ static void *received(int reason, void *param) {
 					 * After two seconds the first message should be received
 					 */
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":rise}",
+						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"rise\"}",
 						data->message);
 					/*
 					 * Shift time to after sunset and check if we get a
@@ -163,7 +163,7 @@ static void *received(int reason, void *param) {
 					 * After one second the sunrise notification should be sent
 					 */
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":set}",
+						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"set\"}",
 						data->message);
 					uv_stop(uv_default_loop());
 				} break;
@@ -184,7 +184,7 @@ static void *received(int reason, void *param) {
 					 * Directly after, the first message should be received
 					 */
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":set}",
+						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"set\"}",
 						data->message);
 
 					steps = 2;
@@ -197,7 +197,7 @@ static void *received(int reason, void *param) {
 					 * After one second the sunrise notification should be sent
 					 */
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":set}",
+						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"set\"}",
 						data->message);
 					uv_stop(uv_default_loop());
 				} break;

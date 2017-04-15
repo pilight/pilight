@@ -27,6 +27,7 @@
 #include "../../core/log.h"
 #include "../operator.h"
 #include "../../core/dso.h"
+#include "../../core/cast.h"
 #include "intdivide.h"
 
 

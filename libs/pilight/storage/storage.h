@@ -60,6 +60,7 @@ struct rules_actions_t {
 	struct JsonNode *arguments;
 	struct JsonNode *parsedargs;
 	struct event_actions_t *action;
+
 	struct rules_actions_t *next;
 };
 

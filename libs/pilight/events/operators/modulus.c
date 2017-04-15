@@ -27,6 +27,7 @@
 #include "../operator.h"
 #include "../../core/dso.h"
 #include "../../core/log.h"
+#include "../../core/cast.h"
 #include "modulus.h"
 
 static void operatorModulusCallback(struct varcont_t *a, struct varcont_t *b, char **ret) {

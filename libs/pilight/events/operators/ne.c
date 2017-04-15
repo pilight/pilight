@@ -17,6 +17,7 @@
 #include "../../core/pilight.h"
 #include "../operator.h"
 #include "../../core/dso.h"
+#include "../../core/cast.h"
 #include "ne.h"
 
 static void operatorNeCallback(struct varcont_t *a, struct varcont_t *b, char **ret) {

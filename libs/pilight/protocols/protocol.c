@@ -14,6 +14,7 @@
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
+	#include <sys/time.h>
 #endif
 #define __USE_UNIX98
 

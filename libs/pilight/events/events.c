@@ -1684,7 +1684,17 @@ void *events_loop(int reason, void *param) {
 			data1 = param;
 		} break;
 	}
-	
+
+	if(reason == REASON_CONFIG_UPDATE) {
+		for(x=0;x<data1->nrdev;x++) {
+			/*
+			 * Running actions will be aborted when a new
+			 * a new execution id is set.
+			 */
+			event_action_set_execution_id(data1->devices[x]);
+		}
+	}
+
 	if(rules_select_struct(ORIGIN_MASTER, NULL, &tmp_rules) == 0) {
 		while(tmp_rules) {
 			if(tmp_rules->active == 1) {

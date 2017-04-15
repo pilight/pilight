@@ -53,60 +53,60 @@ static struct data_t *data = NULL;
 #define CONNECTED				1
 #define DISCONNECTED 		0
 
-static void *reason_code_received_free(void *param) {
-	struct reason_code_received_t *data = param;
-	FREE(data);
-	return NULL;
-}
+// static void *reason_code_received_free(void *param) {
+	// struct reason_code_received_t *data = param;
+	// FREE(data);
+	// return NULL;
+// }
 
-static void callback(char *a, int b) {
-	struct data_t *settings = data;
-	while(settings) {
-		if(strcmp(settings->ip, a) == 0) {
-			break;
-		}
-		settings = settings->next;
-	}
+// static void callback(char *a, int b) {
+	// struct data_t *settings = data;
+	// while(settings) {
+		// if(strcmp(settings->ip, a) == 0) {
+			// break;
+		// }
+		// settings = settings->next;
+	// }
 
-	settings->polling = 0;
+	// settings->polling = 0;
 
-	if(b == 0) {
-		if(settings->state == DISCONNECTED) {
-			settings->state = CONNECTED;
-			struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
-			if(data == NULL) {
-				OUT_OF_MEMORY
-			}
-			snprintf(data->message, 1024, "{\"ip\":\"%s\",\"state\":\"connected\"}", a);
-			strncpy(data->origin, "receiver", 255);
-			data->protocol = pping->id;
-			if(strlen(pilight_uuid) > 0) {
-				data->uuid = pilight_uuid;
-			} else {
-				data->uuid = NULL;
-			}
-			data->repeat = 1;
-			eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
-		}
-	} else if(settings->state == CONNECTED) {
-		settings->state = DISCONNECTED;
+	// if(b == 0) {
+		// if(settings->state == DISCONNECTED) {
+			// settings->state = CONNECTED;
+			// struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
+			// if(data == NULL) {
+				// OUT_OF_MEMORY
+			// }
+			// snprintf(data->message, 1024, "{\"ip\":\"%s\",\"state\":\"connected\"}", a);
+			// strncpy(data->origin, "receiver", 255);
+			// data->protocol = pping->id;
+			// if(strlen(pilight_uuid) > 0) {
+				// data->uuid = pilight_uuid;
+			// } else {
+				// data->uuid = NULL;
+			// }
+			// data->repeat = 1;
+			// eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
+		// }
+	// } else if(settings->state == CONNECTED) {
+		// settings->state = DISCONNECTED;
 
-		struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
-		if(data == NULL) {
-			OUT_OF_MEMORY
-		}
-		snprintf(data->message, 1024, "{\"ip\":\"%s\",\"state\":\"disconnected\"}", a);
-		strncpy(data->origin, "receiver", 255);
-		data->protocol = pping->id;
-		if(strlen(pilight_uuid) > 0) {
-			data->uuid = pilight_uuid;
-		} else {
-			data->uuid = NULL;
-		}
-		data->repeat = 1;
-		eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
-	}
-}
+		// struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
+		// if(data == NULL) {
+			// OUT_OF_MEMORY
+		// }
+		// snprintf(data->message, 1024, "{\"ip\":\"%s\",\"state\":\"disconnected\"}", a);
+		// strncpy(data->origin, "receiver", 255);
+		// data->protocol = pping->id;
+		// if(strlen(pilight_uuid) > 0) {
+			// data->uuid = pilight_uuid;
+		// } else {
+			// data->uuid = NULL;
+		// }
+		// data->repeat = 1;
+		// eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
+	// }
+// }
 
 // static void *thread(void *param) {
 	// struct data_t *settings = param;

@@ -9,4 +9,10 @@
 #ifndef _CAST_H_
 #define _CAST_H_
 
+#include "common.h"
+
+int cast2bool(struct varcont_t **);
+int cast2int(struct varcont_t **);
+int cast2str(struct varcont_t **);
+
 #endif

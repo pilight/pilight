@@ -15,6 +15,7 @@
 
 #include "../operator.h"
 #include "../../core/dso.h"
+#include "../../core/cast.h"
 #include "ge.h"
 
 static void operatorGeCallback(struct varcont_t *a, struct varcont_t *b, char **ret) {

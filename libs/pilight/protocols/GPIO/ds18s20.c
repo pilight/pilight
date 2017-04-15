@@ -8,23 +8,19 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <dirent.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
 #include <sys/stat.h>
 #ifndef _WIN32
+	#include <unistd.h>
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
 #endif
 
-#include <pthread.h>
-
-#include "../../core/threadpool.h"
 #include "../../core/eventpool.h"
 #include "../../core/pilight.h"
 #include "../../core/common.h"
@@ -54,110 +50,108 @@ static struct data_t *data = NULL;
 static char source_path[21];
 
 #ifndef _WIN32
-static void *reason_code_received_free(void *param) {
-	struct reason_code_received_t *data = param;
-	FREE(data);
-	return NULL;
-}
+// static void *reason_code_received_free(void *param) {
+	// struct reason_code_received_t *data = param;
+	// FREE(data);
+	// return NULL;
+// }
 #endif
 
-static void *thread(void *param) {
+// static void *thread(void *param) {
 
-#ifndef _WIN32
-	struct threadpool_tasks_t *task = param;
-	struct data_t *settings = task->userdata;
-	char *content = NULL;
-	struct stat st;
+// #ifndef _WIN32
+	// struct data_t *settings = param;
+	// char *content = NULL;
+	// struct stat st;
 
-	FILE *fp = NULL;
-	char crcVar[5];
-	int w1valid = 0;
-	double w1temp = 0.0;
-	size_t bytes = 0;
+	// FILE *fp = NULL;
+	// char crcVar[5];
+	// int w1valid = 0;
+	// double w1temp = 0.0;
+	// size_t bytes = 0;
 
 
-	if((fp = fopen(settings->w1slave, "rb")) == NULL) {
-		logprintf(LOG_NOTICE, "cannot read w1 file: %s", settings->w1slave);
-		return NULL;
-	}
+	// if((fp = fopen(settings->w1slave, "rb")) == NULL) {
+		// logprintf(LOG_NOTICE, "cannot read w1 file: %s", settings->w1slave);
+		// return NULL;
+	// }
 
-	fstat(fileno(fp), &st);
-	bytes = (size_t)st.st_size;
+	// fstat(fileno(fp), &st);
+	// bytes = (size_t)st.st_size;
 
-	if((content = REALLOC(content, bytes+1)) == NULL) {
-		OUT_OF_MEMORY
-	}
-	memset(content, '\0', bytes+1);
+	// if((content = REALLOC(content, bytes+1)) == NULL) {
+		// OUT_OF_MEMORY
+	// }
+	// memset(content, '\0', bytes+1);
 
-	if(fread(content, sizeof(char), bytes, fp) == -1) {
-		logprintf(LOG_NOTICE, "cannot read config file: %s", settings->w1slave);
-		fclose(fp);
-		return NULL;
-	}
-	fclose(fp);
+	// if(fread(content, sizeof(char), bytes, fp) == -1) {
+		// logprintf(LOG_NOTICE, "cannot read config file: %s", settings->w1slave);
+		// fclose(fp);
+		// return NULL;
+	// }
+	// fclose(fp);
 
-	w1valid = 0;
+	// w1valid = 0;
 
-	char **array = NULL;
-	unsigned int n = explode(content, "\n", &array);
-	if(n > 0) {
-		sscanf(array[0], "%*x %*x %*x %*x %*x %*x %*x %*x %*x : crc=%*x %s", crcVar);
-		if(strncmp(crcVar, "YES", 3) == 0 && n > 1) {
-			w1valid = 1;
-			sscanf(array[1], "%*x %*x %*x %*x %*x %*x %*x %*x %*x t=%lf", &w1temp);
-			w1temp = (w1temp/1000)+settings->temp_offset;
-		}
-	}
-	array_free(&array, n);
+	// char **array = NULL;
+	// unsigned int n = explode(content, "\n", &array);
+	// if(n > 0) {
+		// sscanf(array[0], "%*x %*x %*x %*x %*x %*x %*x %*x %*x : crc=%*x %s", crcVar);
+		// if(strncmp(crcVar, "YES", 3) == 0 && n > 1) {
+			// w1valid = 1;
+			// sscanf(array[1], "%*x %*x %*x %*x %*x %*x %*x %*x %*x t=%lf", &w1temp);
+			// w1temp = (w1temp/1000)+settings->temp_offset;
+		// }
+	// }
+	// array_free(&array, n);
 
-	if(w1valid == 1) {
-		struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
-		if(data == NULL) {
-			OUT_OF_MEMORY
-		}
-		snprintf(data->message, 1024, "{\"id\":\"%s\",\"temperature\":%.1f}", settings->id, w1temp);
-		strncpy(data->origin, "receiver", 255);
-		data->protocol = ds18s20->id;
-		if(strlen(pilight_uuid) > 0) {
-			data->uuid = pilight_uuid;
-		} else {
-			data->uuid = NULL;
-		}
-		data->repeat = 1;
-		eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
-	}
+	// if(w1valid == 1) {
+		// struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
+		// if(data == NULL) {
+			// OUT_OF_MEMORY
+		// }
+		// snprintf(data->message, 1024, "{\"id\":\"%s\",\"temperature\":%.1f}", settings->id, w1temp);
+		// strncpy(data->origin, "receiver", 255);
+		// data->protocol = ds18s20->id;
+		// if(strlen(pilight_uuid) > 0) {
+			// data->uuid = pilight_uuid;
+		// } else {
+			// data->uuid = NULL;
+		// }
+		// data->repeat = 1;
+		// eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
+	// }
 
-	struct timeval tv;
-	tv.tv_sec = settings->interval;
-	tv.tv_usec = 0;
-	threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
-#endif
+	// // struct timeval tv;
+	// // tv.tv_sec = settings->interval;
+	// // tv.tv_usec = 0;
+	// // threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
+// #endif
 
-	return (void *)NULL;
-}
+	// return (void *)NULL;
+// }
 
 static void *addDevice(int reason, void *param) {
-	struct threadpool_tasks_t *task = param;
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct data_t *node = NULL;
-	struct timeval tv;
+	// struct timeval tv;
 	char *stmp = NULL;
-	int match = 0, interval = 10;
-	double itmp = 0.0;
+	int match = 0/*, interval = 10*/;
+	// double itmp = 0.0;
 
 #ifndef _WIN32
 	struct dirent *file = NULL;
 	DIR *d = NULL;
 #endif
 
-	if(task->userdata == NULL) {
+	if(param == NULL) {
 		return NULL;
 	}
 
-	if((jdevice = json_first_child(task->userdata)) == NULL) {
+	if((jdevice = json_first_child(param)) == NULL) {
 		return NULL;
 	}
 
@@ -196,8 +190,8 @@ static void *addDevice(int reason, void *param) {
 		}
 	}
 
-	if(json_find_number(jdevice, "poll-interval", &itmp) == 0)
-		interval = (int)round(itmp);
+	// if(json_find_number(jdevice, "poll-interval", &itmp) == 0)
+		// interval = (int)round(itmp);
 
 #ifndef _WIN32
 	if((node->sensor = REALLOC(node->sensor, strlen(source_path)+strlen(node->id)+5)) == NULL) {
@@ -237,9 +231,9 @@ static void *addDevice(int reason, void *param) {
 	node->next = data;
 	data = node;
 
-	tv.tv_sec = interval;
-	tv.tv_usec = 0;
-	threadpool_add_scheduled_work(jdevice->key, thread, tv, (void *)node);
+	// tv.tv_sec = interval;
+	// tv.tv_usec = 0;
+	// threadpool_add_scheduled_work(jdevice->key, thread, tv, (void *)node);
 
 	return NULL;
 }

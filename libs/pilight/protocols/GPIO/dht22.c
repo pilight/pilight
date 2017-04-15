@@ -52,22 +52,22 @@ typedef struct data_t {
 
 static struct data_t *data = NULL;
 
-static void *reason_code_received_free(void *param) {
-	struct reason_code_received_t *data = param;
-	FREE(data);
-	return NULL;
-}
+// static void *reason_code_received_free(void *param) {
+	// struct reason_code_received_t *data = param;
+	// FREE(data);
+	// return NULL;
+// }
 
-static uint8_t sizecvt(const int read_value) {
-	/* digitalRead() and friends from wiringx are defined as returning a value
-	   < 256. However, they are returned as int() types. This is a safety function */
-	if(read_value > 255 || read_value < 0) {
-		logprintf(LOG_NOTICE, "invalid data from wiringX library");
-		return -1;
-	}
+// static uint8_t sizecvt(const int read_value) {
+	// /* digitalRead() and friends from wiringx are defined as returning a value
+	   // < 256. However, they are returned as int() types. This is a safety function */
+	// if(read_value > 255 || read_value < 0) {
+		// logprintf(LOG_NOTICE, "invalid data from wiringX library");
+		// return -1;
+	// }
 
-	return (uint8_t)read_value;
-}
+	// return (uint8_t)read_value;
+// }
 
 /*
  * FIXME

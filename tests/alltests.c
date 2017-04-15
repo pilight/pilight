@@ -106,7 +106,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_sha256cache();
 	suites[nr++] = suite_strptime();
 	suites[nr++] = suite_options();
-	// suites[nr++] = suite_dso(); // Fix the dll creation
+	suites[nr++] = suite_dso(); // Fix the dll creation
 	suites[nr++] = suite_eventpool();
 	suites[nr++] = suite_log();
 	suites[nr++] = suite_ssdp();

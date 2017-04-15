@@ -27,12 +27,12 @@ struct i2c_smbus_ioctl_data {
 	union i2c_smbus_data *data;
 };
 
-inline __s32 i2c_smbus_access(int fd, char rw, int cmd, int size, union i2c_smbus_data *data);
-inline __s32 i2c_smbus_read_byte(int fd);
-inline __s32 i2c_smbus_write_byte(int fd, int value);
-inline __s32 i2c_smbus_read_byte_data(int fd, int cmd);
-inline __s32 i2c_smbus_write_byte_data(int fd, int cmd, int value);
-inline __s32 i2c_smbus_read_word_data(int fd, int cmd);
-inline __s32 i2c_smbus_write_word_data(int fd, int cmd, __u16 value);
+__s32 i2c_smbus_access(int fd, char rw, int cmd, int size, union i2c_smbus_data *data);
+__s32 i2c_smbus_read_byte(int fd);
+__s32 i2c_smbus_write_byte(int fd, int value);
+__s32 i2c_smbus_read_byte_data(int fd, int cmd);
+__s32 i2c_smbus_write_byte_data(int fd, int cmd, int value);
+__s32 i2c_smbus_read_word_data(int fd, int cmd);
+__s32 i2c_smbus_write_word_data(int fd, int cmd, __u16 value);
 
 #endif

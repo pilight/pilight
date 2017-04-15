@@ -107,10 +107,9 @@ static void *thread(void *param) {
 		t = time_override;
 	} else {
 		t = time(NULL);
-	}
-
-	if(isntpsynced() == 0) {
-		t -= getntpdiff();
+		if(isntpsynced() == 0) {
+			t -= getntpdiff();
+		}
 	}
 
 	/* Get UTC time */

@@ -377,7 +377,6 @@ static void thread(uv_work_t *req) {
 						tv.tv_usec = 0;
 					break;
 				}
-				logprintf(LOG_DEBUG, "INIT %lu %lu", tv.tv_sec, tv.tv_usec);
 
 				uv_timer_t *timer_req = NULL;
 				if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
@@ -426,7 +425,6 @@ static void thread(uv_work_t *req) {
 					break;
 				}
 				data->steps = RESTORE;
-				logprintf(LOG_DEBUG, "EXECUTE %lu %lu", tv.tv_sec, tv.tv_usec);
 
 				uv_timer_t *timer_req = NULL;
 				if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
@@ -440,7 +438,6 @@ static void thread(uv_work_t *req) {
 			}
 		} break;
 		case RESTORE: {
-			logprintf(LOG_DEBUG, "RESTORE");
 			struct reason_control_device_t *data1 = MALLOC(sizeof(struct reason_control_device_t));
 			if(data1 == NULL) {
 				OUT_OF_MEMORY
