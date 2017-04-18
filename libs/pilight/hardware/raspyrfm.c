@@ -16,7 +16,6 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-
 #include <string.h>
 #include <stdio.h>
 #include "../core/common.h"
@@ -70,10 +69,8 @@
 #define IRQFLAGS2_FIFOLEVEL 5
 #define IRQFLAGS2_PACKETSENT REGIRQFLAGS2 << 8 | 3
 
-
 #define WAITREGBITSET(x) while ((readReg(rfmsettings->spi_ch, (uint8_t) ((x) >> 8)) & (1<<((x) & 0x07))) == 0);
 #define WAITREGBITCLEAR(x) while ((readReg(rfmsettings->spi_ch, (uint8_t) ((x) >> 8)) & (1<<((x) & 0x07))) != 0);
-
 
 typedef struct {
 	uint8_t reg;
@@ -113,10 +110,14 @@ static int gcd(int a, int b) {
 }
 
 static int gcd_a(int n, int a[n]) {
-	if(n==1) 
+	if(n==1) { 
 		return a[0];
-	if(n==2)
+	}
+	
+	if(n==2) {
 		return gcd(a[0], a[1]);
+	}
+	
 	int h = n / 2;
 	return gcd(gcd_a(h, &a[0]), gcd_a(n - h, &a[h]));
 }
@@ -147,11 +148,13 @@ unsigned short raspyrfmHwInit(rfm_settings_t *rfmsettings) {
 		int i;
 		for (i=0; i<8; i++) {
 			writeReg(rfmsettings->spi_ch, REGSYNCVALUE1 + i, 0x55);
-			if (readReg(rfmsettings->spi_ch, REGSYNCVALUE1 + i) != 0x55)
+			if (readReg(rfmsettings->spi_ch, REGSYNCVALUE1 + i) != 0x55) {
 				break;
+			}
 			writeReg(rfmsettings->spi_ch, REGSYNCVALUE1 + i, 0xAA);
-			if (readReg(rfmsettings->spi_ch, REGSYNCVALUE1 + i) != 0xAA)
+			if (readReg(rfmsettings->spi_ch, REGSYNCVALUE1 + i) != 0xAA) {
 				break;
+			}
 		}
 
 		if (i < 8) {
@@ -180,18 +183,20 @@ int raspyrfmSend(int *code, int rawlen, int repeats, rfm_settings_t *rfmsettings
 	fifoByteCnt *= repeats;
 	fifoByteCnt = fifoByteCnt / 8 + 1; //mem we need for bit-FIFO
 
-	unsigned char *fifo = malloc(fifoByteCnt);
+	unsigned char *fifo = MALLOC(fifoByteCnt);
 	memset(fifo, 0x00, fifoByteCnt);
 
 	unsigned char mask = 0x80;
 	unsigned char *p = fifo;
-	int r;
+	int r = 0;
 	for (r=0; r<repeats; r++) {
 		for (i=0; i<rawlen; i++) {
 			int c;
 			for (c=0; c<code[i]; c++) {
 				//add high bit if i is even, low bit if i is odd
-				*p |= ((i % 2) == 0) ? mask : 0; 
+				if ((i % 2) == 0) {
+					*p |= mask;
+				}
 				mask >>= 1;
 				if (mask == 0) {
 					mask = 0x80;
@@ -202,8 +207,9 @@ int raspyrfmSend(int *code, int rawlen, int repeats, rfm_settings_t *rfmsettings
 	}
 
 	//send config to raspyrfm
-	for (i=0; i<sizeof(rfmcfg) / sizeof(rfmcfg[0]); i++)
+	for (i=0; i<sizeof(rfmcfg) / sizeof(rfmcfg[0]); i++) {
 		writeReg(rfmsettings->spi_ch, rfmcfg[i].reg, rfmcfg[i].val);
+	}
 		
 	//set bitrate
 	uint16_t bitrate = (uint16_t) (FXOSC / 1E6) * div; //div = steptime in µS
@@ -222,8 +228,9 @@ int raspyrfmSend(int *code, int rawlen, int repeats, rfm_settings_t *rfmsettings
 
 	writeReg(rfmsettings->spi_ch, REGOPMODE, MODE_TX<<2);
 	for (i=0; i<fifoByteCnt; i++) {
-		if (i > 60)
+		if (i > 60) {
 			WAITREGBITCLEAR(IRQFLAGS2_FIFOFULL);
+		}
 		writeReg(rfmsettings->spi_ch, REGFIFO, fifo[i]);
 	}
 

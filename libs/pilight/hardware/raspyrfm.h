@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 - 2014 Stefan Seegel
+	Copyright (C) 2017 Stefan Seegel
 
 	This file is part of pilight.
 
