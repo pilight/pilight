@@ -236,7 +236,7 @@ int raspyrfmSend(int *code, int rawlen, int repeats, rfm_settings_t *rfmsettings
 
 	WAITREGBITSET(IRQFLAGS2_PACKETSENT);
 	
-	free(fifo);
+	FREE(fifo);
 
 	return EXIT_SUCCESS;
 }
