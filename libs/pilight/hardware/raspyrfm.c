@@ -13,6 +13,10 @@
 #include "../../wiringx/wiringX.h"
 #include "raspyrfm.h"
 
+#define FXOSC 32E6
+#define FSTEP (FXOSC / (1UL<<19))
+#define FREQTOFREG(F) ((uint32_t) (F * 1E6 / FSTEP + .5)) //frequency
+
 #define REG8(adr, val) {adr, val}
 #define REG16(adr, val) {adr, ((uint16_t) (val) >> 8) & 0xFF}, {(adr) + 1, (val) & 0xFF}
 #define REG24(adr, val) {adr, ((uint32_t) (val) >> 16) & 0xFF}, {(adr) + 1, ((uint32_t) (val) >> 8) & 0xFF}, {(adr) + 2, (val) & 0xFF}
@@ -54,17 +58,26 @@
 #define IRQFLAGS1_MODEREADY REGIRQFLAGS1 << 8 | 7
 
 #define IRQFLAGS2_FIFOFULL REGIRQFLAGS2 << 8 | 7
-#define IRQFLAGS2_FIFONOTEMPTY 6
-#define IRQFLAGS2_FIFOLEVEL 5
+#define IRQFLAGS2_FIFONOTEMPTY REGIRQFLAGS2 << 8 | 6
 #define IRQFLAGS2_PACKETSENT REGIRQFLAGS2 << 8 | 3
 
-#define WAITREGBITSET(x) while((readReg(rfmsettings->spi_ch, (uint8_t) ((x) >> 8)) & (1<<((x) & 0x07))) == 0);
-#define WAITREGBITCLEAR(x) while((readReg(rfmsettings->spi_ch, (uint8_t) ((x) >> 8)) & (1<<((x) & 0x07))) != 0);
+#define WAITREGBITSET(x) while((readReg((uint8_t) ((x) >> 8)) & (1<<((x) & 0x07))) == 0)
+#define WAITREGBITCLEAR(x) while((readReg((uint8_t) ((x) >> 8)) & (1<<((x) & 0x07))) != 0)
+
+typedef struct {
+	uint8_t spi_ch;
+	uint8_t band;
+} rfm_settings_t;
 
 typedef struct {
 	uint8_t reg;
 	uint8_t val;
 } rfmreg_t;
+
+static rfm_settings_t rfmsettings = {
+	0, //SPI channel
+	0 //band
+};
 
 static const rfmreg_t rfmcfg[] = {
 	REG8(REGOPMODE, MODE_STDBY<<2),             //STDBY mode
@@ -77,14 +90,14 @@ static const rfmreg_t rfmcfg[] = {
 	REG8(REGPACKETCONFIG2, 0)
 };
 
-static void writeReg(uint8_t spi_ch, uint8_t reg, uint8_t value) {
+static void writeReg(uint8_t reg, uint8_t value) {
 	uint8_t tmp[] = {reg | 0x80, value};
-	wiringXSPIDataRW(spi_ch, (unsigned char*) tmp, sizeof(tmp));
+	wiringXSPIDataRW(rfmsettings.spi_ch, (unsigned char*) tmp, sizeof(tmp));
 }
 
-static uint8_t readReg(uint8_t spi_ch, uint8_t reg) {
+static uint8_t readReg(uint8_t reg) {
 	uint8_t tmp[] = {reg, 0};
-	wiringXSPIDataRW(spi_ch, (unsigned char*) tmp, sizeof(tmp));
+	wiringXSPIDataRW(rfmsettings.spi_ch, (unsigned char*) tmp, sizeof(tmp));
 	return tmp[1];
 }
 
@@ -111,10 +124,28 @@ static int gcd_a(int n, int a[n]) {
 	return gcd(gcd_a(h, &a[0]), gcd_a(n - h, &a[h]));
 }
 
-unsigned short raspyrfmSettings(JsonNode *json, rfm_settings_t *rfmsettings) {
+static unsigned short raspyrfmSettings(JsonNode *json) {
 	if(strcmp(json->key, "spi_ch") == 0) {
 		if(json->tag == JSON_NUMBER) {
-			rfmsettings->spi_ch = (int)json->number_;
+			rfmsettings.spi_ch = (int)json->number_;
+		} else {
+			return EXIT_FAILURE;
+		}
+	}
+	if(strcmp(json->key, "band") == 0) {
+		if(json->tag == JSON_NUMBER) {
+			rfmsettings.band = (int)json->number_;
+			
+			switch(rfmsettings.band) {
+			case 0:
+				raspyrfm->hwtype = RF433;
+				break;
+			case 1:
+				raspyrfm->hwtype = RF868;
+				break;
+			default:
+				return EXIT_FAILURE;
+			}
 		} else {
 			return EXIT_FAILURE;
 		}
@@ -122,26 +153,26 @@ unsigned short raspyrfmSettings(JsonNode *json, rfm_settings_t *rfmsettings) {
 	return EXIT_SUCCESS;
 }
 
-unsigned short raspyrfmHwInit(rfm_settings_t *rfmsettings) {
+static unsigned short raspyrfmHwInit(void) {
 	if(wiringXSupported() == 0) {
 		if(wiringXSetup() == -1) {
 			return EXIT_FAILURE;
 		}
 
-		if(wiringXSPISetup(rfmsettings->spi_ch, 250000) == -1) {
-			logprintf(LOG_ERR, "failed to open SPI channel: %d", rfmsettings->spi_ch);
+		if(wiringXSPISetup(rfmsettings.spi_ch, 250000) == -1) {
+			logprintf(LOG_ERR, "failed to open SPI channel: %d", rfmsettings.spi_ch);
 			return EXIT_FAILURE;
 		}
 
 		//check if rfm69 present
 		int i=0;
 		for(i=0; i<8; i++) {
-			writeReg(rfmsettings->spi_ch, REGSYNCVALUE1 + i, 0x55);
-			if(readReg(rfmsettings->spi_ch, REGSYNCVALUE1 + i) != 0x55) {
+			writeReg(REGSYNCVALUE1 + i, 0x55);
+			if(readReg(REGSYNCVALUE1 + i) != 0x55) {
 				break;
 			}
-			writeReg(rfmsettings->spi_ch, REGSYNCVALUE1 + i, 0xAA);
-			if(readReg(rfmsettings->spi_ch, REGSYNCVALUE1 + i) != 0xAA) {
+			writeReg(REGSYNCVALUE1 + i, 0xAA);
+			if(readReg(REGSYNCVALUE1 + i) != 0xAA) {
 				break;
 			}
 		}
@@ -158,7 +189,7 @@ unsigned short raspyrfmHwInit(rfm_settings_t *rfmsettings) {
 	}
 }
 
-int raspyrfmSend(int *code, int rawlen, int repeats, rfm_settings_t *rfmsettings) {
+static int raspyrfmSend(int *code, int rawlen, int repeats) {
 	int i = 0;
 	int div = 0;
 	int fifoByteCnt = 0;
@@ -197,30 +228,38 @@ int raspyrfmSend(int *code, int rawlen, int repeats, rfm_settings_t *rfmsettings
 
 	//send config to raspyrfm
 	for(i=0; i<sizeof(rfmcfg) / sizeof(rfmcfg[0]); i++) {
-		writeReg(rfmsettings->spi_ch, rfmcfg[i].reg, rfmcfg[i].val);
+		writeReg(rfmcfg[i].reg, rfmcfg[i].val);
 	}
 		
 	//set bitrate
 	uint16_t bitrate = (uint16_t) (FXOSC / 1E6) * div; //div = steptime in µS
-	writeReg(rfmsettings->spi_ch, REGBITRATE, bitrate >> 8);
-	writeReg(rfmsettings->spi_ch, REGBITRATE + 1, bitrate & 0xFF);
+	writeReg(REGBITRATE, bitrate >> 8);
+	writeReg(REGBITRATE + 1, bitrate & 0xFF);
 	
 	//set frequency
-	writeReg(rfmsettings->spi_ch, REGFR, (rfmsettings->freq >> 16) & 0xFF);
-	writeReg(rfmsettings->spi_ch, REGFR + 1, (rfmsettings->freq >> 8) & 0xFF);
-	writeReg(rfmsettings->spi_ch, REGFR + 2, rfmsettings->freq & 0xFF);
+	uint32_t freqword;
+	if(rfmsettings.band == 0) {
+		freqword = FREQTOFREG(433.920); //MHz
+	}
+	else if(rfmsettings.band == 1) {
+		freqword = FREQTOFREG(868.350); //MHz
+	} 
+	
+	writeReg(REGFR, (freqword >> 16) & 0xFF);
+	writeReg(REGFR + 1, (freqword >> 8) & 0xFF);
+	writeReg(REGFR + 2, freqword & 0xFF);
 
 	WAITREGBITSET(IRQFLAGS1_MODEREADY);
-	while((readReg(rfmsettings->spi_ch, REGIRQFLAGS2) & (1<<IRQFLAGS2_FIFONOTEMPTY)) != 0) {
-		(void) readReg(rfmsettings->spi_ch, REGFIFO);
+	WAITREGBITCLEAR(IRQFLAGS2_FIFONOTEMPTY) {
+		(void) readReg(REGFIFO);
 	}
 
-	writeReg(rfmsettings->spi_ch, REGOPMODE, MODE_TX<<2);
+	writeReg(REGOPMODE, MODE_TX<<2);
 	for(i=0; i<fifoByteCnt; i++) {
 		if(i > 60) {
 			WAITREGBITCLEAR(IRQFLAGS2_FIFOFULL);
 		}
-		writeReg(rfmsettings->spi_ch, REGFIFO, fifo[i]);
+		writeReg(REGFIFO, fifo[i]);
 	}
 
 	WAITREGBITSET(IRQFLAGS2_PACKETSENT);
@@ -229,3 +268,39 @@ int raspyrfmSend(int *code, int rawlen, int repeats, rfm_settings_t *rfmsettings
 
 	return EXIT_SUCCESS;
 }
+
+static int raspyrfmReceive(void) {
+	//receiving not yet supported
+	sleep(1);
+	return EXIT_SUCCESS;
+}
+
+#if !defined(MODULE) && !defined(_WIN32)
+__attribute__((weak))
+#endif
+void raspyrfmInit(void) {
+	hardware_register(&raspyrfm);
+	hardware_set_id(raspyrfm, "raspyrfm");
+	
+	options_add(&raspyrfm->options, 'c', "spi_ch", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]+$");
+	options_add(&raspyrfm->options, 'b', "band", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]+$");
+
+	raspyrfm->comtype=COMOOK;
+	raspyrfm->settings=&raspyrfmSettings;
+	raspyrfm->init=&raspyrfmHwInit;
+	raspyrfm->sendOOK=&raspyrfmSend;
+	raspyrfm->receiveOOK=&raspyrfmReceive;
+}
+
+#if defined(MODULE) && !defined(_WIN32)
+void compatibility(struct module_t *module) {
+	module->name = "RaspyRFM";
+	module->version = "1.0";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
+}
+
+void init(void) {
+	raspyrfmInit();
+}
+#endif
