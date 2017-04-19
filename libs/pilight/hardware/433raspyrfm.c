@@ -25,6 +25,7 @@ static int raspyrfm433Send(int *code, int rawlen, int repeats) {
 }
 
 static int raspyrfm433Receive(void) {
+	//receiving not yet supported
 	sleep(1);
 	return EXIT_SUCCESS;
 }

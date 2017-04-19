@@ -58,8 +58,8 @@
 #define IRQFLAGS2_FIFOLEVEL 5
 #define IRQFLAGS2_PACKETSENT REGIRQFLAGS2 << 8 | 3
 
-#define WAITREGBITSET(x) while ((readReg(rfmsettings->spi_ch, (uint8_t) ((x) >> 8)) & (1<<((x) & 0x07))) == 0);
-#define WAITREGBITCLEAR(x) while ((readReg(rfmsettings->spi_ch, (uint8_t) ((x) >> 8)) & (1<<((x) & 0x07))) != 0);
+#define WAITREGBITSET(x) while((readReg(rfmsettings->spi_ch, (uint8_t) ((x) >> 8)) & (1<<((x) & 0x07))) == 0);
+#define WAITREGBITCLEAR(x) while((readReg(rfmsettings->spi_ch, (uint8_t) ((x) >> 8)) & (1<<((x) & 0x07))) != 0);
 
 typedef struct {
 	uint8_t reg;
@@ -89,7 +89,7 @@ static uint8_t readReg(uint8_t spi_ch, uint8_t reg) {
 }
 
 static int gcd(int a, int b) {
-	while (b != 0) {
+	while(b != 0) {
 		a %= b;
 		a ^= b;
 		b ^= a;
@@ -128,44 +128,44 @@ unsigned short raspyrfmHwInit(rfm_settings_t *rfmsettings) {
 			return EXIT_FAILURE;
 		}
 
-		if (wiringXSPISetup(rfmsettings->spi_ch, 250000) == -1) {
+		if(wiringXSPISetup(rfmsettings->spi_ch, 250000) == -1) {
 			logprintf(LOG_ERR, "failed to open SPI channel: %d", rfmsettings->spi_ch);
 			return EXIT_FAILURE;
 		}
 
 		//check if rfm69 present
-		int i;
-		for (i=0; i<8; i++) {
+		int i=0;
+		for(i=0; i<8; i++) {
 			writeReg(rfmsettings->spi_ch, REGSYNCVALUE1 + i, 0x55);
-			if (readReg(rfmsettings->spi_ch, REGSYNCVALUE1 + i) != 0x55) {
+			if(readReg(rfmsettings->spi_ch, REGSYNCVALUE1 + i) != 0x55) {
 				break;
 			}
 			writeReg(rfmsettings->spi_ch, REGSYNCVALUE1 + i, 0xAA);
-			if (readReg(rfmsettings->spi_ch, REGSYNCVALUE1 + i) != 0xAA) {
+			if(readReg(rfmsettings->spi_ch, REGSYNCVALUE1 + i) != 0xAA) {
 				break;
 			}
 		}
 
-		if (i < 8) {
+		if(i < 8) {
 			logprintf(LOG_ERR, "RaspyRfm module not found!");
 			return EXIT_FAILURE;
 		}
 
 		return EXIT_SUCCESS;
 	} else {
-		logprintf(LOG_ERR, "the RaspyRfm module is not supported on this hardware", 0);
+		logprintf(LOG_ERR, "the RaspyRFM module is not supported on this hardware", 0);
 		return EXIT_FAILURE;
 	}
 }
 
 int raspyrfmSend(int *code, int rawlen, int repeats, rfm_settings_t *rfmsettings) {
-	int i;
-	int div;
+	int i = 0;
+	int div = 0;
 	int fifoByteCnt = 0;
 
 	div = gcd_a(rawlen, code);
 
-	for (i=0; i<rawlen; i++) {
+	for(i=0; i<rawlen; i++) {
 		code[i] /= div;
 		fifoByteCnt += code[i]; //count bits...
 	}
@@ -178,16 +178,16 @@ int raspyrfmSend(int *code, int rawlen, int repeats, rfm_settings_t *rfmsettings
 	unsigned char mask = 0x80;
 	unsigned char *p = fifo;
 	int r = 0;
-	for (r=0; r<repeats; r++) {
-		for (i=0; i<rawlen; i++) {
-			int c;
-			for (c=0; c<code[i]; c++) {
+	for(r=0; r<repeats; r++) {
+		for(i=0; i<rawlen; i++) {
+			int c = 0;
+			for(c=0; c<code[i]; c++) {
 				//add high bit if i is even, low bit if i is odd
-				if ((i % 2) == 0) {
+				if((i % 2) == 0) {
 					*p |= mask;
 				}
 				mask >>= 1;
-				if (mask == 0) {
+				if(mask == 0) {
 					mask = 0x80;
 					p++;
 				}
@@ -196,7 +196,7 @@ int raspyrfmSend(int *code, int rawlen, int repeats, rfm_settings_t *rfmsettings
 	}
 
 	//send config to raspyrfm
-	for (i=0; i<sizeof(rfmcfg) / sizeof(rfmcfg[0]); i++) {
+	for(i=0; i<sizeof(rfmcfg) / sizeof(rfmcfg[0]); i++) {
 		writeReg(rfmsettings->spi_ch, rfmcfg[i].reg, rfmcfg[i].val);
 	}
 		
@@ -211,13 +211,13 @@ int raspyrfmSend(int *code, int rawlen, int repeats, rfm_settings_t *rfmsettings
 	writeReg(rfmsettings->spi_ch, REGFR + 2, rfmsettings->freq & 0xFF);
 
 	WAITREGBITSET(IRQFLAGS1_MODEREADY);
-	while ((readReg(rfmsettings->spi_ch, REGIRQFLAGS2) & (1<<IRQFLAGS2_FIFONOTEMPTY)) != 0) {
+	while((readReg(rfmsettings->spi_ch, REGIRQFLAGS2) & (1<<IRQFLAGS2_FIFONOTEMPTY)) != 0) {
 		(void) readReg(rfmsettings->spi_ch, REGFIFO);
 	}
 
 	writeReg(rfmsettings->spi_ch, REGOPMODE, MODE_TX<<2);
-	for (i=0; i<fifoByteCnt; i++) {
-		if (i > 60) {
+	for(i=0; i<fifoByteCnt; i++) {
+		if(i > 60) {
 			WAITREGBITCLEAR(IRQFLAGS2_FIFOFULL);
 		}
 		writeReg(rfmsettings->spi_ch, REGFIFO, fifo[i]);
