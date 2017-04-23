@@ -32,10 +32,6 @@
 #include "../../core/gc.h"
 #include "ping.h"
 
-/*
- * FIXME
- */
-
 typedef struct data_t {
 	char *name;
 	char *ip;
@@ -43,6 +39,7 @@ typedef struct data_t {
 	int state;
 	int interval;
 	int polling;
+	uv_timer_t *timer_req;
 
 	struct data_t *next;
 } data_t;
@@ -53,82 +50,81 @@ static struct data_t *data = NULL;
 #define CONNECTED				1
 #define DISCONNECTED 		0
 
-// static void *reason_code_received_free(void *param) {
-	// struct reason_code_received_t *data = param;
-	// FREE(data);
-	// return NULL;
-// }
+static void *reason_code_received_free(void *param) {
+	struct reason_code_received_t *data = param;
+	FREE(data);
+	return NULL;
+}
 
-// static void callback(char *a, int b) {
-	// struct data_t *settings = data;
-	// while(settings) {
-		// if(strcmp(settings->ip, a) == 0) {
-			// break;
-		// }
-		// settings = settings->next;
-	// }
+static void callback(char *a, int b) {
+	struct data_t *settings = data;
+	while(settings) {
+		if(strcmp(settings->ip, a) == 0) {
+			break;
+		}
+		settings = settings->next;
+	}
 
-	// settings->polling = 0;
+	settings->polling = 0;
 
-	// if(b == 0) {
-		// if(settings->state == DISCONNECTED) {
-			// settings->state = CONNECTED;
-			// struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
-			// if(data == NULL) {
-				// OUT_OF_MEMORY
-			// }
-			// snprintf(data->message, 1024, "{\"ip\":\"%s\",\"state\":\"connected\"}", a);
-			// strncpy(data->origin, "receiver", 255);
-			// data->protocol = pping->id;
-			// if(strlen(pilight_uuid) > 0) {
-				// data->uuid = pilight_uuid;
-			// } else {
-				// data->uuid = NULL;
-			// }
-			// data->repeat = 1;
-			// eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
-		// }
-	// } else if(settings->state == CONNECTED) {
-		// settings->state = DISCONNECTED;
+	if(b == 0) {
+		if(settings->state == DISCONNECTED) {
+			settings->state = CONNECTED;
+			struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
+			if(data == NULL) {
+				OUT_OF_MEMORY
+			}
+			snprintf(data->message, 1024, "{\"ip\":\"%s\",\"state\":\"connected\"}", a);
+			strncpy(data->origin, "receiver", 255);
+			data->protocol = pping->id;
+			if(strlen(pilight_uuid) > 0) {
+				data->uuid = pilight_uuid;
+			} else {
+				data->uuid = NULL;
+			}
+			data->repeat = 1;
+			eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
+		}
+	} else if(settings->state == CONNECTED) {
+		settings->state = DISCONNECTED;
 
-		// struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
-		// if(data == NULL) {
-			// OUT_OF_MEMORY
-		// }
-		// snprintf(data->message, 1024, "{\"ip\":\"%s\",\"state\":\"disconnected\"}", a);
-		// strncpy(data->origin, "receiver", 255);
-		// data->protocol = pping->id;
-		// if(strlen(pilight_uuid) > 0) {
-			// data->uuid = pilight_uuid;
-		// } else {
-			// data->uuid = NULL;
-		// }
-		// data->repeat = 1;
-		// eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
-	// }
-// }
+		struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
+		if(data == NULL) {
+			OUT_OF_MEMORY
+		}
+		snprintf(data->message, 1024, "{\"ip\":\"%s\",\"state\":\"disconnected\"}", a);
+		strncpy(data->origin, "receiver", 255);
+		data->protocol = pping->id;
+		if(strlen(pilight_uuid) > 0) {
+			data->uuid = pilight_uuid;
+		} else {
+			data->uuid = NULL;
+		}
+		data->repeat = 1;
+		eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
+	}
+}
 
-// static void *thread(void *param) {
-	// struct data_t *settings = param;
-	// struct ping_list_t *iplist = NULL;
-	// // struct timeval tv;
+static void *thread(void *param) {
+	uv_timer_t *timer_req = param;
+	struct data_t *settings = timer_req->data;
 
-	// // tv.tv_sec = settings->interval;
-	// // tv.tv_usec = 0;
-	// // threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
-	// if(settings->polling == 1) {
-		// logprintf(LOG_DEBUG, "ping is still searching for network device %s", settings->ip);
-		// return NULL;
-	// }
+	struct ping_list_t *iplist = NULL;
 
-	// settings->polling = 1;
+	if(settings->polling == 1) {
+		logprintf(LOG_DEBUG, "ping is still searching for network device %s", settings->ip);
+		return NULL;
+	}
 
-	// logprintf(LOG_DEBUG, "ping is starting search for network device %s", settings->ip);
-	// ping_add_host(&iplist, settings->ip);
-	// ping(iplist, callback);
+	settings->polling = 1;
 
-	// return (void *)NULL;
-// }
+	logprintf(LOG_DEBUG, "ping is starting search for network device %s", settings->ip);
+
+	ping_add_host(&iplist, settings->ip);
+	ping(iplist, callback);
+
+	return (void *)NULL;
+}
 
 static void *addDevice(int reason, void *param) {
 	struct JsonNode *jdevice = NULL;
@@ -136,7 +132,6 @@ static void *addDevice(int reason, void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct data_t *node = NULL;
-	// struct timeval tv;
 	char *tmp = NULL;
 	double itmp = 0;
 	int match = 0;
@@ -206,13 +201,16 @@ static void *addDevice(int reason, void *param) {
 	}
 	strcpy(node->name, jdevice->key);
 
+	node->timer_req = NULL;
 	node->next = data;
 	data = node;
 
-	// tv.tv_sec = 1;
-	// tv.tv_usec = 0;
-
-	// threadpool_add_scheduled_work(jdevice->key, thread, tv, (void *)node);
+	if((node->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+	node->timer_req->data = node;
+	uv_timer_init(uv_default_loop(), node->timer_req);
+	uv_timer_start(node->timer_req, (void (*)(uv_timer_t *))thread, node->interval*1000, node->interval*1000);
 
 	return NULL;
 }
@@ -222,6 +220,7 @@ static void gc(void) {
 	while(data) {
 		tmp = data;
 		FREE(tmp->name);
+		uv_timer_stop(tmp->timer_req);
 		FREE(tmp->ip);
 		data = data->next;
 		FREE(tmp);
@@ -262,7 +261,6 @@ void pingInit(void) {
 
 	options_add(&pping->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
-	// pping->initDev=&initDev;
 	pping->gc=&gc;
 	pping->checkValues=&checkValues;
 
@@ -272,7 +270,7 @@ void pingInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ping";
-	module->version = "3.0";
+	module->version = "3.1";
 	module->reqversion = "7.0";
 	module->reqcommit = "94";
 }
