@@ -1688,7 +1688,7 @@ void *events_loop(int reason, void *param) {
 	if(reason == REASON_CONFIG_UPDATE) {
 		for(x=0;x<data1->nrdev;x++) {
 			/*
-			 * Running actions will be aborted when a new
+			 * Running actions will be aborted when
 			 * a new execution id is set.
 			 */
 			event_action_set_execution_id(data1->devices[x]);

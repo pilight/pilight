@@ -238,7 +238,13 @@ static void *ssdp_found(int reason, void *param) {
 }
 
 static void read_cb(uv_stream_t *stream, ssize_t len, const uv_buf_t *buf) {
+#ifdef _WIN32
+	if(len == 1 && buf->base[0] == 3) {
+		signal_cb(NULL, SIGINT);
+	}
+#else
 	buf->base[len-1] = '\0';
+#endif
 
 #ifdef _WIN32
 	/* Remove windows vertical tab */
@@ -388,7 +394,7 @@ int main(int argc, char **argv) {
 	if(filteropt == 1) {
 		struct protocol_t *protocol = NULL;
 		nrfilter = explode(filter, ",", &filters);
-		int match = 0, j = 0;
+		unsigned int match = 0, j = 0;
 
 		protocol_init();
 
@@ -438,6 +444,9 @@ int main(int argc, char **argv) {
 			}
 
 			uv_tty_init(uv_default_loop(), tty_req, 0, 1);
+#ifdef _WIN32
+			uv_tty_set_mode(tty_req, UV_TTY_MODE_RAW);
+#endif
 			uv_read_start((uv_stream_t *)tty_req, alloc_cb, read_cb);
 		} else {
 			uv_timer_t *ssdp_not_found_req = NULL;

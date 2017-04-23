@@ -231,7 +231,6 @@ void lircInit(void) {
 	options_add(&lirc->options, 'r', "remote", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
 
 #ifndef _WIN32
-	// lirc->initDev=&initDev;
 	lirc->gc=&gc;
 
 	memset(socket_path, '\0', BUFFER_SIZE);

@@ -43,6 +43,7 @@ CuSuite *suite_protocols_network_ping(void);
 CuSuite *suite_protocols_core(void);
 CuSuite *suite_protocols_generic(void);
 CuSuite *suite_protocols_i2c(void);
+CuSuite *suite_protocols_gpio_ds18x20(void);
 CuSuite *suite_event_operators(void);
 CuSuite *suite_event_functions(void);
 CuSuite *suite_event_actions_switch(void);
@@ -130,7 +131,8 @@ int RunAllTests(void) {
 	suites[nr++] = suite_protocols_generic();
 #ifdef __linux__
 	suites[nr++] = suite_protocols_i2c();
-#endif
+	suites[nr++] = suite_protocols_gpio_ds18x20();
+#endif	
 	suites[nr++] = suite_event_operators();
 	suites[nr++] = suite_event_functions();
 	suites[nr++] = suite_event_actions_switch();

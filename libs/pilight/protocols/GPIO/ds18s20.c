@@ -33,11 +33,10 @@
 #include "ds18s20.h"
 
 typedef struct data_t {
-	char *name;
-
 	char *id;
 	char *sensor;
 	char *w1slave;
+	uv_timer_t *timer_req;
 
 	double temp_offset;
 	int interval;
@@ -50,86 +49,83 @@ static struct data_t *data = NULL;
 static char source_path[21];
 
 #ifndef _WIN32
-// static void *reason_code_received_free(void *param) {
-	// struct reason_code_received_t *data = param;
-	// FREE(data);
-	// return NULL;
-// }
+static void *reason_code_received_free(void *param) {
+	struct reason_code_received_t *data = param;
+	FREE(data);
+	return NULL;
+}
 #endif
 
-// static void *thread(void *param) {
+static void *thread(void *param) {
+#ifndef _WIN32
+	uv_timer_t *timer_req = param;
+	struct data_t *settings = timer_req->data;
 
-// #ifndef _WIN32
-	// struct data_t *settings = param;
-	// char *content = NULL;
-	// struct stat st;
+	char *content = NULL;
+	struct stat st;
 
-	// FILE *fp = NULL;
-	// char crcVar[5];
-	// int w1valid = 0;
-	// double w1temp = 0.0;
-	// size_t bytes = 0;
+	FILE *fp = NULL;
+	char crcVar[5];
+	int w1valid = 0;
+	double w1temp = 0.0;
+	size_t bytes = 0;
 
 
-	// if((fp = fopen(settings->w1slave, "rb")) == NULL) {
-		// logprintf(LOG_NOTICE, "cannot read w1 file: %s", settings->w1slave);
-		// return NULL;
-	// }
+	if((fp = fopen(settings->w1slave, "rb")) == NULL) {
+		logprintf(LOG_NOTICE, "cannot read w1 file: %s", settings->w1slave);
+		return NULL;
+	}
 
-	// fstat(fileno(fp), &st);
-	// bytes = (size_t)st.st_size;
+	fstat(fileno(fp), &st);
+	bytes = (size_t)st.st_size;
 
-	// if((content = REALLOC(content, bytes+1)) == NULL) {
-		// OUT_OF_MEMORY
-	// }
-	// memset(content, '\0', bytes+1);
+	if((content = REALLOC(content, bytes+1)) == NULL) {
+		OUT_OF_MEMORY
+	}
+	memset(content, '\0', bytes+1);
 
-	// if(fread(content, sizeof(char), bytes, fp) == -1) {
-		// logprintf(LOG_NOTICE, "cannot read config file: %s", settings->w1slave);
-		// fclose(fp);
-		// return NULL;
-	// }
-	// fclose(fp);
+	if(fread(content, sizeof(char), bytes, fp) == -1) {
+		logprintf(LOG_NOTICE, "cannot read config file: %s", settings->w1slave);
+		fclose(fp);
+		return NULL;
+	}
+	fclose(fp);
 
-	// w1valid = 0;
+	w1valid = 0;
 
-	// char **array = NULL;
-	// unsigned int n = explode(content, "\n", &array);
-	// if(n > 0) {
-		// sscanf(array[0], "%*x %*x %*x %*x %*x %*x %*x %*x %*x : crc=%*x %s", crcVar);
-		// if(strncmp(crcVar, "YES", 3) == 0 && n > 1) {
-			// w1valid = 1;
-			// sscanf(array[1], "%*x %*x %*x %*x %*x %*x %*x %*x %*x t=%lf", &w1temp);
-			// w1temp = (w1temp/1000)+settings->temp_offset;
-		// }
-	// }
-	// array_free(&array, n);
+	char **array = NULL;
+	unsigned int n = explode(content, "\n", &array);
+	if(n > 0) {
+		sscanf(array[0], "%*x %*x %*x %*x %*x %*x %*x %*x %*x : crc=%*x %s", crcVar);
+		if(strncmp(crcVar, "YES", 3) == 0 && n > 1) {
+			w1valid = 1;
+			sscanf(array[1], "%*x %*x %*x %*x %*x %*x %*x %*x %*x t=%lf", &w1temp);
+			w1temp = (w1temp/1000)+settings->temp_offset;
+		}
+	}
+	array_free(&array, n);
 
-	// if(w1valid == 1) {
-		// struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
-		// if(data == NULL) {
-			// OUT_OF_MEMORY
-		// }
-		// snprintf(data->message, 1024, "{\"id\":\"%s\",\"temperature\":%.1f}", settings->id, w1temp);
-		// strncpy(data->origin, "receiver", 255);
-		// data->protocol = ds18s20->id;
-		// if(strlen(pilight_uuid) > 0) {
-			// data->uuid = pilight_uuid;
-		// } else {
-			// data->uuid = NULL;
-		// }
-		// data->repeat = 1;
-		// eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
-	// }
+	if(w1valid == 1) {
+		struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
+		if(data == NULL) {
+			OUT_OF_MEMORY
+		}
+		snprintf(data->message, 1024, "{\"id\":\"%s\",\"temperature\":%.1f}", settings->id, w1temp);
+		strncpy(data->origin, "receiver", 255);
+		data->protocol = ds18s20->id;
+		if(strlen(pilight_uuid) > 0) {
+			data->uuid = pilight_uuid;
+		} else {
+			data->uuid = NULL;
+		}
+		data->repeat = 1;
+		eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
+	}
+	FREE(content);
+#endif
 
-	// // struct timeval tv;
-	// // tv.tv_sec = settings->interval;
-	// // tv.tv_usec = 0;
-	// // threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
-// #endif
-
-	// return (void *)NULL;
-// }
+	return (void *)NULL;
+}
 
 static void *addDevice(int reason, void *param) {
 	struct JsonNode *jdevice = NULL;
@@ -137,10 +133,9 @@ static void *addDevice(int reason, void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct data_t *node = NULL;
-	// struct timeval tv;
 	char *stmp = NULL;
-	int match = 0/*, interval = 10*/;
-	// double itmp = 0.0;
+	int match = 0, interval = 10;
+	double itmp = 0.0;
 
 #ifndef _WIN32
 	struct dirent *file = NULL;
@@ -173,6 +168,7 @@ static void *addDevice(int reason, void *param) {
 	if((node = MALLOC(sizeof(struct data_t)))== NULL) {
 		OUT_OF_MEMORY
 	}
+	memset(node, 0, sizeof(struct data_t));
 	node->id = NULL;
 	node->sensor = NULL;
 	node->w1slave = NULL;
@@ -190,8 +186,9 @@ static void *addDevice(int reason, void *param) {
 		}
 	}
 
-	// if(json_find_number(jdevice, "poll-interval", &itmp) == 0)
-		// interval = (int)round(itmp);
+	if(json_find_number(jdevice, "poll-interval", &itmp) == 0) {
+		interval = (int)round(itmp);
+	}
 
 #ifndef _WIN32
 	if((node->sensor = REALLOC(node->sensor, strlen(source_path)+strlen(node->id)+5)) == NULL) {
@@ -228,12 +225,18 @@ static void *addDevice(int reason, void *param) {
 
 	json_find_number(jdevice, "temperature-offset", &node->temp_offset);
 
+	node->interval = interval;
+
+	node->timer_req = NULL;
 	node->next = data;
 	data = node;
 
-	// tv.tv_sec = interval;
-	// tv.tv_usec = 0;
-	// threadpool_add_scheduled_work(jdevice->key, thread, tv, (void *)node);
+	if((node->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+	node->timer_req->data = node;
+	uv_timer_init(uv_default_loop(), node->timer_req);
+	uv_timer_start(node->timer_req, (void (*)(uv_timer_t *))thread, node->interval*1000, node->interval*1000);
 
 	return NULL;
 }
@@ -242,7 +245,6 @@ static void gc(void) {
 	struct data_t *tmp = NULL;
 	while(data) {
 		tmp = data;
-		FREE(tmp->name);
 		if(tmp->id != NULL) {
 			FREE(tmp->id);
 		}
@@ -251,6 +253,9 @@ static void gc(void) {
 		}
 		if(tmp->w1slave != NULL) {
 			FREE(tmp->w1slave);
+		}
+		if(tmp->timer_req != NULL) {
+			uv_timer_stop(tmp->timer_req);
 		}
 		data = data->next;
 		FREE(tmp);
@@ -280,9 +285,12 @@ void ds18s20Init(void) {
 	options_add(&ds18s20->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
 	memset(source_path, '\0', 21);
-	strcpy(source_path, "/sys/bus/w1/devices/");
-
-	// ds18s20->initDev=&initDev;
+	char *path = getenv("PILIGHT_DS18S20_PATH");
+	if(path == NULL) {
+		snprintf(source_path, 20, "/sys/bus/w1/devices/");
+	} else {
+		snprintf(source_path, 20, "%s", path);
+	}
 	ds18s20->gc=&gc;
 
 	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
@@ -291,7 +299,7 @@ void ds18s20Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ds18s20";
-	module->version = "3.0";
+	module->version = "3.1";
 	module->reqversion = "7.0";
 	module->reqcommit = "94";
 }
