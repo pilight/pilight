@@ -63,6 +63,7 @@ int cast2int(struct varcont_t **a) {
 	}
 	if((*a)->type_ == JSON_NUMBER) {
 		b.number_ = (*a)->number_;
+		b.decimals_ = (*a)->decimals_;
 	}
 
 	memcpy(*a, &b, sizeof(struct varcont_t));

@@ -1,3 +1,11 @@
+/*
+	Copyright (C) 2013 - 2016 CurlyMo
+
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +28,7 @@ CuSuite *suite_network(void);
 CuSuite *suite_binary(void);
 CuSuite *suite_datetime(void);
 CuSuite *suite_json(void);
+CuSuite *suite_cast(void);
 CuSuite *suite_sha256cache(void);
 CuSuite *suite_strptime(void);
 CuSuite *suite_dso(void);
@@ -105,6 +114,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_binary();
 	suites[nr++] = suite_datetime();
 	suites[nr++] = suite_json();
+	suites[nr++] = suite_cast();
 	suites[nr++] = suite_sha256cache();
 	suites[nr++] = suite_strptime();
 	suites[nr++] = suite_options();
@@ -132,7 +142,7 @@ int RunAllTests(void) {
 #ifdef __linux__
 	suites[nr++] = suite_protocols_i2c();
 	suites[nr++] = suite_protocols_gpio_ds18x20();
-#endif	
+#endif
 	suites[nr++] = suite_event_operators();
 	suites[nr++] = suite_event_functions();
 	suites[nr++] = suite_event_actions_switch();
