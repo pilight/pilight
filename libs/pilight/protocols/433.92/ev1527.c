@@ -80,6 +80,11 @@ static void createMessage(int unitcode, int state, int state2, int state3, int s
 static void parseCode(void) {
 	int binary[RAW_LENGTH/2], x = 0, i = 0;
 
+	if(ev1527->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "ev1527: parsecode - invalid parameter passed %d", ev1527->rawlen);
+		return;
+	}
+
 	for(x=0;x<ev1527->rawlen-2;x+=2) {
 		if(ev1527->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
@@ -233,6 +238,7 @@ void ev1527Init(void) {
 	options_add(&ev1527->options, 'c', "positioncode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, (void*)1, "^[1234]{1}$");
 	options_add(&ev1527->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&ev1527->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+
 
 	ev1527->parseCode=&parseCode;
 	ev1527->createCode=&createCode;

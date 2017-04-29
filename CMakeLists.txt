@@ -11,6 +11,10 @@ set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
 set(CPACK_DEB_COMPONENT_INSTALL TRUE)
 
+if(${ZWAVE} MATCHES "ON")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")
+endif()
+
 if(CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")
   # Use the highest warning level for visual studio.
   if(CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
@@ -119,6 +123,9 @@ execute_process(COMMAND git describe --always
 string(REGEX REPLACE "\n" "" git_ver "${git_ver}")
 add_definitions(-DHASH="${git_ver}")
 
+file(MD5 ${PROJECT_SOURCE_DIR}/res/pilight.pem md5sum)
+add_definitions(-DPILIGHT_PEM_MD5="${md5sum}")
+
 if(${MODULESPACK} MATCHES "ON" AND NOT WIN32)
 	add_definitions(-DMODULE="1")
 endif()
@@ -141,6 +148,7 @@ if(NOT WIN32)
 				/usr/local/lib64
 				/usr/lib/arm-linux-gnueabi
 				/usr/lib/arm-linux-gnueabihf
+				/usr/lib/aarch64-linux-gnu
 			NO_DEFAULT_PATH)	
 
 		if(${CMAKE_PCAP_LIBS_INIT} MATCHES "CMAKE_PCAP_LIBS_INIT-NOTFOUND")
@@ -150,7 +158,8 @@ if(NOT WIN32)
 		endif()
 	endif()
 
-	if(${WEBSERVER_SSL} MATCHES "ON")
+
+	if(${WEBSERVER_HTTPS} MATCHES "ON")
 		set(CMAKE_SSL_LIBS_INIT)
 
 		find_library(CMAKE_SSL_LIBS_INIT
@@ -167,6 +176,7 @@ if(NOT WIN32)
 				/usr/local/lib64
 				/usr/lib/arm-linux-gnueabi
 				/usr/lib/arm-linux-gnueabihf
+				/usr/lib/aarch64-linux-gnu
 			NO_DEFAULT_PATH)	
 
 		if(${CMAKE_SSL_LIBS_INIT} MATCHES "CMAKE_SSL_LIBS_INIT-NOTFOUND")
@@ -191,6 +201,7 @@ if(NOT WIN32)
 				/usr/local/lib64
 				/usr/lib/arm-linux-gnueabi
 				/usr/lib/arm-linux-gnueabihf
+				/usr/lib/aarch64-linux-gnu
 			NO_DEFAULT_PATH)	
 
 		if(${CMAKE_CRYPTO_LIBS_INIT} MATCHES "CMAKE_CRYPTO_LIBS_INIT-NOTFOUND")
@@ -213,6 +224,7 @@ if(NOT WIN32)
 				/usr/local/lib64
 				/usr/lib/arm-linux-gnueabi
 				/usr/lib/arm-linux-gnueabihf
+				/usr/lib/aarch64-linux-gnu
 			NO_DEFAULT_PATH)	
 
 		if(${CMAKE_ZLIB_LIBS_INIT} MATCHES "CMAKE_ZLIB_LIBS_INIT-NOTFOUND")
@@ -220,8 +232,8 @@ if(NOT WIN32)
 		else()
 			message(STATUS "Looking for libz - found (${CMAKE_ZLIB_LIBS_INIT})")
 		endif()	
-	endif()
-
+	endif()	
+	
 	set(CMAKE_UNWIND_LIBS_INIT)
 
 	if(NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^mips")
@@ -239,6 +251,7 @@ if(NOT WIN32)
 			/usr/local/lib64
 			/usr/lib/arm-linux-gnueabi
 			/usr/lib/arm-linux-gnueabihf
+			/usr/lib/aarch64-linux-gnu
 		NO_DEFAULT_PATH)
 
 		if(${CMAKE_UNWIND_LIBS_INIT} MATCHES "CMAKE_UNWIND_LIBS_INIT-NOTFOUND")
@@ -319,18 +332,18 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	endif()
 	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_DL_LIBS})
 
-	if(${PROTOCOL_ARPING} MATCHES "ON")
-		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_PCAP_LIBS_INIT})
-		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_PCAP_LIBS_INIT})
-	endif()
-
-	if(${WEBSERVER_SSL} MATCHES "ON")
+	if(${WEBSERVER_HTTPS} MATCHES "ON")
 		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_SSL_LIBS_INIT})
 		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_CRYPTO_LIBS_INIT})
 		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_ZLIB_LIBS_INIT})
 		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_SSL_LIBS_INIT})
 		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_CRYPTO_LIBS_INIT})
 		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_ZLIB_LIBS_INIT})
+	endif()	
+	
+	if(${PROTOCOL_ARPING} MATCHES "ON")
+		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_PCAP_LIBS_INIT})
+		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_PCAP_LIBS_INIT})
 	endif()
 		
 	if(NOT WIN32)
@@ -362,14 +375,17 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		if(EXISTS "/etc/${PROJECT_NAME}/config.json")
 			install(CODE "execute_process(COMMAND mv /etc/${PROJECT_NAME}/config.json /etc/${PROJECT_NAME}/config.json.bak)")
 		endif()
+		
+		if(EXISTS "/etc/${PROJECT_NAME}/pilight.pem")
+			install(CODE "execute_process(COMMAND mv /etc/${PROJECT_NAME}/pilight.pem /etc/${PROJECT_NAME}/pilight.pem.bak)")
+		endif()		
 
 		install(PROGRAMS ${PROJECT_SOURCE_DIR}/res/init/${PROJECT_NAME}.initd DESTINATION /etc/init.d/ RENAME ${PROJECT_NAME})
 		install(FILES ${PROJECT_SOURCE_DIR}/res/config/config.json-default DESTINATION /etc/${PROJECT_NAME}/ RENAME config.json COMPONENT ${PROJECT_NAME})
-		install(FILES ${PROJECT_SOURCE_DIR}/res/tzdata.json DESTINATION /etc/${PROJECT_NAME}/ COMPONENT ${PROJECT_NAME})
+		install(FILES ${PROJECT_SOURCE_DIR}/res/pilight.pem DESTINATION /etc/${PROJECT_NAME}/ COMPONENT ${PROJECT_NAME})
 	else()
 		install(FILES ${CMAKE_BINARY_DIR}/lib${PROJECT_NAME}.dll DESTINATION . RENAME lib${PROJECT_NAME}.dll COMPONENT ${PROJECT_NAME})
 		install(FILES ${PROJECT_SOURCE_DIR}/res/config/config.json-default-w32 DESTINATION . RENAME config.json-default COMPONENT ${PROJECT_NAME})
-		install(FILES ${PROJECT_SOURCE_DIR}/res/tzdata.json DESTINATION . COMPONENT ${PROJECT_NAME})
 	endif()
 
 	if(${WEBSERVER} MATCHES "ON")

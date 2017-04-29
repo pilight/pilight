@@ -176,7 +176,7 @@ static void *ds18b20Parse(void *param) {
 					}
 					closedir(d);
 				} else {
-					logprintf(LOG_ERR, "1-wire device %s does not exists", ds18b20_sensor);
+					logprintf(LOG_ERR, "1-wire device %s does not exist", ds18b20_sensor);
 				}
 			}
 #endif

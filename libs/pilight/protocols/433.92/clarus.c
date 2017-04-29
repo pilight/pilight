@@ -47,7 +47,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(char *id, int unit, int state) {
+static void createMessage(const char *id, int unit, int state) {
 	clarus_switch->message = json_mkobject();
 	json_append_member(clarus_switch->message, "id", json_mkstring(id));
 	json_append_member(clarus_switch->message, "unit", json_mknumber(unit, 0));
@@ -60,6 +60,11 @@ static void createMessage(char *id, int unit, int state) {
 static void parseCode(void) {
 	int x = 0, z = 65, binary[RAW_LENGTH/4];
 	char id[3];
+
+	if(clarus_switch->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "clarus_switch: parsecode - invalid parameter passed %d", clarus_switch->rawlen);
+		return;
+	}
 
 	/* Convert the one's and zero's into binary */
 	for(x=0;x<clarus_switch->rawlen-2;x+=4) {
@@ -138,7 +143,7 @@ static void createUnit(int unit) {
 	}
 }
 
-static void createId(char *id) {
+static void createId(const char *id) {
 	int l = ((int)(id[0]))-65;
 	int y = atoi(&id[1]);
 	int binary[255];
@@ -172,16 +177,14 @@ static void createFooter(void) {
 }
 
 static int createCode(struct JsonNode *code) {
-	char id[3] = {'\0'};
+	const char *id = NULL;
 	int unit = -1;
 	int state = -1;
 	double itmp;
 	char *stmp;
 
-	strcpy(id, "-1");
-
 	if(json_find_string(code, "id", &stmp) == 0)
-		strcpy(id, stmp);
+		id = stmp;
 	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
 	else if(json_find_number(code, "on", &itmp) == 0)
@@ -189,7 +192,7 @@ static int createCode(struct JsonNode *code) {
 	if(json_find_number(code, "unit", &itmp) == 0)
 		unit = (int)round(itmp);
 
-	if(strcmp(id, "-1") == 0 || unit == -1 || state == -1) {
+	if(id == NULL || unit == -1 || state == -1) {
 		logprintf(LOG_ERR, "clarus_switch: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else if((int)(id[0]) < 65 || (int)(id[0]) > 70) {
@@ -252,7 +255,7 @@ void clarusSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "clarus_switch";
-	module->version = "2.3";
+	module->version = "2.4";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

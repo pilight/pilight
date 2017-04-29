@@ -31,7 +31,7 @@
 #include "arctech_contact.h"
 
 #define PULSE_MULTIPLIER	4
-#define MIN_PULSE_LENGTH	290
+#define MIN_PULSE_LENGTH	250
 #define MAX_PULSE_LENGTH	320
 #define AVG_PULSE_LENGTH	300
 #define MIN_RAW_LENGTH		132
@@ -67,7 +67,12 @@ static void createMessage(int id, int unit, int state, int all) {
 }
 
 static void parseCode(void) {
-	int binary[RAW_LENGTH/4], x = 0, i = 0;
+	int binary[MAX_RAW_LENGTH/4], x = 0, i = 0;
+
+	if(arctech_contact->rawlen>MAX_RAW_LENGTH) {
+		logprintf(LOG_ERR, "arctech_contact: parsecode - invalid parameter passed %d", arctech_contact->rawlen);
+		return;
+	}
 
 	for(x=0;x<arctech_contact->rawlen;x+=4) {
 		if(arctech_contact->raw[x+3] > AVG_PULSE_LENGTH*PULSE_MULTIPLIER) {
@@ -116,7 +121,7 @@ void arctechContactInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_contact";
-	module->version = "2.0";
+	module->version = "2.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "38";
 }

@@ -280,13 +280,88 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 		}
 		struct devices_t *dev = NULL;
 		if(cached == 0) {
-			if(devices_get(device, &dev) == 0) {
+			unsigned int match1 = 0, match2 = 0, match3 = 0, has_state = 0;
+
+			/* We first check if we matched a received protocol */
+			struct protocols_t *tmp_protocols = protocols;
+			while(tmp_protocols) {
+				if(protocol_device_exists(tmp_protocols->listener, device) == 0) {
+					match1 = 1;
+					break;
+				}
+				tmp_protocols = tmp_protocols->next;
+			}
+			if(match1 == 1) {
+				if(validate == 1) {
+					if(origin == RULE) {
+						event_cache_device(obj, device);
+					}
+					if(strcmp(name, "repeats") != 0 && strcmp(name, "uuid") != 0) {
+						struct options_t *options = tmp_protocols->listener->options;
+						while(options) {
+							if(options->conftype == DEVICES_STATE) {
+								has_state = 1;
+							}
+							if(strcmp(options->name, name) == 0) {
+								if(options->vartype != type) {
+									if(options->vartype == JSON_STRING) {
+										logprintf(LOG_ERR, "rule #%d invalid: trying to compare a string variable \"%s.%s\" to an integer", obj->nr, device, name);
+									} else {
+										logprintf(LOG_ERR, "rule #%d invalid: trying to compare an integer variable \"%s.%s\" to a string", obj->nr, device, name);
+									}
+									varcont->string_ = NULL;
+									varcont->number_ = 0;
+									varcont->decimals_ = 0;
+									*rtype = -1;
+									return -1;
+								}
+								match2 = 1;
+							}
+							options = options->next;
+						}
+						if(match2 == 0 && ((!(strcmp(name, "state") == 0 && has_state == 1)) || (strcmp(name, "state") != 0))) {
+							logprintf(LOG_ERR, "rule #%d invalid: protocol \"%s\" has no field \"%s\"", obj->nr, device, name);
+							varcont->string_ = NULL;
+							varcont->number_ = 0;
+							varcont->decimals_ = 0;
+							*rtype = -1;
+							return -1;
+						}
+					} else if(!(strcmp(name, "repeats") == 0 || strcmp(name, "uuid") == 0)) {
+						logprintf(LOG_ERR, "rule #%d invalid: protocol \"%s\" has no field \"%s\"", obj->nr, device, name);
+						varcont->string_ = NULL;
+						varcont->number_ = 0;
+						varcont->decimals_ = 0;
+						*rtype = -1;
+						return -1;
+					}
+				}
+
+				struct JsonNode *jmessage = NULL, *jnode = NULL;
+				if(obj->jtrigger != NULL) {
+					if(((jnode = json_find_member(obj->jtrigger, name)) != NULL) || 
+					   ((jmessage = json_find_member(obj->jtrigger, "message")) != NULL && 
+						 (jnode = json_find_member(jmessage, name)) != NULL)) {
+						if(jnode->tag == JSON_STRING) {
+							varcont->string_ = jnode->string_;
+							*rtype = JSON_STRING;
+							return 0;
+						} else if(jnode->tag == JSON_NUMBER) {
+							varcont->number_ = jnode->number_;
+							varcont->decimals_ = jnode->decimals_;
+							*rtype = JSON_NUMBER;
+							return 0;
+						}
+					}
+				}
+				*rtype = -1;
+				return 1;
+			} else if(devices_get(device, &dev) == 0) {
 				if(validate == 1) {
 					if(origin == RULE) {
 						event_cache_device(obj, device);
 					}
 					struct protocols_t *tmp = dev->protocols;
-					unsigned int match1 = 0, match2 = 0, match3 = 0;
 					while(tmp) {
 						struct options_t *opt = tmp->listener->options;
 						while(opt) {
@@ -725,7 +800,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 	struct varcont_t v1;
 	struct varcont_t v2;
 	char *var1 = NULL, *func = NULL, *var2 = NULL, *tmp = *rule, *search = NULL;
-	int element = 0, i = 0, match = 0, error = 0, hasquote = 0, hadquote = 0, rtype = 0;
+	int element = 0, i = 0, match = 0, error = 0, hasquote = 0, hadquote = 0, rtype1 = 0, rtype2 = 0;
 	char var1quotes[2], var2quotes[2], funcquotes[2];
 	unsigned long len = strlen(tmp), pos = 0, word = 0;
 	char *res = MALLOC(255);
@@ -828,10 +903,14 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 					match = 1;
 					int ret1 = 0, ret2 = 0;
 					if(tmp_operator->callback_string != NULL) {
-						ret1 = event_lookup_variable(var1, obj, type, &v1, &rtype, validate, RULE);
-						ret2 = event_lookup_variable(var2, obj, type, &v2, &rtype, validate, RULE);
-						if(rtype != type) {
-							error = -1;
+						ret1 = event_lookup_variable(var1, obj, type, &v1, &rtype1, validate, RULE);
+						ret2 = event_lookup_variable(var2, obj, type, &v2, &rtype2, validate, RULE);
+						if(rtype1 != type || rtype2 != type) {
+							if(ret1 == 1 || ret2 == 1) {
+								error = 0;
+							} else {
+								error = -1;
+							}
 							goto close;
 						} else if(ret1 == -1 || ret2 == -1) {
 							error = -1;
@@ -845,10 +924,14 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 						}
 					} else if(tmp_operator->callback_number != NULL) {
 						/* Continue with regular numeric operator parsing */
-						ret1 = event_lookup_variable(var1, obj, type, &v1, &rtype, validate, RULE);
-						ret2 = event_lookup_variable(var2, obj, type, &v2, &rtype, validate, RULE);
-						if(rtype != type) {
-							error = -1;
+						ret1 = event_lookup_variable(var1, obj, type, &v1, &rtype1, validate, RULE);
+						ret2 = event_lookup_variable(var2, obj, type, &v2, &rtype2, validate, RULE);
+						if(rtype1 != type || rtype2 != type) {
+							if(ret1 == 1 || ret2 == 1) {
+								error = 0;
+							} else {
+								error = -1;
+							}
 							goto close;
 						} else if(ret1 == -1 || ret2 == -1) {
 							error = -1;
@@ -1646,7 +1729,7 @@ void *events_loop(void *param) {
 	struct devices_t *dev = NULL;
 	struct JsonNode *jdevices = NULL, *jchilds = NULL;
 	struct rules_t *tmp_rules = NULL;
-	char *str = NULL;
+	char *str = NULL, *origin = NULL, *protocol = NULL;
 	unsigned short match = 0;
 	unsigned int i = 0;
 
@@ -1658,19 +1741,36 @@ void *events_loop(void *param) {
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 
 			running = 1;
-
+			
 			jdevices = json_find_member(eventsqueue->jconfig, "devices");
 			tmp_rules = rules_get();
 			while(tmp_rules) {
 				if(tmp_rules->active == 1) {
+					if(eventsqueue->jconfig != NULL) {
+						char *conf = json_stringify(eventsqueue->jconfig, NULL);
+						tmp_rules->jtrigger = json_decode(conf);
+						json_free(conf);
+					}
+
 					match = 0;
 					if((str = MALLOC(strlen(tmp_rules->rule)+1)) == NULL) {
 						fprintf(stderr, "out of memory\n");
 						exit(EXIT_FAILURE);
 					}
 					strcpy(str, tmp_rules->rule);
+					if(json_find_string(eventsqueue->jconfig, "origin", &origin) == 0 && 
+					   json_find_string(eventsqueue->jconfig, "protocol", &protocol) == 0) {
+						if(strcmp(origin, "sender") == 0 || strcmp(origin, "receiver") == 0) {
+							for(i=0;i<tmp_rules->nrdevices;i++) {
+								if(strcmp(tmp_rules->devices[i], protocol) == 0) {
+									match = 1;
+									break;
+								}
+							}
+						}
+					}
 					/* Only run those events that affect the updates devices */
-					if(jdevices != NULL) {
+					if(jdevices != NULL && match == 0) {
 						jchilds = json_first_child(jdevices);
 						while(jchilds) {
 							for(i=0;i<tmp_rules->nrdevices;i++) {
@@ -1708,6 +1808,10 @@ void *events_loop(void *param) {
 						tmp_rules->status = 0;
 					}
 					FREE(str);
+					if(tmp_rules->jtrigger != NULL) {
+						json_delete(tmp_rules->jtrigger);
+						tmp_rules->jtrigger = NULL;
+					}
 				}
 				tmp_rules = tmp_rules->next;
 			}
@@ -1803,6 +1907,7 @@ void *events_clientize(void *param) {
 		joptions = json_mkobject();
 		json_append_member(jclient, "action", json_mkstring("identify"));
 		json_append_member(joptions, "config", json_mknumber(1, 0));
+		json_append_member(joptions, "receiver", json_mknumber(1, 0));
 		json_append_member(jclient, "options", joptions);
 		json_append_member(jclient, "media", json_mkstring("all"));
 		out = json_stringify(jclient, NULL);

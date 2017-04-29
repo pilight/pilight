@@ -19,19 +19,12 @@
 #ifndef _PILIGHT_H_
 #define _PILIGHT_H_
 
-typedef enum origin_t origin_t;
-typedef enum runmode_t runmode_t;
-
-#include "defines.h"
-#include "json.h"
-#include "mem.h"
-
-enum runmode_t {
+typedef enum runmode_t {
 	STANDALONE,
 	ADHOC
-};
+} runmode_t;
 
-enum origin_t {
+typedef enum origin_t {
 	RECEIVER = 0,
 	SENDER,
 	MASTER,
@@ -40,8 +33,13 @@ enum origin_t {
 	STATS,
 	ACTION,
 	RULE,
-	PROTOCOL
-};
+	PROTOCOL,
+	HARDWARE
+} origin_t;
+
+#include "defines.h"
+#include "json.h"
+#include "mem.h"
 
 #include "../config/devices.h"
 
@@ -49,6 +47,7 @@ struct pilight_t {
 	void (*broadcast)(char *name, JsonNode *message, enum origin_t origin);
 	int (*send)(JsonNode *json, enum origin_t origin);
 	int (*control)(struct devices_t *dev, char *state, JsonNode *values, enum origin_t origin);
+	void (*receive)(struct JsonNode *code, int hwtype);
 	runmode_t runmode;
 	/* pilight actually runs in this stage and the configuration is fully validated */
 	int running;

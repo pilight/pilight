@@ -30,6 +30,8 @@
 #include "../../core/gc.h"
 #include "conrad_rsl_switch.h"
 
+#define LEARN_REPEATS		40
+#define NORMAL_REPEATS		10
 #define PULSE_MULTIPLIER	6
 #define MIN_PULSE_LENGTH	190
 #define MAX_PULSE_LENGTH	210
@@ -49,7 +51,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int id, int unit, int state) {
+static void createMessage(int id, int unit, int state, int learn) {
 	conrad_rsl_switch->message = json_mkobject();
 
 	if(id == 4) {
@@ -63,11 +65,21 @@ static void createMessage(int id, int unit, int state) {
 	} else {
 		json_append_member(conrad_rsl_switch->message, "state", json_mkstring("off"));
 	}
+	if(learn == 1) {
+		conrad_rsl_switch->txrpt = LEARN_REPEATS;
+	} else {
+		conrad_rsl_switch->txrpt = NORMAL_REPEATS;
+	}
 }
 
 static void parseCode(void) {
 	int x = 0, binary[RAW_LENGTH/2];
 	int id = 0, unit = 0, state = 0;
+
+	if(conrad_rsl_switch->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "conrad_rsl_switch: parsecode - invalid parameter passed %d", conrad_rsl_switch->rawlen);
+		return;
+	}
 
 	/* Convert the one's and zero's into binary */
 	for(x=0;x<conrad_rsl_switch->rawlen;x+=2) {
@@ -98,7 +110,7 @@ static void parseCode(void) {
 			break;
 		}
 	}
-	createMessage(id, unit, state);
+	createMessage(id, unit, state, 0);
 }
 
 static void createLow(int s, int e) {
@@ -169,6 +181,7 @@ static int createCode(struct JsonNode *code) {
 	int state = -1;
 	int unit = -1;
 	int all = 0;
+	int learn = -1;
 	double itmp = 0;
 
 	if(json_find_number(code, "id", &itmp) == 0)
@@ -181,6 +194,8 @@ static int createCode(struct JsonNode *code) {
 		state=0;
 	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
+	if(json_find_number(code, "learn", &itmp) == 0)
+			learn = 1;
 
 	if(unit == -1 || (id == -1 && all == 0) || state == -1) {
 		logprintf(LOG_ERR, "conrad_rsl_switch: insufficient number of arguments");
@@ -197,7 +212,7 @@ static int createCode(struct JsonNode *code) {
 		}
 		id -= 1;
 		unit -= 1;
-		createMessage(id, unit, state);
+		createMessage(id, unit, state, learn);
 		clearCode();
 		createId(id, unit, state);
 		createFooter();
@@ -212,6 +227,7 @@ static void printHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -a --all\t\t\tsend an all signal\n");
+	printf("\t -l --learn\t\t\tsend multiple streams so switch can learn\n");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -264,6 +280,7 @@ void conradRSLSwitchInit(void) {
 	protocol_device_add(conrad_rsl_switch, "conrad_rsl_switch", "Conrad RSL Switches");
 	conrad_rsl_switch->devtype = SWITCH;
 	conrad_rsl_switch->hwtype = RF433;
+	conrad_rsl_switch->txrpt = NORMAL_REPEATS;
 	conrad_rsl_switch->minrawlen = RAW_LENGTH;
 	conrad_rsl_switch->maxrawlen = RAW_LENGTH;
 	conrad_rsl_switch->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
@@ -274,6 +291,7 @@ void conradRSLSwitchInit(void) {
 	options_add(&conrad_rsl_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&conrad_rsl_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&conrad_rsl_switch->options, 'a', "all", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
+	options_add(&conrad_rsl_switch->options, 'l', "learn", OPTION_NO_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
 
 	options_add(&conrad_rsl_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	options_add(&conrad_rsl_switch->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
@@ -287,7 +305,7 @@ void conradRSLSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "conrad_rsl_switch";
-	module->version = "2.2";
+	module->version = "2.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

@@ -31,8 +31,8 @@
 #include "mumbi.h"
 
 #define PULSE_MULTIPLIER	3
-#define MIN_PULSE_LENGTH	317
-#define MAX_PULSE_LENGTH	307
+#define MIN_PULSE_LENGTH	307
+#define MAX_PULSE_LENGTH	317
 #define AVG_PULSE_LENGTH	312
 #define RAW_LENGTH				50
 
@@ -60,6 +60,11 @@ static void createMessage(int systemcode, int unitcode, int state) {
 
 static void parseCode(void) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
+
+	if(mumbi->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "mumbi: parsecode - invalid parameter passed %d", mumbi->rawlen);
+		return;
+	}
 
 	for(x=0;x<mumbi->rawlen-2;x+=4) {
 		if(mumbi->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
@@ -218,7 +223,7 @@ void mumbiInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "mumbi";
-	module->version = "2.3";
+	module->version = "2.4";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

@@ -251,7 +251,7 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 								while(opt) {
 									/* Check if there are values that can be updated */
 									if(strcmp(sptr->name, opt->name) == 0
-									   && (opt->conftype == DEVICES_VALUE)
+									   && (opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_OPTIONAL)
 									   && opt->argtype == OPTION_HAS_VALUE) {
 										memset(vstring_, '\0', sizeof(vstring_));
 										vnumber_ = -1;
@@ -303,7 +303,7 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 							while(opt) {
 								/* Check if there are values that can be updated */
 								if(strcmp(sptr->name, opt->name) == 0
-								   && (opt->conftype == DEVICES_VALUE)
+								   && (opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_OPTIONAL)
 								   && opt->argtype == OPTION_HAS_VALUE) {
 									int upd_value = 1;
 									memset(vstring_, '\0', sizeof(vstring_));
@@ -394,21 +394,30 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 									jchild = jchild->next;
 								}
 								if(match == 0) {
+									dptr->prevorigin = dptr->lastorigin;
+									dptr->lastorigin = origin;
 #ifdef EVENTS
-								/*
-								 * If the action itself it not triggering a device update, something
-								 * else is. We therefor need to abort the running action to let
-								 * the new state persist.
-								 */
+									/*
+									* If the action itself it not triggering a device update, something
+									* else is. We therefor need to abort the running action to let
+									* the new state persist.
+									*/
 									if(dptr->action_thread->running == 1 && origin != ACTION) {
-										event_action_thread_stop(dptr);
+										/*
+										 * In case of Z-Wave, the ACTION is always followed by a RECEIVER origin due to
+										 * its feedback feature. We do not want to abort or action in these cases.
+										 */
+										if(!((dptr->protocols->listener->hwtype == ZWAVE) && dptr->lastorigin == RECEIVER && dptr->prevorigin == ACTION) || 
+										   dptr->protocols->listener->hwtype != ZWAVE) {
+											event_action_thread_stop(dptr);
+										}
 									}
 
 									/*
-									 * We store the rule number that triggered the device change.
-									 * The eventing library can then check if the same rule is
-									 * triggered again so infinite loops can be prevented.
-									 */
+									* We store the rule number that triggered the device change.
+									* The eventing library can then check if the same rule is
+									* triggered again so infinite loops can be prevented.
+									*/
 									if(origin == ACTION) {
 										if(dptr->action_thread->obj != NULL) {
 											dptr->prevrule = dptr->lastrule;
@@ -514,7 +523,7 @@ int devices_valid_value(char *sid, char *name, char *value) {
 		while(tmp_protocol) {
 			opt = tmp_protocol->listener->options;
 			while(opt) {
-				if(opt->conftype == DEVICES_VALUE && strcmp(name, opt->name) == 0) {
+				if((opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_OPTIONAL) && strcmp(name, opt->name) == 0) {
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 					if(opt->mask != NULL) {
 						reti = regcomp(&regex, opt->mask, REG_EXTENDED);
@@ -1517,6 +1526,16 @@ static int devices_parse(JsonNode *root) {
 						logprintf(LOG_ERR, "config device #%d \"%s\", not alphanumeric", i, jdevices->key);
 						have_error = 1;
 						goto clear;
+					}
+					struct protocols_t *tmp_protocols = protocols;
+					while(tmp_protocols) {
+						struct protocol_t *protocol = tmp_protocols->listener;
+						if(strcmp(protocol->id, jdevices->key) == 0) {
+							logprintf(LOG_ERR, "config device #%d \"%s\", protocol names are reserved words", i, jdevices->key);
+							have_error = 1;
+							goto clear;
+						}
+						tmp_protocols = tmp_protocols->next;
 					}
 				}
 				/* Check for duplicate fields */

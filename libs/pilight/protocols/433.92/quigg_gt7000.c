@@ -81,6 +81,11 @@ static void parseCode(void) {
 	int binary[RAW_LENGTH/2], x = 0, dec_unit[4] = {0, 3, 1, 2};
 	int iParity=1, iParityData=-1; // init for even parity
 
+	if(quigg_gt7000->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "quigg_gt7000: parsecode - invalid parameter passed %d", quigg_gt7000->rawlen);
+		return;
+	}
+
 	for(x=0; x<quigg_gt7000->rawlen-1; x+=2) {
 		if(quigg_gt7000->raw[x+1] > PULSE_QUIGG_50) {
 			binary[x/2] = 1;
@@ -268,7 +273,7 @@ void quiggGT7000Init(void) {
 	options_add(&quigg_gt7000->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&quigg_gt7000->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&quigg_gt7000->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-3])$");
-	options_add(&quigg_gt7000->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-3][0-9][0-9][0-9]|40[0-8][0-9]|409[0-5])$");
+	options_add(&quigg_gt7000->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-3][0-9][0-9][0-9]|40[0-8][0-9]|409[0-5])$");
 	options_add(&quigg_gt7000->options, 'a', "all", OPTION_NO_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
 	options_add(&quigg_gt7000->options, 'l', "learn", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
 
@@ -284,7 +289,7 @@ void quiggGT7000Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "quigg_gt7000";
-	module->version = "2.1";
+	module->version = "2.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
