@@ -325,15 +325,15 @@ static int piBoardRev(void) {
 		}
 		return boardRev;
 	} else if(strstr(name, "BCM2709") != NULL) {
+		piModel2 = 1;
+		boardRev = 2;
+		return boardRev;
+	} else if(strstr(name, "BCM2835") != NULL) {
 		unsigned int x = (unsigned int)strtol(&revision[11], NULL, 16);
 		int model = (x & (0xFF <<  4)) >>  4;
 		if(model != 9 && model != 12) {
 			piModel2 = 1;
 		}
-		boardRev = 2;
-		return boardRev;
-	} else if(strstr(name, "BCM2835") != NULL) {
-		piModel2 = 1;
 		boardRev = 2;
 		return boardRev;
 	} else {
