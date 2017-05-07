@@ -29,14 +29,17 @@
 
 #define BUFSIZE 1024*1024
 
-#define CPU_TEMP 						0
-#define DATETIME						1
-#define SUNRISESET_AMS			2
-#define SUNRISESET_NY				3
-#define SUNRISESET_BEIJING	4
-#define SUNRISESET_RISE			5
-#define SUNRISESET_SET			6
-#define SUNRISESET_MIDNIGHT	7
+#define CPU_TEMP 								0
+#define DATETIME								1
+#define SUNRISESET_AMS					2
+#define SUNRISESET_NY						3
+#define SUNRISESET_BEIJING			4
+#define SUNRISESET_RISE					5
+#define SUNRISESET_AT_RISE			6
+#define SUNRISESET_SET					7
+#define SUNRISESET_AT_SET				8
+#define SUNRISESET_MIDNIGHT			9
+#define SUNRISESET_AT_MIDNIGHT	10
 
 static char add[1024];
 static char adapt[1024];
@@ -125,6 +128,17 @@ static void *received(int reason, void *param) {
 				break;
 			}
 		break;
+		case SUNRISESET_AT_RISE:
+			switch(steps) {
+				case 0:
+					CuAssertIntEquals(gtc, 0, duration);
+					CuAssertStrEquals(gtc,
+						"{\"longitude\":4.895168,\"latitude\":52.370216,\"sun\":\"rise\",\"sunrise\":8.49,\"sunset\":16.48}",
+						data->message);
+					uv_stop(uv_default_loop());
+				break;
+			}
+		break;
 		case SUNRISESET_SET:
 			switch(steps) {
 				case 0:
@@ -141,6 +155,17 @@ static void *received(int reason, void *param) {
 				break;
 				case 1:
 					CuAssertIntEquals(gtc, 1, duration);
+					CuAssertStrEquals(gtc,
+						"{\"longitude\":4.895168,\"latitude\":52.370216,\"sun\":\"set\",\"sunrise\":8.49,\"sunset\":16.48}",
+						data->message);
+					uv_stop(uv_default_loop());
+				break;
+			}
+		break;
+		case SUNRISESET_AT_SET:
+			switch(steps) {
+				case 0:
+					CuAssertIntEquals(gtc, 0, duration);
 					CuAssertStrEquals(gtc,
 						"{\"longitude\":4.895168,\"latitude\":52.370216,\"sun\":\"set\",\"sunrise\":8.49,\"sunset\":16.48}",
 						data->message);
@@ -173,12 +198,25 @@ static void *received(int reason, void *param) {
 					uv_stop(uv_default_loop());
 				break;
 			}
+		case SUNRISESET_AT_MIDNIGHT:
+			switch(steps) {
+				case 0:
+					CuAssertIntEquals(gtc, 0, duration);
+					CuAssertStrEquals(gtc,
+						"{\"longitude\":4.895168,\"latitude\":52.370216,\"sun\":\"set\",\"sunrise\":8.48,\"sunset\":16.49}",
+						data->message);
+					uv_stop(uv_default_loop());
+				break;
+			}
 		break;
 	}
 
 	if(device != SUNRISESET_RISE &&
+		 device != SUNRISESET_AT_RISE &&
 		 device != SUNRISESET_MIDNIGHT &&
+		 device != SUNRISESET_AT_MIDNIGHT &&
 		 device != SUNRISESET_SET &&
+		 device != SUNRISESET_AT_SET &&
 		 device != DATETIME) {
 		uv_stop(uv_default_loop());
 	}
@@ -362,6 +400,32 @@ static void test_protocols_api_sunriseset_rise(CuTest *tc) {
 	test_protocols_api(tc);
 }
 
+static void test_protocols_api_sunriseset_at_rise(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	gtc = tc;
+
+	memtrack();
+
+	steps = 0;
+
+	sunRiseSetInit();
+
+	memset(&add, '\0', 1024);
+	memset(&adapt, '\0', 1024);
+
+	/*
+	 * Set time exactly on sunrise
+	 */
+	strcpy(add, "{\"test\":{\"protocol\":[\"sunriseset\"],\"id\":[{\"longitude\":4.895167899999933,\"latitude\":52.3702157}],\"sunrise\":8.16,\"sunset\":16.30,\"sun\":\"set\"}}");
+	strcpy(adapt, "{\"sunriseset\":{\"time-override\":1483861740}}");
+
+	device = SUNRISESET_AT_RISE;
+
+	test_protocols_api(tc);
+}
+
 static void test_protocols_api_sunriseset_set(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
@@ -388,13 +452,39 @@ static void test_protocols_api_sunriseset_set(CuTest *tc) {
 	test_protocols_api(tc);
 }
 
+static void test_protocols_api_sunriseset_at_set(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	gtc = tc;
+
+	memtrack();
+
+	steps = 0;
+
+	sunRiseSetInit();
+
+	memset(&add, '\0', 1024);
+	memset(&adapt, '\0', 1024);
+
+	/*
+	 * Set time exactly on sunset
+	 */
+	strcpy(add, "{\"test\":{\"protocol\":[\"sunriseset\"],\"id\":[{\"longitude\":4.895167899999933,\"latitude\":52.3702157}],\"sunrise\":8.16,\"sunset\":16.30,\"sun\":\"set\"}}");
+	strcpy(adapt, "{\"sunriseset\":{\"time-override\":1483890480}}");
+
+	device = SUNRISESET_AT_SET;
+
+	test_protocols_api(tc);
+}
+
 static void test_protocols_api_sunriseset_midnight(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
-	
+
 	gtc = tc;
 
-	memtrack();	
+	memtrack();
 
 	steps = 0;
 
@@ -414,6 +504,32 @@ static void test_protocols_api_sunriseset_midnight(CuTest *tc) {
 	test_protocols_api(tc);
 }
 
+static void test_protocols_api_sunriseset_at_midnight(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	gtc = tc;
+
+	memtrack();
+
+	steps = 0;
+
+	sunRiseSetInit();
+
+	memset(&add, '\0', 1024);
+	memset(&adapt, '\0', 1024);
+
+	/*
+	 * Set time exactly at midnight
+	 */
+	strcpy(add, "{\"test\":{\"protocol\":[\"sunriseset\"],\"id\":[{\"longitude\":4.895167899999933,\"latitude\":52.3702157}],\"sunrise\":8.16,\"sunset\":16.30,\"sun\":\"set\"}}");
+	strcpy(adapt, "{\"sunriseset\":{\"time-override\":1483916400}}");
+
+	device = SUNRISESET_AT_MIDNIGHT;
+
+	test_protocols_api(tc);
+}
+
 CuSuite *suite_protocols_api(void) {	
 	CuSuite *suite = CuSuiteNew();
 
@@ -423,8 +539,11 @@ CuSuite *suite_protocols_api(void) {
 	SUITE_ADD_TEST(suite, test_protocols_api_sunriseset_new_york);
 	SUITE_ADD_TEST(suite, test_protocols_api_sunriseset_beijing);
 	SUITE_ADD_TEST(suite, test_protocols_api_sunriseset_rise);
+	SUITE_ADD_TEST(suite, test_protocols_api_sunriseset_at_rise);
 	SUITE_ADD_TEST(suite, test_protocols_api_sunriseset_set);
+	SUITE_ADD_TEST(suite, test_protocols_api_sunriseset_at_set);
 	SUITE_ADD_TEST(suite, test_protocols_api_sunriseset_midnight);
+	SUITE_ADD_TEST(suite, test_protocols_api_sunriseset_at_midnight);
 
 	return suite;
 }

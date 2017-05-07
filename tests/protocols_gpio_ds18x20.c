@@ -66,7 +66,6 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 	}
 }
 
-
 static void test_protocols_gpio_ds18s20(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);

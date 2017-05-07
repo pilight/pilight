@@ -215,7 +215,19 @@ static void *thread(void *param) {
 		data->repeat = 1;
 		eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
 
-		uv_timer_start(settings->timer_req, (void (*)(uv_timer_t *))thread, min(time2set, time2rise, time2midnight)*1000, -1);
+		unsigned long next = 0;
+		if((next = min(time2set, time2rise, time2midnight)) == 0) {
+			if(time2set == 0) {
+				next = time2midnight;
+			}
+			if(time2rise == 0) {
+				next = time2set;
+			}
+			if(time2midnight == 0) {
+				next = time2rise;
+			}
+		}
+		uv_timer_start(settings->timer_req, (void (*)(uv_timer_t *))thread, next*1000, -1);
 	}
 
 	return (void *)NULL;

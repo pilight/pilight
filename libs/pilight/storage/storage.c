@@ -2215,8 +2215,7 @@ int storage_read(char *file, unsigned long objects) {
 }
 
 static void *storage_import_thread(int reason, void *param) {
-	struct threadpool_tasks_t *task = param;
-	struct JsonNode *jconfig = task->userdata;
+	struct JsonNode *jconfig = param;
 
 	storage_import(jconfig);
 	return NULL;

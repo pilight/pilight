@@ -57,7 +57,6 @@ struct eventqueue_t {
 } eventqueue_t;
 
 static int nrlisteners[REASON_END] = {0};
-static int nrlisteners1[REASON_END] = {0};
 static struct eventqueue_t *eventqueue = NULL;
 
 static int threads = EVENTPOOL_NO_THREADS;
@@ -110,6 +109,7 @@ static struct reasons_t {
 };
 
 static void fib_free(uv_work_t *req, int status) {
+	FREE(req->data);
 	FREE(req);
 }
 
@@ -130,7 +130,7 @@ static void fib(uv_work_t *req) {
 			FREE(data->ref);
 		}
 	}
-	FREE(req->data);
+	// FREE(req->data);
 }
 
 void eventpool_callback(int reason, void *(*func)(int, void *)) {
@@ -153,6 +153,7 @@ void eventpool_callback(int reason, void *(*func)(int, void *)) {
 #else
 	__sync_add_and_fetch(&nrlisteners[reason], 1);
 #endif
+
 	if(lockinit == 1) {
 		uv_mutex_unlock(&listeners_lock);
 	}
@@ -189,7 +190,9 @@ void eventpool_trigger(int reason, void *(*done)(void *), void *data) {
 		node->next = eventqueue;
 		eventqueue = node;
 	}
+
 	uv_mutex_unlock(&listeners_lock);
+
 	uv_async_send(async_req);
 }
 
@@ -201,19 +204,18 @@ static void eventpool_execute(uv_async_t *handle) {
 	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	struct threadpool_tasks_t **node = NULL;
-	struct threadpool_data_t *tpdata = NULL;
-	int x = 0, nr1 = 0, nrnodes = 16, nrnodes1 = 0, i = 0;
+	int nrlisteners1[REASON_END] = {0};
+	int nr1 = 0, nrnodes = 16, nrnodes1 = 0, i = 0;
 
 	if((node = MALLOC(sizeof(struct threadpool_tasks_t *)*nrnodes)) == NULL) {
 		OUT_OF_MEMORY
 	}
 
 	uv_mutex_lock(&listeners_lock);
+
 	struct eventqueue_t *queue = NULL;
 	while(eventqueue) {
 		queue = eventqueue;
-		// char name[255];
-		// snprintf(name, 255, "trigger %s", reasons[reason].reason);
 		uv_sem_t *ref = NULL;
 
 #ifdef _WIN32
@@ -256,6 +258,9 @@ static void eventpool_execute(uv_async_t *handle) {
 					node[nrnodes1]->ref = ref;
 					node[nrnodes1]->reason = listeners->reason;
 					nrnodes1++;
+					if(threads == EVENTPOOL_THREADED) {
+						nrlisteners1[queue->reason]++;
+					}
 				}
 				listeners = listeners->next;
 			}
@@ -267,8 +272,8 @@ static void eventpool_execute(uv_async_t *handle) {
 
 	if(nrnodes1 > 0) {
 		for(i=0;i<nrnodes1;i++) {
-			nrlisteners1[node[i]->reason]++;
 			if(threads == EVENTPOOL_NO_THREADS) {
+				nrlisteners1[node[i]->reason]++;
 				node[i]->func(node[i]->reason, node[i]->userdata);
 
 #ifdef _WIN32
@@ -279,11 +284,10 @@ static void eventpool_execute(uv_async_t *handle) {
 					if(node[i]->done != NULL) {
 						node[i]->done((void *)node[i]->userdata);
 					}
-					for(x=0;x<REASON_END;x++) {
-						nrlisteners1[x] = 0;
-					}
+					nrlisteners1[node[i]->reason] = 0;
 				}
 			} else {
+				struct threadpool_data_t *tpdata = NULL;
 				tpdata = MALLOC(sizeof(struct threadpool_data_t));
 				if(tpdata == NULL) {
 					OUT_OF_MEMORY
@@ -300,7 +304,6 @@ static void eventpool_execute(uv_async_t *handle) {
 					OUT_OF_MEMORY
 				}
 				tp_work_req->data = tpdata;
-
 				if(uv_queue_work(uv_default_loop(), tp_work_req, reasons[node[i]->reason].reason, fib, fib_free) < 0) {
 					if(node[i]->done != NULL) {
 						node[i]->done((void *)node[i]->userdata);
@@ -349,7 +352,6 @@ int eventpool_gc(void) {
 		int i = 0;
 		for(i=0;i<REASON_END;i++) {
 			nrlisteners[i] = 0;
-			nrlisteners1[i] = 0;
 		}
 		uv_mutex_unlock(&listeners_lock);
 	}
