@@ -168,6 +168,7 @@ void eventpool_trigger(int reason, void *(*done)(void *), void *data) {
 	sched.sched_priority = 80;
 	pthread_setschedparam(pthread_self(), SCHED_RR, &sched);
 #endif
+	int eventqueue_size = 0;
 
 	struct eventqueue_t *node = MALLOC(sizeof(struct eventqueue_t));
 	if(node == NULL) {
@@ -182,6 +183,7 @@ void eventpool_trigger(int reason, void *(*done)(void *), void *data) {
 	struct eventqueue_t *tmp = eventqueue;
 	if(tmp != NULL) {
 		while(tmp->next != NULL) {
+			eventqueue_size++;
 			tmp = tmp->next;
 		}
 		tmp->next = node;
@@ -190,6 +192,13 @@ void eventpool_trigger(int reason, void *(*done)(void *), void *data) {
 		node->next = eventqueue;
 		eventqueue = node;
 	}
+
+	/*
+	 * If the eventqueue size is above
+	 * 50 entries then there must be a bug
+	 * at the trigger side.
+	 */
+	assert(eventqueue_size < 50);
 
 	uv_mutex_unlock(&listeners_lock);
 

@@ -31,6 +31,9 @@
 typedef struct data_t {
 	unsigned int id;
 	unsigned int state;
+	unsigned int resolution;
+	uv_poll_t *poll_req;
+	uv_timer_t *timer_req;
 
 	struct data_t *next;
 } data_t;
@@ -60,36 +63,37 @@ static void createMessage(int gpio, int state) {
 	eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
 }
 
-// static int client_callback(struct eventpool_fd_t *node, int event) {
-	// struct data_t *data = node->userdata;
+static void poll_cb(uv_poll_t *req, int status, int events);
 
-	// switch(event) {
-		// case EV_CONNECT_SUCCESS: {
-			// eventpool_fd_enable_highpri(node);
-		// } break;
-		// case EV_HIGHPRI: {
-			// uint8_t c = 0;
-			// unsigned int nstate = 0;
+static void restart(uv_timer_t *req) {
+	struct data_t *data = req->data;
 
-			// (void)read(node->fd, &c, 1);
-			// lseek(node->fd, 0, SEEK_SET);
+	uv_poll_start(data->poll_req, UV_PRIORITIZED, poll_cb);
+	uv_timer_stop(req);
+}
 
-			// nstate = digitalRead(data->id);
+static void poll_cb(uv_poll_t *req, int status, int events) {
+	int fd = req->io_watcher.fd;
+	struct data_t *node = req->data;
 
-			// if(nstate != data->state) {
-				// data->state = nstate;
-				// createMessage(data->id, data->state);
-			// }
+	if(events & UV_PRIORITIZED) {
+		uint8_t c = 0;
 
-			// eventpool_fd_enable_highpri(node);
-		// } break;
-		// case EV_DISCONNECTED: {
-			// FREE(node->userdata);
-			// eventpool_fd_remove(node);
-		// } break;
-	// }
-	// return 0;
-// }
+		(void)read(fd, &c, 1);
+		lseek(fd, 0, SEEK_SET);
+
+		uv_poll_stop(req);
+		pinMode(node->id, PINMODE_INPUT);
+
+		int s = digitalRead(node->id);
+		if(s != node->state) {
+			node->state = s;
+			createMessage(node->id, node->state);
+		}
+
+		uv_timer_start(node->timer_req, (void (*)(uv_timer_t *))restart, node->resolution, -1);
+	}
+}
 
 static void *addDevice(int reason, void *param) {
 	struct JsonNode *jdevice = NULL;
@@ -128,23 +132,46 @@ static void *addDevice(int reason, void *param) {
 	}
 	node->id = 0;
 	node->state = 0;
+	node->resolution = 0;
+
+	if(json_find_number(jdevice, "resolution", &itmp) == 0) {
+		node->resolution = (int)itmp;
+	}
 
 	if((jid = json_find_member(jdevice, "id"))) {
 		jchild = json_first_child(jid);
 		if(json_find_number(jchild, "gpio", &itmp) == 0) {
 			node->id = (int)round(itmp);
+			pinMode(node->id, PINMODE_INPUT);
 			node->state = digitalRead(node->id);
 		}
 	}
 
 	createMessage(node->id, node->state);
 
-	// int fd = wiringXSelectableFd(node->id);
+	if(wiringXISR(node->id, ISR_MODE_BOTH) < 0) {
+		logprintf(LOG_ERR, "unable to register interrupt for pin %d", node->id);
+		return EXIT_SUCCESS;
+	}
+
+	if((node->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	node->timer_req->data = node;
+	uv_timer_init(uv_default_loop(), node->timer_req);
+
+	if((node->poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+	node->poll_req->data = node;
+	int fd = wiringXSelectableFd(node->id);
+
+	uv_poll_init(uv_default_loop(), node->poll_req, fd);
+	uv_poll_start(node->poll_req, UV_PRIORITIZED, poll_cb);
 
 	node->next = data;
 	data = node;
-
-	// eventpool_fd_add("gpio_switch", fd, client_callback, NULL, data);
 
 	return NULL;
 }
@@ -190,6 +217,15 @@ static int checkValues(struct JsonNode *jvalues) {
 
 	return 0;
 }
+
+static void gc(void) {
+	struct data_t *tmp = NULL;
+	while(data) {
+		tmp = data;
+		data = data->next;
+		FREE(tmp);
+	}
+}
 #endif
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -207,14 +243,14 @@ void gpioSwitchInit(void) {
 	options_add(&gpio_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&gpio_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&gpio_switch->options, 'g', "gpio", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1}|1[0-9]|20)$");
+	options_add(&gpio_switch->options, 'r', "resolution", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, (void *)1000, "^[0-9]+$");
 
 	options_add(&gpio_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&gpio_switch->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-	// gpio_switch->initDev=&initDev;
-	// gpio_switch->gc=&gc;
 	gpio_switch->checkValues=&checkValues;
+	gpio_switch->gc = &gc;
 
 	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
 #endif
@@ -223,7 +259,7 @@ void gpioSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "gpio_switch";
-	module->version = "3.0";
+	module->version = "4.0";
 	module->reqversion = "7.0";
 	module->reqcommit = "94";
 }

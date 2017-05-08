@@ -22,6 +22,7 @@
 #include "../libs/pilight/protocols/protocol.h"
 #include "../libs/pilight/events/events.h"
 #include "../libs/pilight/events/action.h"
+#include "../libs/pilight/events/operator.h"
 #include "../libs/pilight/events/function.h"
 #include "../libs/pilight/events/actions/dim.h"
 #include "../libs/pilight/protocols/generic/generic_dimmer.h"

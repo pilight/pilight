@@ -52,7 +52,7 @@ static void *reason_send_code_success_free(void *param) {
 	return NULL;
 }
 
-void poll_cb(uv_poll_t *req, int status, int events) {
+static void poll_cb(uv_poll_t *req, int status, int events) {
 	int duration = 0;
 	int fd = req->io_watcher.fd;
 

@@ -40,9 +40,7 @@ static void close_cb(uv_handle_t *handle) {
 }
 
 static void *done(void *param) {
-	if(param != NULL) {
-		FREE(param);
-	}
+	FREE(param);
 	return NULL;
 }
 
