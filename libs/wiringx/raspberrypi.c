@@ -43,46 +43,49 @@
 #endif
 #include "raspberrypi.h"
 
-#define	WPI_MODE_PINS		 0
-#define	WPI_MODE_GPIO		 1
-#define	WPI_MODE_GPIO_SYS	 2
-#define	WPI_MODE_PHYS		 3
-#define	WPI_MODE_PIFACE		 4
-#define	WPI_MODE_UNINITIALISED	-1
+#define WPI_MODE_PINS 0
+#define WPI_MODE_GPIO 1
+#define WPI_MODE_GPIO_SYS 2
+#define WPI_MODE_PHYS 3
+#define WPI_MODE_PIFACE 4
+#define WPI_MODE_UNINITIALISED -1
 
-#define	PI_GPIO_MASK	(0xFFFFFFC0)
+#define PI_GPIO_MASK (0xFFFFFFC0)
 
-#define NUM_PINS		32
+#define NUM_PINS 32
 
-#define	PI_MODEL_UNKNOWN	0
-#define	PI_MODEL_A		1
-#define	PI_MODEL_B		2
-#define	PI_MODEL_BP		3
-#define	PI_MODEL_CM		4
-#define	PI_MODEL_AP		5
-#define	PI_MODEL_2		6
+#define PI_MODEL_A 0
+#define PI_MODEL_B 1
+#define PI_MODEL_AP 2
+#define PI_MODEL_BP 3
+#define PI_MODEL_2 4
+#define PI_ALPHA 5
+#define PI_MODEL_CM 6
+#define PI_MODEL_07 7
+#define PI_MODEL_3 8
+#define PI_MODEL_ZERO 9
+#define PI_MODEL_CM3 10
+#define PI_MODEL_ZERO_W 12
 
-#define	PI_VERSION_UNKNOWN	0
-#define	PI_VERSION_1		1
-#define	PI_VERSION_1_1		2
-#define	PI_VERSION_1_2		3
-#define	PI_VERSION_2		4
+#define PI_VERSION_1 0
+#define PI_VERSION_1_1 1
+#define PI_VERSION_1_2 2
+#define PI_VERSION_2 3
 
-#define	PI_MAKER_UNKNOWN	0
-#define	PI_MAKER_EGOMAN		1
-#define	PI_MAKER_SONY		2
-#define	PI_MAKER_QISDA		3
-#define	PI_MAKER_MBEST		4
+#define PI_MAKER_SONY 0
+#define PI_MAKER_EGOMAN 1
+#define PI_MAKER_EMBEST 2
+#define PI_MAKER_UNKNOWN 3
 
-static volatile unsigned int	 BCM2708_PERI_BASE = 0x20000000;
-#define GPIO_PADS		(BCM2708_PERI_BASE + 0x00100000)
-#define CLOCK_BASE		(BCM2708_PERI_BASE + 0x00101000)
-#define GPIO_BASE		(BCM2708_PERI_BASE + 0x00200000)
+static volatile unsigned int GPIO_BASE;
 
-#define	PAGE_SIZE		(4*1024)
-#define	BLOCK_SIZE		(4*1024)
+#define GPIO_PERI_BASE_OLD 0x20000000
+#define GPIO_PERI_BASE_NEW 0x3F000000
 
-static int piModel2 = 0;
+static volatile unsigned int piGpioBase = 0;
+
+#define PAGE_SIZE (4*1024)
+#define BLOCK_SIZE (4*1024)
 
 static volatile uint32_t *gpio;
 
@@ -104,7 +107,6 @@ static uint8_t gpioToGPFSEL[] = {
 	4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
 	5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
 };
-
 
 static int *pinToGpio;
 
@@ -216,8 +218,8 @@ static int sysFds[64] = {
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 };
 
-#ifndef __FreeBSD__
 /* SPI Bus Parameters */
+#ifndef __FreeBSD__
 static uint8_t     spiMode   = 0;
 static uint8_t     spiBPW    = 8;
 static uint16_t    spiDelay  = 0;
@@ -249,113 +251,329 @@ static int changeOwner(char *file) {
 	return 0;
 }
 
-static int piBoardRev(void) {
+static int piGpioLayout(void) {
 	FILE *cpuFd;
-	char line[120], revision[120], hardware[120], name[120];
-	char *c;
-	static int boardRev = -1;
+	char line[120];
+	char *c ;
+	static int gpioLayout = -1;
+
+	if(gpioLayout != -1) {
+		return gpioLayout;
+	}
 
 	if((cpuFd = fopen("/proc/cpuinfo", "r")) == NULL) {
-		wiringXLog(LOG_ERR, "raspberrypi->identify: Unable open /proc/cpuinfo");
+		wiringXLog(LOG_ERR, "raspberrypi->piGpioLayout: unable to open /proc/cpuinfo");
 		return -1;
 	}
 
 	while(fgets(line, 120, cpuFd) != NULL) {
-		if(strncmp(line, "Revision", 8) == 0) {
-			strcpy(revision, line);
-		}
 		if(strncmp(line, "Hardware", 8) == 0) {
-			strcpy(hardware, line);
+			break;
+		}
+	}
+
+	if(strncmp(line, "Hardware", 8) != 0) {
+		wiringXLog(LOG_ERR, "raspberrypi->piGpioLayout: no \"Hardware\" line");
+		return -1;
+	}
+
+	if(!(strstr(line, "BCM2708") || strstr (line, "BCM2709") || strstr (line, "BCM2835"))) {
+		return -1;
+	}
+
+	rewind(cpuFd);
+	while(fgets(line, 120, cpuFd) != NULL) {
+		if(strncmp (line, "Revision", 8) == 0) {
+			break;
 		}
 	}
 
 	fclose(cpuFd);
 
-	sscanf(hardware, "Hardware%*[ \t]:%*[ ]%[a-zA-Z0-9 ./()]%*[\n]", name);
+	if(strncmp(line, "Revision", 8) != 0) {
+		wiringXLog(LOG_ERR, "raspberrypi->piGpioLayout: no \"Revision\" line");
+		return -1;
+	}
 
-	if(strstr(name, "BCM2708") != NULL) {
-		if(boardRev != -1) {
-			return boardRev;
+	for(c = &line[strlen(line) - 1]; (*c == '\n') || (*c == '\r') ; --c) {
+		*c = 0;
+	}
+
+	for(c = line; *c; ++c) {
+		if(*c == ':') {
+			break;
 		}
+	}
 
-		if((cpuFd = fopen("/proc/cpuinfo", "r")) == NULL) {
-			wiringXLog(LOG_ERR, "raspberrypi->identify: Unable to open /proc/cpuinfo");
-			return -1;
+	if(*c != ':') {
+		wiringXLog(LOG_ERR, "raspberrypi->piGpioLayout: bogus \"Revision\" line (no colon)");
+		return -1;
+	}
+
+	++c;
+	while(isspace(*c)) {
+		++c;
+	}
+
+	if(!isxdigit(*c)) {
+		wiringXLog(LOG_ERR, "raspberrypi->piGpioLayout: bogus \"Revision\" line (no hex digit at start of revision)");
+		return -1;
+	}
+
+	if(strlen(c) < 4) {
+		wiringXLog(LOG_ERR, "raspberrypi->piGpioLayout: bogus revision line (too small)");
+		return -1;
+	}
+
+	c = c + strlen(c) - 4;
+
+	if((strcmp(c, "0002") == 0) || (strcmp(c, "0003") == 0)) {
+		gpioLayout = 1;
+	} else {
+		gpioLayout = 2;
+	}
+
+	return gpioLayout;
+}
+
+static int piBoardRev(void) {
+	return piGpioLayout();
+}
+
+static void piBoardId(int *model, int *rev, int *mem, int *maker, int *warranty) {
+	FILE *cpuFd;
+	char line[120];
+	char *c;
+	unsigned int revision = 0;
+	int bRev = 0, bType = 0, /* bProc = 0, */ bMfg = 0, bMem = 0, bWarranty = 0;
+
+	if((cpuFd = fopen ("/proc/cpuinfo", "r")) == NULL) {
+		wiringXLog(LOG_ERR, "raspberrypi->piGpioLayout: unable to open /proc/cpuinfo");
+		return;
+	}
+
+	while(fgets (line, 120, cpuFd) != NULL) {
+		if(strncmp(line, "Revision", 8) == 0) {
+			break;
 		}
+	}
+	fclose(cpuFd) ;
 
-		while(fgets(line, 120, cpuFd) != NULL) {
-			if(strncmp(line, "Revision", 8) == 0) {
-				break;
-			}
+	if(strncmp(line, "Revision", 8) != 0) {
+		wiringXLog(LOG_ERR, "raspberrypi->piGpioLayout: no \"Revision\" line");
+		return;
+	}
+
+	for(c = &line[strlen(line) - 1] ; (*c == '\n') || (*c == '\r') ; --c) {
+		*c = 0;
+	}
+
+	for(c = line; *c; ++c) {
+		if(*c == ':') {
+			break;
 		}
+	}
 
-		fclose(cpuFd);
+	if(*c != ':') {
+		wiringXLog(LOG_ERR, "raspberrypi->piGpioLayout: bogus \"Revision\" line (no colon)");
+		return;
+	}
 
-		if(strncmp(line, "Revision", 8) != 0) {
-			wiringXLog(LOG_ERR, "raspberrypi->identify: No \"Revision\" line");
-			return -1;
-		}
+	++c;
+	while(isspace(*c)) {
+		++c;
+	}
 
-		for(c = &line[strlen(line) - 1] ; (*c == '\n') || (*c == '\r'); --c) {
-			*c = 0;
-		}
+	if(!isxdigit(*c)) {
+		wiringXLog(LOG_ERR, "raspberrypi->piGpioLayout: bogus \"Revision\" line (no hex digit at start of revision)");
+		return;
+	}
 
-		for(c = line; *c; ++c) {
-			if(isdigit(*c)) {
-				break;
-			}
-		}
+	revision = (unsigned int)strtol(c, NULL, 16);
 
+	if((revision & (1 << 23)) != 0) {
+		bRev = (revision & (0x0F << 0)) >> 0;
+		bType = (revision & (0xFF << 4)) >> 4;
+		// bProc = (revision & (0x0F << 12)) >> 12;
+		bMfg = (revision & (0x0F << 16)) >> 16;
+		bMem = (revision & (0x07 << 20)) >> 20;
+		bWarranty = (revision & (0x03 << 24)) != 0;
+
+		*model    = bType ;
+		*rev      = bRev ;
+		*mem      = bMem ;
+		*maker    = bMfg  ;
+		*warranty = bWarranty ;
+	} else {
 		if(!isdigit(*c)) {
-			wiringXLog(LOG_ERR, "raspberrypi->identify: No numeric revision string");
-			return -1;
+			wiringXLog(LOG_ERR, "raspberrypi->piGpioLayout: bogus \"Revision\" line (no digit at start of revision)");
+			return;
 		}
 
 		if(strlen(c) < 4) {
-			wiringXLog(LOG_ERR, "raspberrypi->identify: Bogus \"Revision\" line (too small)");
-			return -1;
+			wiringXLog(LOG_ERR, "raspberrypi->piGpioLayout: bogus \"Revision\" line (not long enough)");
+			return;
 		}
 
-		c = c + strlen(c) - 4;
+		*warranty = strlen (c) > 4 ;
+		c = c + strlen (c) - 4 ;
 
-		if((strcmp(c, "0002") == 0) || (strcmp(c, "0003") == 0)) {
-			boardRev = 1;
+		if(strcmp(c, "0002") == 0) {
+			*model = PI_MODEL_B;
+			*rev = PI_VERSION_1;
+			*mem = 0;
+			*maker = PI_MAKER_EGOMAN;
+		} else if(strcmp(c, "0003") == 0) {
+			*model = PI_MODEL_B;
+			*rev = PI_VERSION_1_1;
+			*mem = 0;
+			*maker = PI_MAKER_EGOMAN;
+		} else if(strcmp(c, "0004") == 0) {
+			*model = PI_MODEL_B;
+			*rev = PI_VERSION_1_2;
+			*mem = 0;
+			*maker = PI_MAKER_SONY;
+		} else if(strcmp(c, "0005") == 0) {
+			*model = PI_MODEL_B;
+			*rev = PI_VERSION_1_2;
+			*mem = 0;
+			*maker = PI_MAKER_EGOMAN;
+		} else if(strcmp(c, "0006") == 0) {
+			*model = PI_MODEL_B;
+			*rev = PI_VERSION_1_2;
+			*mem = 0;
+			*maker = PI_MAKER_EGOMAN;
+		} else if(strcmp(c, "0007") == 0) {
+			*model = PI_MODEL_A;
+			*rev = PI_VERSION_1_2;
+			*mem = 0;
+			*maker = PI_MAKER_EGOMAN;
+		} else if(strcmp(c, "0008") == 0) {
+			*model = PI_MODEL_A;
+			*rev = PI_VERSION_1_2;
+			*mem = 0;
+			*maker = PI_MAKER_SONY;
+		} else if(strcmp(c, "0009") == 0) {
+			*model = PI_MODEL_A;
+			*rev = PI_VERSION_1_2;
+			*mem = 0;
+			*maker = PI_MAKER_EGOMAN;
+		} else if(strcmp(c, "000d") == 0) {
+			*model = PI_MODEL_B;
+			*rev = PI_VERSION_1_2;
+			*mem = 1;
+			*maker = PI_MAKER_EGOMAN;
+		} else if(strcmp(c, "000e") == 0) {
+			*model = PI_MODEL_B;
+			*rev = PI_VERSION_1_2;
+			*mem = 1;
+			*maker = PI_MAKER_SONY;
+		} else if(strcmp(c, "000f") == 0) {
+			*model = PI_MODEL_B;
+			*rev = PI_VERSION_1_2;
+			*mem = 1;
+			*maker = PI_MAKER_EGOMAN;
+		} else if(strcmp(c, "0010") == 0) {
+			*model = PI_MODEL_BP;
+			*rev = PI_VERSION_1_2;
+			*mem = 1;
+			*maker = PI_MAKER_SONY;
+		} else if(strcmp(c, "0013") == 0) {
+			*model = PI_MODEL_BP;
+			*rev = PI_VERSION_1_2;
+			*mem = 1;
+			*maker = PI_MAKER_EMBEST;
+		} else if(strcmp(c, "0016") == 0) {
+			*model = PI_MODEL_BP;
+			*rev = PI_VERSION_1_2;
+			*mem = 1;
+			*maker = PI_MAKER_SONY;
+		} else if(strcmp(c, "0019") == 0) {
+			*model = PI_MODEL_BP;
+			*rev = PI_VERSION_1_2;
+			*mem = 1;
+			*maker = PI_MAKER_EGOMAN;
+		} else if(strcmp(c, "0011") == 0) {
+			*model = PI_MODEL_CM;
+			*rev = PI_VERSION_1_1;
+			*mem = 1;
+			*maker = PI_MAKER_SONY;
+		} else if(strcmp(c, "0014") == 0) {
+			*model = PI_MODEL_CM;
+			*rev = PI_VERSION_1_1;
+			*mem = 1;
+			*maker = PI_MAKER_EMBEST;
+		} else if(strcmp(c, "0017") == 0) {
+			*model = PI_MODEL_CM;
+			*rev = PI_VERSION_1_1;
+			*mem = 1;
+			*maker = PI_MAKER_SONY;
+		} else if(strcmp(c, "001a") == 0) {
+			*model = PI_MODEL_CM;
+			*rev = PI_VERSION_1_1;
+			*mem = 1;
+			*maker = PI_MAKER_EGOMAN;
+		} else if(strcmp(c, "0012") == 0) {
+			*model = PI_MODEL_AP;
+			*rev = PI_VERSION_1_1;
+			*mem = 0;
+			*maker = PI_MAKER_SONY;
+		} else if(strcmp(c, "0015") == 0) {
+			*model = PI_MODEL_AP;
+			*rev = PI_VERSION_1_1;
+			*mem = 1;
+			*maker = PI_MAKER_EMBEST;
+		} else if(strcmp(c, "0018") == 0) {
+			*model = PI_MODEL_AP;
+			*rev = PI_VERSION_1_1;
+			*mem = 0;
+			*maker = PI_MAKER_SONY;
+		} else if(strcmp(c, "001b") == 0) {
+			*model = PI_MODEL_AP;
+			*rev = PI_VERSION_1_1;
+			*mem = 0;
+			*maker = PI_MAKER_EGOMAN;
 		} else {
-			boardRev = 2;
+			*model = 0;
+			*rev = 0;
+			*mem = 0;
+			*maker = 0;
 		}
-		return boardRev;
-	} else if(strstr(name, "BCM2709") != NULL) {
-		piModel2 = 1;
-		boardRev = 2;
-		return boardRev;
-	} else if(strstr(name, "BCM2835") != NULL) {
-		unsigned int x = (unsigned int)strtol(&revision[11], NULL, 16);
-		int model = (x & (0xFF <<  4)) >>  4;
-		if(model != 9 && model != 12) {
-			piModel2 = 1;
-		}
-		boardRev = 2;
-		return boardRev;
-	} else {
-		return -1;
 	}
 }
 
 static int setup(void) {
 	int fd;
-	int boardRev;
+	int model, rev, mem, maker, overVolted;
 
-	boardRev = piBoardRev();
+	piBoardId(&model, &rev, &mem, &maker, &overVolted);
 
-	if(boardRev == 1) {
-		pinToGpio =  pinToGpioR1;
+	if(model == 0 && rev == 0 && mem == 0 && maker == 0 && overVolted == 0) {
+		return -1;
+	}
+
+	if(piGpioLayout() == 1) {
+		pinToGpio = pinToGpioR1;
 		physToGpio = physToGpioR1;
 	} else {
-		if(piModel2 == 1) {
-			BCM2708_PERI_BASE = 0x3F000000;
-		}
-		pinToGpio =  pinToGpioR2;
+		pinToGpio = pinToGpioR2;
 		physToGpio = physToGpioR2;
+	}
+
+	switch(model) {
+		case PI_MODEL_A:
+		case PI_MODEL_B:
+		case PI_MODEL_AP:
+		case PI_MODEL_BP:
+		case PI_ALPHA:
+		case PI_MODEL_CM:
+		case PI_MODEL_ZERO:
+		case PI_MODEL_ZERO_W:
+			piGpioBase = GPIO_PERI_BASE_OLD;
+		break;
+		default:
+			piGpioBase = GPIO_PERI_BASE_NEW;
+		break;
 	}
 
 #ifdef O_CLOEXEC
@@ -366,6 +584,8 @@ static int setup(void) {
 		wiringXLog(LOG_ERR, "raspberrypi->setup: Unable to open /dev/mem: %s", strerror(errno));
 		return -1;
 	}
+
+	GPIO_BASE = piGpioBase + 0x00200000;
 
 	gpio = (uint32_t *)mmap(0, BLOCK_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, GPIO_BASE);
 	if((int32_t)gpio == -1) {
@@ -456,8 +676,6 @@ static int raspberrypiISR(int pin, int mode) {
 		return -1;
 	}
 
-	pinModes[pin] = SYS;
-
 	if(mode == INT_EDGE_FALLING) {
 		sMode = "falling" ;
 	} else if(mode == INT_EDGE_RISING) {
@@ -474,7 +692,7 @@ static int raspberrypiISR(int pin, int mode) {
 
 	if(fd < 0) {
 		if((f = fopen("/sys/class/gpio/export", "w")) == NULL) {
-			wiringXLog(LOG_ERR, "raspberrypi->isr: Unable to open GPIO export interface: %s", strerror(errno));
+			wiringXLog(LOG_ERR, "raspberrypi->isr: Unable to open GPIO export interface for pin %d: %s", pin, strerror(errno));
 			return -1;
 		}
 
@@ -485,6 +703,7 @@ static int raspberrypiISR(int pin, int mode) {
 	sprintf(path, "/sys/class/gpio/gpio%d/direction", pinToGpio[pin]);
 	if((f = fopen(path, "w")) == NULL) {
 		wiringXLog(LOG_ERR, "raspberrypi->isr: Unable to open GPIO direction interface for pin %d: %s", pin, strerror(errno));
+		close(fd);
 		return -1;
 	}
 
@@ -494,6 +713,7 @@ static int raspberrypiISR(int pin, int mode) {
 	sprintf(path, "/sys/class/gpio/gpio%d/edge", pinToGpio[pin]);
 	if((f = fopen(path, "w")) == NULL) {
 		wiringXLog(LOG_ERR, "raspberrypi->isr: Unable to open GPIO edge interface for pin %d: %s", pin, strerror(errno));
+		close(fd);
 		return -1;
 	}
 
@@ -507,12 +727,14 @@ static int raspberrypiISR(int pin, int mode) {
 		fprintf(f, "both\n");
 	} else {
 		wiringXLog(LOG_ERR, "raspberrypi->isr: Invalid mode: %s. Should be rising, falling or both", sMode);
+		close(fd);
 		return -1;
 	}
 	fclose(f);
 
 	if((f = fopen(path, "r")) == NULL) {
 		wiringXLog(LOG_ERR, "raspberrypi->isr: Unable to open GPIO edge interface for pin %d: %s", pin, strerror(errno));
+		close(fd);
 		return -1;
 	}
 
@@ -527,15 +749,21 @@ static int raspberrypiISR(int pin, int mode) {
 
 	if(match == 0) {
 		wiringXLog(LOG_ERR, "raspberrypi->isr: Failed to set interrupt edge to %s", sMode);
+		close(fd);
 		return -1;
 	}
 
-	sprintf(path, "/sys/class/gpio/gpio%d/value", pinToGpio[pin]);
-	if((sysFds[pin] = open(path, O_RDONLY)) < 0) {
-		wiringXLog(LOG_ERR, "raspberrypi->isr: Unable to open GPIO value interface: %s", strerror(errno));
-		return -1;
+	if(sysFds[pin] == -1) {
+		sprintf(path, "/sys/class/gpio/gpio%d/value", pinToGpio[pin]);
+		if((sysFds[pin] = open(path, O_RDONLY)) < 0) {
+			wiringXLog(LOG_ERR, "raspberrypi->isr: Unable to open GPIO value interface: %s", strerror(errno));
+			close(fd);
+			return -1;
+		}
+		changeOwner(path);
 	}
-	changeOwner(path);
+
+	pinModes[pin] = SYS;
 
 	sprintf(path, "/sys/class/gpio/gpio%d/edge", pinToGpio[pin]);
 	changeOwner(path);
@@ -599,14 +827,16 @@ static int raspberrypiGC(void) {
 				if((f = fopen("/sys/class/gpio/unexport", "w")) == NULL) {
 					wiringXLog(LOG_ERR, "raspberrypi->gc: Unable to open GPIO unexport interface: %s", strerror(errno));
 				}
-
-				fprintf(f, "%d\n", pinToGpio[i]);
-				fclose(f);
+				else {
+					fprintf(f, "%d\n", pinToGpio[i]);
+					fclose(f);
+				}
 				close(fd);
 			}
 		}
-		if(sysFds[i] > 0) {
+		if(sysFds[i] >= 0) {
 			close(sysFds[i]);
+			sysFds[i] = -1;
 		}
 	}
 
