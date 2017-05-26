@@ -10,3 +10,8 @@ if(${IR} MATCHES "OFF")
 	list(REMOVE_ITEM ${PROJECT_NAME}_init_includes "${PROJECT_SOURCE_DIR}/IR/protocol_init.h")
 endif()
 	
+if(${HARDWARE_ZIGBEE} MATCHES "OFF")
+	list(REMOVE_ITEM ${PROJECT_NAME}_headers_includes "${PROJECT_SOURCE_DIR}/zigbee/protocol_header.h")
+	list(REMOVE_ITEM ${PROJECT_NAME}_init_includes "${PROJECT_SOURCE_DIR}/zigbee/protocol_init.h")
+endif()
+	

@@ -16,6 +16,7 @@ typedef enum hwtype_t {
 	RF868,
 	RFIR,
 	ZWAVE,
+	ZIGBEE,
 	SENSOR,
 	HWRELAY,
 	API
