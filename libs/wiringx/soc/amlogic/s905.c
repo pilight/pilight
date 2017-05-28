@@ -205,12 +205,14 @@ static char *amlogicS905GetPinName(int pin) {
 	return amlogicS905->layout[pin].name;
 }
 
-static void amlogicS905SetMap(int *map) {
+static void amlogicS905SetMap(int *map, size_t size) {
 	amlogicS905->map = map;
+	amlogicS905->map_size = size;
 }
 
-static void amlogicS905SetIRQ(int *irq) {
+static void amlogicS905SetIRQ(int *irq, size_t size) {
 	amlogicS905->irq = irq;
+	amlogicS905->irq_size = size;
 }
 
 static int amlogicS905DigitalWrite(int i, enum digital_value_t value) {
@@ -362,12 +364,10 @@ static int amlogicS905WaitForInterrupt(int i, int ms) {
 static int amlogicS905GC(void) {
 	struct layout_t *pin = NULL;
 	char path[PATH_MAX];
-	int i = 0, l = 0;
+	int i = 0;
 
 	if(amlogicS905->map != NULL) {
-		l = sizeof(amlogicS905->map)/sizeof(amlogicS905->map[0]);
-
-		for(i=0;i<l;i++) {
+		for(i=0;i<amlogicS905->map_size;i++) {
 			pin = &amlogicS905->layout[amlogicS905->map[i]];
 			if(pin->mode == PINMODE_OUTPUT) {
 				pinMode(i, PINMODE_INPUT);

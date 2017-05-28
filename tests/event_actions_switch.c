@@ -754,7 +754,7 @@ static void test_event_actions_switch_run_override(CuTest *tc) {
 		OUT_OF_MEMORY
 	}
 	uv_timer_init(uv_default_loop(), timer_req);
-	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 750, -1);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 750, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
 	eventpool_callback(REASON_CONTROL_DEVICE, control_device);

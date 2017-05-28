@@ -303,12 +303,14 @@ static char *exynos5422GetPinName(int pin) {
 	return exynos5422->layout[pin].name;
 }
 
-static void exynos5422SetMap(int *map) {
+static void exynos5422SetMap(int *map, size_t size) {
 	exynos5422->map = map;
+	exynos5422->map_size = size;
 }
 
-static void exynos5422SetIRQ(int *irq) {
+static void exynos5422SetIRQ(int *irq, size_t size) {
 	exynos5422->irq = irq;
+	exynos5422->irq_size = size;
 }
 
 static int exynos5422DigitalWrite(int i, enum digital_value_t value) {
@@ -460,12 +462,10 @@ static int exynos5422WaitForInterrupt(int i, int ms) {
 static int exynos5422GC(void) {
 	struct layout_t *pin = NULL;
 	char path[PATH_MAX];
-	int i = 0, l = 0;
+	int i = 0;
 
 	if(exynos5422->map != NULL) {
-		l = sizeof(exynos5422->map)/sizeof(exynos5422->map[0]);
-
-		for(i=0;i<l;i++) {
+		for(i=0;i<exynos5422->map_size;i++) {
 			pin = &exynos5422->layout[exynos5422->map[i]];
 			if(pin->mode == PINMODE_OUTPUT) {
 				pinMode(i, PINMODE_INPUT);

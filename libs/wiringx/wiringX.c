@@ -10,18 +10,16 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <errno.h>
 #include <string.h>
 #include <fcntl.h>
 #include <time.h>
-#ifndef _WIN32
-	#include <unistd.h>
-	#include <termios.h>
-	#include <sys/ioctl.h>
-	#include <sys/time.h>
-#endif
+#include <termios.h>
+#include <sys/time.h>
 #include <sys/types.h>
-#if !defined(__FreeBSD__) && !defined(_WIN32) && !defined(__sun)
+#include <sys/ioctl.h>
+#ifndef __FreeBSD__
 	#include <linux/spi/spidev.h>
 	#include "i2c-dev.h"
 #endif
@@ -30,6 +28,7 @@
 
 #include "soc/allwinner/a10.h"
 #include "soc/allwinner/a31s.h"
+#include "soc/allwinner/h3.h"
 #include "soc/nxp/imx6dqrm.h"
 #include "soc/nxp/imx6sdlrm.h"
 #include "soc/broadcom/2835.h"
@@ -41,6 +40,7 @@
 #include "platform/linksprite/pcduino1.h"
 #include "platform/lemaker/bananapi1.h"
 #include "platform/lemaker/bananapim2.h"
+#include "platform/xunlong/orangepipc+.h"
 #include "platform/solidrun/hummingboard_gate_edge_sdl.h"
 #include "platform/solidrun/hummingboard_gate_edge_dq.h"
 #include "platform/solidrun/hummingboard_base_pro_sdl.h"
@@ -48,6 +48,7 @@
 #include "platform/raspberrypi/raspberrypi1b1.h"
 #include "platform/raspberrypi/raspberrypi1b2.h"
 #include "platform/raspberrypi/raspberrypi1b+.h"
+#include "platform/raspberrypi/raspberrypizero.h"
 #include "platform/raspberrypi/raspberrypi2.h"
 #include "platform/raspberrypi/raspberrypi3.h"
 #include "platform/hardkernel/odroidc1.h"
@@ -56,11 +57,11 @@
 
 static struct platform_t *platform = NULL;
 static int namenr = 0;
-void (*_wiringXLog)(int, char *, int, const char *, ...) = NULL;
+void (*wiringXLog)(int, const char *, ...) = NULL;
 
 static int issetup = 0;
 
-#if !defined(__FreeBSD__) && !defined(_WIN32) && !defined(__sun)
+#ifndef __FreeBSD__
 /* SPI Bus Parameters */
 
 struct spi_t {
@@ -78,16 +79,6 @@ static struct spi_t spi[2] = {
 #endif
 
 #ifdef _WIN32
-struct timeval {
-	unsigned long tv_sec;
-	unsigned long tv_usec;
-} timeval;
-
-# define timercmp(a, b, CMP)                                                  \
-  (((a)->tv_sec == (b)->tv_sec) ?                                             \
-   ((a)->tv_usec CMP (b)->tv_usec) :                                          \
-   ((a)->tv_sec CMP (b)->tv_sec))
-
 #define timeradd(a, b, result) \
 	do { \
 		(result)->tv_sec = (a)->tv_sec + (b)->tv_sec; \
@@ -115,7 +106,7 @@ static void delayMicrosecondsHard(unsigned int howLong) {
 	struct timeval tNow, tLong, tEnd ;
 
 	gettimeofday(&tNow, NULL);
-#if defined(_WIN32) || defined(__sun)
+#ifdef _WIN32
 	tLong.tv_sec  = howLong / 1000000;
 	tLong.tv_usec = howLong % 1000000;
 #else
@@ -130,11 +121,8 @@ static void delayMicrosecondsHard(unsigned int howLong) {
 }
 
 void delayMicroseconds(unsigned int howLong) {
-#ifdef _WIN32
-	delayMicrosecondsHard(howLong);
-#else
 	struct timespec sleeper;
-#if defined(__sun)
+#ifdef _WIN32
 	long int uSecs = howLong % 1000000;
 	unsigned int wSecs = howLong / 1000000;
 #else
@@ -147,7 +135,7 @@ void delayMicroseconds(unsigned int howLong) {
 	} else if(howLong  < 100) {
 		delayMicrosecondsHard(howLong);
 	} else {
-#if defined(__sun)
+#ifdef _WIN32
 		sleeper.tv_sec = wSecs;
 #else
 		sleeper.tv_sec = (__time_t)wSecs;	
@@ -155,39 +143,38 @@ void delayMicroseconds(unsigned int howLong) {
 		sleeper.tv_nsec = (long)(uSecs * 1000L);
 		nanosleep(&sleeper, NULL);
 	}
-#endif
 }
 
-void wiringXDefaultLog(int prio, char *file, int line, const char *format_str, ...) {
+void wiringXDefaultLog(int prio, const char *format_str, ...) {
 	va_list ap, apcpy;
-	char buf[64], *l = malloc(128);
+	char buf[64], *line = malloc(128);
 	int save_errno = -1, pos = 0, bytes = 0;
 
-	if(l == NULL) {
+	if(line == NULL) {
 		fprintf(stderr, "out of memory\n");
 		exit(-1);
 	}
 
 	save_errno = errno;
 
-	memset(l, '\0', 128);
+	memset(line, '\0', 128);
 	memset(buf, '\0',  64);
 
 	switch(prio) {
 		case LOG_WARNING:
-			pos += sprintf(l, "WARNING: ");
+			pos += sprintf(line, "WARNING: ");
 		break;
 		case LOG_ERR:
-			pos += sprintf(l, "ERROR: ");
+			pos += sprintf(line, "ERROR: ");
 		break;
 		case LOG_INFO:
-			pos += sprintf(l, "INFO: ");
+			pos += sprintf(line, "INFO: ");
 		break;
 		case LOG_NOTICE:
-			pos += sprintf(l, "NOTICE: ");
+			pos += sprintf(line, "NOTICE: ");
 		break;
 		case LOG_DEBUG:
-			pos += sprintf(l, "DEBUG: ");
+			pos += sprintf(line, "DEBUG: ");
 		break;
 		default:
 		break;
@@ -204,39 +191,40 @@ void wiringXDefaultLog(int prio, char *file, int line, const char *format_str, .
 		fprintf(stderr, "ERROR: unproperly formatted wiringX log message %s\n", format_str);
 	} else {
 		va_end(apcpy);
-		if((l = realloc(l, (size_t)bytes+(size_t)pos+3)) == NULL) {
+		if((line = realloc(line, (size_t)bytes+(size_t)pos+3)) == NULL) {
 			fprintf(stderr, "out of memory\n");
 			exit(-1);
 		}
 		va_start(ap, format_str);
-		pos += vsprintf(&l[pos], format_str, ap);
+		pos += vsprintf(&line[pos], format_str, ap);
 		va_end(ap);
 	}
-	l[pos++]='\n';
-	l[pos++]='\0';
+	line[pos++]='\n';
+	line[pos++]='\0';
 
-	fprintf(stderr, "%s", l);
+	fprintf(stderr, "%s", line);
 
-	free(l);
+	free(line);
 	errno = save_errno;
 }
 
-int wiringXSetup(char *name, void (*func)(int, char *, int, const char *, ...)) {
+int wiringXSetup(const char *name, void (*func)(int, const char *, ...)) {
 	if(issetup == 0) {
 		issetup = 1;
 	} else {
 		return 0;
 	}
-#if !defined(_WIN32) && !defined(__sun)
+
 	if(func != NULL) {
-		_wiringXLog = func;
+		wiringXLog = func;
 	} else {
-		_wiringXLog = wiringXDefaultLog;
+		wiringXLog = wiringXDefaultLog;
 	}
 
 	/* Init all SoC's */
 	allwinnerA10Init();
 	allwinnerA31sInit();
+	allwinnerH3Init();
 	nxpIMX6DQRMInit();
 	nxpIMX6SDLRMInit();
 	broadcom2835Init();
@@ -249,6 +237,7 @@ int wiringXSetup(char *name, void (*func)(int, char *, int, const char *, ...)) 
 	pcduino1Init();
 	bananapi1Init();
 	bananapiM2Init();
+	orangepipcpInit();
 	hummingboardBaseProSDLInit();
 	hummingboardBaseProDQInit();
 	hummingboardGateEdgeSDLInit();
@@ -256,6 +245,7 @@ int wiringXSetup(char *name, void (*func)(int, char *, int, const char *, ...)) 
 	raspberrypi1b1Init();
 	raspberrypi1b2Init();
 	raspberrypi1bpInit();
+	raspberrypizeroInit();
 	raspberrypi2Init();
 	raspberrypi3Init();
 	odroidc1Init();
@@ -276,13 +266,14 @@ int wiringXSetup(char *name, void (*func)(int, char *, int, const char *, ...)) 
 		return -1;
 	}
 	platform->setup();
-#endif
+
 	return 0;
 }
 
 char *wiringXPlatform(void) {
 	if(platform == NULL) {
 		wiringXLog(LOG_ERR, "wiringX has not been properly setup (no platform has been selected)");
+		return NULL;
 	}
 	return platform->name[namenr];
 }
@@ -290,8 +281,9 @@ char *wiringXPlatform(void) {
 int pinMode(int pin, enum pinmode_t mode) {
 	if(platform == NULL) {
 		wiringXLog(LOG_ERR, "wiringX has not been properly setup (no platform has been selected)");
+		return -1;
 	} else if(platform->pinMode == NULL) {
-		wiringXLog(LOG_ERR, "The %s does not support the pinMode functionality", platform->name);
+		wiringXLog(LOG_ERR, "The %s does not support the pinMode functionality", platform->name[namenr]);
 		return -1;
 	}
 	return platform->pinMode(pin, mode);
@@ -300,8 +292,9 @@ int pinMode(int pin, enum pinmode_t mode) {
 int digitalWrite(int pin, enum digital_value_t value) {
 	if(platform == NULL) {
 		wiringXLog(LOG_ERR, "wiringX has not been properly setup (no platform has been selected)");
+		return -1;
 	}	else if(platform->digitalWrite == NULL) {
-		wiringXLog(LOG_ERR, "The %s does not support the digitalWrite functionality", platform->name);
+		wiringXLog(LOG_ERR, "The %s does not support the digitalWrite functionality", platform->name[namenr]);
 		return -1;
 	}
 	return platform->digitalWrite(pin, value);
@@ -310,8 +303,9 @@ int digitalWrite(int pin, enum digital_value_t value) {
 int digitalRead(int pin) {
 	if(platform == NULL) {
 		wiringXLog(LOG_ERR, "wiringX has not been properly setup (no platform has been selected)");
+		return -1;
 	}	else if(platform->digitalRead == NULL) {
-		wiringXLog(LOG_ERR, "The %s does not support the digitalRead functionality", platform->name);
+		wiringXLog(LOG_ERR, "The %s does not support the digitalRead functionality", platform->name[namenr]);
 		return -1;
 	}
 	return platform->digitalRead(pin);
@@ -320,8 +314,9 @@ int digitalRead(int pin) {
 int wiringXISR(int pin, enum isr_mode_t mode) {
 	if(platform == NULL) {
 		wiringXLog(LOG_ERR, "wiringX has not been properly setup (no platform has been selected)");
+		return -1;
 	}	else if(platform->isr == NULL) {
-		wiringXLog(LOG_ERR, "The %s does not support the wiringXISR functionality", platform->name);
+		wiringXLog(LOG_ERR, "The %s does not support the wiringXISR functionality", platform->name[namenr]);
 		return -1;
 	}
 	return platform->isr(pin, mode);
@@ -330,8 +325,9 @@ int wiringXISR(int pin, enum isr_mode_t mode) {
 int waitForInterrupt(int pin, int ms) {
 	if(platform == NULL) {
 		wiringXLog(LOG_ERR, "wiringX has not been properly setup (no platform has been selected)");
+		return -1;
 	}	else if(platform->waitForInterrupt == NULL) {
-		wiringXLog(LOG_ERR, "The %s does not support the waitForInterrupt functionality", platform->name);
+		wiringXLog(LOG_ERR, "The %s does not support the waitForInterrupt functionality", platform->name[namenr]);
 		return -1;
 	}
 	return platform->waitForInterrupt(pin, ms);
@@ -340,14 +336,15 @@ int waitForInterrupt(int pin, int ms) {
 int wiringXValidGPIO(int pin) {
 	if(platform == NULL) {
 		wiringXLog(LOG_ERR, "wiringX has not been properly setup (no platform has been selected)");
+		return -1;
 	}	else if(platform->validGPIO == NULL) {
-		wiringXLog(LOG_ERR, "The %s does not support the wiringXValidGPIO functionality", platform->name);
+		wiringXLog(LOG_ERR, "The %s does not support the wiringXValidGPIO functionality", platform->name[namenr]);
 		return -1;
 	}
 	return platform->validGPIO(pin);
 }
 
-#if !defined(__FreeBSD__) && !defined(_WIN32) && !defined(__sun)
+#ifndef __FreeBSD__
 int wiringXI2CRead(int fd) {
 	return i2c_smbus_read_byte(fd);
 }
@@ -372,7 +369,7 @@ int wiringXI2CWriteReg16(int fd, int reg, int data) {
 	return i2c_smbus_write_word_data(fd, reg, data);
 }
 
-int wiringXI2CSetup(char *path, int devId) {
+int wiringXI2CSetup(const char *path, int devId) {
 	int fd = 0;
 
 	if((fd = open(path, O_RDWR)) < 0) {
@@ -397,8 +394,8 @@ int wiringXSPIDataRW(int channel, unsigned char *data, int len) {
 	memset(&tmp, 0, sizeof(tmp));
 	channel &= 1;
 
-	tmp.tx_buf = (unsigned long)data;
-	tmp.rx_buf = (unsigned long)data;
+	tmp.tx_buf = (uintptr_t)data;
+	tmp.rx_buf = (uintptr_t)data;
 	tmp.len = len;
 	tmp.delay_usecs = spi[channel].delay;
 	tmp.speed_hz = spi[channel].speed;
@@ -473,8 +470,9 @@ int wiringXSPISetup(int channel, int speed) {
 
 	return spi[channel].fd;
 }
+#endif
 
-int wiringXSerialOpen(char *device, struct wiringXSerial_t wiringXSerial) {
+int wiringXSerialOpen(const char *device, struct wiringXSerial_t wiringXSerial) {
 	struct termios options;
 	speed_t myBaud;
 	int status = 0, fd = 0;
@@ -625,7 +623,7 @@ void wiringXSerialPutChar(int fd, unsigned char c) {
 	}
 }
 
-void wiringXSerialPuts(int fd, char *s) {
+void wiringXSerialPuts(int fd, const char *s) {
 	if(fd > 0) {
 		int x = write(fd, s, strlen(s));
 		if(x != strlen(s)) {
@@ -636,7 +634,7 @@ void wiringXSerialPuts(int fd, char *s) {
 	}
 }
 
-void wiringXSerialPrintf(int fd, char *message, ...) {
+void wiringXSerialPrintf(int fd, const char *message, ...) {
 	va_list argp;
 	char buffer[1024];
 
@@ -680,25 +678,25 @@ int wiringXSerialGetChar(int fd) {
 		return -1;
 	}
 }
-#endif
 
 int wiringXSelectableFd(int gpio) {
 	if(platform == NULL) {
 		wiringXLog(LOG_ERR, "wiringX has not been properly setup (no platform has been selected)");
+		return -1;
 	}	else if(platform->selectableFd == NULL) {
-		wiringXLog(LOG_ERR, "The %s does not support the wiringXSelectableFd functionality", platform->name);
+		wiringXLog(LOG_ERR, "The %s does not support the wiringXSelectableFd functionality", platform->name[namenr]);
 		return -1;
 	}
 	return platform->selectableFd(gpio);
 }
 
 int wiringXGC(void) {
-#if !defined(_WIN32) && !defined(__sun)
 	if(platform != NULL) {
 		platform->gc();
+		platform = NULL;
 	}
 	platform_gc();
 	soc_gc();
-#endif
+	issetup = 0;
 	return 0;
 }

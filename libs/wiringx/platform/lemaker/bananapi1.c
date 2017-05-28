@@ -14,12 +14,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
-#include <signal.h>   
-	
+#include <signal.h>
+
 #include "../../soc/soc.h"
-#include "../../wiringX.h"	
-#include "../platform.h"	
-#include "bananapi1.h"			
+#include "../../wiringX.h"
+#include "../platform.h"
+#include "bananapi1.h"
 
 struct platform_t *bananapi1 = NULL;
 
@@ -68,9 +68,10 @@ static int bananapi1ValidGPIO(int pin) {
 }
 
 static int bananapi1Setup(void) {
+	const size_t size = sizeof(map) / sizeof(map[0]);
 	bananapi1->soc->setup();
-	bananapi1->soc->setMap(map);
-	bananapi1->soc->setIRQ(map);
+	bananapi1->soc->setMap(map, size);
+	bananapi1->soc->setIRQ(map, size);
 	return 0;
 }
 

@@ -77,9 +77,10 @@ static int odroidc1ValidGPIO(int pin) {
 }
 
 static int odroidc1Setup(void) {
+	const size_t size = sizeof(map) / sizeof(map[0]);
 	odroidc1->soc->setup();
-	odroidc1->soc->setMap(map);
-	odroidc1->soc->setIRQ(map);
+	odroidc1->soc->setMap(map, size);
+	odroidc1->soc->setIRQ(map, size);
 	return 0;
 }
 
@@ -87,7 +88,7 @@ void odroidc1Init(void) {
 	platform_register(&odroidc1, "odroidc1");
 
 	odroidc1->soc = soc_get("Amlogic", "S805");
-	odroidc1->soc->setMap(map);
+	odroidc1->soc->setMap(map, sizeof(map) / sizeof(map[0]));
 
 	odroidc1->digitalRead = odroidc1->soc->digitalRead;
 	odroidc1->digitalWrite = odroidc1->soc->digitalWrite;

@@ -58,7 +58,7 @@ static void *received(int reason, void *param) {
 	/*
 	 * The ping timeout is 1 second so this has to be slower
 	 */
-	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1250, -1);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1250, 0);
 
 	return NULL;
 }

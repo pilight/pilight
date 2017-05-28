@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <errno.h>
+#include <assert.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #ifndef __USE_XOPEN
@@ -227,7 +228,8 @@ static void *thread(void *param) {
 				next = time2rise;
 			}
 		}
-		uv_timer_start(settings->timer_req, (void (*)(uv_timer_t *))thread, next*1000, -1);
+		assert(next > 0);
+		uv_timer_start(settings->timer_req, (void (*)(uv_timer_t *))thread, next*1000, 0);
 	}
 
 	return (void *)NULL;
@@ -338,7 +340,7 @@ static void *addDevice(int reason, void *param) {
 	
 	uv_timer_init(uv_default_loop(), node->timer_req);
 
-	uv_timer_start(node->timer_req, (void (*)(uv_timer_t *))thread, 1, -1);
+	uv_timer_start(node->timer_req, (void (*)(uv_timer_t *))thread, 1, 0);
 
 	return NULL;
 }

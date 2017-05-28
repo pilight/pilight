@@ -14,12 +14,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
-#include <signal.h>   
-	
+#include <signal.h>
+
 #include "../../soc/soc.h"
-#include "../../wiringX.h"	
-#include "../platform.h"	
-#include "hummingboard_gate_edge_dq.h"			
+#include "../../wiringX.h"
+#include "../platform.h"
+#include "hummingboard_gate_edge_dq.h"
 
 struct platform_t *hummingboardGateEdgeDQ = NULL;
 
@@ -41,6 +41,28 @@ struct platform_t *hummingboardGateEdgeDQ = NULL;
 |IR|
 |--|
 
+--------
+mikroBUS
+--------
+
+i	LABEL	PINFUNC			PAD			GPIO		wiringNo
+1	AN		MB_AN			-
+2	RST		POR_B			-
+3	CS		ECSPI2_SS0		EIM_RW		GPIO2_IO26	33
+4	SCK		ECSPI2_SCLK		EIM_CS0		GPIO2_IO23	34
+5	MISO	ECSPI2_MISO		EIM_OE		GPIO2_IO25	35
+6	MOSI	ECSPI2_MOSI		EIM_CS1		GPIO2_IO24	36
+7	3V3		-
+8	GND		-
+9	PWM		PWM1_OUT		DISP0_DAT8	GPIO4_IO29	37
+10	INT		ECSPI2_SS1		EIM_LBA		GPIO2_IO27	38
+11	RX		UART3_TX_DATA	EIM_D24		GPIO3_IO24	39
+12	TX		UART3_RX_DATA	EIM_D25		GPIO3_IO25	40
+13	SCL		I2C3_SCL		EIM_D17		GPIO3_IO17	41
+14	SDA		I2C3_SDA		EIM_D18		GPIO3_IO18	42
+15	5V0		-
+16	GND		-
+
 */
 
 /*
@@ -58,7 +80,12 @@ static int irq[] = {
 	 -1, -1, -1,
 	 67, -1, -1,
 	 70, 71, 72,
-	 73, -1, -1
+	 73, -1, -1,
+	 // TODO: mikroBUS
+	 -1, -1, -1,
+	 -1, -1, -1,
+	 -1, -1, -1,
+	 -1,
 };
 
 static int map[] = {
@@ -83,7 +110,16 @@ static int map[] = {
 	/*	GPIO3_IO06,	GPIO3_IO07,	GPIO3_IO08 */
 			 70,				 71,				 72,
 	/*	GPIO3_IO09,	GPIO3_IO11,	GPIO3_IO10 */
-			 73,				 75,				 74
+			 73,				 75,				 74,
+	/* mikroBUS */
+	/*	GPIO2_IO26,	GPIO2_IO23,	GPIO2_IO25 */
+			 58,				 55,				 57,
+	/*	GPIO2_IO24,	GPIO4_IO29,	GPIO2_IO27 */
+			 56,				 120,				 59,
+	/*	GPIO3_IO24,	GPIO3_IO25,	GPIO3_IO17 */
+			 88,				 89,				 81,
+	/*	GPIO3_IO18 */
+			 82,
 };
 
 static int hummingboardGateEdgeDQValidGPIO(int pin) {
@@ -107,8 +143,8 @@ static int hummingboardGateEdgeDQISR(int i, enum isr_mode_t mode) {
 
 static int hummingboardGateEdgeDQSetup(void) {
 	hummingboardGateEdgeDQ->soc->setup();
-	hummingboardGateEdgeDQ->soc->setMap(map);
-	hummingboardGateEdgeDQ->soc->setIRQ(irq);
+	hummingboardGateEdgeDQ->soc->setMap(map, sizeof(map) / sizeof(map[0]));
+	hummingboardGateEdgeDQ->soc->setIRQ(irq, sizeof(irq) / sizeof(irq[0]));
 	return 0;
 }
 
@@ -117,8 +153,8 @@ void hummingboardGateEdgeDQInit(void) {
 	platform_add_alias(&hummingboardGateEdgeDQ, "hummingboard_gate_dq");
 
 	hummingboardGateEdgeDQ->soc = soc_get("NXP", "IMX6DQRM");
-	hummingboardGateEdgeDQ->soc->setMap(map);
-	hummingboardGateEdgeDQ->soc->setIRQ(irq);
+	hummingboardGateEdgeDQ->soc->setMap(map, sizeof(map) / sizeof(map[0]));
+	hummingboardGateEdgeDQ->soc->setIRQ(irq, sizeof(irq) / sizeof(irq[0]));
 
 	hummingboardGateEdgeDQ->digitalRead = hummingboardGateEdgeDQ->soc->digitalRead;
 	hummingboardGateEdgeDQ->digitalWrite = hummingboardGateEdgeDQ->soc->digitalWrite;

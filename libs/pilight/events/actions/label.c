@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <assert.h>
 #ifndef _WIN32
 	#include <unistd.h>
 #endif
@@ -384,7 +385,8 @@ static void thread(uv_work_t *req) {
 				}
 				timer_req->data = data;
 				uv_timer_init(uv_default_loop(), timer_req);
-				uv_timer_start(timer_req, (void (*)(uv_timer_t *))thread, tv.tv_sec*1000+tv.tv_usec, -1);
+				assert(tv.tv_sec > 0 || tv.tv_usec > 0);
+				uv_timer_start(timer_req, (void (*)(uv_timer_t *))thread, tv.tv_sec*1000+tv.tv_usec, 0);
 
 				goto end;
 			}
@@ -432,7 +434,8 @@ static void thread(uv_work_t *req) {
 				}
 				timer_req->data = data;
 				uv_timer_init(uv_default_loop(), timer_req);
-				uv_timer_start(timer_req, (void (*)(uv_timer_t *))thread, tv.tv_sec*1000+tv.tv_usec, -1);
+				assert(tv.tv_sec > 0 || tv.tv_usec > 0);
+				uv_timer_start(timer_req, (void (*)(uv_timer_t *))thread, tv.tv_sec*1000+tv.tv_usec, 0);
 
 				goto end;
 			}

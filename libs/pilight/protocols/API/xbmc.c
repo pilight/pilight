@@ -186,7 +186,7 @@ static void read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
 				return;
 			}
 
-			if((r = uv_timer_start(settings->timer_req, (void (*)(uv_timer_t *))timer_cb, 1000, -1)) != 0) {
+			if((r = uv_timer_start(settings->timer_req, (void (*)(uv_timer_t *))timer_cb, 1000, 0)) != 0) {
 				logprintf(LOG_ERR, "uv_timer_start: %s", uv_strerror(r));
 				FREE(settings->timer_req);
 				free(buf->base);

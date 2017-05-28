@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <math.h>
+#include <assert.h>
 #ifndef _WIN32
 	#include <unistd.h>
 	#ifdef __mips__
@@ -196,6 +197,7 @@ static void *addDevice(int reason, void *param) {
 	}
 	node->timer_req->data = node;
 	uv_timer_init(uv_default_loop(), node->timer_req);
+	assert(node->interval > 0);
 	uv_timer_start(node->timer_req, (void (*)(uv_timer_t *))thread, node->interval*1000, node->interval*1000);
 
 	return NULL;

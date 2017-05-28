@@ -14,12 +14,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
-#include <signal.h>   
-	
+#include <signal.h>
+
 #include "../../soc/soc.h"
-#include "../../wiringX.h"	
-#include "../platform.h"	
-#include "bananapim2.h"			
+#include "../../wiringX.h"
+#include "../platform.h"
+#include "bananapim2.h"
 
 struct platform_t *bananapim2 = NULL;
 
@@ -63,7 +63,7 @@ static int map[] = {
 	/*	PB3,	PB4,	PB7,	PE6		*/
 			 31,	 32,	 35,	 90,
 	/* 	PE7,	PM2,	PG10,	PG11	*/
-			 91,	155,	116,	117		
+			 91,	155,	116,	117
 };
 
 // SYSFS GPIO 132 LED D3 (red)
@@ -89,14 +89,15 @@ static int bananapiM2PinMode(int i, enum pinmode_t mode) {
 static int bananapiM2DigitalWrite(int i, enum digital_value_t value) {
 	if(map[i] == -1) {
 		return -1;
-	}	
-	return bananapim2->soc->digitalWrite(i, value);	
+	}
+	return bananapim2->soc->digitalWrite(i, value);
 }
 
 static int bananapiM2Setup(void) {
+	const size_t size = sizeof(map) / sizeof(map[0]);
 	bananapim2->soc->setup();
-	bananapim2->soc->setMap(map);
-	bananapim2->soc->setIRQ(map);
+	bananapim2->soc->setMap(map, size);
+	bananapim2->soc->setIRQ(map, size);
 	return 0;
 }
 

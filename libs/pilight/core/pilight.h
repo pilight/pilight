@@ -33,7 +33,8 @@ typedef enum origin_t {
 	ORIGIN_HARDWARE,
 	ORIGIN_CONFIG,
 	ORIGIN_WEBSERVER,
-	ORIGIN_SSDP
+	ORIGIN_SSDP,
+	ORIGIN_ADHOC
 } origin_t;
 
 #include "../../libuv/uv.h"

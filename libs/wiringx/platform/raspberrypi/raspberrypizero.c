@@ -19,9 +19,9 @@
 #include "../../soc/soc.h"
 #include "../../wiringX.h"
 #include "../platform.h"
-#include "raspberrypi1b2.h"
+#include "raspberrypizero.h"
 
-struct platform_t *raspberrypi1b2 = NULL;
+struct platform_t *raspberrypizero = NULL;
 
 static int map[] = {
 	/* 	FSEL17,	FSEL18,	FSEL27,	FSEL22 	*/
@@ -38,7 +38,7 @@ static int map[] = {
 			31
 };
 
-static int raspberrypi1b2ValidGPIO(int pin) {
+static int raspberrypizeroValidGPIO(int pin) {
 	if(pin >= 0 && pin < (sizeof(map)/sizeof(map[0]))) {
 		return 0;
 	} else {
@@ -46,30 +46,30 @@ static int raspberrypi1b2ValidGPIO(int pin) {
 	}
 }
 
-static int raspberrypi1b2Setup(void) {
+static int raspberrypizeroSetup(void) {
 	const size_t size = sizeof(map) / sizeof(map[0]);
-	raspberrypi1b2->soc->setup();
-	raspberrypi1b2->soc->setMap(map, size);
-	raspberrypi1b2->soc->setIRQ(map, size);
+	raspberrypizero->soc->setup();
+	raspberrypizero->soc->setMap(map, size);
+	raspberrypizero->soc->setIRQ(map, size);
 	return 0;
 }
 
-void raspberrypi1b2Init(void) {
-	platform_register(&raspberrypi1b2, "raspberrypi1b2");
+void raspberrypizeroInit(void) {
+	platform_register(&raspberrypizero, "raspberrypizero");
 
-	raspberrypi1b2->soc = soc_get("Broadcom", "2835");
-	raspberrypi1b2->soc->setMap(map, sizeof(map) / sizeof(map[0]));
+	raspberrypizero->soc = soc_get("Broadcom", "2835");
+	raspberrypizero->soc->setMap(map, sizeof(map) / sizeof(map[0]));
 
-	raspberrypi1b2->digitalRead = raspberrypi1b2->soc->digitalRead;
-	raspberrypi1b2->digitalWrite = raspberrypi1b2->soc->digitalWrite;
-	raspberrypi1b2->pinMode = raspberrypi1b2->soc->pinMode;
-	raspberrypi1b2->setup = raspberrypi1b2Setup;
+	raspberrypizero->digitalRead = raspberrypizero->soc->digitalRead;
+	raspberrypizero->digitalWrite = raspberrypizero->soc->digitalWrite;
+	raspberrypizero->pinMode = raspberrypizero->soc->pinMode;
+	raspberrypizero->setup = raspberrypizeroSetup;
 
-	raspberrypi1b2->isr = raspberrypi1b2->soc->isr;
-	raspberrypi1b2->waitForInterrupt = raspberrypi1b2->soc->waitForInterrupt;
+	raspberrypizero->isr = raspberrypizero->soc->isr;
+	raspberrypizero->waitForInterrupt = raspberrypizero->soc->waitForInterrupt;
 
-	raspberrypi1b2->selectableFd = raspberrypi1b2->soc->selectableFd;
-	raspberrypi1b2->gc = raspberrypi1b2->soc->gc;
+	raspberrypizero->selectableFd = raspberrypizero->soc->selectableFd;
+	raspberrypizero->gc = raspberrypizero->soc->gc;
 
-	raspberrypi1b2->validGPIO = &raspberrypi1b2ValidGPIO;
+	raspberrypizero->validGPIO = &raspberrypizeroValidGPIO;
 }

@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <math.h>
+#include <assert.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <signal.h>
@@ -227,6 +228,7 @@ static void *addDevice(int reason, void *param) {
 	node->timer_req->data = node;
 	uv_timer_init(uv_default_loop(), node->timer_req);
 
+	assert(node->interval > 0);
 	uv_timer_start(node->timer_req, (void (*)(uv_timer_t *))thread, node->interval*1000, node->interval*1000);
 
 	return NULL;

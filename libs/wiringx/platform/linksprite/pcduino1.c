@@ -14,24 +14,24 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
-#include <signal.h>   
-	
+#include <signal.h>
+
 #include "../../soc/soc.h"
-#include "../../wiringX.h"	
-#include "../platform.h"	
-#include "pcduino1.h"			
+#include "../../wiringX.h"
+#include "../platform.h"
+#include "pcduino1.h"
 
 struct platform_t *pcduino1 = NULL;
 
 /*
  PI19: PCDuino GPIO 0
  PI18: PCDuino GPIO 1
- PH7:	 PCDuino GPIO 2
- PH6:	 PCDuino GPIO 3
- PH8:	 PCDuino GPIO 4
+ PH7:  PCDuino GPIO 2
+ PH6:  PCDuino GPIO 3
+ PH8:  PCDuino GPIO 4
  PB2:  PCDuino GPIO 5
  PI3:  PCDuino GPIO 6
- PH9:  PCDuino GPIO 7 
+ PH9:  PCDuino GPIO 7
  PH10: PCDuino GPIO 8
  PH5:  PCDuino GPIO 9
  PI10: PCDuino GPIO 10
@@ -83,13 +83,14 @@ static int pcduino1DigitalWrite(int i, enum digital_value_t value) {
 			value = HIGH;
 		}
 	}
-	return pcduino1->soc->digitalWrite(i, value);	
+	return pcduino1->soc->digitalWrite(i, value);
 }
 
 static int pcduino1Setup(void) {
+	const size_t size = sizeof(map) / sizeof(map[0]);
 	pcduino1->soc->setup();
-	pcduino1->soc->setMap(map);
-	pcduino1->soc->setIRQ(map);
+	pcduino1->soc->setMap(map, size);
+	pcduino1->soc->setIRQ(map, size);
 	return 0;
 }
 

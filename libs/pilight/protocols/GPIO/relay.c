@@ -62,13 +62,19 @@ static int createCode(struct JsonNode *code, char *message) {
 		state=1;
 	}
 
-	char *platform = NULL;
-	settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform);
-	if(strcmp(platform, "none") == 0) {
+#if defined(__arm__) || defined(__mips__)
+	char *platform = GPIO_PLATFORM;
+	if(settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform) != 0) {
 		logprintf(LOG_ERR, "relay: no gpio-platform configured");
 		have_error = 1;
 		goto clear;
-	} else if(gpio == -1 || state == -1) {
+	} else if(strcmp(platform, "none") == 0) {
+		logprintf(LOG_ERR, "relay: no gpio-platform configured");
+		have_error = 1;
+		goto clear;
+	} else
+#endif
+	if(gpio == -1 || state == -1) {
 		logprintf(LOG_ERR, "relay: insufficient number of arguments");
 		have_error = 1;
 		goto clear;

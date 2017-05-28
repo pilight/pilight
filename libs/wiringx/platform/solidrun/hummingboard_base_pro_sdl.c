@@ -14,12 +14,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
-#include <signal.h>   
-	
+#include <signal.h>
+
 #include "../../soc/soc.h"
-#include "../../wiringX.h"	
-#include "../platform.h"	
-#include "hummingboard_base_pro_sdl.h"			
+#include "../../wiringX.h"
+#include "../platform.h"
+#include "hummingboard_base_pro_sdl.h"
 
 struct platform_t *hummingboardBaseProSDL = NULL;
 
@@ -89,8 +89,8 @@ static int hummingboardBaseProSDLISR(int i, enum isr_mode_t mode) {
 
 static int hummingboardBaseProSDLSetup(void) {
 	hummingboardBaseProSDL->soc->setup();
-	hummingboardBaseProSDL->soc->setMap(map);
-	hummingboardBaseProSDL->soc->setIRQ(irq);
+	hummingboardBaseProSDL->soc->setMap(map, sizeof(map) / sizeof(map[0]));
+	hummingboardBaseProSDL->soc->setIRQ(irq, sizeof(irq) / sizeof(irq[0]));
 	return 0;
 }
 
@@ -99,8 +99,8 @@ void hummingboardBaseProSDLInit(void) {
 	platform_add_alias(&hummingboardBaseProSDL, "hummingboard_pro_sdl");
 
 	hummingboardBaseProSDL->soc = soc_get("NXP", "IMX6SDLRM");
-	hummingboardBaseProSDL->soc->setMap(map);
-	hummingboardBaseProSDL->soc->setIRQ(irq);
+	hummingboardBaseProSDL->soc->setMap(map, sizeof(map) / sizeof(map[0]));
+	hummingboardBaseProSDL->soc->setIRQ(irq, sizeof(irq) / sizeof(irq[0]));
 
 	hummingboardBaseProSDL->digitalRead = hummingboardBaseProSDL->soc->digitalRead;
 	hummingboardBaseProSDL->digitalWrite = hummingboardBaseProSDL->soc->digitalWrite;

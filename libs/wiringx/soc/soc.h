@@ -10,6 +10,7 @@
 #define __WIRINGX_SOC_H_
 
 #include "../wiringX.h"
+#include <stddef.h>
 #include <stdint.h>
 
 #define MAX_REG_AREA	8
@@ -21,21 +22,23 @@ typedef struct soc_t {
 	char chip[255];
 
 	int *map;
+	size_t map_size;
 	int *irq;
-	
+	size_t irq_size;
+
 	struct layout_t *layout;
 
 	struct {
 		int isr_modes;
 	} support;
-	
+
 	void *gpio[MAX_REG_AREA];
 	int fd;
-	
-	unsigned long page_size;
-	unsigned long base_addr[MAX_REG_AREA];
-	unsigned long base_offs[MAX_REG_AREA];
-	
+
+	size_t page_size;
+	uintptr_t base_addr[MAX_REG_AREA];
+	uintptr_t base_offs[MAX_REG_AREA];
+
 	int (*digitalWrite)(int, enum digital_value_t);
 	int (*digitalRead)(int);
 	int (*pinMode)(int, enum pinmode_t);
@@ -43,21 +46,21 @@ typedef struct soc_t {
 	int (*waitForInterrupt)(int, int);
 
 	int (*setup)(void);
-	void (*setMap)(int *);
-	void (*setIRQ)(int *);
-	char *(*getPinName)(int);	
+	void (*setMap)(int *, size_t size);
+	void (*setIRQ)(int *, size_t size);
+	char *(*getPinName)(int);
 
 	int (*validGPIO)(int);
 	int (*selectableFd)(int);
 	int (*gc)(void);
-	
+
 	struct soc_t *next;
 } soc_t;
 
 void soc_register(struct soc_t **, char *, char *);
 struct soc_t *soc_get(char *, char *);
-void soc_writel(unsigned long, uint32_t);
-uint32_t soc_readl(unsigned long);
+void soc_writel(uintptr_t, uint32_t);
+uint32_t soc_readl(uintptr_t);
 int soc_gc(void);
 
 int soc_sysfs_check_gpio(struct soc_t *, char *);

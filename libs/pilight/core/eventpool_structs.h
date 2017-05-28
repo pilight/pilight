@@ -40,7 +40,6 @@ typedef struct reason_code_received_t {
 
 typedef struct reason_code_sent_t {
 	char message[1025];
-	char settings[1025];
 	char protocol[256];
 	char origin[256];
 	char uuid[UUID_LENGTH+1];
@@ -96,7 +95,6 @@ typedef struct reason_send_code_t {
 	int pulses[MAXPULSESTREAMLENGTH+1];
 	char protocol[256];
 	int hwtype;
-	char settings[1025];
 	char uuid[UUID_LENGTH+1];
 } reason_send_code_t;
 

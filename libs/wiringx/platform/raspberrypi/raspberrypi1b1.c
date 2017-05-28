@@ -14,12 +14,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
-#include <signal.h>   
-	
+#include <signal.h>
+
 #include "../../soc/soc.h"
-#include "../../wiringX.h"	
-#include "../platform.h"	
-#include "raspberrypi1b1.h"			
+#include "../../wiringX.h"
+#include "../platform.h"
+#include "raspberrypi1b1.h"
 
 struct platform_t *raspberrypi1b1 = NULL;
 
@@ -45,9 +45,10 @@ static int raspberrypi1b1ValidGPIO(int pin) {
 }
 
 static int raspberrypi1b1Setup(void) {
+	const size_t size = sizeof(map) / sizeof(map[0]);
 	raspberrypi1b1->soc->setup();
-	raspberrypi1b1->soc->setMap(map);
-	raspberrypi1b1->soc->setIRQ(map);
+	raspberrypi1b1->soc->setMap(map, size);
+	raspberrypi1b1->soc->setIRQ(map, size);
 	return 0;
 }
 
@@ -55,7 +56,7 @@ void raspberrypi1b1Init(void) {
 	platform_register(&raspberrypi1b1, "raspberrypi1b1");
 
 	raspberrypi1b1->soc = soc_get("Broadcom", "2835");
-	raspberrypi1b1->soc->setMap(map);
+	raspberrypi1b1->soc->setMap(map, sizeof(map) / sizeof(map[0]));
 
 	raspberrypi1b1->digitalRead = raspberrypi1b1->soc->digitalRead;
 	raspberrypi1b1->digitalWrite = raspberrypi1b1->soc->digitalWrite;

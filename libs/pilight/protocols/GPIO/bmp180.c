@@ -23,6 +23,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
+#include <assert.h>
 #include <sys/stat.h>
 #ifndef _WIN32
 	#include <unistd.h>
@@ -119,7 +120,7 @@ static void thread(uv_work_t *req) {
 		case STEP1: {
 			wiringXI2CWriteReg8(settings->fd, 0xF4, 0x2E);
 			settings->steps = STEP2;
-			uv_timer_start(settings->stepped_req, (void (*)(uv_timer_t *))thread, 100, -1);
+			uv_timer_start(settings->stepped_req, (void (*)(uv_timer_t *))thread, 100, 0);
 		} break;
 		case STEP2: {
 			settings->ut = I2C2Int(wiringXI2CReadReg16(settings->fd, 0xF6));
@@ -135,7 +136,7 @@ static void thread(uv_work_t *req) {
 
 			settings->steps = STEP3;
 
-			uv_timer_start(settings->stepped_req, (void (*)(uv_timer_t *))thread, 500, -1);
+			uv_timer_start(settings->stepped_req, (void (*)(uv_timer_t *))thread, 500, 0);
 		} break;
 		case STEP3: {
 			unsigned int msb = wiringXI2CReadReg8(settings->fd, 0xF6);
@@ -333,6 +334,7 @@ static void *addDevice(int reason, void *param) {
 
 	node->interval_req->data = node;
 	uv_timer_init(uv_default_loop(), node->interval_req);
+	assert(node->interval > 0);
 	uv_timer_start(node->interval_req, (void (*)(uv_timer_t *))restart, node->interval*1000, node->interval*1000);
 
 	node->stepped_req->data = node;
@@ -353,9 +355,6 @@ static void gc(void) {
 		}
 		data = data->next;
 		FREE(tmp);
-	}
-	if(data != NULL) {
-		FREE(data);
 	}
 }
 #endif

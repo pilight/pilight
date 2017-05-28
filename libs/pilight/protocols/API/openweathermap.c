@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
+#include <assert.h>
 #include <sys/stat.h>
 #ifndef _WIN32
 	#include <unistd.h>
@@ -186,11 +187,13 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 								/*
 								 * Update all values on next event as described above
 								 */
-								uv_timer_start(settings->update_timer_req, (void (*)(uv_timer_t *))update, settings->interval*1000, -1);
+								assert(settings->interval > 0);
+								uv_timer_start(settings->update_timer_req, (void (*)(uv_timer_t *))update, settings->interval*1000, 0);
 								/*
 								 * Allow updating the values customly after INTERVAL seconds
 								 */
-								uv_timer_start(settings->enable_timer_req, (void (*)(uv_timer_t *))enable, min_interval*1000, -1);
+								assert(min_interval > 0);
+								uv_timer_start(settings->enable_timer_req, (void (*)(uv_timer_t *))enable, min_interval*1000, 0);
 							}
 						}
 					} else {
@@ -423,12 +426,13 @@ static void *addDevice(int reason, void *param) {
 	uv_timer_init(uv_default_loop(), node->enable_timer_req);
 	uv_timer_init(uv_default_loop(), node->update_timer_req);
 
-	uv_timer_start(node->enable_timer_req, (void (*)(uv_timer_t *))enable, node->interval*1000, -1);
+	assert(node->interval > 0);
+	uv_timer_start(node->enable_timer_req, (void (*)(uv_timer_t *))enable, node->interval*1000, 0);
 	/*
 	 * Do an update when this device is added after 3 seconds
 	 * to make sure pilight is actually running.
 	 */
-	uv_timer_start(node->update_timer_req, (void (*)(uv_timer_t *))update, 3000, -1);
+	uv_timer_start(node->update_timer_req, (void (*)(uv_timer_t *))update, 3000, 0);
 	return NULL;
 }
 

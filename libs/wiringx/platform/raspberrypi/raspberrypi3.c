@@ -14,12 +14,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
-#include <signal.h>   
-	
+#include <signal.h>
+
 #include "../../soc/soc.h"
-#include "../../wiringX.h"	
-#include "../platform.h"	
-#include "raspberrypi3.h"			
+#include "../../wiringX.h"
+#include "../platform.h"
+#include "raspberrypi3.h"
 
 struct platform_t *raspberrypi3 = NULL;
 
@@ -46,7 +46,7 @@ static int raspberrypi3ValidGPIO(int pin) {
 	if(pin >= 0 && pin < (sizeof(map)/sizeof(map[0]))) {
 		if(map[pin] == -1) {
 			return -1;
-		}		
+		}
 		return 0;
 	} else {
 		return -1;
@@ -54,22 +54,23 @@ static int raspberrypi3ValidGPIO(int pin) {
 }
 
 static int raspberrypi3Setup(void) {
+	const size_t size = sizeof(map) / sizeof(map[0]);
 	raspberrypi3->soc->setup();
-	raspberrypi3->soc->setMap(map);
-	raspberrypi3->soc->setIRQ(map);
+	raspberrypi3->soc->setMap(map, size);
+	raspberrypi3->soc->setIRQ(map, size);
 	return 0;
 }
 
 void raspberrypi3Init(void) {
 	platform_register(&raspberrypi3, "raspberrypi3");
 
-	/* 
+	/*
 	 * The Raspberry Pi 3 uses the Broadcom 2837,
 	 * but the 2837 uses the same addressen as the
 	 * Broadcom 2836.
 	 */
 	raspberrypi3->soc = soc_get("Broadcom", "2836");
-	raspberrypi3->soc->setMap(map);
+	raspberrypi3->soc->setMap(map, sizeof(map) / sizeof(map[0]));
 
 	raspberrypi3->digitalRead = raspberrypi3->soc->digitalRead;
 	raspberrypi3->digitalWrite = raspberrypi3->soc->digitalWrite;

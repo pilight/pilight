@@ -80,17 +80,19 @@ static int odroidc2ValidGPIO(int pin) {
 
 static int odroidc2Setup(void) {
 	int i = 0;
-	odroidc2->soc->setup();
-	odroidc2->soc->setMap(map);
+	const size_t size = sizeof(map) / sizeof(map[0]);
 
-	for(i=0;i<(sizeof(map)/sizeof(map[0]));i++) {
+	odroidc2->soc->setup();
+	odroidc2->soc->setMap(map, size);
+
+	for(i=0;i<size;i++) {
 		if(map[i] != -1) {
 			irq[i] = map[i]+122;
 		} else {
 			irq[i] = -1;
 		}
 	}
-	odroidc2->soc->setIRQ(irq);
+	odroidc2->soc->setIRQ(irq, sizeof(irq) / sizeof(irq[0]));
 
 	return 0;
 }
@@ -99,7 +101,7 @@ void odroidc2Init(void) {
 	platform_register(&odroidc2, "odroidc2");
 
 	odroidc2->soc = soc_get("Amlogic", "S905");
-	odroidc2->soc->setMap(map);
+	odroidc2->soc->setMap(map, sizeof(map) / sizeof(map[0]));
 
 	odroidc2->digitalRead = odroidc2->soc->digitalRead;
 	odroidc2->digitalWrite = odroidc2->soc->digitalWrite;

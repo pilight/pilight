@@ -14,12 +14,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
-#include <signal.h>   
-	
+#include <signal.h>
+
 #include "../../soc/soc.h"
-#include "../../wiringX.h"	
-#include "../platform.h"	
-#include "hummingboard_base_pro_dq.h"			
+#include "../../wiringX.h"
+#include "../platform.h"
+#include "hummingboard_base_pro_dq.h"
 
 struct platform_t *hummingboardBaseProDQ = NULL;
 
@@ -47,7 +47,7 @@ struct platform_t *hummingboardBaseProDQ = NULL;
  * Not all GPIO where usable through sysfs
  * from the kernel used.
  */
- 
+
 static int irq[] = {
 	 73,	 72,	 71,
 	 70,	194,	195,
@@ -90,8 +90,8 @@ static int hummingboardBaseProDQISR(int i, enum isr_mode_t mode) {
 
 static int hummingboardBaseProDQSetup(void) {
 	hummingboardBaseProDQ->soc->setup();
-	hummingboardBaseProDQ->soc->setMap(map);
-	hummingboardBaseProDQ->soc->setIRQ(irq);
+	hummingboardBaseProDQ->soc->setMap(map, sizeof(map) / sizeof(map[0]));
+	hummingboardBaseProDQ->soc->setIRQ(irq, sizeof(irq) / sizeof(irq[0]));
 	return 0;
 }
 

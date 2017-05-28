@@ -60,7 +60,7 @@ static struct layout_t {
 	struct {
 		unsigned long offset;
 		unsigned long bit;
-	} level;	
+	} level;
 
 	int support;
 
@@ -143,12 +143,14 @@ static char *broadcom2836GetPinName(int pin) {
 	return broadcom2836->layout[pin].name;
 }
 
-static void broadcom2836SetMap(int *map) {
+static void broadcom2836SetMap(int *map, size_t size) {
 	broadcom2836->map = map;
+	broadcom2836->map_size = size;
 }
 
-static void broadcom2836SetIRQ(int *irq) {
+static void broadcom2836SetIRQ(int *irq, size_t size) {
 	broadcom2836->irq = irq;
+	broadcom2836->irq_size = size;
 }
 
 static int broadcom2836DigitalWrite(int i, enum digital_value_t value) {
@@ -159,7 +161,7 @@ static int broadcom2836DigitalWrite(int i, enum digital_value_t value) {
 
 	if(broadcom2836->map == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", broadcom2836->brand, broadcom2836->chip);
-		return -1; 
+		return -1;
 	}
 	if(broadcom2836->fd <= 0 || broadcom2836->gpio == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been setup by wiringX", broadcom2836->brand, broadcom2836->chip);
@@ -175,7 +177,7 @@ static int broadcom2836DigitalWrite(int i, enum digital_value_t value) {
 		soc_writel(addr, (1 << pin->set.bit));
 	} else {
 		addr = (unsigned long)(broadcom2836->gpio[pin->addr] + broadcom2836->base_offs[pin->addr] + pin->clear.offset);
-		soc_writel(addr, (1 << pin->clear.bit)); 
+		soc_writel(addr, (1 << pin->clear.bit));
 	}
 	return 0;
 }
@@ -192,7 +194,7 @@ static int broadcom2836DigitalRead(int i) {
 
 	if(broadcom2836->map == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", broadcom2836->brand, broadcom2836->chip);
-		return -1; 
+		return -1;
 	}
 	if(broadcom2836->fd <= 0 || broadcom2836->gpio == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been setup by wiringX", broadcom2836->brand, broadcom2836->chip);
@@ -215,8 +217,8 @@ static int broadcom2836PinMode(int i, enum pinmode_t mode) {
 
 	if(broadcom2836->map == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", broadcom2836->brand, broadcom2836->chip);
-		return -1; 
-	} 
+		return -1;
+	}
 	if(broadcom2836->fd <= 0 || broadcom2836->gpio == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been setup by wiringX", broadcom2836->brand, broadcom2836->chip);
 		return -1;
@@ -245,8 +247,8 @@ static int broadcom2836ISR(int i, enum isr_mode_t mode) {
 
 	if(broadcom2836->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", broadcom2836->brand, broadcom2836->chip);
-		return -1; 
-	} 
+		return -1;
+	}
 	if(broadcom2836->fd <= 0 || broadcom2836->gpio == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been setup by wiringX", broadcom2836->brand, broadcom2836->chip);
 		return -1;
@@ -276,7 +278,7 @@ static int broadcom2836ISR(int i, enum isr_mode_t mode) {
 	if((pin->fd = soc_sysfs_gpio_reset_value(broadcom2836, path)) == -1) {
 		return -1;
 	}
-	pin->mode = PINMODE_INTERRUPT; 
+	pin->mode = PINMODE_INTERRUPT;
 
 	return 0;
 }
@@ -290,7 +292,7 @@ static int broadcom2836WaitForInterrupt(int i, int ms) {
 	}
 	if(pin->fd <= 0) {
 		wiringXLog(LOG_ERR, "The %s %s GPIO %d has not been opened for reading", broadcom2836->brand, broadcom2836->chip, i);
-		return -1; 
+		return -1;
 	}
 
 	return soc_wait_for_interrupt(broadcom2836, pin->fd, ms);
@@ -299,12 +301,10 @@ static int broadcom2836WaitForInterrupt(int i, int ms) {
 static int broadcom2836GC(void) {
 	struct layout_t *pin = NULL;
 	char path[PATH_MAX];
-	int i = 0, l = 0;
+	int i = 0;
 
 	if(broadcom2836->map != NULL) {
-		l = sizeof(broadcom2836->map)/sizeof(broadcom2836->map[0]);
-
-		for(i=0;i<l;i++) {
+		for(i=0;i<broadcom2836->map_size;i++) {
 			pin = &broadcom2836->layout[broadcom2836->map[i]];
 			if(pin->mode == PINMODE_OUTPUT) {
 				pinMode(i, PINMODE_INPUT);
@@ -312,7 +312,7 @@ static int broadcom2836GC(void) {
 				sprintf(path, "/sys/class/gpio/gpio%d", broadcom2836->irq[i]);
 				if((soc_sysfs_check_gpio(broadcom2836, path)) == 0) {
 					sprintf(path, "/sys/class/gpio/unexport");
-					soc_sysfs_gpio_unexport(broadcom2836, path, i);
+					soc_sysfs_gpio_unexport(broadcom2836, path, broadcom2836->irq[i]);
 				}
 			}
 			if(pin->fd > 0) {
@@ -323,7 +323,7 @@ static int broadcom2836GC(void) {
 	}
 	if(broadcom2836->gpio[0] != NULL) {
 		munmap(broadcom2836->gpio[0], broadcom2836->page_size);
-	} 
+	}
 	return 0;
 }
 
@@ -332,8 +332,8 @@ static int broadcom2836SelectableFd(int i) {
 
 	if(broadcom2836->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", broadcom2836->brand, broadcom2836->chip);
-		return -1; 
-	} 
+		return -1;
+	}
 	if(broadcom2836->fd <= 0 || broadcom2836->gpio == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been setup by wiringX", broadcom2836->brand, broadcom2836->chip);
 		return -1;
@@ -344,10 +344,10 @@ static int broadcom2836SelectableFd(int i) {
 }
 
 void broadcom2836Init(void) {
-	/* 
+	/*
 	 * The Broadcom 2837 uses the same
 	 * addressen as the Broadcom 2836.
-	 */	
+	 */
 	soc_register(&broadcom2836, "Broadcom", "2836");
 
 	broadcom2836->layout = layout;

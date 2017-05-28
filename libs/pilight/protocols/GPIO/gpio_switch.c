@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <math.h>
+#include <assert.h>
 
 #ifndef _WIN32
 	#include <unistd.h>
@@ -91,10 +92,13 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 			createMessage(node->id, node->state);
 		}
 
-		uv_timer_start(node->timer_req, (void (*)(uv_timer_t *))restart, node->resolution, -1);
+		assert(node->resolution > 0);
+		uv_timer_stop(node->timer_req);
+		uv_timer_start(node->timer_req, (void (*)(uv_timer_t *))restart, node->resolution, 0);
 	}
 }
 
+#if defined(__arm__) || defined(__mips__)
 static void *addDevice(int reason, void *param) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
@@ -103,6 +107,7 @@ static void *addDevice(int reason, void *param) {
 	struct data_t *node = NULL;
 	int match = 0;
 	double itmp = 0.0;
+
 
 	if(param == NULL) {
 		return NULL;
@@ -132,7 +137,7 @@ static void *addDevice(int reason, void *param) {
 	}
 	node->id = 0;
 	node->state = 0;
-	node->resolution = 0;
+	node->resolution = 1000;
 
 	if(json_find_number(jdevice, "resolution", &itmp) == 0) {
 		node->resolution = (int)itmp;
@@ -175,6 +180,7 @@ static void *addDevice(int reason, void *param) {
 
 	return NULL;
 }
+#endif
 
 static int checkValues(struct JsonNode *jvalues) {
 	double readonly = 0.0;
@@ -252,7 +258,9 @@ void gpioSwitchInit(void) {
 	gpio_switch->checkValues=&checkValues;
 	gpio_switch->gc = &gc;
 
-	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
+	#if defined(__arm__) || defined(__mips__)
+		eventpool_callback(REASON_DEVICE_ADDED, addDevice);
+	#endif
 #endif
 }
 

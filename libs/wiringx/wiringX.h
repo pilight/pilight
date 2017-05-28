@@ -13,23 +13,10 @@
 extern "C" {
 #endif
 
-#define wiringXLog(a, b, ...) _wiringXLog(a, __FILE__, __LINE__, b, ##__VA_ARGS__)
-
 #include <errno.h>
-#ifdef _WIN32
-	#define	LOG_EMERG	0
-	#define	LOG_ALERT	1
-	#define	LOG_CRIT	2
-	#define	LOG_ERR		3
-	#define	LOG_WARNING	4
-	#define	LOG_NOTICE	5
-	#define	LOG_INFO	6
-	#define	LOG_DEBUG	7
-#else
-	#include <syslog.h>
-#endif
+#include <syslog.h>
 
-extern void (*_wiringXLog)(int, char *, int, const char *, ...);
+extern void (*wiringXLog)(int, const char *, ...);
 
 #if !defined(PATH_MAX)
     #if defined(_POSIX_PATH_MAX)
@@ -77,7 +64,7 @@ typedef struct wiringXSerial_t {
 
 void delayMicroseconds(unsigned int);
 int pinMode(int, enum pinmode_t);
-int wiringXSetup(char *name, void (*func)(int, char *, int, const char *, ...));
+int wiringXSetup(const char *, void (*)(int, const char *, ...));
 int wiringXGC(void);
 
 // int analogRead(int channel);
@@ -92,18 +79,18 @@ int wiringXI2CReadReg16(int, int);
 int wiringXI2CWrite(int, int);
 int wiringXI2CWriteReg8(int, int, int);
 int wiringXI2CWriteReg16(int, int, int);
-int wiringXI2CSetup(char *, int);
+int wiringXI2CSetup(const char *, int);
 
 int wiringXSPIGetFd(int channel);
 int wiringXSPIDataRW(int channel, unsigned char *data, int len);
 int wiringXSPISetup(int channel, int speed);
 
-int wiringXSerialOpen(char *, struct wiringXSerial_t);
+int wiringXSerialOpen(const char *, struct wiringXSerial_t);
 void wiringXSerialFlush(int);
 void wiringXSerialClose(int);
 void wiringXSerialPutChar(int, unsigned char);
-void wiringXSerialPuts(int, char *);
-void wiringXSerialPrintf(int, char *, ...);
+void wiringXSerialPuts(int, const char *);
+void wiringXSerialPrintf(int, const char *, ...);
 int wiringXSerialDataAvail(int);
 int wiringXSerialGetChar(int);
 

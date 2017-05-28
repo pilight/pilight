@@ -1440,6 +1440,9 @@ void json_free(void *a) {
 }
 
 int json_clone(struct JsonNode *a, struct JsonNode **b) {
+	if(*b != NULL) {
+		json_delete(*b);
+	}
 	char *out = json_stringify(a, NULL);
 	*b = json_decode(out);
 	json_free(out);

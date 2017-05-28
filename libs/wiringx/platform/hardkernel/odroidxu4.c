@@ -83,9 +83,10 @@ static int odroidxu4ValidGPIO(int pin) {
 }
 
 static int odroidxu4Setup(void) {
+	const size_t size = sizeof(map) / sizeof(map[0]);
 	odroidxu4->soc->setup();
-	odroidxu4->soc->setMap(map);
-	odroidxu4->soc->setIRQ(map);
+	odroidxu4->soc->setMap(map, size);
+	odroidxu4->soc->setIRQ(map, size);
 	return 0;
 }
 
@@ -93,7 +94,7 @@ void odroidxu4Init(void) {
 	platform_register(&odroidxu4, "odroidxu4");
 
 	odroidxu4->soc = soc_get("Samsung", "Exynos5422");
-	odroidxu4->soc->setMap(map);
+	odroidxu4->soc->setMap(map, sizeof(map) / sizeof(map[0]));
 
 	odroidxu4->digitalRead = odroidxu4->soc->digitalRead;
 	odroidxu4->digitalWrite = odroidxu4->soc->digitalWrite;

@@ -107,7 +107,7 @@ static struct layout_t {
 	{ "GPIO2_IO26", 0, { 0xA0000, 0x1A }, { 0xE01DC, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 	{ "GPIO2_IO27", 0, { 0xA0000, 0x1B }, { 0xE01D4, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 	{ "GPIO2_IO28", 0, { 0xA0000, 0x1C }, { 0xE01C4, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
-	{ "GPIO2_IO29", 0, { 0xA0000, 0x1D }, { 0xE01C8, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },	
+	{ "GPIO2_IO29", 0, { 0xA0000, 0x1D }, { 0xE01C8, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 	{ "GPIO2_IO30", 0, { 0xA0000, 0x1E }, { 0xE01CC, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 	{ "GPIO2_IO31", 0, { 0xA0000, 0x1F }, { 0xE01D0, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 
@@ -126,7 +126,7 @@ static struct layout_t {
 	{ "GPIO3_IO12", 0, { 0xA4000, 0x0C }, { 0xE0194, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 	{ "GPIO3_IO13", 0, { 0xA4000, 0x0D }, { 0xE0198, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 	{ "GPIO3_IO14", 0, { 0xA4000, 0x0E }, { 0xE019C, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
-	{ "GPIO3_IO15", 0, { 0xA4000, 0x0F }, { 0xE01A0, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },	
+	{ "GPIO3_IO15", 0, { 0xA4000, 0x0F }, { 0xE01A0, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 	{ "GPIO3_IO16", 0, { 0xA4000, 0x10 }, { 0xE0144, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 	{ "GPIO3_IO17", 0, { 0xA4000, 0x11 }, { 0xE0148, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 	{ "GPIO3_IO18", 0, { 0xA4000, 0x12 }, { 0xE014C, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
@@ -174,7 +174,7 @@ static struct layout_t {
 
 	{ "GPIO5_IO00", 0, { 0xAC000, 0x00 }, { 0xE01E0, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 
-	{ "GPIO5_IO02", 0, { 0xAC000, 0x02 }, { 0xE0134, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },	
+	{ "GPIO5_IO02", 0, { 0xAC000, 0x02 }, { 0xE0134, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 
 	{ "GPIO5_IO04", 0, { 0xAC000, 0x04 }, { 0xE0130, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 	{ "GPIO5_IO05", 0, { 0xAC000, 0x05 }, { 0xE00BC, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
@@ -204,7 +204,7 @@ static struct layout_t {
 	{ "GPIO5_IO29", 0, { 0xAC000, 0x1D }, { 0xE0050, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 	{ "GPIO5_IO30", 0, { 0xAC000, 0x1E }, { 0xE0054, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 	{ "GPIO5_IO31", 0, { 0xAC000, 0x1F }, { 0xE0058, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
-	
+
 	{ "GPIO6_IO00", 0, { 0xB0000, 0x00 }, { 0xE005C, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 	{ "GPIO6_IO01", 0, { 0xB0000, 0x01 }, { 0xE0060, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 	{ "GPIO6_IO02", 0, { 0xB0000, 0x02 }, { 0xE0064, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
@@ -234,7 +234,7 @@ static struct layout_t {
 	{ "GPIO6_IO27", 0, { 0xB0000, 0x21 }, { 0xE02B0, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 	{ "GPIO6_IO28", 0, { 0xB0000, 0x22 }, { 0xE02B4, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 	{ "GPIO6_IO29", 0, { 0xB0000, 0x23 }, { 0xE02B8, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
-	{ "GPIO6_IO30", 0, { 0xB0000, 0x24 }, { 0xE02C0, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },	
+	{ "GPIO6_IO30", 0, { 0xB0000, 0x24 }, { 0xE02C0, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 	{ "GPIO6_IO31", 0, { 0xB0000, 0x1F }, { 0xE0138, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
 
 	{ "GPIO7_IO00", 0, { 0xB4000, 0x00 }, { 0xE0328, 0x0 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
@@ -271,12 +271,14 @@ static char *nxpIMX6SDLRMGetPinName(int pin) {
 	return nxpIMX6SDLRM->layout[pin].name;
 }
 
-static void nxpIMX6SDLRMSetMap(int *map) {
+static void nxpIMX6SDLRMSetMap(int *map, size_t size) {
 	nxpIMX6SDLRM->map = map;
+	nxpIMX6SDLRM->map_size = size;
 }
 
-static void nxpIMX6SDLRMSetIRQ(int *irq) {
+static void nxpIMX6SDLRMSetIRQ(int *irq, size_t size) {
 	nxpIMX6SDLRM->irq = irq;
+	nxpIMX6SDLRM->irq_size = size;
 }
 
 static int nxpIMX6SDLRMDigitalWrite(int i, enum digital_value_t value) {
@@ -288,7 +290,7 @@ static int nxpIMX6SDLRMDigitalWrite(int i, enum digital_value_t value) {
 
 	if(nxpIMX6SDLRM->map == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", nxpIMX6SDLRM->brand, nxpIMX6SDLRM->chip);
-		return -1; 
+		return -1;
 	}
 	if(nxpIMX6SDLRM->fd <= 0 || nxpIMX6SDLRM->gpio == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been setup by wiringX", nxpIMX6SDLRM->brand, nxpIMX6SDLRM->chip);
@@ -305,7 +307,7 @@ static int nxpIMX6SDLRMDigitalWrite(int i, enum digital_value_t value) {
 	if(value == HIGH) {
 		soc_writel(addr, val | (1 << pin->data.bit));
 	} else {
-		soc_writel(addr, val & ~(1 << pin->data.bit)); 
+		soc_writel(addr, val & ~(1 << pin->data.bit));
 	}
 	return 0;
 }
@@ -322,7 +324,7 @@ static int nxpIMX6SDLRMDigitalRead(int i) {
 
 	if(nxpIMX6SDLRM->map == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", nxpIMX6SDLRM->brand, nxpIMX6SDLRM->chip);
-		return -1; 
+		return -1;
 	}
 	if(nxpIMX6SDLRM->fd <= 0 || nxpIMX6SDLRM->gpio == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been setup by wiringX", nxpIMX6SDLRM->brand, nxpIMX6SDLRM->chip);
@@ -334,7 +336,7 @@ static int nxpIMX6SDLRMDigitalRead(int i) {
 	}
 
 	val = soc_readl(addr);
-	
+
 	return (int)((val & (1 << pin->data.bit)) >> pin->data.bit);
 }
 
@@ -346,8 +348,8 @@ static int nxpIMX6SDLRMPinMode(int i, enum pinmode_t mode) {
 
 	if(nxpIMX6SDLRM->map == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", nxpIMX6SDLRM->brand, nxpIMX6SDLRM->chip);
-		return -1; 
-	} 
+		return -1;
+	}
 	if(nxpIMX6SDLRM->fd <= 0 || nxpIMX6SDLRM->gpio == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been setup by wiringX", nxpIMX6SDLRM->brand, nxpIMX6SDLRM->chip);
 		return -1;
@@ -376,8 +378,8 @@ static int nxpIMX6SDLRMISR(int i, enum isr_mode_t mode) {
 
 	if(nxpIMX6SDLRM->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", nxpIMX6SDLRM->brand, nxpIMX6SDLRM->chip);
-		return -1; 
-	} 
+		return -1;
+	}
 	if(nxpIMX6SDLRM->fd <= 0 || nxpIMX6SDLRM->gpio == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been setup by wiringX", nxpIMX6SDLRM->brand, nxpIMX6SDLRM->chip);
 		return -1;
@@ -407,7 +409,7 @@ static int nxpIMX6SDLRMISR(int i, enum isr_mode_t mode) {
 	if((pin->fd = soc_sysfs_gpio_reset_value(nxpIMX6SDLRM, path)) == -1) {
 		return -1;
 	}
-	pin->mode = PINMODE_INTERRUPT; 
+	pin->mode = PINMODE_INTERRUPT;
 
 	return 0;
 }
@@ -421,7 +423,7 @@ static int nxpIMX6SDLRMWaitForInterrupt(int i, int ms) {
 	}
 	if(pin->fd <= 0) {
 		wiringXLog(LOG_ERR, "The %s %s GPIO %d has not been opened for reading", nxpIMX6SDLRM->brand, nxpIMX6SDLRM->chip, i);
-		return -1; 
+		return -1;
 	}
 
 	return soc_wait_for_interrupt(nxpIMX6SDLRM, pin->fd, ms);
@@ -430,12 +432,10 @@ static int nxpIMX6SDLRMWaitForInterrupt(int i, int ms) {
 static int nxpIMX6SDLRMGC(void) {
 	struct layout_t *pin = NULL;
 	char path[PATH_MAX];
-	int i = 0, l = 0;
+	int i = 0;
 
 	if(nxpIMX6SDLRM->map != NULL) {
-		l = sizeof(nxpIMX6SDLRM->map)/sizeof(nxpIMX6SDLRM->map[0]);
-
-		for(i=0;i<l;i++) {
+		for(i=0;i<nxpIMX6SDLRM->map_size;i++) {
 			pin = &nxpIMX6SDLRM->layout[nxpIMX6SDLRM->map[i]];
 			if(pin->mode == PINMODE_OUTPUT) {
 				pinMode(i, PINMODE_INPUT);
@@ -454,7 +454,7 @@ static int nxpIMX6SDLRMGC(void) {
 	}
 	if(nxpIMX6SDLRM->gpio[0] != NULL) {
 		munmap(nxpIMX6SDLRM->gpio[0], nxpIMX6SDLRM->page_size);
-	} 
+	}
 	return 0;
 }
 
@@ -463,8 +463,8 @@ static int nxpIMX6SDLRMSelectableFd(int i) {
 
 	if(nxpIMX6SDLRM->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", nxpIMX6SDLRM->brand, nxpIMX6SDLRM->chip);
-		return -1; 
-	} 
+		return -1;
+	}
 	if(nxpIMX6SDLRM->fd <= 0 || nxpIMX6SDLRM->gpio == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been setup by wiringX", nxpIMX6SDLRM->brand, nxpIMX6SDLRM->chip);
 		return -1;
