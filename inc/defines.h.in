@@ -85,6 +85,8 @@
 
 #define PILIGHT_V						7
 
+#define GPIO_PLATFORM				"none"
+
 #if !defined(PATH_MAX)
 	#if defined(_POSIX_PATH_MAX)
 		#define PATH_MAX _POSIX_PATH_MAX

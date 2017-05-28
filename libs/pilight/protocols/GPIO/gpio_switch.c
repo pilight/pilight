@@ -29,6 +29,7 @@
 #include "../../core/log.h"
 #include "../../core/irq.h"
 #include "../../core/gc.h"
+#include "../../config/settings.h"
 #include "../protocol.h"
 #include "gpio_switch.h"
 
@@ -73,7 +74,7 @@ static void *thread(void *param) {
 		jchild = json_first_child(jid);
 		if(json_find_number(jchild, "gpio", &itmp) == 0) {
 			id = (int)round(itmp);
-			if(wiringXISR(id, INT_EDGE_BOTH) < 0) {
+			if(wiringXISR(id, ISR_MODE_BOTH) < 0) {
 				threads--;
 				return NULL;
 			}
@@ -98,7 +99,12 @@ static void *thread(void *param) {
 }
 
 static struct threadqueue_t *initDev(JsonNode *jdevice) {
-	if(wiringXSupported() == 0 && wiringXSetup() == 0) {
+	char *platform = GPIO_PLATFORM;
+	if(settings_find_string("gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
+		exit(EXIT_FAILURE);
+	}
+	if(wiringXSetup(platform, logprintf) == 0) {
 		loop = 1;
 		char *output = json_stringify(jdevice, NULL);
 		JsonNode *json = json_decode(output);
@@ -114,12 +120,14 @@ static struct threadqueue_t *initDev(JsonNode *jdevice) {
 static int checkValues(struct JsonNode *jvalues) {
 	double readonly = 0.0;
 
-	if(wiringXSupported() == 0) {
+	char *platform = GPIO_PLATFORM;
+	if(settings_find_string("gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
+		exit(EXIT_FAILURE);
+	}
+	if(wiringXSetup(platform, logprintf) == 0) {
 		struct JsonNode *jid = NULL;
-		if(wiringXSetup() < 0) {
-			logprintf(LOG_ERR, "unable to setup wiringX") ;
-			return -1;
-		} else if((jid = json_find_member(jvalues, "id"))) {
+		if((jid = json_find_member(jvalues, "id"))) {
 			struct JsonNode *jchild = NULL;
 			struct JsonNode *jchild1 = NULL;
 
@@ -186,9 +194,9 @@ void gpioSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "gpio_switch";
-	module->version = "2.3";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.4";
+	module->reqversion = "7.0";
+	module->reqcommit = "186";
 }
 
 void init(void) {

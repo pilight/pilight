@@ -197,22 +197,31 @@ static int settings_parse(JsonNode *root) {
 			|| strcmp(jsettings->key, "firmware-gpio-sck") == 0
 			|| strcmp(jsettings->key, "firmware-gpio-mosi") == 0
 			|| strcmp(jsettings->key, "firmware-gpio-miso") == 0) {
-			if(wiringXSupported() == 0) {
-				if(wiringXSetup() != 0) {
-					have_error = 1;
-					goto clear;
-				}
-			}
+#if !defined(__arm__) || !defined(__mips__)
+			return -1;
+#endif
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larger than 0", jsettings->key);
-				have_error = 1;
-				goto clear;
-			} else if((wiringXSupported() == 0 && wiringXValidGPIO((int)jsettings->number_) != 0) || wiringXSupported() != 0) {
+				return -1;
+			} else if(wiringXValidGPIO((int)jsettings->number_) != 0) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid GPIO number", jsettings->key);
-				have_error = 1;
-				goto clear;
+				return -1;
+			}
+		} else if(strcmp(jsettings->key, "gpio-platform") == 0) {
+			if(jsettings->tag != JSON_STRING) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain a supported gpio platform", jsettings->key);
+				return -1;
+			} else if(jsettings->string_ == NULL) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain a supported gpio platform", jsettings->key);
+				return -1;
 			} else {
-				settings_add_number(jsettings->key, (int)jsettings->number_);
+				if(strcmp(jsettings->string_, "none") != 0) {
+					if(wiringXSetup(jsettings->string_, logprintf) != 0) {
+						logprintf(LOG_ERR, "config setting \"%s\" must contain a supported gpio platform", jsettings->key);
+						return -1;
+					}
+				}
+				settings_add_string(jsettings->key, jsettings->string_);
 			}
 		} else if(strcmp(jsettings->key, "standalone") == 0 ||
 							strcmp(jsettings->key, "watchdog-enable") == 0 ||

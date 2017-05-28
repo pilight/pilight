@@ -84,6 +84,7 @@
 #include "libs/pilight/config/gui.h"
 
 #include "libs/wiringx/wiringX.h"
+#include "libs/wiringx/platform/platform.h"
 
 #ifdef _WIN32
 static char server_name[40];
@@ -2193,6 +2194,17 @@ int start_pilight(int argc, char **argv) {
 		MessageBox(NULL, help, "pilight :: info", MB_OK);
 #else
 		printf("%s", help);
+#if defined(__arm__) || defined(__mips__)
+		printf("\n\tThe following GPIO platforms are supported:\n");
+		char *tmp = NULL;
+		int z = 0;
+		wiringXSetup("", logprintf);
+		printf("\t- none\n");
+		while((tmp = platform_iterate_name(z++)) != NULL) {
+			printf("\t- %s\n", tmp);
+		}
+		printf("\n");
+#endif
 #endif
 		goto clear;
 	}

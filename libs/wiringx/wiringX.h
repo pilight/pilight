@@ -1,32 +1,22 @@
 /*
-	Copyright (c) 2014 CurlyMo <curlymoo1@gmail.com>
+	Copyright (c) 2016 CurlyMo <curlymoo1@gmail.com>
 
-	This program is free software: you can redistribute it and/or modify
-	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
-
-	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #ifndef _WIRING_X_H_
 #define _WIRING_X_H_
 
-#include <errno.h>
-#ifndef _WIN32
-	#include <syslog.h>
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#ifndef	TRUE
-#define	TRUE	(1==1)
-#define	FALSE	(1==2)
-#endif
+#include <errno.h>
+#include <syslog.h>
+
+extern void (*wiringXLog)(int, const char *, ...);
 
 #if !defined(PATH_MAX)
     #if defined(_POSIX_PATH_MAX)
@@ -36,75 +26,81 @@
     #endif
 #endif
 
-#define HIGH		1
-#define LOW			0
+enum function_t {
+	FUNCTION_UNKNOWN = 0,
+	FUNCTION_DIGITAL = 2,
+	FUNCTION_ANALOG = 4,
+	FUNCTION_I2C = 16,
+	FUNCTION_INTERRUPT = 32
+};
 
-#define INPUT				0
-#define OUTPUT				1
-#define	PWM_OUTPUT			2
-#define	GPIO_CLOCK			3
-#define	SOFT_PWM_OUTPUT		4
-#define	SOFT_TONE_OUTPUT	5
-#define	PWM_TONE_OUTPUT		6
-#define SYS					7
+enum pinmode_t {
+	PINMODE_NOT_SET = 0,
+	PINMODE_INPUT = 2,
+	PINMODE_OUTPUT = 4,
+	PINMODE_INTERRUPT = 8
+};
 
-#define	INT_EDGE_SETUP		0
-#define INT_EDGE_FALLING	1
-#define INT_EDGE_RISING		2
-#define INT_EDGE_BOTH 		3
+enum isr_mode_t {
+	ISR_MODE_UNKNOWN = 0,
+	ISR_MODE_RISING = 2,
+	ISR_MODE_FALLING = 4,
+	ISR_MODE_BOTH = 8,
+	ISR_MODE_NONE = 16
+};
 
-#define	PWM_MODE_MS			0
-#define	PWM_MODE_BAL		1
+enum digital_value_t {
+	LOW,
+	HIGH
+};
 
-void (*wiringXLog)(int prio, const char *format_str, ...);
+typedef struct wiringXSerial_t {
+	unsigned int baud;
+	unsigned int databits;
+	unsigned int parity;
+	unsigned int stopbits;
+	unsigned int flowcontrol;
+} wiringXSerial_t;
 
-typedef struct platform_t {
-	char *name;
-	int (*setup)(void);
-	int (*pinMode)(int pin, int mode);
-	int (*digitalWrite)(int pin, int val);
-	int (*digitalRead)(int pin);
-	int (*identify)(void);
-	int (*waitForInterrupt)(int pin, int ms);
-	int (*isr)(int pin, int mode);
-	int (*I2CRead)(int fd);
-	int (*I2CReadReg8)(int fd, int reg);
-	int (*I2CReadReg16)(int fd, int reg);
-	int (*I2CWrite)(int fd, int data);
-	int (*I2CWriteReg8)(int fd, int reg, int data);
-	int (*I2CWriteReg16)(int fd, int reg, int data);
-	int (*I2CSetup)(int devId);
-	int (*SPIGetFd)(int channel);
-	int (*SPIDataRW)(int channel, unsigned char *data, int len);
-	int (*SPISetup)(int channel, int speed);
-	int (*validGPIO)(int gpio);
-	int (*gc)(void);
-	struct platform_t *next;
-} platform_t;
-
-struct platform_t *platforms;
-
-void platform_register(struct platform_t **platform, const char *name);
-void delayMicroseconds(unsigned int howLong);
-void pinMode(int pin, int mode);
-void digitalWrite(int pin, int value);
-int digitalRead(int pin);
-int waitForInterrupt(int pin, int ms);
+void delayMicroseconds(unsigned int);
+int pinMode(int, enum pinmode_t);
+int wiringXSetup(const char *, void (*)(int, const char *, ...));
 int wiringXGC(void);
-int wiringXISR(int pin, int mode);
-int wiringXSetup(void);
-int wiringXI2CRead(int fd);
-int wiringXI2CReadReg8(int fd, int reg);
-int wiringXI2CReadReg16(int fd, int reg);
-int wiringXI2CWrite(int fd, int data);
-int wiringXI2CWriteReg8(int fd, int reg, int data);
-int wiringXI2CWriteReg16(int fd, int reg, int data);
-int wiringXI2CSetup(int devId);
+
+// int analogRead(int channel);
+int digitalWrite(int, enum digital_value_t);
+int digitalRead(int);
+int waitForInterrupt(int, int);
+int wiringXISR(int, enum isr_mode_t);
+
+int wiringXI2CRead(int);
+int wiringXI2CReadReg8(int, int);
+int wiringXI2CReadReg16(int, int);
+int wiringXI2CWrite(int, int);
+int wiringXI2CWriteReg8(int, int, int);
+int wiringXI2CWriteReg16(int, int, int);
+int wiringXI2CSetup(const char *, int);
+
 int wiringXSPIGetFd(int channel);
 int wiringXSPIDataRW(int channel, unsigned char *data, int len);
 int wiringXSPISetup(int channel, int speed);
+
+int wiringXSerialOpen(const char *, struct wiringXSerial_t);
+void wiringXSerialFlush(int);
+void wiringXSerialClose(int);
+void wiringXSerialPutChar(int, unsigned char);
+void wiringXSerialPuts(int, const char *);
+void wiringXSerialPrintf(int, const char *, ...);
+int wiringXSerialDataAvail(int);
+int wiringXSerialGetChar(int);
+
 char *wiringXPlatform(void);
-int wiringXValidGPIO(int gpio);
-int wiringXSupported(void);
+int wiringXValidGPIO(int);
+int wiringXSelectableFd(int);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

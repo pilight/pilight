@@ -28,6 +28,7 @@
 #include "../core/json.h"
 #include "../core/irq.h"
 #include "../config/hardware.h"
+#include "../config/settings.h"
 #include "../../wiringx/wiringX.h"
 #include "433gpio.h"
 
@@ -35,32 +36,33 @@ static int gpio_433_in = 0;
 static int gpio_433_out = 0;
 
 static unsigned short gpio433HwInit(void) {
-	if(wiringXSupported() == 0) {
-		if(wiringXSetup() == -1) {
-			return EXIT_FAILURE;
-		}
-		if(gpio_433_out >= 0) {
-			if(wiringXValidGPIO(gpio_433_out) != 0) {
-				logprintf(LOG_ERR, "invalid sender pin: %d", gpio_433_out);
-				return EXIT_FAILURE;
-			}
-			pinMode(gpio_433_out, OUTPUT);
-		}
-		if(gpio_433_in >= 0) {
-			if(wiringXValidGPIO(gpio_433_in) != 0) {
-				logprintf(LOG_ERR, "invalid receiver pin: %d", gpio_433_in);
-				return EXIT_FAILURE;
-			}
-			if(wiringXISR(gpio_433_in, INT_EDGE_BOTH) < 0) {
-				logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_433_in);
-				return EXIT_SUCCESS;
-			}
-		}
-		return EXIT_SUCCESS;
-	} else {
-		logprintf(LOG_ERR, "the 433gpio module is not supported on this hardware", gpio_433_in);
+	char *platform = GPIO_PLATFORM;
+
+	if(settings_find_string("gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+		logprintf(LOG_ERR, "no gpio-platform configured");
 		return EXIT_FAILURE;
 	}
+	if(wiringXSetup(platform, logprintf) < 0) {
+		return EXIT_FAILURE;
+	}
+	if(gpio_433_out >= 0) {
+		if(wiringXValidGPIO(gpio_433_out) != 0) {
+			logprintf(LOG_ERR, "invalid sender pin: %d", gpio_433_out);
+			return EXIT_FAILURE;
+		}
+		pinMode(gpio_433_out, PINMODE_OUTPUT);
+	}
+	if(gpio_433_in >= 0) {
+		if(wiringXValidGPIO(gpio_433_in) != 0) {
+			logprintf(LOG_ERR, "invalid receiver pin: %d", gpio_433_in);
+			return EXIT_FAILURE;
+		}
+		if(wiringXISR(gpio_433_in, ISR_MODE_BOTH) < 0) {
+			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_433_in);
+			return EXIT_SUCCESS;
+		}
+	}
+	return EXIT_SUCCESS;
 }
 
 static unsigned short gpio433HwDeinit(void) {
@@ -128,7 +130,7 @@ void gpio433Init(void) {
 	gpio433->maxrawlen = 0;
 	gpio433->mingaplen = 5100;
 	gpio433->maxgaplen = 10000;
-	
+
 	gpio433->hwtype=RF433;
 	gpio433->comtype=COMOOK;
 	gpio433->init=&gpio433HwInit;
@@ -143,7 +145,7 @@ void compatibility(struct module_t *module) {
 	module->name = "433gpio";
 	module->version = "1.3";
 	module->reqversion = "7.0";
-	module->reqcommit = "10";
+	module->reqcommit = "186";
 }
 
 void init(void) {
