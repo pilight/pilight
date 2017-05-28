@@ -13,10 +13,23 @@
 extern "C" {
 #endif
 
-#include <errno.h>
-#include <syslog.h>
+#define wiringXLog(a, b, ...) _wiringXLog(a, __FILE__, __LINE__, b, ##__VA_ARGS__)
 
-extern void (*wiringXLog)(int, const char *, ...);
+#include <errno.h>
+#ifdef _WIN32
+	#define	LOG_EMERG	0
+	#define	LOG_ALERT	1
+	#define	LOG_CRIT	2
+	#define	LOG_ERR		3
+	#define	LOG_WARNING	4
+	#define	LOG_NOTICE	5
+	#define	LOG_INFO	6
+	#define	LOG_DEBUG	7
+#else
+	#include <syslog.h>
+#endif
+
+extern void (*_wiringXLog)(int, char *, int, const char *, ...);
 
 #if !defined(PATH_MAX)
     #if defined(_POSIX_PATH_MAX)
@@ -64,7 +77,7 @@ typedef struct wiringXSerial_t {
 
 void delayMicroseconds(unsigned int);
 int pinMode(int, enum pinmode_t);
-int wiringXSetup(const char *, void (*)(int, const char *, ...));
+int wiringXSetup(char *name, void (*func)(int, char *, int, const char *, ...));
 int wiringXGC(void);
 
 // int analogRead(int channel);

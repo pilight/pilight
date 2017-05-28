@@ -292,7 +292,9 @@ static void on_send(uv_udp_send_t *req, int status) {
 
 static void alloc(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
 	buf->len = len;
-	buf->base = malloc(len);
+	if((buf->base = malloc(len)) == NULL) {
+		OUT_OF_MEMORY
+	}
 	memset(buf->base, 0, len);
 }
 

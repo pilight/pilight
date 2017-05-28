@@ -57,7 +57,7 @@
 
 static struct platform_t *platform = NULL;
 static int namenr = 0;
-void (*wiringXLog)(int, const char *, ...) = NULL;
+void (*_wiringXLog)(int, char *, int, const char *, ...) = NULL;
 
 static int issetup = 0;
 
@@ -145,36 +145,36 @@ void delayMicroseconds(unsigned int howLong) {
 	}
 }
 
-void wiringXDefaultLog(int prio, const char *format_str, ...) {
+void wiringXDefaultLog(int prio, char *file, int line, const char *format_str, ...) {
 	va_list ap, apcpy;
-	char buf[64], *line = malloc(128);
+	char buf[64], *l = malloc(128);
 	int save_errno = -1, pos = 0, bytes = 0;
 
-	if(line == NULL) {
+	if(l == NULL) {
 		fprintf(stderr, "out of memory\n");
 		exit(-1);
 	}
 
 	save_errno = errno;
 
-	memset(line, '\0', 128);
+	memset(l, '\0', 128);
 	memset(buf, '\0',  64);
 
 	switch(prio) {
 		case LOG_WARNING:
-			pos += sprintf(line, "WARNING: ");
+			pos += sprintf(l, "WARNING: ");
 		break;
 		case LOG_ERR:
-			pos += sprintf(line, "ERROR: ");
+			pos += sprintf(l, "ERROR: ");
 		break;
 		case LOG_INFO:
-			pos += sprintf(line, "INFO: ");
+			pos += sprintf(l, "INFO: ");
 		break;
 		case LOG_NOTICE:
-			pos += sprintf(line, "NOTICE: ");
+			pos += sprintf(l, "NOTICE: ");
 		break;
 		case LOG_DEBUG:
-			pos += sprintf(line, "DEBUG: ");
+			pos += sprintf(l, "DEBUG: ");
 		break;
 		default:
 		break;
@@ -191,24 +191,24 @@ void wiringXDefaultLog(int prio, const char *format_str, ...) {
 		fprintf(stderr, "ERROR: unproperly formatted wiringX log message %s\n", format_str);
 	} else {
 		va_end(apcpy);
-		if((line = realloc(line, (size_t)bytes+(size_t)pos+3)) == NULL) {
+		if((l = realloc(l, (size_t)bytes+(size_t)pos+3)) == NULL) {
 			fprintf(stderr, "out of memory\n");
 			exit(-1);
 		}
 		va_start(ap, format_str);
-		pos += vsprintf(&line[pos], format_str, ap);
+		pos += vsprintf(&l[pos], format_str, ap);
 		va_end(ap);
 	}
-	line[pos++]='\n';
-	line[pos++]='\0';
+	l[pos++]='\n';
+	l[pos++]='\0';
 
-	fprintf(stderr, "%s", line);
+	fprintf(stderr, "%s", l);
 
-	free(line);
+	free(l);
 	errno = save_errno;
 }
 
-int wiringXSetup(const char *name, void (*func)(int, const char *, ...)) {
+int wiringXSetup(char *name, void (*func)(int, char *, int, const char *, ...)) {
 	if(issetup == 0) {
 		issetup = 1;
 	} else {
@@ -216,9 +216,9 @@ int wiringXSetup(const char *name, void (*func)(int, const char *, ...)) {
 	}
 
 	if(func != NULL) {
-		wiringXLog = func;
+		_wiringXLog = func;
 	} else {
-		wiringXLog = wiringXDefaultLog;
+		_wiringXLog = wiringXDefaultLog;
 	}
 
 	/* Init all SoC's */
