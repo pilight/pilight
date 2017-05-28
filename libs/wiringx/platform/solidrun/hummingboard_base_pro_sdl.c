@@ -49,7 +49,7 @@ struct platform_t *hummingboardBaseProSDL = NULL;
  */
 static int irq[] = {
 	 73,	 72,	 71,
-	 7	0,	194,	195,
+	 70,	194,	195,
 	 67,    1,	 -1
 	 -1		 -1,	 -1,
 	 -1,   -1,	 -1,
