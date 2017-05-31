@@ -147,6 +147,16 @@ int log_gc(void) {
 	return 1;
 }
 
+/*
+ * A compatible logprint for wiringX
+ */
+void logprintf1(int prio, char *file, int line, const char *format_str, ...) {
+	va_list args;
+	va_start(args, format_str);
+	logprintf(prio, format_str, args);
+	va_end(args);
+}
+
 void logprintf(int prio, const char *format_str, ...) {
 	struct timeval tv;
 	struct tm tm;

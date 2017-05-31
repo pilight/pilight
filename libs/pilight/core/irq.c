@@ -24,14 +24,12 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <wiringx.h>
 
 #include "irq.h"
 #include "gc.h"
 #include "log.h"
 #include "mem.h"
-#ifndef _WIN32
-	#include "../../wiringx/wiringX.h"
-#endif
 
 typedef struct timestamp_t {
 	unsigned long first;

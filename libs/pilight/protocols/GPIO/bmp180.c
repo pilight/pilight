@@ -32,6 +32,7 @@
 		#define __USE_UNIX98
 	#endif
 #endif
+#include <wiringx.h>
 #include <pthread.h>
 
 #include "../../core/pilight.h"
@@ -47,7 +48,6 @@
 #include "bmp180.h"
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-#include "../../../wiringx/wiringX.h"
 
 typedef struct settings_t {
 	char **id;
@@ -373,7 +373,7 @@ static struct threadqueue_t *initDev(JsonNode *jdevice) {
 		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
 		exit(EXIT_FAILURE);
 	}
-	if(wiringXSetup(platform, logprintf) == 0) {
+	if(wiringXSetup(platform, logprintf1) == 0) {
 		loop = 1;
 		char *output = json_stringify(jdevice, NULL);
 		JsonNode *json = json_decode(output);

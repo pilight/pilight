@@ -32,6 +32,7 @@
 		#define __USE_UNIX98
 	#endif
 #endif
+#include <wiringx.h>
 #include <pthread.h>
 
 #include "../../core/pilight.h"
@@ -49,7 +50,6 @@
 #define MAXTIMINGS 100
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-#include "../../../wiringx/wiringX.h"
 
 static unsigned short loop = 1;
 static unsigned short threads = 0;
@@ -197,7 +197,7 @@ static struct threadqueue_t *initDev(JsonNode *jdevice) {
 		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
 		exit(EXIT_FAILURE);
 	}
-	if(wiringXSetup(platform, logprintf) == 0) {
+	if(wiringXSetup(platform, logprintf1) == 0) {
 		loop = 1;
 		char *output = json_stringify(jdevice, NULL);
 		JsonNode *json = json_decode(output);
@@ -233,7 +233,7 @@ static int checkValues(JsonNode *code) {
 					logprintf(LOG_ERR, "dht11: no gpio-platform configured");
 					exit(EXIT_FAILURE);
 				}
-				if(wiringXSetup(platform, logprintf) == 0) {
+				if(wiringXSetup(platform, logprintf1) == 0) {
 					int gpio = (int)itmp;
 					if(wiringXValidGPIO(gpio) != 0) {
 						logprintf(LOG_ERR, "dht11: invalid gpio range");

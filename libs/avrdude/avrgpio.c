@@ -25,6 +25,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <wiringx.h>
 
 #include "avrdude.h"
 #include "avr.h"
@@ -32,7 +33,6 @@
 #include "pgm.h"
 #include "avrbitbang.h"
 #include "defines.h"
-#include "../wiringx/wiringX.h"
 #include "../pilight/core/log.h"
 #include "../pilight/config/settings.h"
 
@@ -151,7 +151,7 @@ void gpio_initpgm(PROGRAMMER *pgm)
 		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
 		exit(EXIT_FAILURE);
 	}
-	if(wiringXSetup(platform, logprintf) < 0) {
+	if(wiringXSetup(platform, logprintf1) < 0) {
 		exit(EXIT_FAILURE);
 	}
   pgm->rdy_led        = bitbang_rdy_led;

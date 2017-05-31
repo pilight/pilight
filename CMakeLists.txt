@@ -231,7 +231,7 @@ if(NOT WIN32)
 			message(FATAL_ERROR "Looking for libz - not found")
 		else()
 			message(STATUS "Looking for libz - found (${CMAKE_ZLIB_LIBS_INIT})")
-		endif()	
+		endif()
 	endif()	
 	
 	set(CMAKE_UNWIND_LIBS_INIT)
@@ -260,7 +260,30 @@ if(NOT WIN32)
 			message(STATUS "Looking for libunwind - found (${CMAKE_UNWIND_LIBS_INIT})")
 		endif()
 	endif()
-	
+
+	find_library(CMAKE_WIRINGX_LIBS_INIT
+		NAME wiringx
+		PATHS
+			${CROSS_COMPILE_LIBS}
+			/usr/lib
+			/usr/lib32
+			/usr/lib64
+			/usr/lib/i386-linux-gnu
+			/usr/lib/x86_64-linux-gnu
+			/usr/local/lib
+			/usr/local/lib32
+			/usr/local/lib64
+			/usr/lib/arm-linux-gnueabi
+			/usr/lib/arm-linux-gnueabihf
+			/usr/lib/aarch64-linux-gnu
+		NO_DEFAULT_PATH)
+
+	if(${CMAKE_WIRINGX_LIBS_INIT} MATCHES "CMAKE_WIRINGX_LIBS_INIT-NOTFOUND")
+		message(FATAL_ERROR "Looking for libwiringx - not found")
+	else()
+		message(STATUS "Looking for libwiringx - found (${CMAKE_WIRINGX_LIBS_INIT})")
+	endif()
+
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/inc)
@@ -321,6 +344,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		target_link_libraries(${PROJECT_NAME}_shared rt)
 	endif()
 	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_DL_LIBS})
+	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_WIRINGX_LIBS_INIT})
 
 	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_THREAD_LIBS_INIT})
 	target_link_libraries(${PROJECT_NAME}_static m)
@@ -331,6 +355,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		target_link_libraries(${PROJECT_NAME}_static rt)
 	endif()
 	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_DL_LIBS})
+	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_WIRINGX_LIBS_INIT})
 
 	if(${WEBSERVER_HTTPS} MATCHES "ON")
 		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_SSL_LIBS_INIT})

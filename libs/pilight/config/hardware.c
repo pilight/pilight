@@ -23,6 +23,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
+#include <wiringx.h>
 #ifndef _WIN32
 	#include <regex.h>
 	#include <sys/ioctl.h>
@@ -47,9 +48,6 @@
 #include "settings.h"
 #include "hardware.h"
 
-#ifndef _WIN32
-	#include "../../wiringx/wiringX.h"
-#endif
 
 static char *hwfile = NULL;
 struct hardware_t *hardware;

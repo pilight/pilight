@@ -26,6 +26,7 @@
 #include <time.h>
 #include <math.h>
 #include <string.h>
+#include <wiringx.h>
 
 #include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
@@ -44,10 +45,6 @@
 #include "libs/pilight/events/events.h"
 
 #include "libs/pilight/config/hardware.h"
-
-#ifndef _WIN32
-	#include "libs/wiringx/wiringX.h"
-#endif
 
 static unsigned short main_loop = 1;
 static unsigned short inner_loop = 1;
@@ -329,10 +326,6 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_file_disable();
 	log_level_set(LOG_NOTICE);
-
-#ifndef _WIN32
-	wiringXLog = logprintf;
-#endif
 
 	struct options_t *options = NULL;
 

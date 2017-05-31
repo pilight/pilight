@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wiringx.h>
 
 #include "../core/pilight.h"
 #include "../core/common.h"
@@ -29,7 +30,6 @@
 #include "../core/irq.h"
 #include "../config/hardware.h"
 #include "../config/settings.h"
-#include "../../wiringx/wiringX.h"
 #include "433gpio.h"
 
 static int gpio_433_in = 0;
@@ -42,7 +42,7 @@ static unsigned short gpio433HwInit(void) {
 		logprintf(LOG_ERR, "no gpio-platform configured");
 		return EXIT_FAILURE;
 	}
-	if(wiringXSetup(platform, logprintf) < 0) {
+	if(wiringXSetup(platform, logprintf1) < 0) {
 		return EXIT_FAILURE;
 	}
 	if(gpio_433_out >= 0) {

@@ -22,6 +22,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
+#include <wiringx.h>
 
 #ifndef _WIN32
 	#include <regex.h>
@@ -34,7 +35,6 @@
 #include "../core/common.h"
 #include "../core/json.h"
 #include "../core/log.h"
-#include "../../wiringx/wiringX.h"
 
 #include "settings.h"
 
@@ -216,7 +216,7 @@ static int settings_parse(JsonNode *root) {
 				return -1;
 			} else {
 				if(strcmp(jsettings->string_, "none") != 0) {
-					if(wiringXSetup(jsettings->string_, logprintf) != 0) {
+					if(wiringXSetup(jsettings->string_, logprintf1) != 0) {
 						logprintf(LOG_ERR, "config setting \"%s\" must contain a supported gpio platform", jsettings->key);
 						return -1;
 					}

@@ -33,6 +33,7 @@
 	#endif
 #endif
 #include <pthread.h>
+#include <wiringx.h>
 
 #include "../../core/pilight.h"
 #include "../../core/common.h"
@@ -43,9 +44,6 @@
 #include "../../core/gc.h"
 #include "../../core/json.h"
 #include "../../config/settings.h"
-#ifndef _WIN32
-	#include "../../../wiringx/wiringX.h"
-#endif
 #include "../protocol.h"
 #include "lm75.h"
 
@@ -178,7 +176,7 @@ static struct threadqueue_t *initDev(JsonNode *jdevice) {
 		logprintf(LOG_ERR, "lm75: no gpio-platform configured");
 		exit(EXIT_FAILURE);
 	}
-	if(wiringXSetup(platform, logprintf) == 0) {
+	if(wiringXSetup(platform, logprintf1) == 0) {
 		loop = 1;
 		char *output = json_stringify(jdevice, NULL);
 		JsonNode *json = json_decode(output);

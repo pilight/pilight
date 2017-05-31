@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <math.h>
+#include <wiringx.h>
 
 #include "../../core/pilight.h"
 #include "../../core/common.h"
@@ -32,7 +33,6 @@
 #include "../protocol.h"
 #include "relay.h"
 
-#include "../../../wiringx/wiringX.h"
 #include "defines.h"
 
 static char *state = NULL;
@@ -86,7 +86,7 @@ static int createCode(JsonNode *code) {
 		logprintf(LOG_ERR, "relay: insufficient number of arguments");
 		have_error = 1;
 		goto clear;
-	} else if(wiringXSetup(platform, logprintf) < 0) {
+	} else if(wiringXSetup(platform, logprintf1) < 0) {
 		logprintf(LOG_ERR, "unable to setup wiringX") ;
 		have_error = 1;
 		goto clear;
@@ -168,7 +168,7 @@ static int checkValues(JsonNode *code) {
 				if(settings_find_string("gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
 					logprintf(LOG_ERR, "relay: no gpio-platform configured");
 					return -1;
-				} else if(wiringXSetup(platform, logprintf) < 0) {
+				} else if(wiringXSetup(platform, logprintf1) < 0) {
 					logprintf(LOG_ERR, "unable to setup wiringX") ;
 					return -1;
 				} else if(wiringXValidGPIO(gpio) != 0) {

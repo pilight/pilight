@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <math.h>
+#include <wiringx.h>
 
 #include "../../core/pilight.h"
 #include "../../core/common.h"
@@ -34,7 +35,6 @@
 #include "gpio_switch.h"
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-#include "../../../wiringx/wiringX.h"
 
 static unsigned short loop = 1;
 static int threads = 0;
@@ -104,7 +104,7 @@ static struct threadqueue_t *initDev(JsonNode *jdevice) {
 		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
 		exit(EXIT_FAILURE);
 	}
-	if(wiringXSetup(platform, logprintf) == 0) {
+	if(wiringXSetup(platform, logprintf1) == 0) {
 		loop = 1;
 		char *output = json_stringify(jdevice, NULL);
 		JsonNode *json = json_decode(output);
@@ -125,7 +125,7 @@ static int checkValues(struct JsonNode *jvalues) {
 		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
 		exit(EXIT_FAILURE);
 	}
-	if(wiringXSetup(platform, logprintf) == 0) {
+	if(wiringXSetup(platform, logprintf1) == 0) {
 		struct JsonNode *jid = NULL;
 		if((jid = json_find_member(jvalues, "id"))) {
 			struct JsonNode *jchild = NULL;

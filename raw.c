@@ -26,6 +26,7 @@
 #include <time.h>
 #include <math.h>
 #include <string.h>
+#include <wiringx.h>
 
 #include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
@@ -45,10 +46,6 @@
 #include "libs/pilight/events/events.h"
 
 #include "libs/pilight/config/hardware.h"
-
-#ifndef _WIN32
-	#include "libs/wiringx/wiringX.h"
-#endif
 
 static unsigned short main_loop = 1;
 static unsigned short linefeed = 0;
@@ -89,15 +86,17 @@ int main_gc(void) {
 
 void *receiveOOK(void *param) {
 	int duration = 0, iLoop = 0;
+	long stream_duration = 0;
 
 	struct hardware_t *hw = (hardware_t *)param;
 	while(main_loop && hw->receiveOOK) {
 		duration = hw->receiveOOK();
+		stream_duration += duration;
 		iLoop++;
 		if(duration > 0) {
 			if(linefeed == 1) {
 				if(duration > 5100) {
-					printf(" %d -#: %d\n%s: ",duration, iLoop, hw->id);
+					printf(" %d -#: %d -d: %ld\n%s: ",duration, iLoop, stream_duration, hw->id);
 					iLoop = 0;
 				} else {
 					printf(" %d", duration);
@@ -169,10 +168,6 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_file_disable();
 	log_level_set(LOG_NOTICE);
-
-#ifndef _WIN32
-	wiringXLog = logprintf;
-#endif
 
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);

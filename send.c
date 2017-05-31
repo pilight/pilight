@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <wiringx.h>
 
 #include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
@@ -37,10 +38,6 @@
 #include "libs/pilight/core/dso.h"
 
 #include "libs/pilight/protocols/protocol.h"
-
-#ifndef _WIN32
-	#include "libs/wiringx/wiringX.h"
-#endif
 
 typedef struct pname_t {
 	char *name;
@@ -94,10 +91,6 @@ int main(int argc, char **argv) {
 	log_file_disable();
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
-
-#ifndef _WIN32
-	wiringXLog = logprintf;
-#endif
 
 	if((progname = MALLOC(13)) == NULL) {
 		fprintf(stderr, "out of memory\n");
