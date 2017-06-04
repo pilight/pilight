@@ -10,7 +10,8 @@
 		"webserver-root": "/usr/local/share/pilight/",
 		"webserver-http-port": 5001,
 		"webserver-cache": 1,
-		"whitelist": ""
+		"whitelist": "",
+		"gpio-platform": "none"
 	},
 	"hardware": {
 		"433gpio": {
