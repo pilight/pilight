@@ -15,6 +15,7 @@
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/common.h"
+#include "../libs/pilight/psutil/psutil.h"
 
 static void test_explode(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
@@ -28,7 +29,7 @@ static void test_explode(CuTest *tc) {
 	CuAssertPtrNotNull(tc, array);
 	CuAssertStrEquals(tc, "foo", array[0]);
 	CuAssertStrEquals(tc, "bar", array[1]);
-	
+
 	array_free(&array, n);
 	CuAssertPtrEquals(tc, NULL, array);
 
@@ -66,7 +67,7 @@ static void test_nrcpu(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
-	int nr = getnrcpu(), len = 0;
+	int nr = psutil_cpu_count_phys(), len = 0;
 	char line[255];
 
 	FILE *f = NULL;
@@ -78,11 +79,6 @@ static void test_nrcpu(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
-/*
- * FIXME
- * - loosy search
- * - search with arguments
- */
 static void test_isrunning(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
@@ -90,21 +86,14 @@ static void test_isrunning(CuTest *tc) {
 	memtrack();
 
 	int n = 0;
-#ifndef _WIN32
-	n = findproc("alltests", NULL, 0);
-	CuAssertTrue(tc, n);
+	n = isrunning("pilight-unittest");
+	printf("%d\n", n);
+	CuAssertTrue(tc, n > 0);
 
-	n = findproc("foo", NULL, 0);
-	CuAssertIntEquals(tc, -1, n);
-#endif
-
-	n = isrunning("alltests");
-	CuAssertTrue(tc, n);
-	
 	n = isrunning("foo");
 	CuAssertIntEquals(tc, -1, n);
 
-	CuAssertIntEquals(tc, 0, xfree());	
+	CuAssertIntEquals(tc, 0, xfree());
 }
 
 static void test_isnummeric(CuTest *tc) {
@@ -146,7 +135,7 @@ static void test_isnummeric(CuTest *tc) {
 	nr = isNumeric("1234567890");
 	CuAssertIntEquals(tc, 0, nr);
 
-	CuAssertIntEquals(tc, 0, xfree());	
+	CuAssertIntEquals(tc, 0, xfree());
 }
 
 static void test_name2uid(CuTest *tc) {
@@ -190,7 +179,7 @@ static void test_strstr(CuTest *tc) {
 
 	CuAssertIntEquals(tc, 5, n);
 	assert(strncmp(&str[n], "bello", 5) == 0);
-	
+
 	p = rstrstr(str, "o");
 	CuAssertPtrNotNull(tc, p);
 	n = p-str;
@@ -204,7 +193,7 @@ static void test_strstr(CuTest *tc) {
 	p = rstrstr(str, NULL);
 	CuAssertPtrEquals(tc, NULL, *t);
 
-	CuAssertIntEquals(tc, 0, xfree());	
+	CuAssertIntEquals(tc, 0, xfree());
 }
 
 static void test_ishex(CuTest *tc) {
@@ -236,7 +225,7 @@ static void test_ishex(CuTest *tc) {
 		CuAssertIntEquals(tc, 1, n);
 	}
 
-	CuAssertIntEquals(tc, 0, xfree());	
+	CuAssertIntEquals(tc, 0, xfree());
 }
 
 static void test_urldecode(CuTest *tc) {
@@ -517,7 +506,7 @@ static void test_str_replace(CuTest *tc) {
 	n = str_replace("o", "a", &p);
 	CuAssertIntEquals(tc, 10, n);
 	CuAssertStrEquals(tc, "HellaWarld", str);
-	
+
 	strcpy(str, "<body text='%body%'>");
 	n = str_replace("%body%", "black", &p);
 	CuAssertIntEquals(tc, 19, n);
@@ -557,13 +546,13 @@ static void test_file_get_contents(CuTest *tc) {
 	CuAssertPtrNotNull(tc, f);
 	fprintf(f, "HelloWorld!");
 	fclose(f);
-	
+
 	char *tmp = NULL;
 	int n = file_get_contents("gplv3.txt", &tmp);
 	CuAssertIntEquals(tc, 0, n);
 	CuAssertPtrNotNull(tc, tmp);
 	FREE(tmp);
-	
+
 	n = file_get_contents("test.txt", &tmp);
 	CuAssertIntEquals(tc, 0, n);
 	CuAssertPtrNotNull(tc, tmp);
@@ -670,7 +659,7 @@ static void test_calc_time_interval(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
-CuSuite *suite_common(void) {	
+CuSuite *suite_common(void) {
 	CuSuite *suite = CuSuiteNew();
 
 	SUITE_ADD_TEST(suite, test_explode);

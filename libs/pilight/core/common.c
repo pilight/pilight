@@ -63,11 +63,9 @@
 #include "common.h"
 #include "network.h"
 #include "log.h"
+#include "../psutil/psutil.h"
 
 char *progname = NULL;
-#if !defined(_WIN32)
-static int procmounted = 0;
-#endif
 
 static const char base64table[] = {
 	'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
@@ -107,37 +105,6 @@ void array_free(char ***array, int len) {
 		}
 		FREE((*array));
 	}
-}
-
-int getnrcpu(void) {
-  long nprocs = -1;
-  long nprocs_max = -1;
-#ifdef _WIN32
-	#ifndef _SC_NPROCESSORS_ONLN
-		SYSTEM_INFO info;
-		GetSystemInfo(&info);
-		#define sysconf(a) info.dwNumberOfProcessors
-		#define _SC_NPROCESSORS_ONLN
-	#endif
-#endif
-
-#ifdef _SC_NPROCESSORS_ONLN
-  nprocs = sysconf(_SC_NPROCESSORS_ONLN);
-  if(nprocs < 1) {
-    logprintf(LOG_ERR, "could not determine number of CPU cores online, defaulting to one");
-		return 1;
-  }
-
-  nprocs_max = sysconf(_SC_NPROCESSORS_CONF);
-  if(nprocs_max < 1) {
-    logprintf(LOG_ERR, "could not determine number of CPU cores configured, defaulting to one");
-		return 1;
-  }
-  return nprocs;
-#else
-  logprintf(LOG_ERR, "could not determine number of CPU cores configured, defaulting to one");
-	return -1;
-#endif
 }
 
 unsigned int explode(char *str, const char *delimiter, char ***output) {
@@ -260,230 +227,23 @@ int unsetenv(const char *name) {
 	FREE(c);
 	return r;
 }
+#endif
 
 int isrunning(const char *program) {
-	DWORD aiPID[1000], iCb = 1000;
-	DWORD iCbneeded = 0;
-	int iNumProc = 0, i = 0;
-	char szName[MAX_PATH];
-	int iLenP = 0;
-	HANDLE hProc;
-	HMODULE hMod;
-
-	iLenP = strlen(program);
-	if(iLenP < 1 || iLenP > MAX_PATH)
-		return -1;
-
-	if(EnumProcesses(aiPID, iCb, &iCbneeded) <= 0) {
+	if(program == NULL) {
 		return -1;
 	}
+	int i = 0;
+	char name[255], *p = name;
+	memset(&name, '\0', 255);
 
-	iNumProc = iCbneeded / sizeof(DWORD);
-
-	for(i=0;i<iNumProc;i++) {
-		strcpy(szName, "Unknown");
-		hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, aiPID[i]);
-
-		if(hProc) {
-			if(EnumProcessModules(hProc, &hMod, sizeof(hMod), &iCbneeded)) {
-				GetModuleBaseName(hProc, hMod, szName, MAX_PATH);
+	for(i=0;i<psutil_max_pid();i++) {
+		if(psutil_proc_name(i, &p) == 0) {
+			if(strcmp(name, program) == 0) {
+				return i;
 			}
 		}
-		CloseHandle(hProc);
-
-		if(strstr(szName, program) != NULL) {
-			return aiPID[i];
-		}
 	}
-
-	return -1;
-}
-#else
-int isrunning(const char *program) {
-	int pid = -1;
-	char *tmp = MALLOC(strlen(program)+1);
-	if(tmp == NULL) {
-		OUT_OF_MEMORY
-	}
-	strcpy(tmp, program);
-	if((pid = findproc(tmp, NULL, 1)) > 0) {
-		FREE(tmp);
-		return pid;
-	}
-	FREE(tmp);
-	return -1;
-}
-#endif
-
-/*
- * FIXME
- * without procfs
- */
-#if defined(__FreeBSD__) || defined(_WIN32)
-int findproc(char *cmd, char *args, int loosely) {
-#else
-pid_t findproc(char *cmd, char *args, int loosely) {
-#endif
-#if !defined(_WIN32)
-	DIR* dir;
-	struct dirent* ent;
-	char fname[512], cmdline[1024];
-	int fd = 0, ptr = 0, match = 0, i = 0, y = '\n', x = 0;
-
-	if(procmounted == 0) {
-		if((dir = opendir("/proc"))) {
-			i = 0;
-			while((ent = readdir(dir)) != NULL) {
-				i++;
-			}
-			closedir(dir);
-			if(i == 2) {
-#if defined(__FreeBSD__) || defined(__sun)
-				mount("procfs", "/proc", 0, "");
-#else
-				mount("proc", "/proc", "procfs", 0, "");
-#endif
-				if((dir = opendir("/proc"))) {
-					i = 0;
-					while((ent = readdir(dir)) != NULL) {
-						i++;
-					}
-					closedir(dir);
-					if(i == 2) {
-						logprintf(LOG_ERR, "/proc filesystem not properly mounted");
-						return -1;
-					}
-				}
-			}
-		} else {
-			logprintf(LOG_ERR, "/proc filesystem not properly mounted");
-			return -1;
-		}
-		procmounted = 1;
-	}
-	if((dir = opendir("/proc"))) {
-		while((ent = readdir(dir)) != NULL) {
-			if(isNumeric(ent->d_name) == 0) {
-#ifdef __sun__
-				snprintf(fname, 512, "/proc/%s/psinfo", ent->d_name);
-#else
-				snprintf(fname, 512, "/proc/%s/cmdline", ent->d_name);	
-#endif
-				if((fd = open(fname, O_RDONLY, 0)) > -1) {
-					memset(cmdline, '\0', sizeof(cmdline));
-#ifdef __sun__
-					psinfo_t info;
-					if((ptr = (int)read(fd, &info, sizeof(info))) > 0) {
-						match = 0;
-						char ncmd[strlen(cmd)];
-						char *p = ncmd;
-						strcpy(ncmd, cmd);
-						str_replace("./", "", &p);
-						if((strcmp(info.pr_fname, ncmd) == 0 && loosely == 0)
-							|| (strstr(info.pr_fname, ncmd) != NULL && loosely == 1)) {
-							match++;
-						}
-
-						if(args != NULL && match == 1) {
-							char *p = info.pr_psargs;
-							str_replace(cmd, "", &p);
-							if(strcmp(&info.pr_psargs[1], args) == 0) {
-								match++;
-							}
-
-							if(match == 2) {
-								pid_t pid = (pid_t)atol(ent->d_name);
-								close(fd);
-								closedir(dir);
-								return pid;
-							}
-						} else if(match > 0) {
-							pid_t pid = (pid_t)atol(ent->d_name);
-							close(fd);
-							closedir(dir);
-							return pid;
-						}
-					}
-#else
-					if((ptr = (int)read(fd, cmdline, sizeof(cmdline)-1)) > -1) {
-						i = 0, match = 0, y = '\n';
-						/* Replace all NULL terminators for newlines */
-						for(i=0;i<ptr-1;i++) {
-							if(i < ptr && cmdline[i] == '\0') {
-								cmdline[i] = (char)y;
-								y = ' ';
-							}
-						}
-
-						match = 0;
-						/* Check if program matches */
-						char **array = NULL;
-						unsigned int n = explode(cmdline, "\n", &array);
-
-						if(n == 0) {
-							close(fd);
-							continue;
-						}
-
-						if((strcmp(array[0], cmd) == 0 && loosely == 0)
-							 || (strstr(array[0], cmd) != NULL && loosely == 1)) {
-							match++;
-						}
-
-						if(args != NULL && match == 1) {
-							if(n <= 1) {
-								close(fd);
-								for(x=0;x<n;x++) {
-									FREE(array[x]);
-								}
-								if(n > 0) {
-									FREE(array);
-								}
-								continue;
-							}
-							if(strcmp(array[1], args) == 0) {
-								match++;
-							}
-
-							if(match == 2) {
-								pid_t pid = (pid_t)atol(ent->d_name);
-								close(fd);
-								closedir(dir);
-								for(x=0;x<n;x++) {
-									FREE(array[x]);
-								}
-								if(n > 0) {
-									FREE(array);
-								}
-								return pid;
-							}
-						} else if(match > 0) {
-							pid_t pid = (pid_t)atol(ent->d_name);
-							close(fd);
-							closedir(dir);
-							for(x=0;x<n;x++) {
-								FREE(array[x]);
-							}
-							if(n > 0) {
-								FREE(array);
-							}
-							return pid;
-						}
-						for(x=0;x<n;x++) {
-							FREE(array[x]);
-						}
-						if(n > 0) {
-							FREE(array);
-						}
-					}
-#endif
-					close(fd);
-				}
-			}
-		}
-		closedir(dir);
-	}
-#endif
 	return -1;
 }
 
