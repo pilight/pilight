@@ -328,7 +328,6 @@ static void on_read(uv_fs_t *req) {
 				}
 
 				wbuf.len = snprintf(wbuf.base, MAXPULSESTREAMLENGTH, "s:%d,%d,%d,%d@", nano433->minrawlen, nano433->maxrawlen, nano433->mingaplen, nano433->maxgaplen);
-
 				uv_fs_write(uv_default_loop(), write_req, data1.fd, &wbuf, 1, -1, on_write_init);
 			}
 		}
@@ -418,7 +417,6 @@ static void open_cb(uv_fs_t *req) {
 		data1.ptr = 0;
 
 		uv_buf_t buf = uv_buf_init(data1.rbuf, BUFFER_SIZE);
-
 		uv_fs_read(uv_default_loop(), read_req, fd, &buf, 1, -1, on_read);
 		clock_gettime(CLOCK_MONOTONIC, &timestamp.second);
 	} else {
