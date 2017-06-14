@@ -216,9 +216,9 @@ static void *broadcast(int reason, void *param) {
 				uuid = data->uuid;
 			}
 			repeats = data->repeat;
-			if(strlen(data->settings) > 0) {
+			/*if(strlen(data->settings) > 0) {
 				settings = data->settings;
-			}
+			}*/
 			origin = data->origin;
 			/* The settings objects inside the broadcast queue is only of interest for the
 			 internal pilight functions. For the outside world we only communicate the
@@ -490,7 +490,7 @@ void *send_code(int reason, void *param) {
 			data1->repeat = 1;
 		}
 	}
-	if(strlen(data->settings) > 0) {
+	/*if(strlen(data->settings) > 0) {
 		if(data1 == NULL) {
 			if((data1 = MALLOC(sizeof(struct reason_code_sent_t))) == NULL) {
 				OUT_OF_MEMORY
@@ -502,7 +502,7 @@ void *send_code(int reason, void *param) {
 		} else {
 			memset(&data1->settings, '\0', 1025);
 		}
-	}
+	}*/
 
 	struct JsonNode *jrespond = NULL;
 	struct JsonNode *jchilds = NULL;
@@ -656,7 +656,7 @@ static int send_queue(struct JsonNode *json, enum origin_t origin) {
 					strncpy(data->protocol, protocol->id, 255);
 					data->hwtype = protocol->hwtype;
 
-					struct JsonNode *jtmp = NULL;
+					/*struct JsonNode *jtmp = NULL;
 					char *stmp = NULL;
 					int x = 0;
 
@@ -677,7 +677,7 @@ static int send_queue(struct JsonNode *json, enum origin_t origin) {
 					if(x > 1) {
 						x -= 1;
 					}
-					strncpy(&data->settings[x], "}", 1024-x);
+					strncpy(&data->settings[x], "}", 1024-x);*/
 
 					if(uuid != NULL) {
 						strcpy(data->uuid, uuid);
