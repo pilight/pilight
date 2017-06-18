@@ -169,10 +169,10 @@ void logprintf(int prio, const char *format_str, ...) {
 		gettimeofday(&tv, NULL);
 #ifdef _WIN32
 		struct tm *tm1;
-		if((tm1 = gmtime(&tv.tv_sec)) != 0) {
+		if((tm1 = localtime(&tv.tv_sec)) != 0) {
 			memcpy(&tm, tm1, sizeof(struct tm));
 #else
-		if((gmtime_r(&tv.tv_sec, &tm)) != 0) {
+		if((localtime_r(&tv.tv_sec, &tm)) != 0) {
 #endif
 			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
 			snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
