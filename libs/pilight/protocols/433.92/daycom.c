@@ -47,19 +47,19 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(char *message, int id, int systemcode, int unit, int state) {
-	int x = snprintf(message, 255, "{\"id\":%d,", id);
-	x += snprintf(&message[x], 255-x, "\"systemcode\":%d,", systemcode);
+static void createMessage(char **message, int id, int systemcode, int unit, int state) {
+	int x = snprintf((*message), 255, "{\"id\":%d,", id);
+	x += snprintf(&(*message)[x], 255-x, "\"systemcode\":%d,", systemcode);
 
 	if(state == 0) {
-		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"on\"");
 	} else {
-		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"off\"");
 	}
-	x += snprintf(&message[x], 255-x, "}");
+	x += snprintf(&(*message)[x], 255-x, "}");
 }
 
-static void parseCode(char *message) {
+static void parseCode(char **message) {
 	int binary[RAW_LENGTH/2], x = 0, i = 0;
 	int id = -1, state = -1, unit = -1, systemcode = -1;
 
@@ -157,7 +157,7 @@ static void createFooter(void) {
 	daycom->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code, char *message) {
+static int createCode(struct JsonNode *code, char **message) {
 	int id = -1;
 	int systemcode = -1;
 	int unit = -1;

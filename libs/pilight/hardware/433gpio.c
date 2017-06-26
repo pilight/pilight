@@ -11,6 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <wiringx.h>
 
 #include "../../libuv/uv.h"
 #include "../core/pilight.h"
@@ -20,7 +21,6 @@
 #include "../core/json.h"
 #include "../core/eventpool.h"
 #include "../hardware/hardware.h"
-#include "../../wiringx/wiringX.h"
 #include "433gpio.h"
 
 static int gpio_433_in = 0;

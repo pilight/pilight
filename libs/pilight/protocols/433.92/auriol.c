@@ -55,7 +55,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void parseCode(char *message) {
+static void parseCode(char **message) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
 	int channel = 0, id = 0, battery = 0;
 	double temp_offset = 0.0, temperature = 0.0;
@@ -90,7 +90,7 @@ static void parseCode(char *message) {
 	temperature += temp_offset;
 
 	if(channel != 4) {
-		snprintf(message, 255,
+		snprintf(*message, 255,
 			"{\"id\":%d,\"temperature\":%.1f,\"battery\":%d}",
 			id, temperature, battery
 		);

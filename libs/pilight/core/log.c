@@ -367,16 +367,10 @@ int log_file_set(char *log) {
 	sprintf(filename, "%s%s", filebase, extension);
 
 #else
-	/*
-	 * FIXME: Replace basename with custom threadsafe implementation
-	 */
-	atomiclock();
 	if((filename = basename(log)) == NULL) {
 		logprintf(LOG_ERR, "could not open logfile %s", log);
-		atomicunlock();
 		return -1;
 	}
-	atomicunlock();
 #endif
 
 	size_t i = (strlen(log)-strlen(filename));

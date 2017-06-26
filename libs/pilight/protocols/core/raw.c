@@ -19,7 +19,7 @@
 #include "../../core/gc.h"
 #include "raw.h"
 
-static int createCode(struct JsonNode *code, char *message) {
+static int createCode(struct JsonNode *code, char **message) {
 	char *rcode = NULL;
 	double repeats = 10;
 	char **array = NULL;

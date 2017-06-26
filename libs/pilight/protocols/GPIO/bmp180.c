@@ -44,7 +44,7 @@
 #include "bmp180.h"
 
 #if !defined(__FreeBSD__) && !defined(_WIN32) && !defined(__sun)
-#include "../../../wiringx//wiringX.h"
+#include <wiringx.h>
 
 #define STEP1		1
 #define STEP2		2

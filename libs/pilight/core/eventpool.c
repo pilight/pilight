@@ -64,7 +64,7 @@ static uv_mutex_t listeners_lock;
 // static pthread_mutexattr_t listeners_attr;
 static int lockinit = 0;
 static int eventpoolinit = 0;
-static ssize_t minus_one = -1;
+static ssize_t zero = 0;
 static ssize_t one = 1;
 
 static struct eventpool_listener_t *eventpool_listeners = NULL;
@@ -104,6 +104,9 @@ static struct reasons_t {
 	{	REASON_ADHOC_DISCONNECTED,		"REASON_ADHOC_DISCONNECTED",		0 },
 	{	REASON_SEND_BEGIN,						"REASON_SEND_BEGIN",						0 },
 	{	REASON_SEND_END,							"REASON_SEND_END",							0 },
+	{	REASON_ARP_FOUND_DEVICE,			"REASON_ARP_FOUND_DEVICE",			0 },
+	{	REASON_ARP_LOST_DEVICE,				"REASON_ARP_LOST_DEVICE", 			0 },
+	{	REASON_ARP_CHANGED_DEVICE,		"REASON_ARP_CHANGED_DEVICE",		0	},
 	{	REASON_LOG,										"REASON_LOG",										0 },
 	{	REASON_END,										"REASON_END",										0 }
 };
@@ -160,6 +163,10 @@ void eventpool_callback(int reason, void *(*func)(int, void *)) {
 }
 
 void eventpool_trigger(int reason, void *(*done)(void *), void *data) {
+	if(eventpoolinit == 0) {
+		return;
+	}
+
 #ifdef _WIN32
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 #else
@@ -378,6 +385,44 @@ void iobuf_remove(struct iobuf_t *io, size_t n) {
 	uv_mutex_unlock(&io->lock);
 }
 
+static void eventpool_update_poll(uv_poll_t *req) {
+	struct uv_custom_poll_t *custom_poll_data = NULL;
+	struct iobuf_t *send_io = NULL;
+	int action = 0, r = 0;
+
+	custom_poll_data = req->data;
+	if(custom_poll_data == NULL) {
+		return;
+	}
+
+	send_io = &custom_poll_data->send_iobuf;
+
+	if(custom_poll_data->doread == 1) {
+		action |= UV_READABLE;
+	}
+
+	if(custom_poll_data->dowrite == 1) {
+		action |= UV_WRITABLE;
+	}
+
+	if(custom_poll_data->doclose == 1 && send_io->len == 0) {
+		custom_poll_data->doclose = 2;
+		if(custom_poll_data->close_cb != NULL) {
+			custom_poll_data->close_cb(req);
+		}
+		if(!uv_is_closing((uv_handle_t *)req)) {
+			uv_poll_stop(req);
+		}
+	} else if(custom_poll_data->action != action && action > 0) {
+		uv_poll_start(req, action, uv_custom_poll_cb);
+		if(r != 0) {
+			logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
+			return;
+		}
+	}
+	custom_poll_data->action = action;
+}
+
 size_t iobuf_append(struct iobuf_t *io, const void *buf, int len) {
   char *p = NULL;
 
@@ -402,39 +447,41 @@ size_t iobuf_append(struct iobuf_t *io, const void *buf, int len) {
   return len;
 }
 
+static void my_debug(void *ctx, int level, const char *file, int line, const char *str) {
+	printf("%s:%04d: %s", file, line, str );
+}
+
 void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
+	// printf("== %p %d %d %d\n", req, events, UV_READABLE, UV_WRITABLE);
 	/*
 	 * Make sure we execute in the main thread
 	 */
 	const uv_thread_t pth_cur_id = uv_thread_self();
 	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));	
-	
+
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct iobuf_t *send_io = NULL;
 	char buffer[BUFFER_SIZE];
 	uv_os_fd_t fd = 0;
 	long int fromlen = 0;
-	int r = 0, n = 0, action = 0;
+	int r = 0, n = 0;
 
 	custom_poll_data = req->data;
 	if(custom_poll_data == NULL) {
 		uv_poll_stop(req);
+		return;
 	}
-	send_io = &custom_poll_data->send_iobuf;
 
-	if(custom_poll_data->doread == 1) {
-		action |= UV_READABLE;
-	}
-	if(custom_poll_data->dowrite == 1) {
-		action |= UV_WRITABLE;
-	}
+	custom_poll_data->started = 1;
+
+	send_io = &custom_poll_data->send_iobuf;
 
 	memset(&buffer, 0, BUFFER_SIZE);
 
+	// printf("a %p %d\n", req, action);
 	if(uv_is_closing((uv_handle_t *)req)) {
 		return;
 	}
-	uv_poll_stop(req);
 
 	r = uv_fileno((uv_handle_t *)req, &fd);
 	if(r != 0) {
@@ -445,16 +492,17 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 	/*
 	 * TESTME: Client-end got disconnected
 	 */
-	if(events == 0) {
-		if(custom_poll_data->close_cb != NULL) {
-			custom_poll_data->close_cb(req);
-			return;
-		} else {
-			uv_poll_stop(req);
-			close(fd);
-		}
-	}
-	
+	// if(events == 0) {
+		// if(custom_poll_data->close_cb != NULL) {
+			// custom_poll_data->close_cb(req);
+							// printf("goed2\n");
+			// return;
+		// } else {
+			// uv_poll_stop(req);
+			// close(fd);
+		// }
+	// }
+
 	if(custom_poll_data->is_ssl == 1 && custom_poll_data->ssl.init == 0) {
 		custom_poll_data->ssl.init = 1;
 		struct mbedtls_ssl_config *ssl_conf = &ssl_client_conf;
@@ -475,57 +523,49 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 			FREE(req);
 			return;
 		}
-
+		// mbedtls_debug_set_threshold(2);
 		mbedtls_ssl_set_bio(&custom_poll_data->ssl.ctx, &fd, mbedtls_net_send, mbedtls_net_recv, NULL);
+		mbedtls_ssl_conf_dbg(ssl_conf, my_debug, stdout);
 	}
 
 	if(custom_poll_data->is_ssl == 1 && custom_poll_data->ssl.handshake == 0) {
 		n = mbedtls_ssl_handshake(&custom_poll_data->ssl.ctx);
 		if(n == MBEDTLS_ERR_SSL_WANT_READ) {
-			action |= UV_READABLE;
-			r = uv_poll_start(req, action, uv_custom_poll_cb);
+			custom_poll_data->doread = 1;
+			custom_poll_data->dowrite = 0;
+			goto end;
 		} else if(n == MBEDTLS_ERR_SSL_WANT_WRITE) {
-			action |= UV_WRITABLE;
-			r = uv_poll_start(req, action, uv_custom_poll_cb);
+			custom_poll_data->dowrite = 1;
+			custom_poll_data->doread = 0;
+			goto end;
 		}
 		if(n == MBEDTLS_ERR_SSL_WANT_READ || n == MBEDTLS_ERR_SSL_WANT_WRITE) {
-			if(r != 0) {
-				logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
-			}
-			return;
-		}			
-		if(n < 0) {
+		} else if(n < 0) {
 			mbedtls_strerror(n, (char *)&buffer, BUFFER_SIZE);
 			logprintf(LOG_NOTICE, "mbedtls_ssl_handshake: %s", buffer);
 			uv_poll_stop(req);
 			return;
+		} else {
+			custom_poll_data->ssl.handshake = 1;
 		}
-		custom_poll_data->ssl.handshake = 1;
-		action |= UV_WRITABLE;
-		r = uv_poll_start(req, action, uv_custom_poll_cb);
-		if(r != 0) {
-			logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
-			return;
-		}
+		custom_poll_data->dowrite = 1;
+		goto end;
 	}
 
 	if(events & UV_WRITABLE) {
 		if(send_io->len > 0) {
 			if(custom_poll_data->is_ssl == 1) {
 				n = mbedtls_ssl_write(&custom_poll_data->ssl.ctx, (unsigned char *)send_io->buf, send_io->len);
-				if(n == MBEDTLS_ERR_SSL_WANT_READ) {
-					action |= UV_READABLE;
-					r = uv_poll_start(req, action, uv_custom_poll_cb);
-				} else if(n == MBEDTLS_ERR_SSL_WANT_WRITE) {
-					action |= UV_WRITABLE;
-					r = uv_poll_start(req, action, uv_custom_poll_cb);
-				}
-				if(n == MBEDTLS_ERR_SSL_WANT_READ || n == MBEDTLS_ERR_SSL_WANT_WRITE) {
-					if(r != 0) {
-						logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
-						return;
+					if(n == MBEDTLS_ERR_SSL_WANT_READ) {
+						custom_poll_data->doread = 1;
+						custom_poll_data->dowrite = 0;
+						goto end;
+					} else if(n == MBEDTLS_ERR_SSL_WANT_WRITE) {
+						custom_poll_data->dowrite = 1;
+						custom_poll_data->doread = 0;
+						goto end;
 					}
-					return;
+				if(n == MBEDTLS_ERR_SSL_WANT_READ || n == MBEDTLS_ERR_SSL_WANT_WRITE) {
 				} else if(n < 0) {
 					mbedtls_strerror(n, (char *)&buffer, BUFFER_SIZE);
 					logprintf(LOG_NOTICE, "mbedtls_ssl_handshake: %s", buffer);
@@ -538,21 +578,12 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 			if(n > 0) {
 				iobuf_remove(send_io, n);
 				if(send_io->len > 0) {
-					action |= UV_WRITABLE;
-					r = uv_poll_start(req, action, uv_custom_poll_cb);
-					if(r != 0) {
-						logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
-						return;
-					}
-					return;
+					custom_poll_data->dowrite = 1;
 				} else {
-					action &= ~UV_WRITABLE;
+					custom_poll_data->dowrite = 0;
 					if(custom_poll_data->doclose == 1 && send_io->len == 0) {
-						action &= ~UV_READABLE;
-						if(custom_poll_data->close_cb != NULL) {
-							custom_poll_data->close_cb(req);
-							return;
-						}
+						custom_poll_data->doread = 0;
+						goto end;
 					} else {
 						custom_poll_data->dowrite = 0;
 						if(custom_poll_data->write_cb != NULL) {
@@ -571,54 +602,41 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 				}
 			}
 		} else {
-			action &= ~UV_WRITABLE;
+			custom_poll_data->dowrite = 0;
 			if(custom_poll_data->doclose == 1 && send_io->len == 0) {
-				action &= ~UV_READABLE;
-				if(custom_poll_data->close_cb != NULL) {
-					custom_poll_data->close_cb(req);
-					return;
-				}
+				custom_poll_data->doread = 0;
+				goto end;
 			} else {
 				custom_poll_data->dowrite = 0;
 				if(custom_poll_data->write_cb != NULL) {
 					custom_poll_data->write_cb(req);
 				}
 			}
-
 		}
 	}
 
 	if(send_io->len > 0) {
-		action |= UV_WRITABLE;
-		r = uv_poll_start(req, action, uv_custom_poll_cb);
-		if(r != 0) {
-			logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
-		}
-		return;
+		custom_poll_data->dowrite = 1;
 	}
 
 	if(events & UV_READABLE) {
 		if(custom_poll_data->is_ssl == 1) {
 			n = mbedtls_ssl_read(&custom_poll_data->ssl.ctx, (unsigned char *)buffer, BUFFER_SIZE);
 			if(n == MBEDTLS_ERR_SSL_WANT_READ) {
-				action |= UV_READABLE;
-				r = uv_poll_start(req, action, uv_custom_poll_cb);
+				custom_poll_data->doread = 1;
+				custom_poll_data->dowrite = 0;
+				goto end;
 			} else if(n == MBEDTLS_ERR_SSL_WANT_WRITE) {
-				action |= UV_WRITABLE;
-				r = uv_poll_start(req, action, uv_custom_poll_cb);
+				custom_poll_data->dowrite = 1;
+				custom_poll_data->doread = 0;
+				goto end;
 			} else if(n == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
 				custom_poll_data->doread = 0;
-				action &= ~UV_READABLE;
 				if(custom_poll_data->read_cb != NULL) {
 					custom_poll_data->read_cb(req, &custom_poll_data->recv_iobuf.len, custom_poll_data->recv_iobuf.buf);
 				}
 			}
 			if(n == MBEDTLS_ERR_SSL_WANT_READ || n == MBEDTLS_ERR_SSL_WANT_WRITE) {
-				if(r != 0) {
-					logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
-					return;
-				}
-				return;
 			} else if(n < 0) {
 				if(n == MBEDTLS_ERR_NET_RECV_FAILED) {
 					/*
@@ -636,71 +654,71 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 				return;
 			}
 		} else {
-			if(custom_poll_data->is_udp == 1) {
-				n = (int)recv((unsigned int)fd, buffer, BUFFER_SIZE, 0);
-			} else {
-				n = recvfrom(fd, buffer, BUFFER_SIZE, 0, NULL, (socklen_t *)&fromlen);
+			if(custom_poll_data->custom_recv == 0) {
+				if(custom_poll_data->is_udp == 1) {
+					n = (int)recv((unsigned int)fd, buffer, BUFFER_SIZE, 0);
+				} else {
+					n = recvfrom(fd, buffer, BUFFER_SIZE, 0, NULL, (socklen_t *)&fromlen);
+				}
 			}
 		}
 
-		if(n > 0) {
-			iobuf_append(&custom_poll_data->recv_iobuf, buffer, n);
-			custom_poll_data->doread = 0;
-			action &= ~UV_READABLE;
-			if(custom_poll_data->read_cb != NULL) {
-				custom_poll_data->read_cb(req, &custom_poll_data->recv_iobuf.len, custom_poll_data->recv_iobuf.buf);
-			}
-		} else if(n < 0 && errno != EAGAIN && errno != EINTR) {
+		if(custom_poll_data->custom_recv == 0) {
+			if(n > 0) {
+				iobuf_append(&custom_poll_data->recv_iobuf, buffer, n);
+				custom_poll_data->doread = 0;
+				if(custom_poll_data->read_cb != NULL) {
+					custom_poll_data->read_cb(req, &custom_poll_data->recv_iobuf.len, custom_poll_data->recv_iobuf.buf);
+				}
+			} else if(n < 0 && errno != EINTR) {
 #ifdef _WIN32
-			switch(WSAGetLastError()) {
-				case WSAENOTCONN:
-					if(custom_poll_data->read_cb != NULL) {
-						one = 1;
-						custom_poll_data->read_cb(req, &one, NULL);
-					}
-				break;
-				case WSAEWOULDBLOCK:
+				switch(WSAGetLastError()) {
+					case WSAENOTCONN:
+						if(custom_poll_data->read_cb != NULL) {
+							one = 1;
+							custom_poll_data->read_cb(req, &one, NULL);
+						}
+					break;
+					case WSAEWOULDBLOCK:
 #else
-			switch(errno) {
-				case ENOTCONN:
-					if(custom_poll_data->read_cb != NULL) {
-						one = 1;
-						custom_poll_data->read_cb(req, &one, NULL);
-					}
-				break;				
+				switch(errno) {
+					case ENOTCONN:
+						if(custom_poll_data->read_cb != NULL) {
+							one = 1;
+							custom_poll_data->read_cb(req, &one, NULL);
+						}
+					break;
 #if defined EAGAIN
-				case EAGAIN:
+					case EAGAIN:
 #endif
 #if defined EWOULDBLOCK && EWOULDBLOCK != EAGAIN
-				case EWOULDBLOCK:
+					case EWOULDBLOCK:
 #endif
 #endif
-				action |= UV_READABLE;
-				r = uv_poll_start(req, action, uv_custom_poll_cb);
-				if(r != 0) {
-					logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
-					return;
+						custom_poll_data->doread = 1;
+					break;
+					default:
+					break;
 				}
-				break;
-				default:
-				break;
+			/*
+			 * Client was disconnected
+			 */
+			} else if(n == 0) {
+				custom_poll_data->doclose = 1;
+				custom_poll_data->doread = 0;
+				goto end;
 			}
-		} else if(n == 0) {
-			if(custom_poll_data->read_cb != NULL) {
-				minus_one = -1;
-				custom_poll_data->read_cb(req, &minus_one, NULL);
-			}
+		} else {
 			custom_poll_data->doread = 0;
-			action &= ~UV_READABLE;
+			if(custom_poll_data->read_cb != NULL) {
+				zero = 0;
+				custom_poll_data->read_cb(req, &zero, NULL);
+			}
 		}
 	}
-	if(action > 0) {
-		r = uv_poll_start(req, action, uv_custom_poll_cb);
-		if(r != 0) {
-			logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
-			return;
-		}
-	}
+
+end:
+	eventpool_update_poll(req);
 }
 
 static void iobuf_free(struct iobuf_t *iobuf) {
@@ -748,66 +766,61 @@ void uv_custom_poll_init(struct uv_custom_poll_t **custom_poll, uv_poll_t *poll,
 
 int uv_custom_close(uv_poll_t *req) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
+	struct iobuf_t *send_io = NULL;
+
+	if(uv_is_closing((uv_handle_t *)req)) {
+		return -1;
+	}
 
 	if(custom_poll_data != NULL) {
 		custom_poll_data->doclose = 1;
+	}
+
+	send_io = &custom_poll_data->send_iobuf;
+
+	if(custom_poll_data->doclose == 1 && send_io->len == 0) {
+		custom_poll_data->doclose = 2;
+		if(custom_poll_data->close_cb != NULL) {
+			custom_poll_data->close_cb(req);
+		}
+		if(!uv_is_closing((uv_handle_t *)req)) {
+			uv_poll_stop(req);
+		}
 	}
 	return 0;
 }
 
 int uv_custom_read(uv_poll_t *req) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
-	int r = 0, doread = 1, dowrite = 0, action = 0;
 
 	if(uv_is_closing((uv_handle_t *)req)) {
 		return -1;
 	}
 
 	if(custom_poll_data != NULL) {
-		doread = custom_poll_data->doread = 1;
-		dowrite = custom_poll_data->dowrite;
+		custom_poll_data->doread = 1;
 	}
 
-	if(doread == 1) {
-		action |= UV_READABLE;
-	}
-	if(dowrite == 1) {
-		action |= UV_WRITABLE;
-	}
-
-	uv_poll_start(req, action, uv_custom_poll_cb);
-	if(r != 0) {
-		logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
-		return -1;
-	}
+	// if(custom_poll_data->started == 0) {
+		eventpool_update_poll(req);
+	// }
 	return 0;
 }
 
 int uv_custom_write(uv_poll_t *req) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
-	int r = 0, doread = 0, dowrite = 1, action = 0;
 
 	if(uv_is_closing((uv_handle_t *)req)) {
 		return -1;
 	}
 
 	if(custom_poll_data != NULL) {
-		doread = custom_poll_data->doread;
-		dowrite = custom_poll_data->dowrite = 1;
+		custom_poll_data->dowrite = 1;
 	}
 
-	if(doread == 1) {
-		action |= UV_READABLE;
-	}
-	if(dowrite == 1) {
-		action |= UV_WRITABLE;
-	}
-
-	r = uv_poll_start(req, action, uv_custom_poll_cb);
-	if(r != 0) {
-		logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
-		return -1;
-	}
+	// if(custom_poll_data->started == 0) {
+		eventpool_update_poll(req);
+	// }
 	return 0;
 }
 

@@ -47,7 +47,8 @@ static void test_protocols_generic_dimmer(CuTest *tc) {
 	json_append_member(jcode, "dimlevel", json_mknumber(5, 0));
 	json_append_member(jcode, "on", json_mknumber(1, 0));
 
-	CuAssertIntEquals(tc, 0, generic_dimmer->createCode(jcode, message));
+	char *p = message;
+	CuAssertIntEquals(tc, 0, generic_dimmer->createCode(jcode, &p));
 	CuAssertStrEquals(tc, "{\"id\":1,\"dimlevel\":5,\"state\":\"on\"}", message);
 
 	json_delete(jcode);
@@ -72,7 +73,8 @@ static void test_protocols_generic_label(CuTest *tc) {
 	json_append_member(jcode, "label", json_mkstring("Foobar"));
 	json_append_member(jcode, "color", json_mkstring("#FFFFFF"));
 
-	CuAssertIntEquals(tc, 0, generic_label->createCode(jcode, message));
+	char *p = message;
+	CuAssertIntEquals(tc, 0, generic_label->createCode(jcode, &p));
 	CuAssertStrEquals(tc, "{\"id\":1,\"label\":\"Foobar\",\"color\":\"#FFFFFF\"}", message);
 
 	json_delete(jcode);
@@ -96,7 +98,8 @@ static void test_protocols_generic_screen(CuTest *tc) {
 	json_append_member(jcode, "id", json_mknumber(1, 0));
 	json_append_member(jcode, "down", json_mknumber(1, 0));
 
-	CuAssertIntEquals(tc, 0, generic_screen->createCode(jcode, message));
+	char *p = message;
+	CuAssertIntEquals(tc, 0, generic_screen->createCode(jcode, &p));
 	CuAssertStrEquals(tc, "{\"id\":1,\"state\":\"down\"}", message);
 
 	json_delete(jcode);
@@ -120,7 +123,8 @@ static void test_protocols_generic_switch(CuTest *tc) {
 	json_append_member(jcode, "id", json_mknumber(1, 0));
 	json_append_member(jcode, "on", json_mknumber(1, 0));
 
-	CuAssertIntEquals(tc, 0, generic_switch->createCode(jcode, message));
+	char *p = message;
+	CuAssertIntEquals(tc, 0, generic_switch->createCode(jcode, &p));
 	CuAssertStrEquals(tc, "{\"id\":1,\"state\":\"on\"}", message);
 
 	json_delete(jcode);
@@ -151,7 +155,8 @@ static void test_protocols_generic_weather(CuTest *tc) {
 	json_append_member(jcode, "show-temperature", json_mknumber(2, 0));
 	json_append_member(jcode, "show-battery", json_mknumber(2, 0));
 
-	CuAssertIntEquals(tc, 0, generic_weather->createCode(jcode, message));
+	char *p = message;
+	CuAssertIntEquals(tc, 0, generic_weather->createCode(jcode, &p));
 	CuAssertStrEquals(tc, "{\"id\":1,\"temperature\":1.00,\"humidity\":1.00,\"battery\":1}", message);
 
 	json_delete(jcode);
@@ -179,7 +184,8 @@ static void test_protocols_generic_webcam(CuTest *tc) {
 	// json_append_member(jcode, "show-webcam", json_mknumber(1, 0));
 	// json_append_member(jcode, "poll-interval", json_mknumber(1, 0));
 
-	// CuAssertIntEquals(tc, 0, generic_webcam->createCode(jcode, message));
+	// char *p = message;
+	// CuAssertIntEquals(tc, 0, generic_webcam->createCode(jcode, &p));
 	// CuAssertStrEquals(tc, "{\"id\":1,\"url\":\"foobar\"}", message);
 
 	// json_delete(jcode);

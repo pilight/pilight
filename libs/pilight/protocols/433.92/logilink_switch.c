@@ -47,19 +47,19 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(char *message, int systemcode, int unitcode, int state) {
-	int x = snprintf(message, 255, "{\"systemcode\":%d,", systemcode);
-	x += snprintf(&message[x], 255-x, "\"unitcode\":%d,", unitcode);
+static void createMessage(char **message, int systemcode, int unitcode, int state) {
+	int x = snprintf((*message), 255, "{\"systemcode\":%d,", systemcode);
+	x += snprintf(&(*message)[x], 255-x, "\"unitcode\":%d,", unitcode);
 
 	if(state == 0) {
-		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"on\"");
 	} else {
-		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"off\"");
 	}
-	x += snprintf(&message[x], 255-x, "}");
+	x += snprintf(&(*message)[x], 255-x, "}");
 }
 
-static void parseCode(char *message) {
+static void parseCode(char **message) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
 	int systemcode = 0, state = 0, unitcode = 0;
 
@@ -158,7 +158,7 @@ static void createFooter(void) {
 	logilink_switch->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code, char *message) {
+static int createCode(struct JsonNode *code, char **message) {
 	int systemcode = -1;
 	int unitcode = -1;
 	int state = -1;

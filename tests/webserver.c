@@ -13,6 +13,7 @@
 #ifndef _WIN32
 	#include <unistd.h>
 #endif
+#include <mbedtls/sha256.h>
 
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
@@ -21,7 +22,6 @@
 #include "../libs/pilight/core/http.h"
 #include "../libs/pilight/core/ssl.h"
 #include "../libs/pilight/core/log.h"
-#include "../libs/mbedtls/mbedtls/sha256.h"
 
 #include "alltests.h"
 
@@ -35,7 +35,7 @@ static CuTest *gtc = NULL;
 
 static int steps = 0;
 
-static char request[255] = { 
+static char request[255] = {
 	0x81, 0x9b, 0xa0, 0x18, 0xa7,
 	0x15, 0xdb, 0x3a, 0xc6, 0x76,
 	0xd4, 0x71, 0xc8, 0x7b, 0x82,
@@ -199,7 +199,7 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 	switch(steps) {
 		case 1: {
-			CuAssertStrEquals(gtc, 
+			CuAssertStrEquals(gtc,
 				"HTTP/1.1 101 Web Socket Protocol Handshake\r\n"
 				"Connection: Upgrade\r\n"
 				"Upgrade: websocket\r\n"
@@ -319,7 +319,7 @@ static void *test(void) {
 		goto free;
 	}
 
-	write_cb(poll_req);
+	uv_custom_write(poll_req);
 
 	return NULL;
 
@@ -380,7 +380,7 @@ static void test_webserver(CuTest *tc) {
 	uv_async_init(uv_default_loop(), async_close_req, async_close_cb);
 
 	storage_init();
-	CuAssertIntEquals(tc, 0, storage_read("webserver.json", CONFIG_SETTINGS));	
+	CuAssertIntEquals(tc, 0, storage_read("webserver.json", CONFIG_SETTINGS));
 
 	ssl_init();
 
@@ -450,7 +450,7 @@ static void test_webserver_get(CuTest *tc) {
 		"\"hardware\":{},\"registry\":{}}"
 	);
 	fclose(f);
-	
+
 	gtc = tc;
 	steps = 0;
 
@@ -490,7 +490,7 @@ static void test_webserver_websocket1(CuTest *tc) {
 	if(gtc != NULL && gtc->failed == 1) {
 		return;
 	}
-	
+
 	FILE *f = fopen("webserver.json", "w");
 	fprintf(f,
 		"{\"devices\":{},\"gui\":{},\"rules\":{},"\

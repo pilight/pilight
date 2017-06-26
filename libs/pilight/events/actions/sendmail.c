@@ -213,7 +213,7 @@ static int run(struct rules_actions_t *obj) {
 
 	struct mail_t *mail = MALLOC(sizeof(struct mail_t));
 	char *shost = NULL, *suser = NULL, *spassword = NULL, *stmp = NULL;
-	int sport = 0;
+	int sport = 0, is_ssl = 0;
 	double itmp = 0.0;
 
 	if(mail == NULL) {
@@ -248,6 +248,10 @@ static int run(struct rules_actions_t *obj) {
 					sport = (int)itmp;
 				}
 
+				if(settings_select_number(ORIGIN_ACTION, "smtp-ssl", &itmp) == 0) {
+					is_ssl = (int)itmp;
+				}
+
 				settings_select_string(ORIGIN_ACTION, "smtp-user", &suser);
 				settings_select_string(ORIGIN_ACTION, "smtp-password", &spassword);
 
@@ -264,10 +268,8 @@ static int run(struct rules_actions_t *obj) {
 				strcpy(mail->message, jval2->string_);
 				strcpy(mail->to, jval3->string_);
 
-				/*
-				 * FIXME is_ssl
-				 */
-				if(sendmail(shost, suser, spassword, sport, 0, mail, callback) != 0) {
+
+				if(sendmail(shost, suser, spassword, sport, is_ssl, mail, callback) != 0) {
 					logprintf(LOG_ERR, "sendmail action failed to send message \"%s\"", jval2->string_);
 					return -1;
 				}

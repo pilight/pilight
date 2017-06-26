@@ -123,4 +123,9 @@ typedef struct reason_control_device_t {
 	struct JsonNode *values;
 } reason_control_device_t;
 
+typedef struct reason_arp_device_t {
+	char mac[18];
+	char ip[INET_ADDRSTRLEN];
+} reason_arp_device_t;
+
 #endif

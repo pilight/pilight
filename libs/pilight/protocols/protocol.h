@@ -84,11 +84,11 @@ typedef struct protocol_t {
 	struct protocol_threads_t *threads;
 
 	union {
-		void (*parseCode)(char *message);
-		void (*parseCommand)(struct JsonNode *code, char *message);
+		void (*parseCode)(char **message);
+		void (*parseCommand)(struct JsonNode *code, char **message);
 	};
 	int (*validate)(void);
-	int (*createCode)(struct JsonNode *code, char *message);
+	int (*createCode)(struct JsonNode *code, char **message);
 	int (*checkValues)(struct JsonNode *code);
 	void (*initDev)(struct JsonNode *device);
 	void (*printHelp)(void);

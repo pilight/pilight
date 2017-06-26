@@ -454,6 +454,8 @@ static void test(void *param) {
 }
 
 static void test_http(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -489,9 +491,12 @@ static void test_http(CuTest *tc) {
 
 	CuAssertIntEquals(tc, 10, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
+
 }
 
 static void test_http_threaded(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 

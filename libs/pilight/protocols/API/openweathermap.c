@@ -449,7 +449,7 @@ static int checkValues(struct JsonNode *code) {
 	return 0;
 }
 
-static int createCode(struct JsonNode *code, char *message) {
+static int createCode(struct JsonNode *code, char **message) {
 	struct data_t *tmp = data;
 	char *country = NULL;
 	char *location = NULL;

@@ -43,7 +43,8 @@ static void test_protocols_core_raw(CuTest *tc) {
 	json_append_member(jcode, "code", json_mkstring(code));
 	json_append_member(jcode, "repeats", json_mknumber(1, 0));
 
-	raw->createCode(jcode, message);
+	char *p = message;
+	raw->createCode(jcode, &p);
 
 	CuAssertIntEquals(tc, 148, raw->rawlen);
 	CuAssertIntEquals(tc, 1, raw->txrpt);

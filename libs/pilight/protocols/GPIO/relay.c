@@ -24,19 +24,19 @@
 #include "../protocol.h"
 #include "relay.h"
 
-#include "../../../wiringx//wiringX.h"
+#include <wiringx.h>
 
 static char default_state[] = "off";
 
-static void createMessage(char *message, int gpio, int state) {
-	int x = snprintf(message, 255, "{\"gpio\":%d,", gpio);
+static void createMessage(char **message, int gpio, int state) {
+	int x = snprintf((*message), 255, "{\"gpio\":%d,", gpio);
 	if(state == 1)
-		x += snprintf(&message[x], 255-x, "\"state\":\"on\"}");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"on\"}");
 	else
-		x += snprintf(&message[x], 255-x, "\"state\":\"off\"}");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"off\"}");
 }
 
-static int createCode(struct JsonNode *code, char *message) {
+static int createCode(struct JsonNode *code, char **message) {
 	int free_def = 0;
 	int gpio = -1;
 	int state = -1;

@@ -46,7 +46,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void parseCode(char *message) {
+static void parseCode(char **message) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
 	int id = 0, battery = 0;
 	double temperature = 0.0, humidity = 0.0;
@@ -83,7 +83,7 @@ static void parseCode(char *message) {
 	temperature += temp_offset;
 	humidity += humi_offset;
 
-	snprintf(message, 255,
+	snprintf((*message), 255,
 		"{\"id\":%d,\"temperature\":%.1f,\"humidity\":%.1f,\"battery\":%d}",
 		id, temperature/10, humidity, battery
 	);

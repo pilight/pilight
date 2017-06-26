@@ -60,7 +60,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void parseCode(char *message) {
+static void parseCode(char **message) {
 	int i = 0, x = 0, type = 0, id = 0, binary[RAW_LENGTH/2];
 	double temp_offset = 0.0, humi_offset = 0.0;
 	double humidity = 0.0, temperature = 0.0;
@@ -154,7 +154,7 @@ static void parseCode(char *message) {
 			temperature += temp_offset;
 			humidity += humi_offset;
 
-			snprintf(message, 255,
+			snprintf(*message, 255,
 				"{\"id\":%d,\"temperature\":%.1f,\"humidity\":%.1f,\"battery\":%d}",
 				id, temperature, humidity, battery
 			);
@@ -164,7 +164,7 @@ static void parseCode(char *message) {
 			windavg = binToDec(binary, 24, 31) * 2;
 			battery = !binary[8];
 
-			snprintf(message, 255,
+			snprintf(*message, 255,
 				"{\"id\":%d,\"windavg\":%.1f,\"battery\":%d}",
 				id, (double)windavg/10, battery
 			);
@@ -175,7 +175,7 @@ static void parseCode(char *message) {
 			windgust = binToDec(binary, 24, 31) * 2;
 			battery = !binary[8];
 
-			snprintf(message, 255,
+			snprintf(*message, 255,
 				"{\"id\":%d,\"winddir\":%d,\"windgust\":%.1f,\"battery\":%d}",
 				id, winddir, (double)windgust/10, battery
 			);
@@ -184,11 +184,11 @@ static void parseCode(char *message) {
 			id = binToDec(binary, 0, 7);
 			/*rain = binToDec(binary, 16, 30) * 5;*/
 			battery = !binary[8];
-			snprintf(message, 255,
+			snprintf(*message, 255,
 				"{\"id\":%d,\"battery\":%d}",
 				id, battery
 			);
-			// snprintf(message, 255,
+			// snprintf(*message, 255,
 				// "{\"id\":%d,\"rain\":%.1f,\"battery\":%d}",
 				// id, (double)rain/10, battery
 			// );

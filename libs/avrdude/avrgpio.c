@@ -24,6 +24,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <wiringx.h>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -34,7 +35,6 @@
 #include "pindefs.h"
 #include "pgm.h"
 #include "avrbitbang.h"
-#include "../wiringx/wiringX.h"
 #include "../pilight/storage/storage.h"
 #include "../pilight/core/log.h"
 

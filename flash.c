@@ -30,7 +30,7 @@
 #include "libs/pilight/events/events.h"
 
 #ifndef _WIN32
-	#include "libs/wiringx/wiringX.h"
+	#include <wiringx.h>
 #endif
 
 int main(int argc, char **argv) { 

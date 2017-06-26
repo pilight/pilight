@@ -47,7 +47,7 @@ static int checkValues(struct JsonNode *code) {
 	return 0;
 }
 
-static int createCode(struct JsonNode *code, char *message) {
+static int createCode(struct JsonNode *code, char **message) {
 	int id = -1;
 	int state = -1;
 	int dimlevel = -1;
@@ -82,18 +82,18 @@ static int createCode(struct JsonNode *code, char *message) {
 		if(dimlevel >= 0) {
 			state = -1;
 		}
-		int x = snprintf(message, 255, "{");
-		x += snprintf(&message[x], 255-x, "\"id\":%d,", id);
+		int x = snprintf((*message), 255, "{");
+		x += snprintf(&(*message)[x], 255-x, "\"id\":%d,", id);
 		if(dimlevel >= 0) {
 			state = 1;
-			x += snprintf(&message[x], 255-x, "\"dimlevel\":%d,", dimlevel);
+			x += snprintf(&(*message)[x], 255-x, "\"dimlevel\":%d,", dimlevel);
 		}
 		if(state == 1) {
-			x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
+			x += snprintf(&(*message)[x], 255-x, "\"state\":\"on\"");
 		}	else {
-			x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
+			x += snprintf(&(*message)[x], 255-x, "\"state\":\"off\"");
 		}
-		x += snprintf(&message[x], 255-x, "}");
+		x += snprintf(&(*message)[x], 255-x, "}");
 	}
 	return EXIT_SUCCESS;
 

@@ -24,7 +24,8 @@
 #endif
 #include <signal.h>
 #include <time.h>
-#include "../../mbedtls/mbedtls/ssl.h"
+#include <mbedtls/ssl.h>
+
 #include "../../libuv/uv.h"
 #include "eventpool_structs.h"
 
@@ -96,8 +97,11 @@ enum eventpool_threads_t {
 #define REASON_ADHOC_DISCONNECTED			27
 #define REASON_SEND_BEGIN							28
 #define REASON_SEND_END								29
-#define REASON_LOG										30
-#define REASON_END										31
+#define REASON_ARP_FOUND_DEVICE				30
+#define REASON_ARP_LOST_DEVICE				31
+#define REASON_ARP_CHANGED_DEVICE			32
+#define REASON_LOG										33
+#define REASON_END										34
 
 typedef struct threadpool_data_t {
 	int reason;
@@ -135,81 +139,6 @@ typedef struct eventpool_listener_t {
 	struct eventpool_listener_t *next;
 } eventpool_listener_t;
 
-// IO buffers interface
-typedef struct eventpool_iobuf_t {
-  char *buf;
-  size_t len;
-  size_t size;
-	uv_mutex_t lock;
-} eventpool_iobuf_t;
-
-typedef struct eventpool_fd_t {
-	char *name;
-	int fd;
-	int idx;
-	int active;
-
-	int type;
-	int stage;
-	int error;
-	int remove;
-	int doread;
-	int dowrite;
-	int doflush;
-	int dohighpri;
-	void *userdata;
-
-	int timer;
-	int steps;
-	char *buffer;
-	size_t len;
-
-	union {
-		struct {
-			char *server;
-			char ip[INET_ADDRSTRLEN+1];
-			unsigned int port;
-			unsigned short domain;
-			unsigned short type;
-			unsigned short protocol;
-			struct sockaddr_in addr;
-		} socket;
-	} data;
-
-	int (*callback)(struct eventpool_fd_t *, int);
-	int (*send)(struct eventpool_fd_t *);
-
-  struct eventpool_iobuf_t recv_iobuf;
-  struct eventpool_iobuf_t send_iobuf;
-
-	struct eventpool_fd_t *next;
-} eventpool_fd_t;
-
-int eventpool_nrlisteners(int);
-void eventpool_callback(int, void *(*)(int, void *));
-void eventpool_trigger(int, void *(*)(void *), void *);
-
-int eventpool_fd_select(int, struct eventpool_fd_t **);
-void eventpool_fd_enable_write(struct eventpool_fd_t *);
-void eventpool_fd_enable_read(struct eventpool_fd_t *);
-void eventpool_fd_enable_highpri(struct eventpool_fd_t *);
-void eventpool_fd_disable_write(struct eventpool_fd_t *);
-void eventpool_fd_disable_read(struct eventpool_fd_t *);
-void eventpool_fd_disable_highpri(struct eventpool_fd_t *);
-void eventpool_socket_reconnect(struct eventpool_fd_t *);
-int eventpool_fd_write(int, char *, unsigned long);
-void eventpool_fd_remove(struct eventpool_fd_t *);
-struct eventpool_fd_t *eventpool_socket_add(char *, char *, unsigned int, int, int, int, int, int (*)(struct eventpool_fd_t *, int), int (*)(struct eventpool_fd_t *), void *);
-struct eventpool_fd_t *eventpool_fd_add(char *, int, int (*)(struct eventpool_fd_t *, int), int (*)(struct eventpool_fd_t *), void *);
-void *eventpool_process(void *);
-void eventpool_init(enum eventpool_threads_t);
-enum eventpool_threads_t eventpool_threaded(void);
-int eventpool_gc(void);
-
-/*
- * NEW
- */
-
 typedef struct iobuf_t {
   char *buf;
   ssize_t len;
@@ -221,9 +150,14 @@ struct uv_custom_poll_t {
 	int is_ssl;
 	int is_server;
 	int is_udp;
+	int custom_recv;
 	int doread;
 	int dowrite;
 	int doclose;
+	int started;
+	int action;
+	uv_timer_t *timer_req;
+	uv_poll_t *poll_req;
 
 	void *data;
 
@@ -241,8 +175,14 @@ struct uv_custom_poll_t {
   struct iobuf_t send_iobuf;
 } uv_custom_poll_t;
  
+void eventpool_callback(int, void *(*)(int, void *));
+void eventpool_trigger(int, void *(*)(void *), void *);
+void eventpool_init(enum eventpool_threads_t);
+int eventpool_gc(void);
+
 void iobuf_remove(struct iobuf_t *, size_t);
 size_t iobuf_append(struct iobuf_t *, const void *, int);
+
 void uv_custom_poll_init(struct uv_custom_poll_t **, uv_poll_t *, void *);
 void uv_custom_poll_free(struct uv_custom_poll_t *);
 void uv_custom_poll_cb(uv_poll_t *, int, int);

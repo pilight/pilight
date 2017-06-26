@@ -86,5 +86,6 @@ int stricmp(char const *a, char const *b);
 #endif
 int file_get_contents(char *file, char **content);
 void calc_time_interval(int type, int seconds, int diff, struct timeval *tv);
+char *_dirname(char *path);
 
 #endif

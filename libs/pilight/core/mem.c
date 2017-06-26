@@ -107,7 +107,7 @@ int xfree(void) {
 	return openallocs;
 }
 
-void *_malloc(unsigned long a, const char *file, int line) {
+void *__malloc(unsigned long a, const char *file, int line) {
 	if(memdbg == 1) {
 		struct mallocs_t *node = malloc(sizeof(mallocs_t));
 		if((node->p = malloc(a)) == NULL) {
@@ -146,8 +146,8 @@ void *_malloc(unsigned long a, const char *file, int line) {
 	}
 }
 
-char *__strdup(char *a, const char *file, int line) {
-	char *d = _malloc(strlen(a) + 1, file, line);
+char *___strdup(char *a, const char *file, int line) {
+	char *d = __malloc(strlen(a) + 1, file, line);
 	if(d == NULL) {
 		return NULL;
 	}
@@ -155,10 +155,10 @@ char *__strdup(char *a, const char *file, int line) {
 	return d;
 }
 
-void *_realloc(void *a, unsigned long b, const char *file, int line) {
+void *__realloc(void *a, unsigned long b, const char *file, int line) {
 	if(memdbg == 1) {
 		if(a == NULL) {
-			return _malloc(b, file, line);
+			return __malloc(b, file, line);
 		} else {
 #ifdef _WIN32
 			DWORD dwWaitResult = WaitForSingleObject(lock, INFINITE);
@@ -193,11 +193,11 @@ void *_realloc(void *a, unsigned long b, const char *file, int line) {
 #endif
 			if(tmp == NULL) {
 				fprintf(stderr, "ERROR: calling realloc on an unknown pointer in %s at line #%d\n", file, line);
-				return _malloc(b, file, line);
+				return __malloc(b, file, line);
 			} else if(tmp != NULL && tmp->p != NULL) {
 				return a;
 			} else {
-				return _malloc(b, file, line);
+				return __malloc(b, file, line);
 			}
 		}
 	} else {
@@ -205,7 +205,7 @@ void *_realloc(void *a, unsigned long b, const char *file, int line) {
 	}
 }
 
-void *_calloc(unsigned long a, unsigned long b, const char *file, int line) {
+void *__calloc(unsigned long a, unsigned long b, const char *file, int line) {
 	if(memdbg == 1) {
 		struct mallocs_t *node = malloc(sizeof(mallocs_t));
 		if((node->p = malloc(a*b)) == NULL) {
@@ -245,7 +245,7 @@ void *_calloc(unsigned long a, unsigned long b, const char *file, int line) {
 	}
 }
 
-void _free(void *a, const char *file, int line) {
+void __free(void *a, const char *file, int line) {
 	if(memdbg == 2) {
 		fprintf(stderr, "WARNING: calling free after xfree was called in %s at line #%d\n", file, line);
 	}

@@ -45,20 +45,20 @@ static int validate(void) {
  * state : either 2 (off) or 1 (on)
  * group : if 1 this affects a whole group of devices
  */
-static void createMessage(char *message, unsigned long long systemcode, int unitcode, int state, int group) {
-	int x = snprintf(message, 255, "{\"systemcode\":%llu,", systemcode);
+static void createMessage(char **message, unsigned long long systemcode, int unitcode, int state, int group) {
+	int x = snprintf((*message), 255, "{\"systemcode\":%llu,", systemcode);
 	if(group == 1) {
-		x += snprintf(&message[x], 255-x, "\"all\":1,");
+		x += snprintf(&(*message)[x], 255-x, "\"all\":1,");
 	} else {
-		x += snprintf(&message[x], 255-x, "\"unitcode\":%d,", unitcode);
+		x += snprintf(&(*message)[x], 255-x, "\"unitcode\":%d,", unitcode);
 	}
 
 	if(state == 1) {
-		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"on\"");
 	} else if(state == 2) {
-		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"off\"");
 	}
-	x += snprintf(&message[x], 255-x, "}");
+	x += snprintf(&(*message)[x], 255-x, "}");
 }
 
 /**
@@ -66,7 +66,7 @@ static void createMessage(char *message, unsigned long long systemcode, int unit
  * Decodes the received stream
  *
  */
-static void parseCode(char *message) {
+static void parseCode(char **message) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
 
 	if(elro_300_switch->rawlen>RAW_LENGTH) {
@@ -249,7 +249,7 @@ static void createFooter(void) {
  *
  * returns : EXIT_SUCCESS or EXIT_FAILURE on obvious occasions
  */
-static int createCode(struct JsonNode *code, char *message) {
+static int createCode(struct JsonNode *code, char **message) {
 	unsigned long long systemcode = 0;
 	int unitcode = -1;
 	int group = 0;

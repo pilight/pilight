@@ -280,6 +280,8 @@ static void test_ping(CuTest *tc) {
 }
 
 static void test_ping_localhost(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -291,6 +293,8 @@ static void test_ping_localhost(CuTest *tc) {
 }
 
 static void test_ping_localhost_threaded(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -303,6 +307,8 @@ static void test_ping_localhost_threaded(CuTest *tc) {
 }
 
 static void test_ping_timeout(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -314,6 +320,8 @@ static void test_ping_timeout(CuTest *tc) {
 }
 
 static void test_ping_timeout_threaded(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -327,6 +335,8 @@ static void test_ping_timeout_threaded(CuTest *tc) {
 
 #if !defined(_WIN32) && !defined(__FreeBSD__)
 static void test_ping_response(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -342,6 +352,8 @@ static void test_ping_response(CuTest *tc) {
 }
 
 static void test_ping_response_threaded(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 

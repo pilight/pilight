@@ -84,7 +84,8 @@ static void *received(int reason, void *param) {
 					steps = 1;
 					CuAssertPtrNotNull(gtc, wunderground->createCode);
 					struct JsonNode *code = json_decode("{\"api\":\"abcdef123456\",\"location\":\"amsterdam\",\"country\":\"nl\",\"update\":1}");
-					wunderground->createCode(code, message);
+					char *p = message;
+					wunderground->createCode(code, &p);
 					json_delete(code);
 					printf("[ %-48s ]\n", "- waiting for wunderground notification");
 					fflush(stdout);

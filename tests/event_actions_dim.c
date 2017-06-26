@@ -60,6 +60,8 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 }
 
 static void test_event_actions_dim_check_parameters(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -735,6 +737,8 @@ static void *control_device(int reason, void *param) {
 }
 
 static void test_event_actions_dim_run(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -797,6 +801,8 @@ static void test_event_actions_dim_run(CuTest *tc) {
 }
 
 static void test_event_actions_dim_run_delayed(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -861,6 +867,8 @@ static void test_event_actions_dim_run_delayed(CuTest *tc) {
 }
 
 static void test_event_actions_dim_run_stepped(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -894,7 +902,7 @@ static void test_event_actions_dim_run_stepped(CuTest *tc) {
 		\"IN\":{\"value\":[\"1 SECOND\"],\"order\":4}\
 	}");
 
-	eventpool_init(EVENTPOOL_THREADED);
+	eventpool_init(EVENTPOOL_NO_THREADS);
 	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
 
 	struct timeval tv;
@@ -953,6 +961,8 @@ static void config_update(void *param) {
 }
 
 static void test_event_actions_dim_run_overlapped(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -1031,6 +1041,8 @@ static void stop(uv_work_t *req) {
  * the delayed action should be skipped.
  */
 static void test_event_actions_dim_run_override(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 

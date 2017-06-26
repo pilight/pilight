@@ -611,8 +611,8 @@ int main(int argc, char **argv) {
 
 	memset(raw, 0, MAXPULSESTREAMLENGTH-1);
 	protocol->raw = raw;
-	char message[255];
-	if(protocol->createCode(code, message) == 0) {
+	char message[255], *p = message;
+	if(protocol->createCode(code, &p) == 0) {
 		if(server != NULL && port > 0) {
 			connect_to_server(server, port);
 		} else {

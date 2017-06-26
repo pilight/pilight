@@ -46,7 +46,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void parseCode(char *message) {
+static void parseCode(char **message) {
 	int x = 0, binary[RAW_LENGTH/2];
 
 	if(conrad_rsl_contact->rawlen>RAW_LENGTH) {
@@ -69,13 +69,13 @@ static void parseCode(char *message) {
 	int state = binary[4];
 
 	if(check == 5 && check1 == 1) {
-		x = snprintf(message, 255, "{\"id\":%d,", id);
+		x = snprintf((*message), 255, "{\"id\":%d,", id);
 		if(state == 1) {
-			x += snprintf(&message[x], 255-x, "\"state\":\"opened\"");
+			x += snprintf(&(*message)[x], 255-x, "\"state\":\"opened\"");
 		} else {
-			x += snprintf(&message[x], 255-x, "\"state\":\"closed\"");
+			x += snprintf(&(*message)[x], 255-x, "\"state\":\"closed\"");
 		}
-		x += snprintf(&message[x], 255-x, "}");
+		x += snprintf(&(*message)[x], 255-x, "}");
 	}
 }
 

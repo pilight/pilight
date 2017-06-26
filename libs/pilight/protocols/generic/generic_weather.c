@@ -20,7 +20,7 @@
 #include "../../core/gc.h"
 #include "generic_weather.h"
 
-static int createCode(struct JsonNode *code, char *message) {
+static int createCode(struct JsonNode *code, char **message) {
 	double itmp = 0;
 	int id = -999;
 	double temp = -999.0;
@@ -40,20 +40,20 @@ static int createCode(struct JsonNode *code, char *message) {
 		logprintf(LOG_ERR, "generic_weather: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
-		int x = snprintf(message, 255, "{");
+		int x = snprintf((*message), 255, "{");
 		if(id > -1) {
-			x += snprintf(&message[x], 255-x, "\"id\":%d,", batt);
+			x += snprintf(&(*message)[x], 255-x, "\"id\":%d,", batt);
 		}
 		if(temp > -998.0) {
-			x += snprintf(&message[x], 255-x, "\"temperature\":%.2f,", temp);
+			x += snprintf(&(*message)[x], 255-x, "\"temperature\":%.2f,", temp);
 		}
 		if(humi > -1.0) {
-			x += snprintf(&message[x], 255-x, "\"humidity\":%.2f,", humi);
+			x += snprintf(&(*message)[x], 255-x, "\"humidity\":%.2f,", humi);
 		}
 		if(batt > -1) {
-			x += snprintf(&message[x], 255-x, "\"battery\":%d,", batt);
+			x += snprintf(&(*message)[x], 255-x, "\"battery\":%d,", batt);
 		}
-		x += snprintf(&message[x-1], 255-x, "}");
+		x += snprintf(&(*message)[x-1], 255-x, "}");
 	}
 	return EXIT_SUCCESS;
 }

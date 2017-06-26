@@ -135,12 +135,12 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(char *message, int *binary, int systemcode, int state, int unit) {
-	int x = snprintf(message, 255, "{\"id\":%d,", systemcode);
+static void createMessage(char **message, int *binary, int systemcode, int state, int unit) {
+	int x = snprintf((*message), 255, "{\"id\":%d,", systemcode);
 	if(unit == 5) {
-		x += snprintf(&message[x], 255-x, "\"all\":1,");
+		x += snprintf(&(*message)[x], 255-x, "\"all\":1,");
 	} else {
-		x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
+		x += snprintf(&(*message)[x], 255-x, "\"unit\":%d,", unit);
 	}
 /*
 	int i = 0;
@@ -154,16 +154,16 @@ static void createMessage(char *message, int *binary, int systemcode, int state,
 			}
 		}
 		binaryCh[RAW_LENGTH/2-1] = '\0';
-		x += snprintf(&message[x], 255-x, "\"binary\":\"%s\"", binaryCh);
+		x += snprintf(&(*message)[x], 255-x, "\"binary\":\"%s\"", binaryCh);
 	}
 */
 
 	if(state == 1) {
-		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"on\"");
 	} else {
-		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"off\"");
 	}
-	x += snprintf(&message[x], 255-x, "}");
+	x += snprintf(&(*message)[x], 255-x, "}");
 }
 
 static int decodePayload(int payload, int index, int syscodetype) {
@@ -204,7 +204,7 @@ static void pulseToBinary(int *binary) {
 	}
 }
 
-static void parseCode(char *message) {
+static void parseCode(char **message) {
 	int binary[RAW_LENGTH/2], state = 0;
  	int i = 0;
 
@@ -314,7 +314,7 @@ static void initAllCodes(int systemcode, int allcodes[16]) {
 	}
 }
 
-static int createCode(struct JsonNode *code, char *message) {
+static int createCode(struct JsonNode *code, char **message) {
 	int syscodetype = 0;
 	double itmp = -1;
 	int unit = -1, systemcode = -1, verifysyscode = -1, state = -1, all = 0, statecode = -1;

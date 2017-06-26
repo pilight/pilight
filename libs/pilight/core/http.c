@@ -36,6 +36,8 @@
 	#include <arpa/inet.h>
 	#include <unistd.h>
 #endif
+#include <mbedtls/ssl.h>
+#include <mbedtls/error.h>
 
 #include "../../libuv/uv.h"
 #include "pilight.h"
@@ -44,8 +46,6 @@
 #include "network.h"
 #include "webserver.h"
 #include "ssl.h"
-#include "../../mbedtls/mbedtls/ssl.h"
-#include "../../mbedtls/mbedtls/error.h"
 
 #define USERAGENT			"pilight"
 #define HTTP_POST			1
@@ -709,7 +709,6 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 		if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
 			OUT_OF_MEMORY
 		}
-
 		uv_custom_poll_init(&custom_poll_data, poll_req, (void *)request);
 		custom_poll_data->is_ssl = request->is_ssl;
 		custom_poll_data->write_cb = write_cb;

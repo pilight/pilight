@@ -71,20 +71,20 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(char *message, int id, int unit, int state, int all, int learn) {
-	int x = snprintf(message, 255, "{\"id\":%d,", id);
+static void createMessage(char **message, int id, int unit, int state, int all, int learn) {
+	int x = snprintf((*message), 255, "{\"id\":%d,", id);
 	if(all == 1) {
-		x += snprintf(&message[x], 255-x, "\"all\":1,");
+		x += snprintf(&(*message)[x], 255-x, "\"all\":1,");
 	} else {
-		x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
+		x += snprintf(&(*message)[x], 255-x, "\"unit\":%d,", unit);
 	}
 
 	if(state == 1) {
-		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"on\"");
 	} else {
-		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"off\"");
 	}
-	x += snprintf(&message[x], 255-x, "}");
+	x += snprintf(&(*message)[x], 255-x, "}");
 
 	if(learn == 1) {
 		eurodomest_switch->txrpt = LEARN_REPEATS;
@@ -93,7 +93,7 @@ static void createMessage(char *message, int id, int unit, int state, int all, i
 	}
 }
 
-static void parseCode(char *message) {
+static void parseCode(char **message) {
 	int binary[BINARY_LENGTH], x = 0, i = 0;
 
 	for(x = 0; x < eurodomest_switch->rawlen - 2; x += 2) {
@@ -264,7 +264,7 @@ static void createFooter(void) {
 	eurodomest_switch->raw[49] = AVG_LONG_PULSE_LENGTH;
 }
 
-static int createCode(struct JsonNode *code, char *message) {
+static int createCode(struct JsonNode *code, char **message) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;

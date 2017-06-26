@@ -37,18 +37,18 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(char *message, int id, int state) {
-	int x = snprintf(message, 255, "{\"id\":%d,", id);
+static void createMessage(char **message, int id, int state) {
+	int x = snprintf((*message), 255, "{\"id\":%d,", id);
 
 	if(state == 1) {
-		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"on\"");
 	} else {
-		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"off\"");
 	}
-	x += snprintf(&message[x], 255-x, "}");
+	x += snprintf(&(*message)[x], 255-x, "}");
 }
 
-static void parseCode(char *message) {
+static void parseCode(char **message) {
 	int i = 0, binary[RAW_LENGTH/4];
 
 	if(ehome->rawlen>RAW_LENGTH) {
@@ -134,7 +134,7 @@ static void createFooter(void) {
 	ehome->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code, char *message) {
+static int createCode(struct JsonNode *code, char **message) {
 	int id = -1;
 	int state = -1;
 	double itmp = 0;

@@ -18,7 +18,6 @@
 	#include <regex.h>
 	#include <sys/ioctl.h>
 	#include <dlfcn.h>
-	#include <libgen.h>
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
@@ -27,6 +26,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <math.h>
+#include <wiringx.h>
 
 #include "../hardware/hardware.h"
 #include "../protocols/protocol.h"
@@ -36,8 +36,6 @@
 #include "../core/log.h"
 #include "../events/events.h"
 #include "../events/action.h"
-#include "../../wiringx/wiringX.h"
-#include "../../wiringx/platform/platform.h"
 #include "storage.h"
 
 #include "json.h"
@@ -135,9 +133,9 @@ void *config_values_update(int reason, void *param) {
 			if(strlen(data->uuid) > 0) {
 				uuid = data->uuid;
 			}
-			if(strlen(data->settings) > 0) {
-				settings = data->settings;
-			}
+			// if(strlen(data->settings) > 0) {
+				// settings = data->settings;
+			// }
 			origin = data->origin;
 		} break;
 		default: {
@@ -1496,29 +1494,13 @@ int settings_validate_settings(struct JsonNode *jsettings, int i) {
 				OUT_OF_MEMORY
 			}
 
-#ifdef _WIN32
-			char drive[255];
-			char directory[255];
-			char filebase[255];
-			char extension[255];
 
-			if(_splitpath_s(cpy, drive, 255, directory, 255,  filebase, 255, extension, 255) != 0) {
-				logprintf(LOG_ERR, "could not open logfile %s", log);
-				return -1;
-			}
-			dir = directory;
-#else
-			/*
-			 * FIXME: Replace dirname with custom threadsafe implementation
-			 */
-			atomiclock();
-			if((dir = dirname(cpy)) == NULL) {
+			if((dir = _dirname(cpy)) == NULL) {
 				logprintf(LOG_ERR, "could not open logfile %s", log);
 				atomicunlock();
 				return -1;
 			}
-			atomicunlock();
-#endif
+
 			if(path_exists(dir) != EXIT_SUCCESS) {
 				if(i > 0) {
 					logprintf(LOG_ERR, "config setting #%d \"%s\" must point to an existing folder", i, jsettings->key);
@@ -1723,6 +1705,18 @@ int settings_validate_settings(struct JsonNode *jsettings, int i) {
 		} else if(jsettings->string_ == NULL) {
 			if(i > 0) {
 				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a password string", i, jsettings->key);
+			}
+			return -1;
+		}
+	} else if(strcmp(jsettings->key, "smtp-ssl") == 0) {
+		if(jsettings->tag != JSON_NUMBER) {
+			if(i > 0) {
+				logprintf(LOG_ERR, "config setting #%d \"%s\" must be either 0 or 1", i, jsettings->key);
+			}
+			return -1;
+		} else if(jsettings->number_ < 0 || jsettings->number_ > 1) {
+			if(i > 0) {
+				logprintf(LOG_ERR, "config setting #%d \"%s\" must be either 0 or 1", i, jsettings->key);
 			}
 			return -1;
 		}

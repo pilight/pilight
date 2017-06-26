@@ -16,6 +16,7 @@
 #include <dirent.h>
 #include <assert.h>
 #include <sys/utsname.h>
+#include <wiringx.h>
 
 #include "../libs/pilight/core/mem.h"
 #include "../libs/pilight/core/common.h"
@@ -24,7 +25,6 @@
 #include "../libs/pilight/protocols/GPIO/lm75.h"
 #include "../libs/pilight/protocols/GPIO/lm76.h"
 #include "../libs/pilight/protocols/GPIO/bmp180.h"
-#include "../libs/wiringx/wiringX.h"
 
 #include "alltests.h"
 

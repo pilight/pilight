@@ -37,7 +37,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void parseCode(char *message) {
+static void parseCode(char **message) {
 	int binary[RAW_LENGTH/2];
 	int id = 0;
 	int x = 0, i = 0;
@@ -60,9 +60,9 @@ static void parseCode(char *message) {
 	id = binToDec(binary, 0, 9);
 	id = (~id) & 1023;
 
-	x = snprintf(message, 255, "{\"id\":%d,", id);
-	x += snprintf(&message[x], 255-x, "\"state\":\"alarm\"");
-	x += snprintf(&message[x], 255-x, "}");
+	x = snprintf((*message), 255, "{\"id\":%d,", id);
+	x += snprintf(&(*message)[x], 255-x, "\"state\":\"alarm\"");
+	x += snprintf(&(*message)[x], 255-x, "}");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)

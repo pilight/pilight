@@ -47,7 +47,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void parseCode(char *message) {
+static void parseCode(char **message) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
 	if(arctech_dusk->rawlen>RAW_LENGTH) {
@@ -68,19 +68,19 @@ static void parseCode(char *message) {
 	int all = binary[26];
 	int id = binToDecRev(binary, 0, 25);
 
-	x = snprintf(message, 255, "{\"id\":%d,", id);
+	x = snprintf((*message), 255, "{\"id\":%d,", id);
 	if(all == 1) {
-		x += snprintf(&message[x], 255-x, "\"all\":1,");
+		x += snprintf(&(*message)[x], 255-x, "\"all\":1,");
 	} else {
-		x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
+		x += snprintf(&(*message)[x], 255-x, "\"unit\":%d,", unit);
 	}
 
 	if(state == 1) {
-		x += snprintf(&message[x], 255-x, "\"state\":\"dusk\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"dusk\"");
 	} else {
-		x += snprintf(&message[x], 255-x, "\"state\":\"dawn\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"dawn\"");
 	}
-	x += snprintf(&message[x], 255-x, "}");
+	x += snprintf(&(*message)[x], 255-x, "}");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)

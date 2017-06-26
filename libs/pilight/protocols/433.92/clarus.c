@@ -37,19 +37,19 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(char *message, const char *id, int unit, int state) {
-	int x = snprintf(message, 255, "{\"id\":\"%s\",", id);
-	x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
+static void createMessage(char **message, const char *id, int unit, int state) {
+	int x = snprintf((*message), 255, "{\"id\":\"%s\",", id);
+	x += snprintf(&(*message)[x], 255-x, "\"unit\":%d,", unit);
 
 	if(state == 2) {
-		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"on\"");
 	} else {
-		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"off\"");
 	}
-	x += snprintf(&message[x], 255-x, "}");
+	x += snprintf(&(*message)[x], 255-x, "}");
 }
 
-static void parseCode(char *message) {
+static void parseCode(char **message) {
 	int x = 0, z = 65, binary[RAW_LENGTH/4];
 	char id[3];
 
@@ -168,7 +168,7 @@ static void createFooter(void) {
 	clarus_switch->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code, char *message) {
+static int createCode(struct JsonNode *code, char **message) {
 	const char *id = NULL;
 	int unit = -1;
 	int state = -1;

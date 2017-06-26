@@ -10,12 +10,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <mbedtls/sha256.h>
 
 #include "../libs/pilight/core/log.h"
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/network.h"
-#include "../libs/mbedtls/mbedtls/sha256.h"
 #include "../libs/libuv/uv.h"
 
 #include "alltests.h"
@@ -36,6 +36,7 @@ CuSuite *suite_options(void);
 CuSuite *suite_eventpool(void);
 CuSuite *suite_ssdp(void);
 CuSuite *suite_ntp(void);
+CuSuite *suite_arp(void);
 CuSuite *suite_http(void);
 CuSuite *suite_ping(void);
 CuSuite *suite_mail(void);
@@ -82,6 +83,16 @@ int nr = 0;
 	// printf("(%s #%d) %s\n", file, line, buffer);
 // }
 
+int suiteFailed(void) {
+	int i = 0;
+	for(i=0;i<suite->count;i++) {
+		if(suite->list[i]->failed == 1) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 int RunAllTests(void) {
 	int i = 0;
 	output = CuStringNew();
@@ -122,12 +133,13 @@ int RunAllTests(void) {
 	suites[nr++] = suite_eventpool();
 	suites[nr++] = suite_log();
 	suites[nr++] = suite_ssdp();
-	suites[nr++] = suite_ping();
+	suites[nr++] = suite_ping(); // Check
 	suites[nr++] = suite_ntp();
+	suites[nr++] = suite_arp();
 	suites[nr++] = suite_http();
 	suites[nr++] = suite_mail();
-	suites[nr++] = suite_webserver();
-	suites[nr++] = suite_socket();
+	suites[nr++] = suite_webserver(); // Websocket
+	suites[nr++] = suite_socket(); // Check
 	suites[nr++] = suite_protocols_433();
 	suites[nr++] = suite_protocols_api();
 #ifndef _WIN32

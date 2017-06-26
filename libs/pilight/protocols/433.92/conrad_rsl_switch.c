@@ -51,19 +51,19 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(char *message, int id, int unit, int state, int learn) {
+static void createMessage(char **message, int id, int unit, int state, int learn) {
 	int x = 0;
 
 	if(id == 4) {
-		x = snprintf(message, 255, "{\"all\":1,");
+		x = snprintf((*message), 255, "{\"all\":1,");
 	} else {
-		x = snprintf(message, 255-x, "\"id\":%d,", id+1);
+		x = snprintf((*message), 255-x, "\"id\":%d,", id+1);
 	}
-	x += snprintf(&message[x], 255, "\"unit\":%d,", unit+1);
+	x += snprintf(&(*message)[x], 255, "\"unit\":%d,", unit+1);
 	if(state == 1) {
-		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"on\"");
 	} else {
-		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"off\"");
 	}
 
 	if(learn == 1) {
@@ -72,11 +72,11 @@ static void createMessage(char *message, int id, int unit, int state, int learn)
 		conrad_rsl_switch->txrpt = NORMAL_REPEATS;
 	}
 
-	x += snprintf(&message[x], 255-x, "}");
+	x += snprintf(&(*message)[x], 255-x, "}");
 
 }
 
-static void parseCode(char *message) {
+static void parseCode(char **message) {
 	int x = 0, binary[RAW_LENGTH/2];
 	int id = 0, unit = 0, state = 0;
 
@@ -181,7 +181,7 @@ static void createFooter(void) {
 	conrad_rsl_switch->raw[65]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code, char *message) {
+static int createCode(struct JsonNode *code, char **message) {
 	int id = -1;
 	int state = -1;
 	int unit = -1;

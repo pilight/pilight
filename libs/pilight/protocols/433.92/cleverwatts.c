@@ -37,23 +37,23 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(char *message, int id, int unit, int state, int all) {
-	int x = snprintf(message, 255, "{\"id\":%d,", id);
+static void createMessage(char **message, int id, int unit, int state, int all) {
+	int x = snprintf((*message), 255, "{\"id\":%d,", id);
 	if(all == 1) {
-		x += snprintf(&message[x], 255-x, "\"all\":1,");
+		x += snprintf(&(*message)[x], 255-x, "\"all\":1,");
 	} else {
-		x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
+		x += snprintf(&(*message)[x], 255-x, "\"unit\":%d,", unit);
 	}
 
 	if(state == 0) {
-		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"on\"");
 	} else {
-		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"off\"");
 	}
-	x += snprintf(&message[x], 255-x, "}");
+	x += snprintf(&(*message)[x], 255-x, "}");
 }
 
-static void parseCode(char *message) {
+static void parseCode(char **message) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
 	int id = 0, state = 0, unit = 0, all = 0;
 
@@ -145,7 +145,7 @@ static void createFooter(void) {
 	cleverwatts->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code, char *message) {
+static int createCode(struct JsonNode *code, char **message) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;

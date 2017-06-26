@@ -28,9 +28,9 @@
 #endif
 #include <sys/stat.h>
 #include <ctype.h>
+#include <mbedtls/sha256.h>
 
 #include "libs/libuv/uv.h"
-#include "libs/mbedtls/mbedtls/sha256.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/common.h"
 #include "libs/pilight/core/options.h"

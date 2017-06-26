@@ -10,7 +10,7 @@
 #define _WEBSERVER_H_
 
 #ifdef WEBSERVER_HTTPS
-#include "../../mbedtls/mbedtls/ssl.h"
+#include <mbedtls/ssl.h>
 #endif
 
 #include "../libs/libuv/uv.h"

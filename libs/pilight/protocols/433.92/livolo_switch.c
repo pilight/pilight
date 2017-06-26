@@ -108,23 +108,18 @@ static int createKeycode(int key) {
 	}
 }
 
-static void createMessage(char *message, int id, int key, int off) {
-	JsonNode *json = json_mkobject();
-
-	json_append_member(json, "id", json_mknumber(id, 0));
+static void createMessage(char **message, int id, int key, int off) {
+	int x = snprintf((*message), 255, "{\"id\":%d,", id);
 
 	if(off == 1) {
-		json_append_member(json, "off", json_mknumber(off, 0));
+		x += snprintf(&(*message)[x], 255-x, "\"off\":\"%d\"", off);
 	} else {
-		json_append_member(json, "key", json_mknumber(key, 0));
+		x += snprintf(&(*message)[x], 255-x, "\"key\":\"%d\"", key);
 	}
-	char *tmp = json_encode(json);
-	strncpy(message, tmp, 255);
-	json_free(tmp);
-	json_delete(json);
+	x += snprintf(&(*message)[x], 255-x, "}");
 }
 
-static int createCode(struct JsonNode *code, char *message) {
+static int createCode(struct JsonNode *code, char **message) {
 	int id = -1;
 	int key = -1;
 	int off = 0;

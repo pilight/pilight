@@ -77,7 +77,8 @@ static void *received(int reason, void *param) {
 					steps = 1;
 					CuAssertPtrNotNull(gtc, openweathermap->createCode);
 					struct JsonNode *code = json_decode("{\"location\":\"amsterdam\",\"country\":\"nl\",\"update\":1}");
-					openweathermap->createCode(code, message);
+					char *p = message;
+					openweathermap->createCode(code, &p);
 					json_delete(code);
 					printf("[ %-48s ]\n", "- waiting for openweathermap notification");
 					fflush(stdout);

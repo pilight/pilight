@@ -87,7 +87,6 @@ static void test_isrunning(CuTest *tc) {
 
 	int n = 0;
 	n = isrunning("pilight-unittest");
-	printf("%d\n", n);
 	CuAssertTrue(tc, n > 0);
 
 	n = isrunning("foo");

@@ -37,7 +37,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void parseCode(char *message) {
+static void parseCode(char **message) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
 	if(sc2262->rawlen>RAW_LENGTH) {
@@ -56,15 +56,15 @@ static void parseCode(char *message) {
 	int systemcode = binToDec(binary, 0, 4);
 	int unitcode = binToDec(binary, 5, 9);
 	int state = binary[11];
-	x = snprintf(message, 255, "{\"systemcode\":%d,", systemcode);
-	x += snprintf(&message[x], 255-x, "\"unitcode\":%d,", unitcode);
+	x = snprintf((*message), 255, "{\"systemcode\":%d,", systemcode);
+	x += snprintf(&(*message)[x], 255-x, "\"unitcode\":%d,", unitcode);
 
 	if(state == 0) {
-		x += snprintf(&message[x], 255-x, "\"state\":\"opened\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"opened\"");
 	} else {
-		x += snprintf(&message[x], 255-x, "\"state\":\"closed\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"closed\"");
 	}
-	x += snprintf(&message[x], 255-x, "}");
+	x += snprintf(&(*message)[x], 255-x, "}");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)

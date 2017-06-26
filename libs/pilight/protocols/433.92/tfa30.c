@@ -63,7 +63,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void parseCode(char *message) {
+static void parseCode(char **message) {
 	int i = 0, x = 0, type = 0, id = 0, binary[MAX_RAW_LENGTH/2];
 	double temp_offset = 0.0, humi_offset = 0.0;
 	double humidity = 0.0, temperature = 0.0;
@@ -144,7 +144,7 @@ static void parseCode(char *message) {
 			temperature = (double)(n5-5)*10 + n6 + n7/10.0;
 			temperature += temp_offset;
 
-			snprintf(message, 255,
+			snprintf((*message), 255,
 				"{\"id\":%d,\"temperature\":%.1f}",
 				id, temperature
 			);
@@ -153,7 +153,7 @@ static void parseCode(char *message) {
 			humidity = (double)(n5)*10 + n6;
 			humidity += humi_offset;
 
-			snprintf(message, 255,
+			snprintf((*message), 255,
 				"{\"id\":%d,\"humidity\":%.1f}",
 				id, humidity
 			);

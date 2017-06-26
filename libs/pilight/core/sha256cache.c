@@ -11,13 +11,13 @@
 #include <string.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <mbedtls/sha256.h>
 
 #include "sha256cache.h"
 #include "common.h"
 #include "mem.h"
 #include "log.h"
 #include "gc.h"
-#include "../../mbedtls/mbedtls/sha256.h"
 
 int sha256cache_gc(void) {
 	struct sha256cache_t *tmp = sha256cache;

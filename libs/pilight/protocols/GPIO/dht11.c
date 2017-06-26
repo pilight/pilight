@@ -36,7 +36,7 @@
 #define MAXTIMINGS 100
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-#include "../../../wiringx//wiringX.h"
+#include <wiringx.h>
 
 typedef struct data_t {
 	char *name;

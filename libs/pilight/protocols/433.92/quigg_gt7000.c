@@ -55,20 +55,20 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(char *message, int id, int state, int unit, int all, int learn) {
-	int x = snprintf(message, 255, "{\"id\":%d,", id);
+static void createMessage(char **message, int id, int state, int unit, int all, int learn) {
+	int x = snprintf((*message), 255, "{\"id\":%d,", id);
 	if(all == 1) {
-		x += snprintf(&message[x], 255-x, "\"all\":1,");
+		x += snprintf(&(*message)[x], 255-x, "\"all\":1,");
 	} else {
-		x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
+		x += snprintf(&(*message)[x], 255-x, "\"unit\":%d,", unit);
 	}
 
 	if(state == 1) {
-		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"on\"");
 	} else {
-		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"off\"");
 	}
-	x += snprintf(&message[x], 255-x, "}");
+	x += snprintf(&(*message)[x], 255-x, "}");
 
 	if(learn == 1) {
 		quigg_gt7000->txrpt = LEARN_REPEATS;
@@ -77,7 +77,7 @@ static void createMessage(char *message, int id, int state, int unit, int all, i
 	}
 }
 
-static void parseCode(char *message) {
+static void parseCode(char **message) {
 	int binary[RAW_LENGTH/2], x = 0, dec_unit[4] = {0, 3, 1, 2};
 	int iParity=1, iParityData=-1; // init for even parity
 
@@ -202,7 +202,7 @@ static void createParity(void) {
 	}
 }
 
-static int createCode(struct JsonNode *code, char *message) {
+static int createCode(struct JsonNode *code, char **message) {
 	double itmp = -1;
 	int unit = -1, id = -1, learn = -1, state = -1, all = 0;
 

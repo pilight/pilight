@@ -20,7 +20,7 @@
 #include "../../core/gc.h"
 #include "generic_switch.h"
 
-static int createCode(struct JsonNode *code, char *message) {
+static int createCode(struct JsonNode *code, char **message) {
 	int id = -1;
 	int state = -1;
 	double itmp = 0;
@@ -36,14 +36,14 @@ static int createCode(struct JsonNode *code, char *message) {
 		logprintf(LOG_ERR, "generic_switch: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
-		int x = snprintf(message, 255, "{");
-		x += snprintf(&message[x], 255-x, "\"id\":%d,", id);
+		int x = snprintf((*message), 255, "{");
+		x += snprintf(&(*message)[x], 255-x, "\"id\":%d,", id);
 		if(state == 1) {
-			x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
+			x += snprintf(&(*message)[x], 255-x, "\"state\":\"on\"");
 		}	else {
-			x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
+			x += snprintf(&(*message)[x], 255-x, "\"state\":\"off\"");
 		}
-		x += snprintf(&message[x], 255-x, "}");
+		x += snprintf(&(*message)[x], 255-x, "}");
 	}
 
 	return EXIT_SUCCESS;

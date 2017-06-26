@@ -31,7 +31,7 @@
 #include "../../core/gc.h"
 #include "../../core/json.h"
 #ifndef _WIN32
-	#include "../../../wiringx//wiringX.h"
+	#include <wiringx.h>
 #endif
 #include "../protocol.h"
 #include "lm76.h"
@@ -151,10 +151,6 @@ static void *addDevice(int reason, void *param) {
 
 	json_find_number(jdevice, "temperature-offset", &node->temp_offset);
 
-	/*
-	 * FIXME
-	 */
-	// wiringXSetup(NULL, NULL);
 	node->fd = wiringXI2CSetup(node->path, node->id);
 	if(node->fd <= 0) {
 		logprintf(LOG_ERR, "lm76: error connecting to i2c bus: %s", node->path);

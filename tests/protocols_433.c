@@ -25,14 +25,14 @@
 
 #include "alltests.h"
 
-static const struct raw_t {
+const struct raw_t {
 	char *input;
 	char *message;
 	char *output;
 	int validate;
 } raw_t;
 
-static const struct test_t {
+const struct test_t {
 	void (*init)(void);
 	struct protocol_t **protocol;
 	const struct raw_t *raw;
@@ -96,7 +96,8 @@ static void test_protocols_433(CuTest *tc) {
 			}
 
 			if(tests[x].raw[i].validate == 0) {
-				protocol->parseCode(message);
+				char *p = message;
+				protocol->parseCode(&p);
 
 				CuAssertStrEquals(tc, tests[x].raw[i].message, message);
 			}
@@ -107,13 +108,9 @@ static void test_protocols_433(CuTest *tc) {
 			 * Check if input paramters are parsed to proper pulses
 			 */
 			if(protocol->createCode != NULL && strlen(tests[x].raw[i].output) > 0) {
-				/*
-				 * FIXME:
-				 * The message should be passed as a pointer, because now it won't
-				 * be filled at the moment. This is an issue in all protocols.
-				 */
 				struct JsonNode *json = json_decode(tests[x].raw[i].message);
-				protocol->createCode(json, message);
+				char *p = message;
+				protocol->createCode(json, &p);
 				json_delete(json);
 
 				int n = explode(tests[x].raw[i].output, " ", &array);

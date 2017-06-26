@@ -93,15 +93,17 @@ static void test_host2ip(CuTest *tc) {
 	char ip[255], *p = ip;
 	int r = 0;
 
-	/*
-	 * FIXME
-	 */
 	r = host2ip("localhost", p);
 	CuAssertIntEquals(tc, 0, r);
 
 	CuAssertTrue(tc, (strcmp(p, "127.0.1.1") == 0 || 
 				 strcmp(p, "127.0.0.1") == 0 ||
 				 strcmp(p, "0.0.0.0") == 0));
+
+	r = host2ip("www.pilight.org", p);
+	CuAssertIntEquals(tc, 0, r);
+
+	CuAssertTrue(tc, strcmp(p, "94.124.143.207") == 0);
 
 	CuAssertIntEquals(tc, 0, xfree());
 }

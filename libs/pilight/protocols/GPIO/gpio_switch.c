@@ -27,7 +27,7 @@
 #include "gpio_switch.h"
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-#include "../../../wiringx/wiringX.h"
+#include <wiringx.h>
 
 typedef struct data_t {
 	unsigned int id;

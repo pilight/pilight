@@ -20,7 +20,7 @@
 #include "../../core/gc.h"
 #include "generic_label.h"
 
-static int createCode(struct JsonNode *code, char *message) {
+static int createCode(struct JsonNode *code, char **message) {
 	int id = -1;
 	char *label = NULL;
 	char *color = "black";
@@ -36,11 +36,11 @@ static int createCode(struct JsonNode *code, char *message) {
 		logprintf(LOG_ERR, "generic_label: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
-		int x = snprintf(message, 255, "{");
-		x += snprintf(&message[x], 255-x, "\"id\":%d,", id);
-		x += snprintf(&message[x], 255-x, "\"label\":\"%s\",", label);
-		x += snprintf(&message[x], 255-x, "\"color\":\"%s\"", color);
-		x += snprintf(&message[x], 255-x, "}");
+		int x = snprintf((*message), 255, "{");
+		x += snprintf(&(*message)[x], 255-x, "\"id\":%d,", id);
+		x += snprintf(&(*message)[x], 255-x, "\"label\":\"%s\",", label);
+		x += snprintf(&(*message)[x], 255-x, "\"color\":\"%s\"", color);
+		x += snprintf(&(*message)[x], 255-x, "}");
 	}
 
 	return EXIT_SUCCESS;

@@ -35,11 +35,11 @@
 	#include <arpa/inet.h>
 	#include <unistd.h>
 #endif
+#include <mbedtls/ssl.h>
 
 #include "ssl.h"
 #include "eventpool.h"
 #include "../../libuv/uv.h"
-#include "../../mbedtls/mbedtls/ssl.h"
 
 #include "network.h"
 #include "log.h"

@@ -62,18 +62,19 @@
 #include "webserver.h"
 #include "ssdp.h"
 
-#include "../../mbedtls/mbedtls/sha1.h"
+#include <mbedtls/sha1.h>
 
 #ifdef WEBSERVER_HTTPS
+#include <mbedtls/error.h>
+#include <mbedtls/pk.h>
+#include <mbedtls/net_sockets.h>
+#include <mbedtls/x509_crt.h>
+#include <mbedtls/ctr_drbg.h>
+#include <mbedtls/entropy.h>
+#include <mbedtls/ssl.h>
+#include <mbedtls/ssl_cache.h>
+
 #include "ssl.h"
-#include "../../mbedtls/mbedtls/error.h"
-#include "../../mbedtls/mbedtls/pk.h"
-#include "../../mbedtls/mbedtls/net.h"
-#include "../../mbedtls/mbedtls/x509_crt.h"
-#include "../../mbedtls/mbedtls/ctr_drbg.h"
-#include "../../mbedtls/mbedtls/entropy.h"
-#include "../../mbedtls/mbedtls/ssl.h"
-#include "../../mbedtls/mbedtls/ssl_cache.h"
 
 static int https_port = WEBSERVER_HTTPS_PORT;
 #endif
@@ -676,8 +677,13 @@ static int file_read_cb(int fd, uv_poll_t *req) {
 	}
 
 	int bytes = read(fd, buffer, WEBSERVER_CHUNK_SIZE);
+
 	if(bytes > 0) {
 		send_chunked_data(req, &buffer, bytes);
+		if(bytes < WEBSERVER_CHUNK_SIZE) {
+			iobuf_append(&custom_poll_data->send_iobuf, "0\r\n\r\n", 5);
+			uv_custom_close(req);
+		}
 		uv_custom_write(req);
 
 		return 0;
@@ -946,6 +952,7 @@ static void webserver_process(uv_async_t *handle) {
 #else
 	pthread_mutex_lock(&webserver_lock);
 #endif
+
 	struct webserver_clients_t *clients = webserver_clients;
 	struct broadcast_list_t *tmp = NULL;
 	while(broadcast_list) {
@@ -1440,8 +1447,6 @@ static void poll_close_cb(uv_poll_t *req) {
 
 	webserver_client_remove(req);
 
-	uv_poll_stop(req);
-
 	if(!uv_is_closing((uv_handle_t *)req)) {
 		uv_close((uv_handle_t *)req, close_cb);
 	}
@@ -1589,7 +1594,6 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		OUT_OF_MEMORY
 	}
 	uv_custom_poll_init(&custom_poll_data, poll_req, NULL);
-
 	custom_poll_data->read_cb = client_read_cb;
 	custom_poll_data->write_cb = client_write_cb;
 	custom_poll_data->close_cb = poll_close_cb;
@@ -1755,7 +1759,6 @@ static int webserver_init(int port, int is_ssl) {
 		}
 		poll_req = poll_http_req;
 	}
-
 	uv_custom_poll_init(&custom_poll_data, poll_req, NULL);
 	custom_poll_data->is_ssl = is_ssl;
 	custom_poll_data->is_server = 1;

@@ -194,7 +194,7 @@ int supercodes[2*NRSUPERCODES] = {
 
 char bincode[BIN_LENGTH+1];
 
-static void createMessage(char *message, int id, int unit, int state, int seq, int learn) {
+static void createMessage(char **message, int id, int unit, int state, int seq, int learn) {
 	int i = 0;
 
 	for(i=0;i<BIN_LENGTH;i++) {
@@ -203,17 +203,17 @@ static void createMessage(char *message, int id, int unit, int state, int seq, i
 
 	bincode[BIN_LENGTH] = '\0'; /* end of string */
 
-	int x = snprintf(message, 255, "{\"id\":%d,", id);
-	x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
-	x += snprintf(&message[x], 255-x, "\"seq\":%d,", seq);
+	int x = snprintf((*message), 255, "{\"id\":%d,", id);
+	x += snprintf(&(*message)[x], 255-x, "\"unit\":%d,", unit);
+	x += snprintf(&(*message)[x], 255-x, "\"seq\":%d,", seq);
 
 	if(state == 1) {
-		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"on\"");
 	} else {
-		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"off\"");
 	}
-	x += snprintf(&message[x], 255-x, "\"code\":\"%s\"", bincode);
-	x += snprintf(&message[x], 255-x, "}");
+	x += snprintf(&(*message)[x], 255-x, "\"code\":\"%s\"", bincode);
+	x += snprintf(&(*message)[x], 255-x, "}");
 
 }
 
@@ -306,7 +306,7 @@ static void fillSuperBinCode(int state, int codeseq) {
 }
 
 
-static int createCode(struct JsonNode *code, char *message) { // function to create the raw code
+static int createCode(struct JsonNode *code, char **message) { // function to create the raw code
 	int id = -1;
 	int unit = -1;
 	int all = 0;
