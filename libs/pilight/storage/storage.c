@@ -114,7 +114,7 @@ static void *devices_update_cache(int reason, void *param) {
 }
 
 void *config_values_update(int reason, void *param) {
-	char *protoname = NULL, *origin = NULL, *message = NULL, *uuid = NULL, *settings = NULL;
+	char *protoname = NULL, *origin = NULL, *message = NULL, *uuid = NULL/*, *settings = NULL*/;
 
 	switch(reason) {
 		case REASON_CODE_RECEIVED: {
@@ -133,9 +133,9 @@ void *config_values_update(int reason, void *param) {
 			if(strlen(data->uuid) > 0) {
 				uuid = data->uuid;
 			}
-			// if(strlen(data->settings) > 0) {
-				// settings = data->settings;
-			// }
+			/*if(strlen(data->settings) > 0) {
+				settings = data->settings;
+			}*/
 			origin = data->origin;
 		} break;
 		default: {
@@ -148,7 +148,7 @@ void *config_values_update(int reason, void *param) {
 	}
 
 	struct JsonNode *jmessage = json_decode(message);
-	struct JsonNode *jsettings = NULL;
+	//struct JsonNode *jsettings = NULL;
 	struct JsonNode *jdevices = json_first_child(jdevices_cache);
 	struct JsonNode *jchilds = NULL;
 	struct JsonNode *jprotocols = NULL;
@@ -161,10 +161,10 @@ void *config_values_update(int reason, void *param) {
 		json_delete(jmessage);
 		jmessage = jclone;
 	}
-	
-	if(settings != NULL) {
+
+	/*if(settings != NULL) {
 		jsettings = json_decode(settings);
-	}
+	}*/
 
 	struct protocol_t *protocol = NULL;
 	struct options_t *opt = NULL;
@@ -177,18 +177,18 @@ void *config_values_update(int reason, void *param) {
 	if(strlen(protoname) == 0) {
 		logprintf(LOG_ERR, "config values update message misses a protocol field");
 		json_delete(jmessage);
-		if(jsettings != NULL) {
+		/*if(jsettings != NULL) {
 			json_delete(jsettings);
-		}
+		}*/
 		return NULL;
 	}
 
 	if(uuid == NULL || strlen(uuid) == 0) {
 		logprintf(LOG_ERR, "config values update message misses a uuid field");
 		json_delete(jmessage);
-		if(jsettings != NULL) {
+		/*if(jsettings != NULL) {
 			json_delete(jsettings);
-		}
+		}*/
 		return NULL;
 	}
 
@@ -372,7 +372,7 @@ void *config_values_update(int reason, void *param) {
 							opt = opt->next;
 						}
 						if(protocol->checkValues != NULL) {
-							struct JsonNode *jchilds = json_first_child(jsettings);
+							/*struct JsonNode *jchilds = json_first_child(jsettings);
 							while(jchilds) {
 								if(jchilds->tag == JSON_NUMBER) {
 									json_append_member(jcode, jchilds->key, json_mknumber(jchilds->number_, jchilds->decimals_));
@@ -380,7 +380,7 @@ void *config_values_update(int reason, void *param) {
 									json_append_member(jcode, jchilds->key, json_mkstring(jchilds->string_));
 								}
 								jchilds = jchilds->next;
-							}
+							}*/
 							if(protocol->checkValues(jcode) != 0) {
 								update = 0;
 							}
@@ -410,9 +410,9 @@ void *config_values_update(int reason, void *param) {
 		FREE(data);
 	}
 	json_delete(jmessage);
-	if(jsettings != NULL) {
+	/*if(jsettings != NULL) {
 		json_delete(jsettings);
-	}
+	}*/
 
 	return NULL;
 }
