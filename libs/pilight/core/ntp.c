@@ -182,13 +182,13 @@ void *ntpthread(void *param) {
 					setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));
 #endif
 					msg.li_vn_mode=227;
-					if(sendto(sockfd, (char *)&msg, 48, 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < -1) {
+					if(sendto(sockfd, (char *)&msg, 48, 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
 						logprintf(LOG_NOTICE, "error in ntp sending");
 					} else {
-						if(recvfrom(sockfd, (void *)&msg, 48, 0, NULL, NULL) < -1) {
+						if(recvfrom(sockfd, (void *)&msg, 48, 0, NULL, NULL) < 0) {
 							logprintf(LOG_NOTICE, "error in ntp receiving");
 						} else {
-							if(msg.refid > 0) {
+							if(msg.refid != 0) {
 								(msg.rec).Ul_i.Xl_ui = ntohl((msg.rec).Ul_i.Xl_ui);
 								(msg.rec).Ul_f.Xl_f = (int)ntohl((unsigned int)(msg.rec).Ul_f.Xl_f);
 
