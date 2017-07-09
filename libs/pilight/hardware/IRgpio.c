@@ -11,6 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <wiringx.h>
 
 #include "../core/pilight.h"
 #include "../core/common.h"
@@ -18,7 +19,6 @@
 #include "../core/log.h"
 #include "../core/json.h"
 #include "../hardware/hardware.h"
-#include "../../wiringx/wiringX.h"
 #include "IRgpio.h"
 
 #ifndef __useconds_t

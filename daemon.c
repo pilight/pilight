@@ -63,7 +63,7 @@
 
 #ifdef WEBSERVER
 	#ifdef WEBSERVER_HTTPS
-		#include "libs/mbedtls/mbedtls/md5.h"
+		#include <mbedtls/md5.h>
 	#endif
 	#include "libs/pilight/core/webserver.h"
 #endif
@@ -71,8 +71,7 @@
 #include "libs/pilight/hardware/hardware.h"
 #include "libs/pilight/protocols/protocol.h"
 
-#include "libs/wiringx/wiringX.h"
-#include "libs/wiringx/platform/platform.h"
+#include <wiringx.h>
 
 /*
  * Daemon unit test
