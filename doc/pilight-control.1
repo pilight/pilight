@@ -1,0 +1,67 @@
+.TH pilight-control 1 "10 July 2017" "7.0-dev" "pilight 7.0-dev"
+.SH NAME
+pilight-control \- Control pilight devices
+.SH SYNOPSIS
+.B pilight-control \fI--device DEVICE\fR \fI--state STATE\fR
+.br
+.B pilight-control [\fIOPTION\fR]... \fI--device DEVICE\fR \fI--values VALUES\fR
+.br
+.B pilight-control [\fI--server SERVER\fR] [\fI --port PORT\fR] [\fIOPTION\fR]... \fI--device DEVICE\fR
+.SH DESCRIPTION
+.B pilight-control
+is a tool to control a device configured in a pilight daemon configuration. It supports switching the state and/or modifying other values (such as dimlevel, temperature, or humidity) of the device.
+.PP
+.SH OPTIONS
+Mandatory arguments to long options are mandatory for short options too.
+.TP
+\fB\-H\fR, \fB\-\-help\fR
+Print allowed options and exit
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version information and exit
+.TP
+\fB\-S\fR, \fB\-\-server\fR=\fIx.x.x.x\fR
+Connect to a pilight daemon at this address. Requires \fB-P\fR
+.TP
+\fB\-P\fR, \fB\-\-port\fR=\fIxxxx\fR
+Connect to a pilight daemon at this port. Requires \fB-S\fR
+.TP
+\fB\-C\fR, \fB\-\-config\fR=\fIPATH_TO_CONFIG\fR
+.\" FIXME: Is this even needed in pilight-control? What is it for?
+Path to configuration file
+.TP
+\fB\-d\fR, \fB\-\-device\fR=\fIDEVICE_NAME\fR
+Name of the configured device to be controlled
+.TP
+\fB\-s\fR, \fB\-\-state\fR=\fISTATE\fR
+State to switch DEVICE to
+.TP
+\fB\-v\fR, \fB\-\-values\fR=\fIVALUES\fR
+Supply other values for DEVICE, such as \fIdimlevel=10\fR
+.SH BUGS
+Please report all bugs on GitHub <https://github.com/pilight/pilight/>.
+.SH AUTHOR
+.PP
+Curlymo <info@pilight.org>
+and contributors.
+.PP
+This man page was originally written by
+pilino1234 <pilino1234@zoho.eu>.
+.SH WWW
+https://www.pilight.org/
+.SH SEE ALSO
+.B pilight-daemon(1)
+.br
+.B pilight-debug(1)
+.br
+.B pilight-flash(1)
+.br
+.B pilight-raw(1)
+.br
+.B pilight-receive(1)
+.br
+.B pilight-send(1)
+.br
+.B pilight-sha256(1)
+.br
+.B pilight-uuid(1)

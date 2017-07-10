@@ -383,6 +383,8 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		install(FILES ${CMAKE_BINARY_DIR}/lib${PROJECT_NAME}.so DESTINATION lib/${PROJECT_NAME}/ RENAME lib${PROJECT_NAME}.so.${VERSION} COMPONENT ${PROJECT_NAME})
 		install(FILES ${CMAKE_BINARY_DIR}/lib${PROJECT_NAME}.a DESTINATION lib/${PROJECT_NAME}/ RENAME lib${PROJECT_NAME}.a COMPONENT ${PROJECT_NAME})
 		install(CODE "execute_process(COMMAND ln -s \"/usr/local/lib/${PROJECT_NAME}/lib${PROJECT_NAME}.so.${VERSION}\" \"/usr/local/lib/lib${PROJECT_NAME}.so\")")	
+		install(DIRECTORY doc/ DESTINATION /usr/share/man/man1 COMPONENT ${PROJECT_NAME})
+		install(CODE "execute_process(COMMAND mandb -q)")
 
 		if(EXISTS "/usr/local/lib/${PROJECT_NAME}/protocols")
 			install(CODE "execute_process(COMMAND find /usr/local/lib/${PROJECT_NAME}/protocols/ -type f -exec rm {} \\;)")
