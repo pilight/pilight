@@ -195,7 +195,7 @@ static char *master_server = NULL;
 static unsigned short master_port = 0;
 
 static char *configtmp = NULL;
-static int verbosity = LOG_DEBUG;
+static int verbosity = LOG_INFO;
 struct socket_callback_t socket_callback;
 
 #ifdef _WIN32
@@ -2082,7 +2082,7 @@ int start_pilight(int argc, char **argv) {
 	struct ssdp_list_t *ssdp_list = NULL;
 
 	char buffer[BUFFER_SIZE];
-	int itmp = 0, show_default = 0, show_version = 0, show_help = 0;
+	int verbosity_changed = 0, show_default = 0, show_version = 0, show_help = 0;
 #ifndef _WIN32
 	int f = 0;
 #endif
@@ -2103,10 +2103,11 @@ int start_pilight(int argc, char **argv) {
 
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'D', "nodaemon", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'F', "foreground", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
+	options_add(&options, 'D', "debug", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 256, "stacktracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 257, "threadprofiler", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 258, "debuglevel", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[01]{1}");
@@ -2145,14 +2146,20 @@ int start_pilight(int argc, char **argv) {
 			case 'D':
 				nodaemon = 1;
 				verbosity = LOG_DEBUG;
+				verbosity_changed = 1;
+			break;
+			case 'F':
+				nodaemon = 1;
 			break;
 			case 257:
 				threadprofiler = 1;
 				verbosity = LOG_ERR;
+				verbosity_changed = 1;
 				nodaemon = 1;
 			break;
 			case 256:
 				verbosity = LOG_STACK;
+				verbosity_changed = 1;
 				stacktracer = 1;
 				nodaemon = 1;
 			break;
@@ -2160,6 +2167,7 @@ int start_pilight(int argc, char **argv) {
 				pilight.debuglevel = atoi(args);
 				nodaemon = 1;
 				verbosity = LOG_DEBUG;
+				verbosity_changed = 1;
 			break;
 			default:
 				show_default = 1;
@@ -2181,7 +2189,8 @@ int start_pilight(int argc, char **argv) {
 									"\t -C --config\t%sconfig file\n"
 									"\t -S --server=x.x.x.x\t\tconnect to server address\n"
 									"\t -P --port=xxxx\t%sconnect to server port\n"
-									"\t -D --nodaemon\t%sdo not daemonize and\n"
+									"\t -F --foreground\t\tdo not daemonize\n"
+									"\t -D --debug\t%sdo not daemonize and\n"
 									"\t\t\t%sshow debug information\n"
 									"\t    --stacktracer\t\tshow internal function calls\n"
 									"\t    --threadprofiler\t\tshow per thread cpu usage\n"
@@ -2282,14 +2291,12 @@ int start_pilight(int argc, char **argv) {
 	firmware.lpf = 0;
 	firmware.hpf = 0;
 
-	log_level_set(LOG_INFO);
 	log_file_enable();
 	log_shell_disable();
 
 	memset(buffer, '\0', BUFFER_SIZE);
 
 	if(nodaemon == 1) {
-		log_level_set(verbosity);
 		log_shell_enable();
 	}
 
@@ -2328,6 +2335,19 @@ int start_pilight(int argc, char **argv) {
 	}
 
 	registerVersion();
+
+	// let verbosity level from command line take precedence over config file
+	if(verbosity_changed == 0) {
+		settings_find_number("log-level", &verbosity);
+	}
+
+	log_level_set(verbosity);
+
+	if(settings_find_string("log-file", &stmp) == 0) {
+		if(log_file_set(stmp) == EXIT_FAILURE) {
+			goto clear;
+		}
+	}
 
 #ifdef WEBSERVER
 	#ifdef WEBSERVER_HTTPS
@@ -2417,16 +2437,6 @@ int start_pilight(int argc, char **argv) {
 	close(f);
 #endif
 
-	if(settings_find_number("log-level", &itmp) == 0) {
-		log_level_set(itmp);
-	}
-
-	if(settings_find_string("log-file", &stmp) == 0) {
-		if(log_file_set(stmp) == EXIT_FAILURE) {
-			goto clear;
-		}
-	}
-
 #ifdef HASH
 	logprintf(LOG_INFO, "version %s", HASH);
 #else
@@ -2436,12 +2446,6 @@ int start_pilight(int argc, char **argv) {
 	if(nodaemon == 1 || running == 1) {
 		log_file_disable();
 		log_shell_enable();
-
-		if(nodaemon == 1) {
-			log_level_set(verbosity);
-		} else {
-			log_level_set(LOG_ERR);
-		}
 	}
 
 #ifndef _WIN32
