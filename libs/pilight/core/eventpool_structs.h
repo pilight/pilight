@@ -117,6 +117,8 @@ typedef struct reason_config_update_t {
 	char *uuid;
 } reason_config_update_t;
 
+#define reason_config_updated_t reason_config_update_t
+
 typedef struct reason_control_device_t {
 	char *dev;
 	char *state;

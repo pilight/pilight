@@ -268,7 +268,6 @@ static int run(struct rules_actions_t *obj) {
 				strcpy(mail->message, jval2->string_);
 				strcpy(mail->to, jval3->string_);
 
-
 				if(sendmail(shost, suser, spassword, sport, is_ssl, mail, callback) != 0) {
 					logprintf(LOG_ERR, "sendmail action failed to send message \"%s\"", jval2->string_);
 					return -1;

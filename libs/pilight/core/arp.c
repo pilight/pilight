@@ -48,6 +48,7 @@
 #include <string.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <poll.h>
 
 #include "mem.h"
 #include "log.h"
@@ -368,7 +369,7 @@ int arp_gc(void) {
 void arp_scan(void) {
 	char error[PCAP_ERRBUF_SIZE], *e = error;
 	char ip[17], netmask[17], min[17], max[17];
-	int count = 0, i = 0;
+	int count = 0, i = 0, x = 0, has_mac = 0;
 	uv_interface_address_t *interfaces = NULL;
 	struct in_addr in_ip, in_netmask, in_min, in_max;
 
@@ -383,6 +384,17 @@ void arp_scan(void) {
 	for(i=0;i<count;i++) {
 		if(interfaces[i].is_internal == 0 &&
 		   interfaces[i].address.address4.sin_family == AF_INET) {
+
+			has_mac = 0;
+			for(x=0;x<6;x++) {
+				if((interfaces[i].phys_addr[x] & 0xFF) != 0x00) {
+					has_mac = 1;
+					break;
+				}
+			}
+			if(has_mac == 0) {
+				continue;
+			}
 
 			if((data = REALLOC(data, sizeof(struct data_t *) * (nrdata+1))) == NULL) {
 				OUT_OF_MEMORY

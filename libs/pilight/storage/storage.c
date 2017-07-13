@@ -70,20 +70,46 @@ static struct JsonNode *jregistry_cache = NULL;
 
 static void *devices_update_cache(int reason, void *param) {
 	struct reason_config_update_t *data = param;
+	struct reason_config_updated_t *data1 = MALLOC(sizeof(struct reason_config_updated_t));
 
 	struct JsonNode *jcdev_childs = json_first_child(jdevices_cache);
 	struct JsonNode *jvalue = NULL;
 	struct device_t *dev = NULL;
 	int i = 0, x = 0;
 
+	/*
+	 * FIXME: clone reason_config_update_t
+	 */
+	if(data1 == NULL) {
+		OUT_OF_MEMORY
+	}	
+
+	data1->type = data->type;
+	data1->nrdev = data->nrdev;
+	data1->timestamp = data->timestamp;
+	if(data->uuid != NULL) {
+		data1->uuid = data->uuid;
+	}
+	strcpy(data1->origin, data->origin);
+
 	for(i=0;i<data->nrdev;i++) {
+		strcpy(data1->devices[i], data->devices[i]);
 		if(devices_select_struct(ORIGIN_CONFIG, data->devices[i], &dev) == 0) {
 			dev->timestamp = (time_t)data->timestamp;
 		}
 		while(jcdev_childs) {
 			if(strcmp(jcdev_childs->key, "timestamp") != 0 &&
 			   strcmp(jcdev_childs->key, data->devices[i]) == 0) {
+				data1->nrval = data->nrval;
 				for(x=0;x<data->nrval;x++) {
+					strcpy(data1->values[x].name, data->values[x].name);
+					data1->values[x].type = data->values[x].type;
+					if(data->values[x].type == JSON_NUMBER) {
+						data1->values[x].number_ = data->values[x].number_;
+						data1->values[x].decimals = data->values[x].decimals;
+					} else if(data->values[x].type == JSON_STRING) {
+						strcpy(data1->values[x].string_, data->values[x].string_);
+					}
 					if((jvalue = json_find_member(jcdev_childs, data->values[x].name)) != NULL) {
 						if(data->values[x].type == JSON_NUMBER) {
 							if(jvalue->tag == JSON_STRING) {
@@ -110,6 +136,7 @@ static void *devices_update_cache(int reason, void *param) {
 		}
 	}
 
+	eventpool_trigger(REASON_CONFIG_UPDATED, reason_config_update_free, data1);
 	return NULL;
 }
 

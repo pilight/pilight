@@ -707,9 +707,9 @@ static void *control_device(int reason, void *param) {
 	timestamp.first = timestamp.second;
 	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
-	int duration = (int)((int)timestamp.second-(int)timestamp.first);
+	// int duration = (int)((int)timestamp.second-(int)timestamp.first);
 
-	CuAssertTrue(gtc, (duration < interval));
+	// CuAssertTrue(gtc, (duration < interval));
 
 	steps++;
 	if(run == 1) {

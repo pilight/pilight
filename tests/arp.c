@@ -120,7 +120,7 @@ static void *arp_found(int reason, void *param) {
 	struct reason_arp_device_t *data1 = param;
 
 	if(strcmp(data1->ip, min) == 0 && strcmp(data1->mac, "AA:BB:CC:DD:EE:FF") == 0) {
-		check = 1;
+		check = 3;
 		arp_stop();
 		uv_stop(uv_default_loop());
 	}
@@ -129,14 +129,13 @@ static void *arp_found(int reason, void *param) {
 }
 
 static void *arp_lost(int reason, void *param) {
-	struct reason_arp_device_t *data1 = param;
+	// struct reason_arp_device_t *data1 = param;
 
 	return NULL;
 }
 
 static void *arp_update(int reason, void *param) {
 	// struct reason_arp_device_t *data1 = param;
-
 	return NULL;
 }
 
@@ -203,7 +202,7 @@ static void callback(u_char *user, const struct pcap_pkthdr *pkt_header, const u
 					sprintf(ip, "%d.%d.%d.%d",
 						arpheader->tpa[0], arpheader->tpa[1], arpheader->tpa[2], arpheader->tpa[3]
 					);
-					if(strcmp(mac, "00:00:00:00:00:00") == 0 && strcmp(ip, data->srcip) == 0) {
+					if(strcmp(mac, "00:00:00:00:00:00") == 0 && strcmp(ip, data->srcip) == 0 && check == 0) {
 						check = 1;
 					}
 				}
@@ -229,6 +228,7 @@ static void write_cb(uv_poll_t *req) {
 	 * Respond with an arp request on the first ip
 	 */
 	if(check == 1) {
+		check = 2;
 		struct in_addr in_ip, in_netmask, in_min;
 
 		memset(&min, 0, 17);
@@ -272,7 +272,6 @@ static void write_cb(uv_poll_t *req) {
 		inet_pton(AF_INET, data->srcip, pkt->tpa);
 
 		pcap_sendpacket(data->handle, packet, 60);
-		check = 2;
 	}
 	uv_custom_write(data->poll_req);
 }
@@ -280,7 +279,7 @@ static void write_cb(uv_poll_t *req) {
 static void start_arp(void) {
 	char error[PCAP_ERRBUF_SIZE], *e = error;
 	char ip[17], netmask[17];
-	int count = 0, i = 0;
+	int count = 0, i = 0, x = 0, has_mac = 0;
 	uv_interface_address_t *interfaces = NULL;
 
 	int err = uv_interface_addresses(&interfaces, &count);
@@ -295,6 +294,17 @@ static void start_arp(void) {
 		if(interfaces[i].is_internal == 0 &&
 		   interfaces[i].address.address4.sin_family == AF_INET) {
 
+			has_mac = 0;
+			for(x=0;x<6;x++) {
+				if((interfaces[i].phys_addr[x] & 0xFF) != 0x00) {
+					has_mac = 1;
+					break;
+				}
+			}
+			if(has_mac == 0) {
+				continue;
+			}			 
+			 
 			if((data = REALLOC(data, sizeof(struct data_t *) * (nrdata+1))) == NULL) {
 				OUT_OF_MEMORY
 			}
@@ -402,7 +412,7 @@ static void test_arp(CuTest *tc) {
 	eventpool_gc();
 	arp_gc();
 
-	CuAssertIntEquals(tc, 1, check);
+	CuAssertIntEquals(tc, 3, check);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 

@@ -263,9 +263,9 @@ int clock_gettime(int dummy, struct timespec *ct) {
 static void on_read(uv_fs_t *req) {
 	unsigned int len = req->result, pos = 0;
 	char *p = NULL;
-	if(len < 0) {
+	if((int)len < 0) {
 		logprintf(LOG_ERR, "read error: %s", uv_strerror(req->result));
-	} else if(len >= 0) {
+	} else if((int)len >= 0) {
 		memcpy(&timestamp.first, &timestamp.second, sizeof(struct timespec));
 		clock_gettime(CLOCK_MONOTONIC, &timestamp.second);
 		if((((double)timestamp.second.tv_sec + 1.0e-9*timestamp.second.tv_nsec) -

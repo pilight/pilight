@@ -549,7 +549,7 @@ static void test_events(CuTest *tc) {
 		event_init();
 
 		if(get_tests[testnr].type == 0) {
-			eventpool_trigger(REASON_CONFIG_UPDATE, NULL, get_tests[testnr].updates);
+			eventpool_trigger(REASON_CONFIG_UPDATED, NULL, get_tests[testnr].updates);
 		} else {
 			eventpool_trigger(REASON_CODE_RECEIVED, NULL, get_tests[testnr].updates);
 		}

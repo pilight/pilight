@@ -133,13 +133,13 @@ int RunAllTests(void) {
 	suites[nr++] = suite_eventpool();
 	suites[nr++] = suite_log();
 	suites[nr++] = suite_ssdp();
-	suites[nr++] = suite_ping(); // Check
+	suites[nr++] = suite_ping();
 	suites[nr++] = suite_ntp();
 	suites[nr++] = suite_arp();
 	suites[nr++] = suite_http();
 	suites[nr++] = suite_mail();
-	suites[nr++] = suite_webserver(); // Websocket
-	suites[nr++] = suite_socket(); // Check
+	suites[nr++] = suite_webserver();
+	suites[nr++] = suite_socket();
 	suites[nr++] = suite_protocols_433();
 	suites[nr++] = suite_protocols_api();
 #ifndef _WIN32
@@ -148,7 +148,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_protocols_api_xbmc();
 	suites[nr++] = suite_protocols_api_openweathermap();
 	suites[nr++] = suite_protocols_api_wunderground();
-	suites[nr++] = suite_protocols_network_ping();
+	suites[nr++] = suite_protocols_network_ping(); 
 	suites[nr++] = suite_protocols_core();
 	suites[nr++] = suite_protocols_generic();
 #ifdef __linux__

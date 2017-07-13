@@ -149,9 +149,13 @@ static void start(void) {
 	r = uv_pipe_init(uv_default_loop(), pipe_req, 1);
 	CuAssertIntEquals(gtc, 0, r);
 
+	uv_fs_t file_req;
+
 #ifdef __FreeBSD__
+	uv_fs_unlink(uv_default_loop(), &file_req, "/tmp/lircd", NULL);
 	r = uv_pipe_bind(pipe_req, "/tmp/lircd");
 #else
+	uv_fs_unlink(uv_default_loop(), &file_req, "/dev/lircd", NULL);
 	r = uv_pipe_bind(pipe_req, "/dev/lircd");
 #endif
 	CuAssertIntEquals(gtc, 0, r);

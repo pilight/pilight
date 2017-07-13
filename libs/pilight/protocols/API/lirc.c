@@ -142,14 +142,16 @@ static void read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
 }
 
 static void alloc_cb(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
-	buf->base = malloc(suggested_size);
+	if((buf->base = malloc(suggested_size)) == NULL) {
+		OUT_OF_MEMORY
+	}
 	buf->len = suggested_size;
 	memset(buf->base, '\0', buf->len);
 }
 
 static void connect_cb(uv_connect_t *req, int status) {
 	if(status < 0) {
-		logprintf(LOG_ERR, "connect_cb: %s\n", uv_strerror(status));
+		logprintf(LOG_ERR, "connect_cb: %s", uv_strerror(status));
 	} else {
 		uv_read_start((uv_stream_t *)req->handle, alloc_cb, read_cb);
 	}
@@ -158,10 +160,22 @@ static void connect_cb(uv_connect_t *req, int status) {
 }
 
 static void start(void) {
+	int err = 0;
 	uv_connect_t *connect_req = MALLOC(sizeof(uv_connect_t));
+	if(connect_req == NULL) {
+		OUT_OF_MEMORY
+	}
 	uv_pipe_t *pipe_req = MALLOC(sizeof(uv_pipe_t));
-	uv_pipe_init(uv_default_loop(), pipe_req, 1);
-	uv_pipe_connect(connect_req, pipe_req, socket_path, connect_cb);	
+	if(pipe_req == NULL) {
+		OUT_OF_MEMORY
+	}
+	if((err = uv_pipe_init(uv_default_loop(), pipe_req, 1)) != 0) {
+		logprintf(LOG_ERR, "uv_pipe_init: %s", uv_strerror(err));
+		FREE(pipe_req);
+		FREE(connect_req);
+		return;
+	}
+	uv_pipe_connect(connect_req, pipe_req, socket_path, connect_cb);
 }
 
 static void *addDevice(int reason, void *param) {

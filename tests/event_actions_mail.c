@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <poll.h>
 #ifndef _WIN32
 	#include <unistd.h>
 	#include <sys/time.h>
@@ -32,12 +33,10 @@ static uv_thread_t pth;
 static int steps = 0;
 static int nrsteps = 0;
 static CuTest *gtc = NULL;
-static int mail_server = 0;
-static int mail_client = 0;
-static int mail_loop = 1;
-static int doquit = 0;
+// static int doquit = 0;
 static int check = 0;
 
+// static uv_tcp_t *client_req = NULL;
 static uv_timer_t *timer_req = NULL;
 
 static struct rules_actions_t *obj = NULL;
@@ -565,172 +564,115 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 
 static void stop(uv_timer_t *handle) {
 	uv_close((uv_handle_t *)handle, close_cb);
-	mail_loop = 0;
-
-#ifdef _WIN32
-	closesocket(mail_client);
-	closesocket(mail_server);
-#else
-	close(mail_client);
-	close(mail_server);
-#endif
-
-	mail_client = 0;
-	mail_server = 0;
 
 	uv_stop(uv_default_loop());
 }
 
-static void mail_wait(void *param) {
-	struct timeval tv;
-	struct sockaddr_in addr;
-	int addrlen = sizeof(addr);
-	char *message = NULL;
-	int n = 0, r = 0, len = 0;
-	int doread = 0, dowrite = 0;
-	fd_set fdsread;
-	fd_set fdswrite;
+static void alloc(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
+	buf->len = len;
+	buf->base = malloc(len);
+	CuAssertPtrNotNull(gtc, buf->base);
+	memset(buf->base, 0, len);
+}
 
-	if((message = MALLOC(BUFFER_SIZE)) == NULL) {
-		OUT_OF_MEMORY
-	}
+static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf);
 
+static void write_cb(uv_write_t *req, int status) {
+	uv_tcp_t *client_req = req->data;
+	CuAssertIntEquals(gtc, 0, status);
+
+	int r = uv_read_start((uv_stream_t *)client_req, alloc, read_cb);
+	CuAssertIntEquals(gtc, 0, r);
+
+	FREE(req);
+}
+
+static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
+	uv_read_stop(stream);
+	buf->base[nread] = '\0';	
+
+	uv_os_fd_t fd = 0;
+	int r = uv_fileno((uv_handle_t *)stream, &fd);
+	CuAssertIntEquals(gtc, 0, r);
+
+	CuAssertStrEquals(gtc, tests.recvmsg[tests.recvmsgnr++], buf->base);
+	if(strcmp(buf->base, "QUIT\r\n") != 0) {
+		uv_write_t *write_req = MALLOC(sizeof(uv_write_t));
+		CuAssertPtrNotNull(gtc, write_req);
+		
+		uv_buf_t buf1;
+		buf1.base = tests.sendmsg[tests.sendmsgnr];
+		buf1.len = strlen(tests.sendmsg[tests.sendmsgnr]);
+
+		tests.sendmsgnr++;
+		write_req->data = stream;
+		int r = uv_write(write_req, stream, &buf1, 1, write_cb);
+		CuAssertIntEquals(gtc, 0, r);
+	} else {
+		uv_close((uv_handle_t *)stream, close_cb);
+
+		check = 1;
 #ifdef _WIN32
-	unsigned long on = 1;
-	r = ioctlsocket(mail_server, FIONBIO, &on);
-	CuAssertTrue(gtc, r >= 0);
+	closesocket(fd);
 #else
-	long arg = fcntl(mail_server, F_GETFL, NULL);
-	r = fcntl(mail_server, F_SETFL, arg | O_NONBLOCK);
-	CuAssertTrue(gtc, r >= 0);
+	close(fd);
 #endif
 
-	FD_ZERO(&fdsread);
-	FD_ZERO(&fdswrite);
-	FD_SET((unsigned long)mail_server, &fdsread);
-
-	while(mail_loop) {
-		tv.tv_sec = 1;
-		tv.tv_usec = 0;
-
-		if(doquit == 2) {
-			mail_loop = 0;
-
-			if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-				OUT_OF_MEMORY
-			}
-
-			uv_timer_init(uv_default_loop(), timer_req);
-			uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 100, 0);
-			doquit = 3;
+		if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+			OUT_OF_MEMORY
 		}
 
-		dowrite = 0;
-		doread = 0;
-		do {
-			if(mail_client > mail_server) {
-				n = select(mail_client+1, &fdsread, &fdswrite, NULL, &tv);
-			} else {
-				n = select(mail_server+1, &fdsread, &fdswrite, NULL, &tv);
-			}
-		} while(n == -1 && errno == EINTR && mail_loop);
-
-		if(n == 0) {
-			continue;
-		}
-		if(mail_loop == 0) {
-			break;
-		}
-
-		if(n == -1) {
-			goto clear;
-		} else if(n > 0) {
-			if(FD_ISSET(mail_server, &fdsread)) {
-				FD_ZERO(&fdsread);
-				if(mail_client == 0) {
-					mail_client = accept(mail_server, (struct sockaddr *)&addr, (socklen_t *)&addrlen);
-					CuAssertTrue(gtc, mail_client > 0);
-
-					memset(message, '\0', INET_ADDRSTRLEN+1);
-					uv_ip4_name((void *)&(addr.sin_addr), message, INET_ADDRSTRLEN+1);
-					dowrite = 1;
-				}
-			}
-			if(FD_ISSET(mail_client, &fdsread)) {
-				FD_ZERO(&fdsread);
-				memset(message, '\0', BUFFER_SIZE);
-				r = recv(mail_client, message, BUFFER_SIZE, 0);
-				CuAssertTrue(gtc, r >= 0);
-				CuAssertStrEquals(gtc, tests.recvmsg[tests.recvmsgnr++], message);
-				if(strcmp(message, "QUIT\r\n") == 0) {
-					doquit = 1;
-				}
-				steps++;
-				dowrite = 1;
-			}
-			if(FD_ISSET(mail_client, &fdswrite)) {
-				FD_ZERO(&fdswrite);
-				strcpy(message, tests.sendmsg[tests.sendmsgnr]);
-				len = strlen(message);
-				r = send(mail_client, message, len, 0);
-				CuAssertIntEquals(gtc, len, r);
-				if(doquit == 1) {
-					doquit = 2;
-				}
-				tests.sendmsgnr++;
-				doread = 1;
-				steps++;
-			}
-		}
-
-		if(dowrite == 1) {
-			FD_SET((unsigned long)mail_client, &fdswrite);
-		}
-		if(doread == 1) {
-			FD_SET((unsigned long)mail_client, &fdsread);
-		}
+		uv_timer_init(uv_default_loop(), timer_req);
+		uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 100, 0);
 	}
+}
 
-clear:
-	if(n != -1) {
-		check = 1;
-	}
-	uv_stop(uv_default_loop());
+static void connection_cb(uv_stream_t *server_req, int status) {
+	uv_tcp_t *client_req = MALLOC(sizeof(uv_tcp_t));
+	CuAssertPtrNotNull(gtc, client_req);
+	CuAssertIntEquals(gtc, 0, status);
+	uv_tcp_init(uv_default_loop(), client_req);
 
-	FREE(message);
-	return;
+	int r = uv_accept(server_req, (uv_stream_t *)client_req);
+	CuAssertIntEquals(gtc, 0, r);
+
+	uv_write_t *write_req = MALLOC(sizeof(uv_write_t));
+	CuAssertPtrNotNull(gtc, write_req);
+
+	uv_buf_t buf1;
+	buf1.base = tests.sendmsg[tests.sendmsgnr];
+	buf1.len = strlen(tests.sendmsg[tests.sendmsgnr]);
+	tests.sendmsgnr++;
+	write_req->data = client_req;
+	r = uv_write(write_req, (uv_stream_t *)client_req, &buf1, 1, write_cb);
+	CuAssertIntEquals(gtc, 0, r);
 }
 
 static void mail_start(int port) {
-	struct sockaddr_in addr;
-	int opt = 1;
-	int r = 0;
-
+	/*
+	 * Bypass socket_connect
+	 */
 #ifdef _WIN32
 	WSADATA wsa;
 
-	if(WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
-		fprintf(stderr, "could not initialize new socket\n");
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "WSAStartup");
 		exit(EXIT_FAILURE);
 	}
 #endif
 
-	mail_server = socket(AF_INET, SOCK_STREAM, 0);
-	CuAssertTrue(gtc, mail_server > 0);
+	uv_tcp_t *server_req = MALLOC(sizeof(uv_tcp_t));
+	CuAssertPtrNotNull(gtc, server_req);
 
-	memset((char *)&addr, '\0', sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	addr.sin_port = htons(port);
+	struct sockaddr_in addr;
+	int r = uv_ip4_addr("127.0.0.1", port, &addr);
+	CuAssertIntEquals(gtc, r, 0);
 
-	r = setsockopt(mail_server, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(int));
-	CuAssertTrue(gtc, r >= 0);
+	uv_tcp_init(uv_default_loop(), server_req);
+	uv_tcp_bind(server_req, (const struct sockaddr *)&addr, 0);
 
-	r = bind(mail_server, (struct sockaddr *)&addr, sizeof(addr));
-	CuAssertTrue(gtc, r >= 0);
-
-	r = listen(mail_server, 0);
-	CuAssertTrue(gtc, r >= 0);
+	r = uv_listen((uv_stream_t *)server_req, 128, connection_cb);
+	CuAssertIntEquals(gtc, r, 0);
 }
 
 static void test_event_actions_mail_run(CuTest *tc) {
@@ -749,7 +691,6 @@ static void test_event_actions_mail_run(CuTest *tc) {
 	eventpool_init(EVENTPOOL_THREADED);
 
 	mail_start(10025);
-	uv_thread_create(&pth, mail_wait, NULL);
 
 	FILE *f = fopen("event_actions_mail.json", "w");
 	fprintf(f,

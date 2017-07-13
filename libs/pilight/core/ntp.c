@@ -135,12 +135,11 @@ static void on_read(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const st
 
 	struct pkt msg;	
 	struct data_t *data = stream->data;
-	void (*callback)(int, time_t) = data->callback;
 
 	if(len == 48) {
 		memcpy(&msg, buf->base, 48);
 
-		if(msg.refid > 0) {
+		if(msg.refid != 0) {
 			(msg.rec).Ul_i.Xl_ui = ntohl((msg.rec).Ul_i.Xl_ui);
 			(msg.rec).Ul_f.Xl_f = (int)ntohl((unsigned int)(msg.rec).Ul_f.Xl_f);
 
@@ -149,8 +148,8 @@ static void on_read(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const st
 			diff = (int)(time(NULL) - ntptime);
 
 			synced = 0;
-			if(callback != NULL) {
-				callback(0, (time_t)(msg.rec.Ul_i.Xl_ui - adj));
+			if(data->callback != NULL) {
+				data->callback(0, (time_t)(msg.rec.Ul_i.Xl_ui - adj));
 			}
 			logprintf(LOG_INFO, "time offset found of %d seconds", diff);
 			uv_timer_start(timer_req, restart, 86400*1000, 0);

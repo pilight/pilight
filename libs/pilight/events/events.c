@@ -1680,12 +1680,12 @@ void *events_loop(int reason, void *param) {
 		case REASON_CODE_RECEIVED: {
 			data2 = param;
 		} break;
-		case REASON_CONFIG_UPDATE: {
+		case REASON_CONFIG_UPDATED: {
 			data1 = param;
 		} break;
 	}
 
-	if(reason == REASON_CONFIG_UPDATE) {
+	if(reason == REASON_CONFIG_UPDATED) {
 		for(x=0;x<data1->nrdev;x++) {
 			/*
 			 * Running actions will be aborted when
@@ -1701,7 +1701,7 @@ void *events_loop(int reason, void *param) {
 				if(tmp_rules->nrdevices == 0) {
 					match = 1;
 				} else {
-					if(reason == REASON_CONFIG_UPDATE) {
+					if(reason == REASON_CONFIG_UPDATED) {
 						/* Only run those events that affect the updates devices */
 						for(x=0;x<data1->nrdev;x++) {
 							for(i=0;i<tmp_rules->nrdevices;i++) {
@@ -1771,7 +1771,7 @@ void *events_loop(int reason, void *param) {
 }
 
 void event_init(void) {
-	eventpool_callback(REASON_CONFIG_UPDATE, events_loop);
+	eventpool_callback(REASON_CONFIG_UPDATED, events_loop);
 	eventpool_callback(REASON_CODE_RECEIVED, events_loop);
 
 	event_operator_init();

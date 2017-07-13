@@ -85,6 +85,7 @@ static struct reasons_t {
 	{	REASON_BROADCAST_CORE, 				"REASON_BROADCAST_CORE",				0 },
 	{	REASON_FORWARD, 							"REASON_FORWARD",								0 },
 	{	REASON_CONFIG_UPDATE, 				"REASON_CONFIG_UPDATE",					0 },
+	{	REASON_CONFIG_UPDATED, 				"REASON_CONFIG_UPDATED",				0 },
 	{	REASON_SOCKET_RECEIVED, 			"REASON_SOCKET_RECEIVED",				0 },
 	{	REASON_SOCKET_DISCONNECTED,	 	"REASON_SOCKET_DISCONNECTED",		0 },
 	{	REASON_SOCKET_CONNECTED,			"REASON_SOCKET_CONNECTED",			0 },
@@ -391,7 +392,7 @@ static void eventpool_update_poll(uv_poll_t *req) {
 	int action = 0, r = 0;
 
 	custom_poll_data = req->data;
-	if(custom_poll_data == NULL) {
+	if(custom_poll_data == NULL || uv_is_closing((uv_handle_t *)req)) {
 		return;
 	}
 
@@ -419,8 +420,8 @@ static void eventpool_update_poll(uv_poll_t *req) {
 			logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
 			return;
 		}
+		custom_poll_data->action = action;
 	}
-	custom_poll_data->action = action;
 }
 
 size_t iobuf_append(struct iobuf_t *io, const void *buf, int len) {
@@ -452,7 +453,6 @@ static void my_debug(void *ctx, int level, const char *file, int line, const cha
 }
 
 void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
-	// printf("== %p %d %d %d\n", req, events, UV_READABLE, UV_WRITABLE);
 	/*
 	 * Make sure we execute in the main thread
 	 */
@@ -472,13 +472,19 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 		return;
 	}
 
+	// r = uv_fileno((uv_handle_t *)req, &fd);
+	if(status < 0) {
+		logprintf(LOG_ERR, "uv_custom_poll_cb: %s", uv_strerror(status));
+		uv_poll_stop(req);
+		return;
+	}
+
 	custom_poll_data->started = 1;
 
 	send_io = &custom_poll_data->send_iobuf;
 
 	memset(&buffer, 0, BUFFER_SIZE);
 
-	// printf("a %p %d\n", req, action);
 	if(uv_is_closing((uv_handle_t *)req)) {
 		return;
 	}
@@ -495,7 +501,6 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 	// if(events == 0) {
 		// if(custom_poll_data->close_cb != NULL) {
 			// custom_poll_data->close_cb(req);
-							// printf("goed2\n");
 			// return;
 		// } else {
 			// uv_poll_stop(req);
