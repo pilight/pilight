@@ -7,20 +7,19 @@ pilight-flash \- Flash hardware with pilight firmware
 .B pilight-control [\fIOPTION\fR]... \fI--file FIRMWARE_FILE\fR
 .SH DESCRIPTION
 .B pilight-control
-is a tool to flash pilight firmware to hardware such as ATMel chips (such as
-the ATTiny and ATMega).
+is a tool to flash pilight firmware to ATMel chips (such as the ATTiny and
+ATMega).
 .PP
 The pilight ATMel firmware pre-filters streams and prevents noise from
-reaching the pilight daemon. This lowers CPU usage by the pilight daemon
-greatly, because it will not attempt to continuously interpret noise as valid
-protocols. Currently supported chips are the ATTiny25, ATTiny45, ATTiny85, and
-ATMega328P.
+reaching the pilight daemon. This lowers the CPU usage of the pilight daemon
+greatly, because the pilight daemon will not continuously attempt to interpret
+noise as valid protocols. 
+Currently supported chips are the ATTiny25, ATTiny45, ATTiny85, and ATMega328P.
 .PP
-The ATMel firmware is necessary for using pilight with senders and receivers
-on non-GPIO capable hardware (most desktops, servers, etc.), but it can be also
-be used with GPIO capable hardware to act as a pre-filter for received signals.
-The flashed chip is connected via USB, and the sender and receiver are wired to
-the GPIO pins on the chip.
+Besides acting as a pre-filter, the firmware also allows using pilight with 
+senders and receivers on non GPIO-capable hardware (such as most desktops, 
+servers, etc.) The flashed ATMega chip is connected via USB, and the sender and
+receiver are wired to the GPIO pins on the chip.
 Consult the pilight wiki <https://wiki.pilight.org/> and the manual
 <https://manual.pilight.org/> for wiring schematics.
 .PP
