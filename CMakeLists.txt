@@ -268,6 +268,7 @@ if(NOT WIN32)
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/inc)
+include_directories(${PROJECT_SOURCE_DIR}/libs/libuv)
 include_directories(/usr/local/include/)
 
 add_subdirectory(inc)
@@ -287,9 +288,9 @@ if(NOT WIN32)
 	endif()
 endif()
 
-if(CMAKE_USE_PTHREADS_INIT)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lpthread")
-endif()
+# if(CMAKE_USE_PTHREADS_INIT)
+	# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ")
+# endif()
 
 if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	if(WIN32)

@@ -25,7 +25,7 @@
 #include <assert.h>
 #include <io.h>
 
-#include "../uv.h"
+#include "uv.h"
 #include "internal.h"
 
 

@@ -13,8 +13,8 @@ WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
-#include "../uv-common.h"
-#include "../pthread-barrier.h"
+#include "uv-common.h"
+#include "pthread-barrier.h"
 
 #include <stdlib.h>
 #include <assert.h>
@@ -73,7 +73,8 @@ int pthread_barrier_wait(pthread_barrier_t* barrier) {
   if (++b->in == b->threshold) {
     b->in = 0;
     b->out = b->threshold - 1;
-    assert(pthread_cond_signal(&b->cond) == 0);
+    rc = pthread_cond_signal(&b->cond);
+    assert(rc == 0);
 
     pthread_mutex_unlock(&b->mutex);
     return PTHREAD_BARRIER_SERIAL_THREAD;

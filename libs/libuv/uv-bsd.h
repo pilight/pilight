@@ -29,6 +29,18 @@
   int rcount;                                                                 \
   int wcount;                                                                 \
 
+/*
+ * NEW
+ */
+#define UV_PLATFORM_LOOP_FIELDS                                               \
+  struct pollfd* poll_fds;                                                    \
+  size_t poll_fds_used;                                                       \
+  size_t poll_fds_size;                                                       \
+  unsigned char poll_fds_iterating;                                           \
+/*
+ *
+ */
+
 #define UV_HAVE_KQUEUE 1
 
 #endif /* UV_BSD_H */

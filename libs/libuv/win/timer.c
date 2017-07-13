@@ -22,9 +22,9 @@
 #include <assert.h>
 #include <limits.h>
 
-#include "../uv.h"
+#include "uv.h"
 #include "internal.h"
-#include "../tree.h"
+#include "tree.h"
 #include "handle-inl.h"
 
 

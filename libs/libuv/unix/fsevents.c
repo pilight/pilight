@@ -18,7 +18,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "../uv.h"
+#include "uv.h"
 #include "internal.h"
 
 #if TARGET_OS_IPHONE
@@ -377,9 +377,6 @@ static void uv__fsevents_destroy_stream(uv_loop_t* loop) {
 
   if (state->fsevent_stream == NULL)
     return;
-
-  /* Flush all accumulated events */
-  pFSEventStreamFlushSync(state->fsevent_stream);
 
   /* Stop emitting events */
   pFSEventStreamStop(state->fsevent_stream);

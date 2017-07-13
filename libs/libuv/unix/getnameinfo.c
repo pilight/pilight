@@ -24,7 +24,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../uv.h"
+#include "uv.h"
 #include "internal.h"
 
 

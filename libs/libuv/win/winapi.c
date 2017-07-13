@@ -21,7 +21,7 @@
 
 #include <assert.h>
 
-#include "../uv.h"
+#include "uv.h"
 #include "internal.h"
 
 
@@ -49,9 +49,14 @@ sCancelSynchronousIo pCancelSynchronousIo;
 sGetFinalPathNameByHandleW pGetFinalPathNameByHandleW;
 
 
-void uv_winapi_init() {
+/* Powrprof.dll function pointer */
+sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
+
+
+void uv_winapi_init(void) {
   HMODULE ntdll_module;
   HMODULE kernel32_module;
+  HMODULE powrprof_module;
 
   ntdll_module = GetModuleHandleA("ntdll.dll");
   if (ntdll_module == NULL) {
@@ -143,4 +148,12 @@ void uv_winapi_init() {
 
   pGetFinalPathNameByHandleW = (sGetFinalPathNameByHandleW)
     GetProcAddress(kernel32_module, "GetFinalPathNameByHandleW");
+
+
+  powrprof_module = LoadLibraryA("powrprof.dll");
+  if (powrprof_module != NULL) {
+    pPowerRegisterSuspendResumeNotification = (sPowerRegisterSuspendResumeNotification)
+      GetProcAddress(powrprof_module, "PowerRegisterSuspendResumeNotification");
+  }
+
 }

@@ -19,7 +19,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "../uv.h"
+#include "uv.h"
 #include "internal.h"
 
 #include <assert.h>
@@ -47,7 +47,6 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   int err;
 
   pipe_fname = NULL;
-  sockfd = -1;
 
   /* Already bound? */
   if (uv__stream_fd(handle) >= 0)
@@ -76,16 +75,16 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
     /* Convert ENOENT to EACCES for compatibility with Windows. */
     if (err == -ENOENT)
       err = -EACCES;
-    goto err_bind;
+
+    uv__close(sockfd);
+    goto err_socket;
   }
 
   /* Success. */
+  handle->flags |= UV_HANDLE_BOUND;
   handle->pipe_fname = pipe_fname; /* Is a strdup'ed copy. */
   handle->io_watcher.fd = sockfd;
   return 0;
-
-err_bind:
-  uv__close(sockfd);
 
 err_socket:
   uv__free((void*)pipe_fname);
@@ -96,6 +95,14 @@ err_socket:
 int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
   if (uv__stream_fd(handle) == -1)
     return -EINVAL;
+
+#if defined(__MVS__)
+  /* On zOS, backlog=0 has undefined behaviour */
+  if (backlog == 0)
+    backlog = 1;
+  else if (backlog < 0)
+    backlog = SOMAXCONN;
+#endif
 
   if (listen(uv__stream_fd(handle), backlog))
     return -errno;
@@ -174,6 +181,14 @@ void uv_pipe_connect(uv_connect_t* req,
 
   if (r == -1 && errno != EINPROGRESS) {
     err = -errno;
+#if defined(__CYGWIN__) || defined(__MSYS__)
+    /* EBADF is supposed to mean that the socket fd is bad, but
+       Cygwin reports EBADF instead of ENOTSOCK when the file is
+       not a socket.  We do not expect to see a bad fd here
+       (e.g. due to new_sock), so translate the error.  */
+    if (err == -EBADF)
+      err = -ENOTSOCK;
+#endif
     goto out;
   }
 

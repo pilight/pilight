@@ -23,7 +23,7 @@
 #include <io.h>
 #include <stdlib.h>
 
-#include "../uv.h"
+#include "uv.h"
 #include "internal.h"
 #include "handle-inl.h"
 
@@ -151,4 +151,9 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
 
 int uv_is_closing(const uv_handle_t* handle) {
   return !!(handle->flags & (UV__HANDLE_CLOSING | UV_HANDLE_CLOSED));
+}
+
+
+uv_os_fd_t uv_get_osfhandle(int fd) {
+  return uv__get_osfhandle(fd);
 }

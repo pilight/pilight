@@ -19,7 +19,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "../uv.h"
+#include "uv.h"
 #include "internal.h"
 
 #include <stdio.h>
@@ -291,7 +291,10 @@ int uv__stream_try_select(uv_stream_t* stream, int* fd) {
   timeout.tv_sec = 0;
   timeout.tv_nsec = 1;
 
-  ret = kevent(kq, filter, 1, events, 1, &timeout);
+  do
+    ret = kevent(kq, filter, 1, events, 1, &timeout);
+  while (ret == -1 && errno == EINTR);
+
   uv__close(kq);
 
   if (ret == -1)
@@ -499,11 +502,11 @@ static int uv__emfile_trick(uv_loop_t* loop, int accept_fd) {
 }
 
 
-#if defined(UV_HAVE_KQUEUE)
-# define UV_DEC_BACKLOG(w) w->rcount--;
-#else
+// #if defined(UV_HAVE_KQUEUE)
+// # define UV_DEC_BACKLOG(w) w->rcount--;
+// #else
 # define UV_DEC_BACKLOG(w) /* no-op */
-#endif /* defined(UV_HAVE_KQUEUE) */
+// #endif /* defined(UV_HAVE_KQUEUE) */
 
 
 void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
@@ -523,10 +526,10 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   while (uv__stream_fd(stream) != -1) {
     assert(stream->accepted_fd == -1);
 
-#if defined(UV_HAVE_KQUEUE)
-    if (w->rcount <= 0)
-      return;
-#endif /* defined(UV_HAVE_KQUEUE) */
+// #if defined(UV_HAVE_KQUEUE)
+    // if (w->rcount <= 0)
+      // return;
+// #endif /* defined(UV_HAVE_KQUEUE) */
 
     err = uv__accept(uv__stream_fd(stream));
     if (err < 0) {
@@ -571,7 +574,6 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 int uv_accept(uv_stream_t* server, uv_stream_t* client) {
   int err;
 
-  /* TODO document this */
   assert(server->loop == client->loop);
 
   if (server->accepted_fd == -1)
@@ -601,6 +603,8 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client) {
     default:
       return -EINVAL;
   }
+
+  client->flags |= UV_HANDLE_BOUND;
 
 done:
   /* Process queued fds */
@@ -746,6 +750,7 @@ static void uv__write(uv_stream_t* stream) {
   int iovmax;
   int iovcnt;
   ssize_t n;
+  int err;
 
 start:
 
@@ -778,10 +783,22 @@ start:
    */
 
   if (req->send_handle) {
+    int fd_to_send;
     struct msghdr msg;
     struct cmsghdr *cmsg;
-    int fd_to_send = uv__handle_fd((uv_handle_t*) req->send_handle);
-    char scratch[64] = {0};
+    union {
+      char data[64];
+      struct cmsghdr alias;
+    } scratch;
+
+    if (uv__is_closing(req->send_handle)) {
+      err = -EBADF;
+      goto error;
+    }
+
+    fd_to_send = uv__handle_fd((uv_handle_t*) req->send_handle);
+
+    memset(&scratch, 0, sizeof(scratch));
 
     assert(fd_to_send >= 0);
 
@@ -791,7 +808,7 @@ start:
     msg.msg_iovlen = iovcnt;
     msg.msg_flags = 0;
 
-    msg.msg_control = (void*) scratch;
+    msg.msg_control = &scratch.alias;
     msg.msg_controllen = CMSG_SPACE(sizeof(fd_to_send));
 
     cmsg = CMSG_FIRSTHDR(&msg);
@@ -843,14 +860,8 @@ start:
 
   if (n < 0) {
     if (errno != EAGAIN && errno != EWOULDBLOCK) {
-      /* Error */
-      req->error = -errno;
-      uv__write_req_finish(req);
-      uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);
-      if (!uv__io_active(&stream->io_watcher, POLLIN))
-        uv__handle_stop(stream);
-      uv__stream_osx_interrupt_select(stream);
-      return;
+      err = -errno;
+      goto error;
     } else if (stream->flags & UV_STREAM_BLOCKING) {
       /* If this is a blocking stream, try again. */
       goto start;
@@ -914,6 +925,16 @@ start:
 
   /* Notify select() thread about state change */
   uv__stream_osx_interrupt_select(stream);
+
+  return;
+
+error:
+  req->error = err;
+  uv__write_req_finish(req);
+  uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);
+  if (!uv__io_active(&stream->io_watcher, POLLIN))
+    uv__handle_stop(stream);
+  uv__stream_osx_interrupt_select(stream);
 }
 
 
@@ -962,8 +983,8 @@ uv_handle_type uv__handle_type(int fd) {
     return UV_UNKNOWN_HANDLE;
 
   if (type == SOCK_STREAM) {
-#if defined(_AIX)
-    /* on AIX the getsockname call returns an empty sa structure
+#if defined(_AIX) || defined(__DragonFly__)
+    /* on AIX/DragonFly the getsockname call returns an empty sa structure
      * for sockets of type AF_UNIX.  For all other types it will
      * return a properly filled in structure.
      */
@@ -1122,8 +1143,9 @@ static void uv__read(uv_stream_t* stream) {
       && (count-- > 0)) {
     assert(stream->alloc_cb != NULL);
 
+    buf = uv_buf_init(NULL, 0);
     stream->alloc_cb((uv_handle_t*)stream, 64 * 1024, &buf);
-    if (buf.len == 0) {
+    if (buf.base == NULL || buf.len == 0) {
       /* User indicates it can't or won't handle the read. */
       stream->read_cb(stream, UV_ENOBUFS, &buf);
       return;
@@ -1163,6 +1185,11 @@ static void uv__read(uv_stream_t* stream) {
           uv__stream_osx_interrupt_select(stream);
         }
         stream->read_cb(stream, 0, &buf);
+#if defined(__CYGWIN__) || defined(__MSYS__)
+      } else if (errno == ECONNRESET && stream->type == UV_NAMED_PIPE) {
+        uv__stream_eof(stream, &buf);
+        return;
+#endif
       } else {
         /* Error. User should call uv_close(). */
         stream->read_cb(stream, -errno, &buf);
@@ -1189,6 +1216,30 @@ static void uv__read(uv_stream_t* stream) {
           return;
         }
       }
+
+#if defined(__MVS__)
+      if (is_ipc && msg.msg_controllen > 0) {
+        uv_buf_t blankbuf;
+        int nread;
+        struct iovec *old;
+
+        blankbuf.base = 0;
+        blankbuf.len = 0;
+        old = msg.msg_iov;
+        msg.msg_iov = (struct iovec*) &blankbuf;
+        nread = 0;
+        do {
+          nread = uv__recvmsg(uv__stream_fd(stream), &msg, 0);
+          err = uv__stream_recv_cmsg(stream, &msg);
+          if (err != 0) {
+            stream->read_cb(stream, err, &buf);
+            msg.msg_iov = old;
+            return;
+          }
+        } while (nread == 0 && msg.msg_controllen > 0);
+        msg.msg_iov = old;
+      }
+#endif
       stream->read_cb(stream, nread, &buf);
 
       /* Return if we didn't fill the buffer, there is no more data to read. */
@@ -1216,8 +1267,7 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
   if (!(stream->flags & UV_STREAM_WRITABLE) ||
       stream->flags & UV_STREAM_SHUT ||
       stream->flags & UV_STREAM_SHUTTING ||
-      stream->flags & UV_CLOSED ||
-      stream->flags & UV_CLOSING) {
+      uv__is_closing(stream)) {
     return -ENOTCONN;
   }
 
@@ -1372,6 +1422,12 @@ int uv_write2(uv_write_t* req,
      */
     if (uv__handle_fd((uv_handle_t*) send_handle) < 0)
       return -EBADF;
+
+#if defined(__CYGWIN__) || defined(__MSYS__)
+    /* Cygwin recvmsg always sets msg_controllen to zero, so we cannot send it.
+       See https://github.com/mirror/newlib-cygwin/blob/86fc4bf0/winsup/cygwin/fhandler_socket.cc#L1736-L1743 */
+    return -ENOSYS;
+#endif
   }
 
   /* It's legal for write_queue_size > 0 even when the write_queue is empty;
