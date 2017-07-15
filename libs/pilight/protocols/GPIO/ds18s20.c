@@ -256,9 +256,6 @@ static void gc(void) {
 		if(tmp->w1slave != NULL) {
 			FREE(tmp->w1slave);
 		}
-		if(tmp->timer_req != NULL) {
-			uv_timer_stop(tmp->timer_req);
-		}
 		data = data->next;
 		FREE(tmp);
 	}

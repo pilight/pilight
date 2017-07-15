@@ -164,20 +164,6 @@ static void client_remove(int fd) {
 				prevP->next = currP->next;
 			}
 
-			if(currP->data != NULL) {
-				struct uv_custom_poll_t *custom_poll_data = currP->data;
-				if(custom_poll_data != NULL) {
-					if(custom_poll_data->data != NULL) {
-						struct data_t *data = custom_poll_data->data;
-						if(data->len > 0) {
-							FREE(data->buffer);
-						}
-						FREE(data);
-					}
-
-					uv_custom_poll_free(custom_poll_data);
-				}
-			}
 			FREE(currP);
 			break;
 		}
@@ -257,7 +243,6 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		eventpool_trigger(REASON_SOCKET_DISCONNECTED, reason_socket_disconnected_free, data1);
 
 		uv_custom_close(req);
-		uv_custom_write(req);
 
     return;
 	}
@@ -266,8 +251,10 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 		data->read_cb((int)fd, buf, *nread, &data->buffer, &data->len);
 
-		*nread = 0;
-		uv_custom_read(req);
+		if(!uv_is_closing((uv_handle_t *)req)) {
+			*nread = 0;
+			uv_custom_read(req);
+		}
 	}
 }
 
@@ -278,6 +265,7 @@ static void poll_close_cb(uv_poll_t *req) {
 	const uv_thread_t pth_cur_id = uv_thread_self();
 	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
+	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct sockaddr_in addr;
 	socklen_t socklen = sizeof(addr);
 	char buf[INET_ADDRSTRLEN+1];
@@ -315,9 +303,20 @@ static void poll_close_cb(uv_poll_t *req) {
 #endif
 	}
 
-	client_remove(fd);
+	if(!uv_is_closing((uv_handle_t *)req)) {
+		uv_close((uv_handle_t *)req, close_cb);
+	}
 
-	uv_close((uv_handle_t *)req, close_cb);
+	if(custom_poll_data->data != NULL) {
+		FREE(custom_poll_data->data);
+	}
+
+	if(req->data != NULL) {
+		uv_custom_poll_free(custom_poll_data);
+		req->data = NULL;
+	}
+
+	client_remove(fd);
 }
 
 static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
@@ -604,7 +603,6 @@ void socket_close(int sockfd) {
 
 	if(req != NULL) {
 		uv_custom_close(req);
-		uv_custom_write(req);
 	}
 }
 

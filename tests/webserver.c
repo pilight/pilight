@@ -186,7 +186,34 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 
 static void poll_close_cb(uv_poll_t *req) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
-	uv_custom_poll_free(custom_poll_data);
+	int fd = -1, r = 0;
+
+	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
+		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
+	}
+
+	if(fd > -1) {
+#ifdef _WIN32
+		shutdown(fd, SD_BOTH);
+		closesocket(fd);
+#else
+		shutdown(fd, SHUT_RDWR);
+		close(fd);
+#endif
+	}
+
+	if(!uv_is_closing((uv_handle_t *)req)) {
+		uv_close((uv_handle_t *)req, close_cb);
+	}
+
+	if(custom_poll_data->data != NULL) {
+		FREE(custom_poll_data->data);
+	}
+
+	if(req->data != NULL) {
+		uv_custom_poll_free(custom_poll_data);
+		req->data = NULL;
+	}
 	uv_async_send(async_close_req);
 }
 
@@ -220,7 +247,6 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 				CuAssertTrue(gtc, strncmp(buf, response2, 78) == 0);
 			}
 
-			uv_custom_write(req);
 			uv_custom_close(req);
 		} break;
 	}

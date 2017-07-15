@@ -691,7 +691,6 @@ static int file_read_cb(int fd, uv_poll_t *req) {
 		if(conn->flags == 1) {
 			iobuf_append(&custom_poll_data->send_iobuf, "0\r\n\r\n", 5);
 			uv_custom_close(req);
-			uv_custom_write(req);
 		}
 		return 0;
 	} else if(bytes < 0) {
@@ -1512,7 +1511,6 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			unsigned char *p = (unsigned char *)buf;
 			if(websocket_read(req, p, *nread) == -1) {
 				uv_custom_close(req);
-				uv_custom_write(req);
 				return;
 			}
 		}
@@ -1525,7 +1523,6 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			}
 
 			uv_custom_close(req);
-			uv_custom_write(req);
 			return;
 		}
 	}

@@ -184,7 +184,6 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		case SMTP_STEP_RECV_WELCOME: {
 			if(strncmp(buf, "220", 3) != 0) {
 				uv_custom_close(req);
-				uv_custom_write(req);
 				return;
 			}
 			request->bytes_read = 0;
@@ -214,7 +213,6 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 				if(val == 501 && ch == 32) {
 					array_free(&array, n);
 					uv_custom_close(req);
-					uv_custom_write(req);
 					logprintf(LOG_NOTICE, "SMTP: EHLO error");
 					return;
 				}
@@ -225,7 +223,6 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 						logprintf(LOG_NOTICE, "SMTP: no supported authentication method");
 						array_free(&array, n);
 						uv_custom_close(req);
-						uv_custom_write(req);
 						return;
 					}
 					if(request->authtype == STARTTLS) {
@@ -251,19 +248,16 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			if(strncmp(buf, "451", 3) == 0) {
 				logprintf(LOG_NOTICE, "SMTP: protocol violation while authenticating");
 				uv_custom_close(req);
-				uv_custom_write(req);
 				return;
 			}
 			if(strncmp(buf, "501", 3) == 0) {
 				logprintf(LOG_NOTICE, "SMTP: improperly base64 encoded user/password");
 				uv_custom_close(req);
-				uv_custom_write(req);
 				return;
 			}
 			if(strncmp(buf, "535", 3) == 0) {
 				logprintf(LOG_NOTICE, "SMTP: authentication failed: wrong user/password");
 				uv_custom_close(req);
-				uv_custom_write(req);
 				return;
 			}
 			*nread = 0;
@@ -273,7 +267,6 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		case SMTP_STEP_RECV_FROM: {
 			if(strncmp(buf, "250", 3) != 0) {
 				uv_custom_close(req);
-				uv_custom_write(req);
 				return;
 			}
 			request->bytes_read = 0;
@@ -284,7 +277,6 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		case SMTP_STEP_RECV_TO: {
 			if(strncmp(buf, "250", 3) != 0) {
 				uv_custom_close(req);
-				uv_custom_write(req);
 				return;
 			}
 			request->bytes_read = 0;
@@ -295,7 +287,6 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		case SMTP_STEP_RECV_DATA: {
 			if(strncmp(buf, "354", 3) != 0) {
 				uv_custom_close(req);
-				uv_custom_write(req);
 				return;
 			}
 			request->bytes_read = 0;
@@ -306,7 +297,6 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		case SMTP_STEP_RECV_BODY: {
 			if(strncmp(buf, "250", 3) != 0) {
 				uv_custom_close(req);
-				uv_custom_write(req);
 				return;
 			}
 			request->bytes_read = 0;
@@ -317,7 +307,6 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		case SMTP_STEP_RECV_RESET: {
 			if(strncmp(buf, "250", 3) != 0) {
 				uv_custom_close(req);
-				uv_custom_write(req);
 				return;
 			}
 			request->bytes_read = 0;
@@ -332,7 +321,6 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			}
 			request->callback = NULL;
 			uv_custom_close(req);
-			uv_custom_write(req);
 			// if(!uv_is_closing((uv_handle_t *)req)) {
 				// uv_close((uv_handle_t *)req, close_cb);
 			// }

@@ -266,7 +266,7 @@ static void test_protocols_i2c_lm75(CuTest *tc) {
 	fd = wiringXI2CSetup("/dev/i2c-0", 0x48);
 	CuAssertTrue(tc, fd > 0);
 
-	CuAssertIntEquals(tc, 0, wiringXSetup("raspberrypi1b2", NULL));
+	// CuAssertIntEquals(tc, 0, wiringXSetup("raspberrypi1b2", NULL));
 	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x00, 0xA017));
 
 	lm75Init();
@@ -292,6 +292,8 @@ static void test_protocols_i2c_lm75(CuTest *tc) {
 	eventpool_gc();
 	protocol_gc();
 	close(fd);
+
+	wiringXGC();
 
 	ret = delete_module("i2c_stub", 0);
 	CuAssertIntEquals(tc, 0, ret);
@@ -341,7 +343,7 @@ static void test_protocols_i2c_lm76(CuTest *tc) {
 	fd = wiringXI2CSetup("/dev/i2c-0", 0x48);
 	CuAssertTrue(tc, fd > 0);
 
-	CuAssertIntEquals(tc, 0, wiringXSetup("raspberrypi1b2", NULL));
+	// CuAssertIntEquals(tc, 0, wiringXSetup("raspberrypi1b2", NULL));
 	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x00, 0xa015));
 
 	lm76Init();
@@ -367,6 +369,8 @@ static void test_protocols_i2c_lm76(CuTest *tc) {
 	eventpool_gc();
 	protocol_gc();
 	close(fd);
+
+	wiringXGC();
 
 	ret = delete_module("i2c_stub", 0);
 	CuAssertIntEquals(tc, 0, ret);
@@ -416,7 +420,7 @@ static void test_protocols_i2c_bmp180(CuTest *tc) {
 	fd = wiringXI2CSetup("/dev/i2c-0", 0x77);
 	CuAssertTrue(tc, fd > 0);
 
-	CuAssertIntEquals(tc, 0, wiringXSetup("raspberrypi1b2", NULL));
+	// CuAssertIntEquals(tc, 0, wiringXSetup("raspberrypi1b2", NULL));
 	/* Set version */
 	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xD0, 0x55));
 	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xD1, 0x01));
@@ -462,6 +466,10 @@ static void test_protocols_i2c_bmp180(CuTest *tc) {
 	eventpool_gc();
 	protocol_gc();
 	close(fd);
+
+	uv_thread_join(&pth);
+
+	wiringXGC();
 
 	ret = delete_module("i2c_stub", 0);
 	CuAssertIntEquals(tc, 0, ret);

@@ -590,7 +590,6 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 close:
 	uv_custom_close(req);
-	uv_custom_write(req);
 }
 
 static void write_cb(uv_poll_t *req) {

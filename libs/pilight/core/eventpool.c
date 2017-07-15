@@ -791,7 +791,10 @@ int uv_custom_close(uv_poll_t *req) {
 		if(!uv_is_closing((uv_handle_t *)req)) {
 			uv_poll_stop(req);
 		}
+	} else if(send_io->len > 0) {
+		uv_custom_write(req);
 	}
+
 	return 0;
 }
 
