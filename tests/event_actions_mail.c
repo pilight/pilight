@@ -625,6 +625,7 @@ static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
 		uv_timer_init(uv_default_loop(), timer_req);
 		uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 100, 0);
 	}
+	free(buf->base);
 }
 
 static void connection_cb(uv_stream_t *server_req, int status) {

@@ -94,6 +94,7 @@ void ping_add_host(struct ping_list_t **iplist, const char *ip) {
 	if(node == NULL) {
 		OUT_OF_MEMORY
 	}
+	memset(node, 0, sizeof(struct ping_list_t));
 	strncpy(node->ip, ip, INET_ADDRSTRLEN);
 	node->found = 0;
 	node->live = 0;
@@ -267,9 +268,8 @@ static void ping_timeout(uv_timer_t *handle) {
 			tmp = tmp->next;
 		}
 
-		uv_custom_close(data->poll_req);
-		uv_custom_write(data->poll_req);
 		uv_timer_stop(data->timer_req);
+		uv_custom_close(data->poll_req);
 	}
 	
 	return;
@@ -315,6 +315,8 @@ static void write_cb(uv_poll_t *req) {
 	struct ip *ip = NULL;
 	u_char packet[IP_MAXPACKET] __aligned(4);
 	int icmp_len = 0, cc = 0, i = 0, r = 0;
+
+	memset(&packet, 0, IP_MAXPACKET);
 
 	uv_os_fd_t fd = 0;
 	r = uv_fileno((uv_handle_t *)req, &fd);
