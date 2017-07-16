@@ -227,7 +227,7 @@ static void write_cb(uv_poll_t *req) {
 	}
 
 	if(data->stop == 0) {
-		if(++(*iter) >= *nr) {
+		if((*iter)++ >= *nr) {
 			*iter = 0;
 			uv_timer_start(data->timer_req, (void (*)(uv_timer_t *))restart, 10000, 0);
 		} else {
@@ -336,10 +336,10 @@ static void free_data(struct data_t *data) {
 	if(data->custom_poll_data != NULL) {
 		uv_custom_poll_free(data->custom_poll_data);
 	}
-	if(data->search.nr > 0) {
+	if(data->search.data != NULL) {
 		FREE(data->search.data);
 	}
-	if(data->found.nr > 0) {
+	if(data->found.data != NULL) {
 		FREE(data->found.data);
 	}
 	if(data->handle != NULL) {
@@ -447,6 +447,31 @@ void arp_scan(void) {
 						}
 					}
 				}
+			}
+
+			/*
+			 * In order to unit test this code we need to
+			 * search for an ip address that is probably not
+			 * in use. So, besides 10.0.0.138 we also
+			 * search for 10.0.0.1, but only if the last bit
+			 * of the netmask is greater then zero.
+			 */
+			if(((unsigned char *)&in_netmask.s_addr)[3] > 0) {
+				if((data[nrdata]->search.data = REALLOC(data[nrdata]->search.data, sizeof((*data[nrdata]->search.data))*(nrip+2))) == NULL) {
+					OUT_OF_MEMORY
+				}
+				data[nrdata]->search.nr = nrip+1;
+
+				struct in_addr *in_tmp = &in_min;
+				char tmp[17];
+
+				((unsigned char *)&(*in_tmp).s_addr)[3] = 1;
+
+				uv_inet_ntop(AF_INET, in_tmp, tmp, sizeof(tmp));
+
+				strcpy(data[nrdata]->search.data[z].ip, tmp);
+				data[nrdata]->search.data[z].active = 1;
+				z++;
 			}
 
 			if((data[nrdata]->handle = pcap_open_live(interfaces[i].name, 64, 0, 1, e)) == NULL) {

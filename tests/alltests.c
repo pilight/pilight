@@ -148,7 +148,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_protocols_api_xbmc();
 	suites[nr++] = suite_protocols_api_openweathermap();
 	suites[nr++] = suite_protocols_api_wunderground();
-	suites[nr++] = suite_protocols_network_ping(); 
+	suites[nr++] = suite_protocols_network_ping();
 	suites[nr++] = suite_protocols_core();
 	suites[nr++] = suite_protocols_generic();
 #ifdef __linux__
