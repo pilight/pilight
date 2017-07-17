@@ -226,9 +226,9 @@ static void write_cb(uv_poll_t *req) {
 
 	/*
 	 * Respond with an arp request on the first ip
+	 * across all network devices.
 	 */
-	if(check == 1) {
-		check = 2;
+	if(check++ < nrdata) {
 		struct in_addr in_ip, in_netmask, in_min;
 
 		memset(&min, 0, 17);

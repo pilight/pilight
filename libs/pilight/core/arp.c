@@ -222,6 +222,7 @@ static void write_cb(uv_poll_t *req) {
 	if(*active == 1) {
 		unsigned char packet[60];
 		memset(&packet, '\0', 60);
+
 		initpacket(ip, data->srcip, data->srcmac, (char *)&packet);
 		pcap_sendpacket(data->handle, packet, ETHER_HDRLEN + ARP_PKTLEN);
 	}
@@ -456,7 +457,7 @@ void arp_scan(void) {
 			 * search for 10.0.0.1, but only if the last bit
 			 * of the netmask is greater then zero.
 			 */
-			if(((unsigned char *)&in_netmask.s_addr)[3] > 0) {
+			if(((unsigned char *)&in_netmask.s_addr)[3] > 0 && ((unsigned char *)&in_min.s_addr)[3] > 0) {
 				if((data[nrdata]->search.data = REALLOC(data[nrdata]->search.data, sizeof((*data[nrdata]->search.data))*(nrip+2))) == NULL) {
 					OUT_OF_MEMORY
 				}
