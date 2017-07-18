@@ -165,6 +165,11 @@ static void start(void) {
 }
 
 static void test_protocols_api_lirc(CuTest *tc) {
+	if(geteuid() != 0) {
+		printf("[ %-33s (requires root)]\n", __FUNCTION__);
+		fflush(stdout);
+		return;
+	}
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 

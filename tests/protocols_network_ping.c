@@ -70,6 +70,11 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 }
 
 static void test_protocols_network_ping(CuTest *tc) {
+	if(geteuid() != 0) {
+		printf("[ %-33s (requires root)]\n", __FUNCTION__);
+		fflush(stdout);
+		return;
+	}
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 

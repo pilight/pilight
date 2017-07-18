@@ -173,6 +173,11 @@ static void ntp_custom_server(void) {
 }
 
 static void test_ntp(CuTest *tc) {
+	if(geteuid() != 0) {
+		printf("[ %-33s (requires root)]\n", __FUNCTION__);
+		fflush(stdout);
+		return;
+	}
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 

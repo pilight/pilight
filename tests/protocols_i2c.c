@@ -18,6 +18,7 @@
 #include <sys/utsname.h>
 #include <wiringx.h>
 
+#include "../libs/pilight/core/log.h"
 #include "../libs/pilight/core/mem.h"
 #include "../libs/pilight/core/common.h"
 #include "../libs/pilight/core/CuTest.h"
@@ -226,6 +227,11 @@ static void loop(void *param) {
  * Add timeout in case of failed init
  */
 static void test_protocols_i2c_lm75(CuTest *tc) {
+	if(geteuid() != 0) {
+		printf("[ %-33s (requires root)]\n", __FUNCTION__);
+		fflush(stdout);
+		return;
+	}
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -263,10 +269,11 @@ static void test_protocols_i2c_lm75(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, ret);
 	FREE(p);
 
+	CuAssertIntEquals(tc, 0, wiringXSetup(NULL, _logprintf));
+
 	fd = wiringXI2CSetup("/dev/i2c-0", 0x48);
 	CuAssertTrue(tc, fd > 0);
 
-	// CuAssertIntEquals(tc, 0, wiringXSetup("raspberrypi1b2", NULL));
 	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x00, 0xA017));
 
 	lm75Init();
@@ -303,6 +310,11 @@ static void test_protocols_i2c_lm75(CuTest *tc) {
 }
 
 static void test_protocols_i2c_lm76(CuTest *tc) {
+	if(geteuid() != 0) {
+		printf("[ %-33s (requires root)]\n", __FUNCTION__);
+		fflush(stdout);
+		return;
+	}
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -340,10 +352,11 @@ static void test_protocols_i2c_lm76(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, ret);
 	FREE(p);
 
+	CuAssertIntEquals(tc, 0, wiringXSetup(NULL, _logprintf));
+
 	fd = wiringXI2CSetup("/dev/i2c-0", 0x48);
 	CuAssertTrue(tc, fd > 0);
 
-	// CuAssertIntEquals(tc, 0, wiringXSetup("raspberrypi1b2", NULL));
 	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x00, 0xa015));
 
 	lm76Init();
@@ -380,6 +393,11 @@ static void test_protocols_i2c_lm76(CuTest *tc) {
 }
 
 static void test_protocols_i2c_bmp180(CuTest *tc) {
+	if(geteuid() != 0) {
+		printf("[ %-33s (requires root)]\n", __FUNCTION__);
+		fflush(stdout);
+		return;
+	}
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -417,10 +435,11 @@ static void test_protocols_i2c_bmp180(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, ret);
 	FREE(p);
 
+	CuAssertIntEquals(tc, 0, wiringXSetup(NULL, _logprintf));
+
 	fd = wiringXI2CSetup("/dev/i2c-0", 0x77);
 	CuAssertTrue(tc, fd > 0);
 
-	// CuAssertIntEquals(tc, 0, wiringXSetup("raspberrypi1b2", NULL));
 	/* Set version */
 	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xD0, 0x55));
 	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xD1, 0x01));
