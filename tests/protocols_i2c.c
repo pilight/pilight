@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <errno.h>
 #include <dirent.h>
 #include <assert.h>
@@ -40,8 +41,43 @@ static int fd = 0;
 static int dev = 0;
 static uv_thread_t pth;
 
+/*
+ * finit_module is not supported by valgrind
+ */
+static inline int finit_module(int fd, const char *uargs, int flags) {
+	return syscall(__NR_finit_module, fd, uargs, flags);
+}
+
 int init_module(char *, unsigned long, char *);
 int delete_module(char *, int);
+
+static inline int sortbydatetime(const struct dirent **a, const struct dirent **b) {
+	int rval = 0;
+	struct stat sbuf1, sbuf2;
+	char path1[PATH_MAX], path2[PATH_MAX];
+
+	memset(&sbuf1, 0, sizeof(struct stat));
+	memset(&sbuf2, 0, sizeof(struct stat));
+
+	memset(&path1, 0, PATH_MAX);
+	memset(&path2, 0, PATH_MAX);
+
+	snprintf(path1, PATH_MAX, "/dev/%s", (*a)->d_name);
+	snprintf(path2, PATH_MAX, "/dev/%s", (*b)->d_name);
+
+	rval = stat(path1, &sbuf1);
+	if(rval) {
+		perror("stat");
+		return 0;
+	}
+	rval = stat(path2, &sbuf2);
+	if(rval) {
+		perror("stat");
+		return 0;
+	}
+
+	return sbuf1.st_mtime < sbuf2.st_mtime;
+}
 
 static void close_cb(uv_handle_t *handle) {
 	FREE(handle);
@@ -151,6 +187,42 @@ out_error:
 	return NULL;
 }
 
+static int load_module(char *module, char *addr, int check) {
+	struct utsname utsname;
+	char ko[128], *y = ko;
+	char log[128], *z = log;
+	char path[MAX_DIR_PATH+1];
+	char file[MAX_DIR_PATH+1], *p = file;
+	unsigned long len = 0;
+
+	memset(ko, '\0', sizeof(ko));
+	memset(log, '\0', sizeof(log));
+	memset(file, '\0', sizeof(file));
+
+	sprintf(y, "%s.ko", module);
+	sprintf(z, "%s kernel module not available", module);
+
+	if(uname(&utsname) != 0) {
+		return -1;
+	}
+	snprintf(path, MAX_DIR_PATH, "/lib/modules/%s", utsname.release);
+
+	int ret = findfile(path, y, &p);
+	if(ret != 0) {
+		return -1;
+	}
+
+	if(check == 0) {
+		p = grab_file(file, &len);
+		CuAssertPtrNotNull(gtc, p);
+
+		ret = init_module(p, len, addr);
+		FREE(p);
+		return ret;
+	}
+	return 0;
+}
+
 static void *received(int reason, void *param) {
 	struct reason_code_received_t *data = param;
 
@@ -232,8 +304,15 @@ static void test_protocols_i2c_lm75(CuTest *tc) {
 		fflush(stdout);
 		return;
 	}
+	if(load_module("i2c-stub", "chip-addr=0x48", 1) != 0) {
+		printf("[ %-29s (requires i2c-stub)]\n", __FUNCTION__);
+		fflush(stdout);
+		return;
+	}
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
+
+	char path[MAX_DIR_PATH], *p = path;
 
 	dev = LM75;
 	step = 0;
@@ -244,41 +323,43 @@ static void test_protocols_i2c_lm75(CuTest *tc) {
 	
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
-	struct utsname utsname;
-	char path[MAX_DIR_PATH+1];
-	char file[MAX_DIR_PATH+1], *p = file;
-	unsigned long len = 0;
+	int ret = delete_module("i2c_dev", 0);
+	CuAssertTrue(tc, ret == 0 || errno == 2);
 
-	memset(file, '\0', sizeof(file));
+	ret = delete_module("i2c_stub", 0);
+	CuAssertTrue(tc, ret == 0 || errno == 2);
 
-	int ret = delete_module("i2c_stub", 0);
+	load_module("i2c-dev", "", 0);
+	CuAssertIntEquals(tc, 0, load_module("i2c-stub", "chip-addr=0x48", 0));
 
-	CuAssertIntEquals(tc, 0, uname(&utsname));
-	snprintf(path, MAX_DIR_PATH, "/lib/modules/%s", utsname.release);
-	ret = findfile(path, "i2c-stub.ko", &p);
-	if(ret != 0) {
-		printf("[ - %-46s ]\n", "i2c-stub kernel module not available");
-		fflush(stdout);
-		return;
+	struct dirent **namelist = NULL;
+	int sizelist = scandir("/dev", &namelist, NULL, sortbydatetime);
+	CuAssertTrue(tc, sizelist > 0);
+
+	int i = 0, nr = -1;
+	for(i=0;i<sizelist;i++) {
+		if(strstr(namelist[i]->d_name, "i2c-") != NULL) {
+			if(nr == -1) {
+				CuAssertIntEquals(gtc, 1, sscanf(namelist[i]->d_name, "i2c-%d", &nr));
+			}
+		}
+		free(namelist[i]);
 	}
+	free(namelist);
 
-	p = grab_file(file, &len);
-	CuAssertPtrNotNull(tc, p);
-
-	ret = init_module(p, len, "chip-addr=0x48");
-	CuAssertIntEquals(tc, 0, ret);
-	FREE(p);
+	CuAssertTrue(gtc, snprintf(p, MAX_DIR_PATH, "/dev/i2c-%d", nr) > 0);
 
 	CuAssertIntEquals(tc, 0, wiringXSetup(NULL, _logprintf));
 
-	fd = wiringXI2CSetup("/dev/i2c-0", 0x48);
+	fd = wiringXI2CSetup(path, 0x48);
 	CuAssertTrue(tc, fd > 0);
 
 	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x00, 0xA017));
 
 	lm75Init();
 
-	char *add = "{\"test\":{\"protocol\":[\"lm75\"],\"id\":[{\"id\":72,\"i2c-path\":\"/dev/i2c-0\"}],\"temperature\":0.0,\"poll-interval\":1}}";
+	char add[255], *q = add;
+	sprintf(q, "{\"test\":{\"protocol\":[\"lm75\"],\"id\":[{\"id\":72,\"i2c-path\":\"/dev/i2c-%d\"}],\"temperature\":0.0,\"poll-interval\":1}}", nr);
 
 	printf("[ - %-46s ]\n", "first interval");
 	fflush(stdout);
@@ -301,6 +382,9 @@ static void test_protocols_i2c_lm75(CuTest *tc) {
 	close(fd);
 
 	wiringXGC();
+
+	ret = delete_module("i2c_dev", 0);
+	CuAssertTrue(tc, ret == 0 || errno == 2);
 
 	ret = delete_module("i2c_stub", 0);
 	CuAssertIntEquals(tc, 0, ret);
@@ -315,8 +399,15 @@ static void test_protocols_i2c_lm76(CuTest *tc) {
 		fflush(stdout);
 		return;
 	}
+	if(load_module("i2c-stub", "chip-addr=0x48", 1) != 0) {
+		printf("[ %-29s (requires i2c-stub)]\n", __FUNCTION__);
+		fflush(stdout);
+		return;
+	}
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
+
+	char path[MAX_DIR_PATH], *p = path;
 
 	dev = LM76;
 	step = 0;
@@ -327,41 +418,43 @@ static void test_protocols_i2c_lm76(CuTest *tc) {
 	
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
-	struct utsname utsname;
-	char path[MAX_DIR_PATH+1];
-	char file[MAX_DIR_PATH+1], *p = file;
-	unsigned long len = 0;
+	int ret = delete_module("i2c_dev", 0);
+	CuAssertTrue(tc, ret == 0 || errno == 2);
 
-	memset(file, '\0', sizeof(file));
+	ret = delete_module("i2c_stub", 0);
+	CuAssertTrue(tc, ret == 0 || errno == 2);
 
-	int ret = delete_module("i2c_stub", 0);
+	load_module("i2c-dev", "", 0);
+	CuAssertIntEquals(tc, 0, load_module("i2c-stub", "chip-addr=0x48", 0));
 
-	CuAssertIntEquals(tc, 0, uname(&utsname));
-	snprintf(path, MAX_DIR_PATH, "/lib/modules/%s", utsname.release);
-	ret = findfile(path, "i2c-stub.ko", &p);
-	if(ret != 0) {
-		printf("[ - %-46s ]\n", "i2c-stub kernel module not available");
-		fflush(stdout);
-		return;
+	struct dirent **namelist = NULL;
+	int sizelist = scandir("/dev", &namelist, NULL, sortbydatetime);
+	CuAssertTrue(tc, sizelist > 0);
+
+	int i = 0, nr = -1;
+	for(i=0;i<sizelist;i++) {
+		if(strstr(namelist[i]->d_name, "i2c-") != NULL) {
+			if(nr == -1) {
+				CuAssertIntEquals(gtc, 1, sscanf(namelist[i]->d_name, "i2c-%d", &nr));
+			}
+		}
+		free(namelist[i]);
 	}
+	free(namelist);
 
-	p = grab_file(file, &len);
-	CuAssertPtrNotNull(tc, p);
-
-	ret = init_module(p, len, "chip-addr=0x48");
-	CuAssertIntEquals(tc, 0, ret);
-	FREE(p);
+	CuAssertTrue(gtc, snprintf(p, MAX_DIR_PATH, "/dev/i2c-%d", nr) > 0);
 
 	CuAssertIntEquals(tc, 0, wiringXSetup(NULL, _logprintf));
 
-	fd = wiringXI2CSetup("/dev/i2c-0", 0x48);
+	fd = wiringXI2CSetup(path, 0x48);
 	CuAssertTrue(tc, fd > 0);
 
 	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x00, 0xa015));
 
 	lm76Init();
 
-	char *add = "{\"test\":{\"protocol\":[\"lm76\"],\"id\":[{\"id\":72,\"i2c-path\":\"/dev/i2c-0\"}],\"temperature\":0.0,\"poll-interval\":1}}";
+	char add[255], *q = add;
+	sprintf(q, "{\"test\":{\"protocol\":[\"lm76\"],\"id\":[{\"id\":72,\"i2c-path\":\"/dev/i2c-%d\"}],\"temperature\":0.0,\"poll-interval\":1}}", nr);
 
 	printf("[ - %-46s ]\n", "first interval");
 	fflush(stdout);
@@ -385,6 +478,9 @@ static void test_protocols_i2c_lm76(CuTest *tc) {
 
 	wiringXGC();
 
+	ret = delete_module("i2c_dev", 0);
+	CuAssertTrue(tc, ret == 0 || errno == 2);
+
 	ret = delete_module("i2c_stub", 0);
 	CuAssertIntEquals(tc, 0, ret);
 
@@ -398,9 +494,15 @@ static void test_protocols_i2c_bmp180(CuTest *tc) {
 		fflush(stdout);
 		return;
 	}
+	if(load_module("i2c-stub", "chip-addr=0x48", 1) != 0) {
+		printf("[ %-29s (requires i2c-stub)]\n", __FUNCTION__);
+		fflush(stdout);
+		return;
+	}
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
+	char path[MAX_DIR_PATH], *p = path;
 	dev = BMP180;
 	step = 0;
 	
@@ -410,34 +512,35 @@ static void test_protocols_i2c_bmp180(CuTest *tc) {
 	
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
-	struct utsname utsname;
-	char path[MAX_DIR_PATH+1];
-	char file[MAX_DIR_PATH+1], *p = file;
-	unsigned long len = 0;
+	int ret = delete_module("i2c_dev", 0);
+	CuAssertTrue(tc, ret == 0 || errno == 2);
 
-	memset(file, '\0', sizeof(file));
+	ret = delete_module("i2c_stub", 0);
+	CuAssertTrue(tc, ret == 0 || errno == 2);
 
-	int ret = delete_module("i2c_stub", 0);
+	load_module("i2c-dev", "", 0);
+	CuAssertIntEquals(tc, 0, load_module("i2c-stub", "chip-addr=0x77", 0));
 
-	CuAssertIntEquals(tc, 0, uname(&utsname));
-	snprintf(path, MAX_DIR_PATH, "/lib/modules/%s", utsname.release);
-	ret = findfile(path, "i2c-stub.ko", &p);
-	if(ret != 0) {
-		printf("[ - %-46s ]\n", "i2c-stub kernel module not available");
-		fflush(stdout);
-		return;
+	struct dirent **namelist = NULL;
+	int sizelist = scandir("/dev", &namelist, NULL, sortbydatetime);
+	CuAssertTrue(tc, sizelist > 0);
+
+	int i = 0, nr = -1;
+	for(i=0;i<sizelist;i++) {
+		if(strstr(namelist[i]->d_name, "i2c-") != NULL) {
+			if(nr == -1) {
+				CuAssertIntEquals(gtc, 1, sscanf(namelist[i]->d_name, "i2c-%d", &nr));
+			}
+		}
+		free(namelist[i]);
 	}
+	free(namelist);
 
-	p = grab_file(file, &len);
-	CuAssertPtrNotNull(tc, p);
-
-	ret = init_module(p, len, "chip-addr=0x77");
-	CuAssertIntEquals(tc, 0, ret);
-	FREE(p);
+	CuAssertTrue(gtc, snprintf(p, MAX_DIR_PATH, "/dev/i2c-%d", nr) > 0);
 
 	CuAssertIntEquals(tc, 0, wiringXSetup(NULL, _logprintf));
 
-	fd = wiringXI2CSetup("/dev/i2c-0", 0x77);
+	fd = wiringXI2CSetup(path, 0x77);
 	CuAssertTrue(tc, fd > 0);
 
 	/* Set version */
@@ -462,7 +565,8 @@ static void test_protocols_i2c_bmp180(CuTest *tc) {
 
 	bmp180Init();
 
-	char *add = "{\"test\":{\"protocol\":[\"bmp180\"],\"id\":[{\"id\":119,\"i2c-path\":\"/dev/i2c-0\"}],\"temperature\":0.0,\"pressure\":0.0,\"oversampling\":0,\"poll-interval\":1}}";
+	char add[255], *q = add;
+	sprintf(q, "{\"test\":{\"protocol\":[\"bmp180\"],\"id\":[{\"id\":119,\"i2c-path\":\"/dev/i2c-%d\"}],\"temperature\":0.0,\"pressure\":0.0,\"oversampling\":0,\"poll-interval\":1}}", nr);
 
 	// printf("[ - %-46s ]\n", "first interval");
 	// fflush(stdout);
@@ -489,6 +593,9 @@ static void test_protocols_i2c_bmp180(CuTest *tc) {
 	uv_thread_join(&pth);
 
 	wiringXGC();
+
+	ret = delete_module("i2c_dev", 0);
+	CuAssertTrue(tc, ret == 0 || errno == 2);
 
 	ret = delete_module("i2c_stub", 0);
 	CuAssertIntEquals(tc, 0, ret);

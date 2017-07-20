@@ -67,12 +67,13 @@
 #ifdef WEBSERVER_HTTPS
 #include <mbedtls/error.h>
 #include <mbedtls/pk.h>
+#include <mbedtls/version.h>
 #if MBEDTLS_VERSION_MAJOR <= 2 && \
     MBEDTLS_VERSION_MINOR <= 3 && \
     MBEDTLS_VERSION_PATCH <= 0
 	#include <mbedtls/net.h>
 #else
-	#include <mbedtls/net_socket.h>
+	#include <mbedtls/net_sockets.h>
 #endif
 #include <mbedtls/x509_crt.h>
 #include <mbedtls/ctr_drbg.h>
