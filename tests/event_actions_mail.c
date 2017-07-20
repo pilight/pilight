@@ -29,7 +29,6 @@
 
 #include "alltests.h"
 
-static uv_thread_t pth;
 static int steps = 0;
 static int nrsteps = 0;
 static CuTest *gtc = NULL;
@@ -740,8 +739,6 @@ static void test_event_actions_mail_run(CuTest *tc) {
 	protocol_gc();
 	storage_gc();
 	eventpool_gc();
-
-	uv_thread_join(&pth);
 
 	CuAssertIntEquals(tc, 1, check);
 	CuAssertIntEquals(tc, 0, xfree());
