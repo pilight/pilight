@@ -13,8 +13,7 @@
 #include <mbedtls/pk.h>
 #include <mbedtls/version.h>
 #if MBEDTLS_VERSION_MAJOR <= 2 && \
-    MBEDTLS_VERSION_MINOR <= 3 && \
-    MBEDTLS_VERSION_PATCH <= 0
+    MBEDTLS_VERSION_MINOR <= 3
 	#include <mbedtls/net.h>
 #else
 	#include <mbedtls/net_sockets.h>
