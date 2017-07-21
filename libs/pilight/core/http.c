@@ -172,12 +172,12 @@ static void http_client_add(uv_poll_t *req, struct uv_custom_poll_t *data) {
 	int fd = -1, r = 0;
 
 	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
-		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
+		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r)); /*LCOV_EXCL_LINE*/
 	}
 
 	struct http_clients_t *node = MALLOC(sizeof(struct http_clients_t));
 	if(node == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	node->req = req;
 	node->data = data;
@@ -226,7 +226,7 @@ static int prepare_request(struct request_t **request, int method, char *url, co
 	int plen = 0, len = 0, tlen = 0;
 
 	if(((*request) = MALLOC(sizeof(struct request_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset((*request), 0, sizeof(struct request_t));
 
@@ -254,23 +254,23 @@ static int prepare_request(struct request_t **request, int method, char *url, co
 	if((tok = strstr(&url[plen], "/"))) {
 		tlen = (size_t)(tok-url)-plen+1;
 		if(((*request)->host = MALLOC(tlen+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strncpy((*request)->host, &url[plen-1], tlen);
 		(*request)->host[tlen] = '\0';
 		if(((*request)->uri = MALLOC(len-tlen)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strncpy((*request)->uri, &url[tlen+(plen-1)], (len-tlen)-1);
 	} else {
 		tlen = strlen(url)-(plen-1);
 		if(((*request)->host = MALLOC(tlen+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strncpy((*request)->host, &url[(plen-1)], tlen);
 		(*request)->host[tlen] = '\0';
 		if(((*request)->uri = MALLOC(2)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strncpy((*request)->uri, "/", 1);
 	}
@@ -278,7 +278,7 @@ static int prepare_request(struct request_t **request, int method, char *url, co
 		size_t pglen = strlen((*request)->uri);
 		tlen = (size_t)(tok-(*request)->host);
 		if((auth = MALLOC(tlen+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strncpy(auth, &(*request)->host[0], tlen);
 		auth[tlen] = '\0';
@@ -290,7 +290,7 @@ static int prepare_request(struct request_t **request, int method, char *url, co
 	if(method == HTTP_POST) {
 		strncpy((*request)->mimetype, contype, sizeof((*request)->mimetype));
 		if(((*request)->content = REALLOC((*request)->content, strlen(post)+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy((*request)->content, post);
 		(*request)->content_len = strlen(post);
@@ -338,11 +338,14 @@ static void append_to_header(char **header, char *data, ...) {
 	bytes = vsnprintf(NULL, 0, data, apcpy);
 #endif
 	if(bytes == -1) {
-		fprintf(stderr, "ERROR: improperly formatted logprintf message %s\n", data);
+		/*
+		 * FIXME
+		 */
+		// fprintf(stderr, "ERROR: improperly formatted logprintf message %s\n", data);
 	} else {
 		va_end(apcpy);
 		if((*header = REALLOC(*header, pos+bytes+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		va_start(ap, data);
 		vsprintf(&(*header)[pos], data, ap);
@@ -378,7 +381,7 @@ static void process_chunk(char **buf, ssize_t *size, struct request_t *request) 
 		}
 
 		if((request->content = REALLOC(request->content, request->bytes_read+toread+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 
 		/*
@@ -439,7 +442,7 @@ static void http_client_close(uv_poll_t *req) {
 	int fd = -1, r = 0;
 
 	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
-		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
+		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r)); /*LCOV_EXCL_LINE*/
 	}
 
 	if(fd > -1) {
@@ -498,7 +501,7 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		if(request->gotheader == 0 && (p = strstr(buf, "\r\n\r\n")) != NULL) {
 			pos = p-buf;
 			if((header = MALLOC(pos+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			strncpy(header, buf, pos);
 			header[pos] = '\0';
@@ -554,7 +557,7 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			process_chunk(&buf, &(*nread), request);
 		} else if(*nread > 0) {
 			if((request->content = REALLOC(request->content, request->bytes_read+(*nread)+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			/*
 			 * Prevent uninitialised values in valgrind
@@ -681,8 +684,10 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 		 * Partly bypass libuv in case of ssl connections
 		 */
 		if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+			/*LCOV_EXCL_START*/
 			logprintf(LOG_ERR, "socket: %s", strerror(errno));
 			goto freeuv;
+			/*LCOV_EXCL_STOP*/
 		}
 
 #ifdef _WIN32
@@ -699,14 +704,16 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 #else
 			if(!(errno == EINPROGRESS || errno == EISCONN)) {
 #endif
+				/*LCOV_EXCL_START*/
 				logprintf(LOG_ERR, "connect: %s", strerror(errno));
 				goto freeuv;
+				/*LCOV_EXCL_STOP*/
 			}
 		}
 
 		uv_poll_t *poll_req = NULL;
 		if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		uv_custom_poll_init(&custom_poll_data, poll_req, (void *)request);
 		custom_poll_data->is_ssl = request->is_ssl;
@@ -716,9 +723,11 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 
 		r = uv_poll_init_socket(uv_default_loop(), poll_req, sockfd);
 		if(r != 0) {
+			/*LCOV_EXCL_START*/
 			logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
 			FREE(poll_req);
 			goto freeuv;
+			/*LCOV_EXCL_STOP*/
 		}
 
 		http_client_add(poll_req, custom_poll_data);

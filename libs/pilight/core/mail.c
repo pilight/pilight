@@ -114,7 +114,7 @@ static void abort_cb(uv_poll_t *req) {
 	int fd = -1, r = 0;
 
 	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
-		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
+		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r)); /*LCOV_EXCL_LINE*/
 	}
 
 	if(request != NULL && request->callback != NULL) {
@@ -381,12 +381,14 @@ static void write_cb(uv_poll_t *req) {
 		case SMTP_STEP_SEND_HELLO: {
 			request->content_len = strlen("EHLO \r\n")+strlen(USERAGENT)+1;
 			if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			request->content_len = (size_t)snprintf(request->content, request->content_len, "EHLO %s\r\n", USERAGENT);
+			/*LCOV_EXCL_START*/
 			if(pilight.debuglevel >= 2) {
 				fprintf(stderr, "SMTP: %s\n", request->content);
 			}
+			/*LCOV_EXCL_STOP*/
 
 			push_data(req, SMTP_STEP_RECV_HELLO);
 		} break;
@@ -394,7 +396,7 @@ static void write_cb(uv_poll_t *req) {
 			request->content_len = strlen(request->login)+strlen(request->pass)+2;
 			char *authstr = MALLOC(request->content_len), *hash = NULL;
 			if(authstr == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			memset(authstr, '\0', request->content_len);
 			strncpy(&authstr[1], request->login, strlen(request->login));
@@ -404,51 +406,55 @@ static void write_cb(uv_poll_t *req) {
 
 			request->content_len = strlen("AUTH PLAIN \r\n")+strlen(hash)+1;
 			if((request->content = REALLOC(request->content, request->content_len+4)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			memset(request->content, '\0', request->content_len);
 			request->content_len = snprintf(request->content, request->content_len, "AUTH PLAIN %s\r\n", hash);
 			FREE(hash);
-
+			/*LCOV_EXCL_START*/
 			if(pilight.debuglevel >= 2) {
 				fprintf(stderr, "SMTP: AUTH PLAIN XXX\n");
 			}
+			/*LCOV_EXCL_STOP*/
 			push_data(req, SMTP_STEP_RECV_AUTH);
 		} break;
 		case SMTP_STEP_SEND_FROM: {
 			request->content_len = strlen("MAIL FROM: <>\r\n")+strlen(request->mail->from)+1;
 			if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			request->content_len = (size_t)snprintf(request->content, request->content_len, "MAIL FROM: <%s>\r\n", request->mail->from);
-
+			/*LCOV_EXCL_START*/
 			if(pilight.debuglevel >= 2) {
 				fprintf(stderr, "SMTP: %s\n", request->content);
 			}
+			/*LCOV_EXCL_STOP*/
 			push_data(req, SMTP_STEP_RECV_FROM);
 		} break;
 		case SMTP_STEP_SEND_TO: {
 			request->content_len = strlen("RCPT TO: <>\r\n")+strlen(request->mail->to)+1;
 			if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			request->content_len = (size_t)snprintf(request->content, request->content_len, "RCPT TO: <%s>\r\n", request->mail->to);
+			/*LCOV_EXCL_START*/
 			if(pilight.debuglevel >= 2) {
 				fprintf(stderr, "SMTP: %s\n", request->content);
 			}
-
+			/*LCOV_EXCL_STOP*/
 			push_data(req, SMTP_STEP_RECV_TO);
 		} break;
 		case SMTP_STEP_SEND_DATA: {
 			request->content_len = strlen("DATA\r\n");
 			if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			strncpy(request->content, "DATA\r\n", request->content_len);
+			/*LCOV_EXCL_START*/
 			if(pilight.debuglevel >= 2) {
 				fprintf(stderr, "SMTP: %s\n", request->content);
 			}
-
+			/*LCOV_EXCL_STOP*/
 			push_data(req, SMTP_STEP_RECV_DATA);
 		} break;
 		case SMTP_STEP_SEND_BODY: {
@@ -459,7 +465,7 @@ static void write_cb(uv_poll_t *req) {
 			request->content_len += strlen(request->mail->message);
 
 			if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			request->content_len = (size_t)snprintf(request->content, request->content_len,
 				"Subject: %s\r\n"
@@ -472,47 +478,50 @@ static void write_cb(uv_poll_t *req) {
 				"%s"
 				"\r\n.\r\n",
 				request->mail->subject, request->mail->from, request->mail->to, request->mail->message);
-
+			/*LCOV_EXCL_START*/
 			if(pilight.debuglevel >= 2) {
 				fprintf(stderr, "SMTP: %s\n", request->content);
 			}
-
+			/*LCOV_EXCL_STOP*/
 			push_data(req, SMTP_STEP_RECV_BODY);
 		} break;
 		case SMTP_STEP_SEND_RESET: {
 			request->content_len = strlen("RSET\r\n");
 			if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			strncpy(request->content, "RSET\r\n", request->content_len);
+			/*LCOV_EXCL_START*/
 			if(pilight.debuglevel >= 2) {
 				fprintf(stderr, "SMTP: %s\n", request->content);
 			}
-
+			/*LCOV_EXCL_STOP*/
 			push_data(req, SMTP_STEP_RECV_RESET);
 		} break;
 		case SMTP_STEP_SEND_QUIT: {
 			request->content_len = strlen("QUIT\r\n");
 			if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			strncpy(request->content, "QUIT\r\n", request->content_len);
+			/*LCOV_EXCL_START*/
 			if(pilight.debuglevel >= 2) {
 				fprintf(stderr, "SMTP: %s\n", request->content);
 			}
-
+			/*LCOV_EXCL_STOP*/
 			push_data(req, SMTP_STEP_RECV_QUIT);
 		} break;
 		case SMTP_STEP_SEND_STARTTLS: {
 			request->content_len = strlen("STARTTLS\r\n");
 			if((request->content = REALLOC(request->content, request->content_len+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			strncpy(request->content, "STARTTLS\r\n", request->content_len);
+			/*LCOV_EXCL_START*/
 			if(pilight.debuglevel >= 2) {
 				fprintf(stderr, "SMTP: %s\n", request->content);
 			}
-
+			/*LCOV_EXCL_STOP*/
 			push_data(req, SMTP_STEP_RECV_STARTTLS);
 		} break;
 	}
@@ -543,7 +552,7 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 	}
 
 	if((request = MALLOC(sizeof(struct request_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(request, 0, sizeof(struct request_t));
 	request->host = host;
@@ -575,7 +584,7 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 	}
 
 	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-		logprintf(LOG_ERR, "socket: %s", strerror(errno));
+		logprintf(LOG_ERR, "socket: %s", strerror(errno)); /*LCOV_EXCL_LINE*/
 		goto free;
 	}
 
@@ -593,14 +602,16 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 #else
 		if(!(errno == EINPROGRESS || errno == EISCONN)) {
 #endif
+			/*LCOV_EXCL_START*/
 			logprintf(LOG_ERR, "connect: %s", strerror(errno));
 			goto free;
+			/*LCOV_EXCL_STOP*/
 		}
 	}
 
 	uv_poll_t *poll_req = NULL;
 	if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_custom_poll_init(&custom_poll_data, poll_req, (void *)request);
@@ -618,9 +629,11 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 
 	r = uv_poll_init_socket(uv_default_loop(), poll_req, sockfd);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
 		FREE(poll_req);
 		goto freeuv;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	request->step = SMTP_STEP_RECV_WELCOME;

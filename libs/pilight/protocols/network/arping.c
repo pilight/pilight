@@ -102,7 +102,7 @@ static struct data_t *data = NULL;
 			// settings->state = CONNECTED;
 			// struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
 			// if(data == NULL) {
-				// OUT_OF_MEMORY
+				// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			// }
 			// snprintf(data->message, 1024, "{\"mac\":\"%s\",\"ip\":\"%s\",\"state\":\"connected\"}", a, b);
 			// strcpy(data->origin, "receiver");
@@ -125,7 +125,7 @@ static struct data_t *data = NULL;
 
 			// struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
 			// if(data == NULL) {
-				// OUT_OF_MEMORY
+				// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			// }
 			// snprintf(data->message, 1024, "{\"mac\":\"%s\",\"ip\":\"0.0.0.0\",\"state\":\"disconnected\"}", a);
 			// strcpy(data->origin, "receiver");
@@ -231,7 +231,7 @@ static void *addDevice(int reason, void *param) {
 	// }
 
 	// if((node = MALLOC(sizeof(struct data_t)))== NULL) {
-		// OUT_OF_MEMORY
+		// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	// }
 	// memset(node, '\0', sizeof(struct data_t));
 
@@ -242,7 +242,7 @@ static void *addDevice(int reason, void *param) {
 		// while(jchild) {
 			// if(json_find_string(jchild, "mac", &tmp) == 0) {
 				// if((node->dstmac = MALLOC(strlen(tmp)+1)) == NULL) {
-					// OUT_OF_MEMORY
+					// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				// }
 				// memset(node->dstmac, '\0', strlen(tmp)+1);
 				// for(i=0;i<=strlen(node->dstmac);i++) {
@@ -304,7 +304,7 @@ static void *addDevice(int reason, void *param) {
 	// }
 
 	// if((node->name = MALLOC(strlen(jdevice->key)+1)) == NULL) {
-		// OUT_OF_MEMORY
+		// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	// }
 	// strcpy(node->name, jdevice->key);
 

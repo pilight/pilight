@@ -330,12 +330,12 @@ int main(int argc, char **argv) {
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
 	
 	if((progname = MALLOC(15)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(progname, "pilight-debug");
 
 	if((signal_req = MALLOC(sizeof(uv_signal_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_signal_init(uv_default_loop(), signal_req);
@@ -361,7 +361,7 @@ int main(int argc, char **argv) {
 
 	char *fconfig = NULL;
 	if((fconfig = MALLOC(strlen(CONFIG_FILE)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(fconfig, CONFIG_FILE);
 
@@ -390,7 +390,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'C':
 				if((fconfig = REALLOC(fconfig, strlen(args)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(fconfig, args);
 			break;

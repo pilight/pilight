@@ -329,7 +329,7 @@ static void *test(void) {
 
 	uv_poll_t *poll_req = NULL;
 	if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_custom_poll_init(&custom_poll_data, poll_req, NULL);
@@ -372,11 +372,11 @@ static void *listener(int reason, void *param) {
 		struct reason_socket_received_t *data = param;
 		struct reason_socket_send_t *data1 = MALLOC(sizeof(struct reason_socket_send_t));
 		if(data1 == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		data1->fd = data->fd;
 		if((data1->buffer = MALLOC(strlen(respons)+1)) == NULL) {
-			OUT_OF_MEMORY;
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/;
 		}
 		strcpy(data1->buffer, respons);
 		strncpy(data1->type, data->type, 255);
@@ -401,7 +401,7 @@ static void test_webserver(CuTest *tc) {
 
 	async_close_req = MALLOC(sizeof(uv_async_t));
 	if(async_close_req == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	uv_async_init(uv_default_loop(), async_close_req, async_close_cb);
 

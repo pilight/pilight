@@ -298,13 +298,13 @@ int authorize_input(uv_poll_t *req, char *username, char *password) {
 
 	if((hdr = http_get_header(conn, "Authorization")) == NULL ||
 	   (strncmp(hdr, "Basic ", 6) != 0 &&
-		 strncmp(hdr, "basic ", 6) != 0)) {
+			strncmp(hdr, "basic ", 6) != 0)) {
 		return MG_FALSE;
 	}
 
 	char *user = MALLOC(strlen(hdr)+1);
 	if(user == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(user, &hdr[6]);
 
@@ -316,7 +316,7 @@ int authorize_input(uv_poll_t *req, char *username, char *password) {
 	if((n = explode(decoded, ":", &array)) == 2) {
 		if(strlen(array[1]) < 64) {
 			if((array[1] = REALLOC(array[1], 65)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 		}
 
@@ -365,7 +365,7 @@ size_t websocket_write(uv_poll_t *req, int opcode, const char *data, unsigned lo
 	int index = 2;
 
 	if((copy = REALLOC(copy, data_len + 10)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(copy, '\0', data_len + 10);
 
@@ -416,12 +416,12 @@ static void *webserver_send(int reason, void *param) {
 #endif
 		struct broadcast_list_t *node = MALLOC(sizeof(struct broadcast_list_t));
 		if(node == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		memset(node, 0, sizeof(struct broadcast_list_t));
 		node->fd = data->fd;
 		if((node->out = STRDUP(data->buffer)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		node->len = strlen(data->buffer);
 
@@ -529,7 +529,7 @@ static int parse_rest(uv_poll_t *req) {
 		char *dev = NULL;
 		char *decoded = MALLOC(strlen(conn->query_string)+1);
 		if(decoded == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 
 		if(urldecode(conn->query_string, decoded) == -1) {
@@ -770,7 +770,7 @@ static int request_handler(uv_poll_t *req) {
 				for(q=0;q<(sizeof(indexes)/sizeof(indexes[0]));q++) {
 					size_t l = strlen(root)+strlen(conn->uri)+strlen(indexes[q])+4;
 					if((conn->request = REALLOC(conn->request, l)) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					memset(conn->request, '\0', l);
 					if(root[strlen(root)-1] == '/') {
@@ -789,7 +789,7 @@ static int request_handler(uv_poll_t *req) {
 			} else if(root != NULL && conn->uri != NULL) {
 				size_t wlen = strlen(root)+strlen(conn->uri)+2;
 				if((conn->request = MALLOC(wlen)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				memset(conn->request, '\0', wlen);
 				/* If a file was requested add it to the webserver path to create the absolute path */
@@ -816,7 +816,7 @@ static int request_handler(uv_poll_t *req) {
 				mimetype = STRDUP("text/plain");
 			} else {
 				if((ext = REALLOC(ext, strlen(dot)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				memset(ext, '\0', strlen(dot)+1);
 				strcpy(ext, dot+1);
@@ -912,7 +912,7 @@ static int request_handler(uv_poll_t *req) {
 	} else if(websockets == WEBGUI_WEBSOCKETS) {
 		char *input = MALLOC(conn->content_len+1);
 		if(input == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strncpy(input, conn->content, conn->content_len);
 		input[conn->content_len] = '\0';
@@ -920,11 +920,11 @@ static int request_handler(uv_poll_t *req) {
 		if(json_validate(input) == true) {
 			struct reason_socket_received_t *data = MALLOC(sizeof(struct reason_socket_received_t));
 			if(data == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			data->fd = conn->fd;
 			if((data->buffer = MALLOC(strlen(input)+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			strcpy(data->buffer, input);
 			strcpy(data->type, "websocket");
@@ -968,8 +968,10 @@ static void webserver_process(uv_async_t *handle) {
 				int fd = 0, r = 0;
 
 				if((r = uv_fileno((uv_handle_t *)clients->req, (uv_os_fd_t *)&fd)) != 0) {
+					/*LCOV_EXCL_START*/
 					logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
 					continue;
+					/*LCOV_EXCL_STOP*/
 				}
 
 				if(fd == tmp->fd) {
@@ -1008,11 +1010,11 @@ static void *broadcast(int reason, void *param) {
 #endif
 	struct broadcast_list_t *node = MALLOC(sizeof(struct broadcast_list_t));
 	if(node == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(node, 0, sizeof(struct broadcast_list_t));
 	if((node->out = MALLOC(1024)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	int i = 0;
@@ -1205,7 +1207,7 @@ static void webserver_client_add(uv_poll_t *req) {
 #endif
 	struct webserver_clients_t *node = MALLOC(sizeof(struct webserver_clients_t));
 	if(node == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	node->req = req;
 	node->is_websocket = 0;
@@ -1419,7 +1421,9 @@ static void poll_close_cb(uv_poll_t *req) {
 	int fd = -1, r = 0;
 
 	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
+		/*LCOV_EXCL_STOP*/
 	}
 
 	if(conn != NULL && conn->is_websocket == 1) {
@@ -1551,8 +1555,10 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	memset(buffer, '\0', BUFFER_SIZE);
 
 	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
 		return;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	if((client = accept(fd, (struct sockaddr *)&servaddr, (socklen_t *)&socklen)) < 0) {
@@ -1578,7 +1584,7 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 	struct reason_webserver_connected_t *data = MALLOC(sizeof(struct reason_webserver_connected_t));
 	if(data == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	data->fd = client;
 
@@ -1594,7 +1600,7 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 	uv_poll_t *poll_req = NULL;
 	if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	uv_custom_poll_init(&custom_poll_data, poll_req, NULL);
 	custom_poll_data->read_cb = client_read_cb;
@@ -1603,6 +1609,7 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 	r = uv_poll_init_socket(uv_default_loop(), poll_req, client);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
 #ifdef _WIN32
 		closesocket(fd);
@@ -1615,11 +1622,12 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		}
 		FREE(poll_req);
 		return;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	struct connection_t *c = MALLOC(sizeof(struct connection_t));
 	if(c == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(c, 0, sizeof(struct connection_t));
 
@@ -1653,8 +1661,10 @@ static void server_write_cb(uv_poll_t *req) {
 	int r = 0, fd = 0;
 
 	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
 		return;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	static struct linger linger = { 0, 0 };
@@ -1666,7 +1676,7 @@ static void server_write_cb(uv_poll_t *req) {
 	setsockopt(fd, SOL_SOCKET, SO_LINGER, (void *)&linger, lsize);
 
 	if(getsockname(fd, (struct sockaddr *)&servaddr, (socklen_t *)&socklen) == -1) {
-		logprintf(LOG_ERR, "getsockname");
+		logprintf(LOG_ERR, "getsockname"); /*LCOV_EXCL_LINE*/
 	} else {
 #ifdef WEBSERVER_HTTPS
 		if(ntohs(servaddr.sin_port) == https_port) {
@@ -1702,14 +1712,17 @@ static int webserver_init(int port, int is_ssl) {
 	}
 #endif
 
-	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "socket: %s", strerror(errno));
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	unsigned long on = 1;
 
 	if((r = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(int))) < 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "setsockopt: %s", strerror(errno));
 #ifdef _WIN32
 		closesocket(sockfd);
@@ -1717,6 +1730,7 @@ static int webserver_init(int port, int is_ssl) {
 		close(sockfd);
 #endif
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	memset((char *)&addr, '\0', sizeof(addr));
@@ -1740,6 +1754,7 @@ static int webserver_init(int port, int is_ssl) {
 	}
 
 	if((listen(sockfd, 0)) < 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "listen: %s", strerror(errno));
 #ifdef _WIN32
 		closesocket(sockfd);
@@ -1747,18 +1762,19 @@ static int webserver_init(int port, int is_ssl) {
 		close(sockfd);
 #endif
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	uv_poll_t *poll_req = NULL;
 
 	if(is_ssl == 1) {
 		if((poll_https_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		poll_req = poll_https_req;
 	}	else {
 		if((poll_http_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		poll_req = poll_http_req;
 	}
@@ -1771,6 +1787,7 @@ static int webserver_init(int port, int is_ssl) {
 
 	r = uv_poll_init_socket(uv_default_loop(), poll_req, sockfd);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
 #ifdef _WIN32
 		closesocket(sockfd);
@@ -1783,6 +1800,7 @@ static int webserver_init(int port, int is_ssl) {
 		};
 		FREE(poll_req);
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	server_write_cb(poll_req);
@@ -1793,12 +1811,14 @@ static int webserver_init(int port, int is_ssl) {
 int webserver_start(void) {
 	const uv_thread_t pth_cur_id = uv_thread_self();
 	if(uv_thread_equal(&pth_main_id, &pth_cur_id) == 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "webserver_start can only be started from the main thread");
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	if((async_req = MALLOC(sizeof(uv_async_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	uv_async_init(uv_default_loop(), async_req, webserver_process);
 
@@ -1826,11 +1846,13 @@ int webserver_start(void) {
 #endif
 
 	if(settings_select_string(ORIGIN_WEBSERVER, "webserver-root", &root) != 0) {
+		/*LCOV_EXCL_START*/
 		if((root = MALLOC(strlen(WEBSERVER_ROOT)+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(root, WEBSERVER_ROOT);
 		root_free = 1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	settings_select_string_element(ORIGIN_WEBSERVER, "webserver-authentication", 0, &authentication_username);

@@ -79,16 +79,16 @@ int sha256cache_add(char *name) {
 	}
 
 	if((password = MALLOC(len)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strncpy(password, name, len);
 
 	struct sha256cache_t *node = MALLOC(sizeof(struct sha256cache_t));
 	if(node == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	if((node->name = MALLOC(strlen(name)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(node->name, name);
 

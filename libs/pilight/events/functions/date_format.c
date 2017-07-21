@@ -97,7 +97,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	} else if(childs->tag == JSON_NUMBER) {
 		size_t len = snprintf(NULL, 0, "%.*f", childs->decimals_, childs->number_);
 		if((datetime = MALLOC(len+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		snprintf(datetime, len+1, "%.*f", childs->decimals_, childs->number_);
 		do_free = 1;

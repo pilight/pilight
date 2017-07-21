@@ -53,9 +53,11 @@ void ssl_init(void) {
 	mbedtls_ssl_cache_init(&ssl_cache);
 
 	if((ret = mbedtls_ssl_config_defaults(&ssl_client_conf, MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT)) != 0) {
+		/*LCOV_EXCL_START*/
 		mbedtls_strerror(ret, (char *)&buffer, BUFFER_SIZE);
 		logprintf(LOG_ERR, "mbedtls_ctr_drbg_seed failed: %s", buffer);
 		client_success = -1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	if((ret = mbedtls_ssl_config_defaults(&ssl_server_conf, MBEDTLS_SSL_IS_SERVER, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT)) != 0) {
@@ -66,10 +68,12 @@ void ssl_init(void) {
 
 	if(client_success == 0 && server_success == 0) {
 	  if((ret = mbedtls_ctr_drbg_seed(&ssl_ctr_drbg, mbedtls_entropy_func, &ssl_entropy, (const unsigned char *)"pilight", strlen("pilight"))) != 0) {
+			/*LCOV_EXCL_START*/
 			mbedtls_strerror(ret, (char *)&buffer, BUFFER_SIZE);
 			logprintf(LOG_ERR, "mbedtls_ctr_drbg_seed failed: %s", buffer);
 			server_success = -1;
 			client_success = -1;
+			/*LCOV_EXCL_STOP*/
 		}
 	}
 
@@ -103,9 +107,11 @@ void ssl_init(void) {
 
 	if(server_success == 0) {
 		if((ret = mbedtls_ssl_conf_own_cert(&ssl_server_conf, &ssl_server_crt, &ssl_pk_key)) != 0) {
+			/*LCOV_EXCL_START*/
 			mbedtls_strerror(ret, (char *)&buffer, BUFFER_SIZE);
 			logprintf(LOG_ERR, "mbedtls_ssl_conf_own_cert failed: %s", buffer);
 			server_success = -1;
+			/*LCOV_EXCL_STOP*/
 		}
 	}
 

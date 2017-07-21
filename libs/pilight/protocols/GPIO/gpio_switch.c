@@ -50,7 +50,7 @@ static void *reason_code_received_free(void *param) {
 static void createMessage(int gpio, int state) {
 	struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
 	if(data == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	snprintf(data->message, 1024, "{\"gpio\":%d,\"state\":\"%s\"}", gpio, ((state == 1) ? "on" : "off"));
 	strncpy(data->origin, "receiver", 255);
@@ -133,7 +133,7 @@ static void *addDevice(int reason, void *param) {
 	}
 
 	if((node = MALLOC(sizeof(struct data_t)))== NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	node->id = 0;
 	node->state = 0;
@@ -160,14 +160,14 @@ static void *addDevice(int reason, void *param) {
 	}
 
 	if((node->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	node->timer_req->data = node;
 	uv_timer_init(uv_default_loop(), node->timer_req);
 
 	if((node->poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	node->poll_req->data = node;
 	int fd = wiringXSelectableFd(node->id);

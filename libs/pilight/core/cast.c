@@ -85,7 +85,7 @@ int cast2str(struct varcont_t **a) {
 	if((*a)->type_ == JSON_NUMBER) {
 		int len = snprintf(NULL, 0, "%.*f", (*a)->decimals_, (*a)->number_);
 		if((b.string_ = MALLOC(len+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		memset(b.string_, 0, len+1);
 		sprintf(b.string_, "%.*f", (*a)->decimals_, (*a)->number_);

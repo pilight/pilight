@@ -209,7 +209,7 @@ static void parse_code(char *buffer, unsigned int len) {
 
 				struct reason_received_pulsetrain_t *data2 = MALLOC(sizeof(struct reason_received_pulsetrain_t));
 				if(data2 == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				x = strlen(&buffer[startc]);
 				i = 0;
@@ -303,7 +303,7 @@ static void on_read(uv_fs_t *req) {
 				memset(&data1.wbuf, 0, BUFFER_SIZE);
 				uv_fs_t *write_req = NULL;
 				if((write_req = MALLOC(sizeof(uv_fs_t))) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 
 				uv_buf_t wbuf = uv_buf_init(data1.wbuf, BUFFER_SIZE);
@@ -339,7 +339,7 @@ static void on_read(uv_fs_t *req) {
 		} else {
 			uv_fs_t *close_req = NULL;
 			if((close_req = MALLOC(sizeof(uv_fs_t))) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			uv_fs_close(uv_default_loop(), close_req, data1.fd, NULL);
 			uv_fs_req_cleanup(req);
@@ -409,7 +409,7 @@ static void open_cb(uv_fs_t *req) {
 
 		uv_fs_t *read_req = NULL;
 		if((read_req = MALLOC(sizeof(uv_fs_t))) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 
 		memset(&data1, 0, sizeof(struct data1_t));
@@ -495,7 +495,7 @@ static void *nano433Send(int reason, void *param) {
 	memset(&data1.wbuf, 0, BUFFER_SIZE);
 	uv_fs_t *write_req = NULL;
 	if((write_req = MALLOC(sizeof(uv_fs_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_buf_t wbuf = uv_buf_init(data1.wbuf, BUFFER_SIZE);
@@ -505,7 +505,7 @@ static void *nano433Send(int reason, void *param) {
 
 	struct data2_t *data2 = MALLOC(sizeof(struct data2_t));
 	if(data2 == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(data2->message, data->message);
 	strcpy(data2->uuid, data->uuid);
@@ -522,7 +522,7 @@ static unsigned short int nano433HwInit(void) {
 	if(timer_req == NULL) {
 		timer_req = MALLOC(sizeof(uv_timer_t));
 		if(timer_req == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		uv_timer_init(uv_default_loop(), timer_req);
 		uv_timer_start(timer_req, reconnect, 1000, 1000);
@@ -533,7 +533,7 @@ static unsigned short int nano433HwInit(void) {
 
 	uv_fs_t *open_req = NULL;
 	if((open_req = MALLOC(sizeof(uv_fs_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 #ifdef _WIN32

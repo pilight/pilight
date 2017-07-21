@@ -15,6 +15,11 @@ endif()
 set(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
 set(CPACK_DEB_COMPONENT_INSTALL TRUE)
 
+if(COVERALLS)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0") # debug, no optimisation
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage") # enabling coverage
+endif()
+
 if(WIN32)
 	add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else()

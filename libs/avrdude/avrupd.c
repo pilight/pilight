@@ -62,7 +62,7 @@ AVRUPD * parse_op(char * s)
 
   upd = (AVRUPD *)MALLOC(sizeof(AVRUPD));
   if (upd == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
   }
 
   i = 0;
@@ -75,7 +75,7 @@ AVRUPD * parse_op(char * s)
     upd->memtype = (char *)MALLOC(strlen("flash")+1);
     if (upd->memtype == NULL) {
       outofmem:
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
     }
     strcpy(upd->memtype, "flash");
     upd->op = DEVICE_WRITE;
@@ -89,7 +89,7 @@ AVRUPD * parse_op(char * s)
 
   upd->memtype = (char *)MALLOC(strlen(buf)+1);
   if (upd->memtype == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
   }
   strcpy(upd->memtype, buf);
 
@@ -167,7 +167,7 @@ AVRUPD * parse_op(char * s)
   }
 
   if (upd->filename == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
   }
   memcpy(upd->filename, cp, fnlen);
   upd->filename[fnlen] = 0;
@@ -181,17 +181,17 @@ AVRUPD * dup_AVRUPD(AVRUPD * upd)
 
   u = (AVRUPD *)MALLOC(sizeof(AVRUPD));
   if(u == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
   }
 
   memcpy(u, upd, sizeof(AVRUPD));
 
   if((u->memtype = MALLOC(strlen(upd->memtype)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
   }
 	strcpy(u->memtype, upd->memtype);
   if((u->filename = MALLOC(strlen(upd->filename)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(u->filename, upd->filename);
 
@@ -204,7 +204,7 @@ AVRUPD * new_AVRUPD(int op, char * memtype, int filefmt, char * filename)
 
   u = (AVRUPD *)MALLOC(sizeof(AVRUPD));
   if (u == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
   u->memtype = MALLOC(strlen(memtype)+1);

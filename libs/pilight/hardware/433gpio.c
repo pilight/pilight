@@ -79,7 +79,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 				if(data.rptr >= gpio433->minrawlen && data.rptr <= gpio433->maxrawlen) {
 					struct reason_received_pulsetrain_t *data1 = MALLOC(sizeof(struct reason_received_pulsetrain_t));
 					if(data1 == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					data1->length = data.rptr;
 					memcpy(data1->pulses, data.rbuffer, data.rptr*sizeof(int));
@@ -169,7 +169,7 @@ static unsigned short int gpio433HwInit(void) {
 	}
 	if(gpio_433_in > 0) {
 		if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		int fd = wiringXSelectableFd(gpio_433_in);
 

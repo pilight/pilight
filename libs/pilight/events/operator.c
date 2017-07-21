@@ -79,7 +79,7 @@ void event_operator_init(void) {
 	if(settings_select_string(ORIGIN_MASTER, "operators-root", &operator_root) != 0) {
 		/* If no operator root was set, use the default operator root */
 		if((operator_root = MALLOC(strlen(OPERATOR_ROOT)+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(operator_root, OPERATOR_ROOT);
 		operator_root_free = 1;
@@ -153,10 +153,10 @@ void event_operator_init(void) {
 
 void event_operator_register(struct event_operators_t **op, const char *name) {
 	if((*op = MALLOC(sizeof(struct event_operators_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	if(((*op)->name = MALLOC(strlen(name)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy((*op)->name, name);
 

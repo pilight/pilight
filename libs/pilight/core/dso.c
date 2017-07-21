@@ -53,11 +53,11 @@ void *dso_load(char *object) {
 	} else {
 		struct dso_t *node = MALLOC(sizeof(struct dso_t));
 		if(node == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		node->handle = handle;
 		if((node->name = MALLOC(strlen(object)+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(node->name, object);
 		node->next = dso;

@@ -66,7 +66,7 @@ void logwrite(char *line) {
 			if(sb.st_nlink != 0 && sb.st_size > LOG_MAX_SIZE) {
 				char *tmp = MALLOC(strlen(logfile)+5);
 				if(tmp == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(tmp, logfile);
 				strcat(tmp, ".old");
@@ -240,10 +240,10 @@ void _logprintf(int prio, char *file, int line, const char *str, ...) {
 				uv_mutex_lock(&logqueue_lock);
 				struct logqueue_t *node = MALLOC(sizeof(struct logqueue_t));
 				if(node == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				if((node->buffer = MALLOC(pos+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 
 				strcpy(node->buffer, buffer);
@@ -265,10 +265,10 @@ void _logprintf(int prio, char *file, int line, const char *str, ...) {
 			} else {
 				struct reason_log_t *node = MALLOC(sizeof(struct reason_log_t));
 				if(node == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				if((node->buffer = MALLOC(pos+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(node->buffer, buffer);
 				eventpool_trigger(REASON_LOG, reason_log_free, node);
@@ -301,10 +301,10 @@ void log_init(void) {
 		struct logqueue_t *tmp = logqueue;
 		struct reason_log_t *node = MALLOC(sizeof(struct reason_log_t));
 		if(node == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		if((node->buffer = MALLOC(strlen(tmp->buffer)+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(node->buffer, tmp->buffer);
 		eventpool_trigger(REASON_LOG, reason_log_free, node);
@@ -362,7 +362,7 @@ int log_file_set(char *log) {
 		return -1;
 	}
 	if((filename = MALLOC(strlen(filebase)+strlen(extension)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	sprintf(filename, "%s%s", filebase, extension);
 
@@ -375,7 +375,7 @@ int log_file_set(char *log) {
 
 	size_t i = (strlen(log)-strlen(filename));
 	if((logpath = REALLOC(logpath, i+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(logpath, '\0', i+1);
 	strncpy(logpath, log, i);
@@ -404,7 +404,7 @@ int log_file_set(char *log) {
 		} else {
 			if(S_ISDIR(s.st_mode)) {
 				if((logfile = REALLOC(logfile, strlen(log)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(logfile, log);
 			} else {
@@ -415,7 +415,7 @@ int log_file_set(char *log) {
 		}
 	} else {
 		if((logfile = REALLOC(logfile, strlen(log)+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(logfile, log);
 	}
@@ -425,7 +425,7 @@ int log_file_set(char *log) {
 
 	char *tmp = MALLOC(strlen(logfile)+5);
 	if(tmp == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(tmp, logfile);
 	strcat(tmp, ".old");
@@ -526,7 +526,7 @@ void logerror(const char *format_str, ...) {
 			}
 			char *tmp = MALLOC(strlen(errpath)+5);
 			if(tmp == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			strcpy(tmp, errpath);
 			strcat(tmp, ".old");

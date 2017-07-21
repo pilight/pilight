@@ -177,7 +177,7 @@ static void prepare(struct rules_actions_t *obj, char *dev) {
 
 					struct reason_control_device_t *data1 = MALLOC(sizeof(struct reason_control_device_t));
 					if(data1 == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					data1->dev = STRDUP(dev);
 					data1->values = NULL;

@@ -124,7 +124,7 @@ static void ssdp_not_found(uv_timer_t *param) {
 static void alloc_cb(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
 	buf->len = len;
 	if((buf->base = malloc(len)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(buf->base, 0, len);
 }
@@ -189,7 +189,7 @@ static void on_read(int fd, char *buf, ssize_t len, char **buf1, ssize_t *len1) 
 												for(q=0;q<n;q+=2) {
 													char *name = MALLOC(strlen(array[q])+1);
 													if(name == NULL) {
-														OUT_OF_MEMORY
+														OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 													}
 													strcpy(name, array[q]);
 													if(q+1 == n) {
@@ -200,7 +200,7 @@ static void on_read(int fd, char *buf, ssize_t len, char **buf1, ssize_t *len1) 
 													} else {
 														char *val = MALLOC(strlen(array[q+1])+1);
 														if(val == NULL) {
-															OUT_OF_MEMORY
+															OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 														}
 														strcpy(val, array[q+1]);
 														struct JsonNode *jvalue = NULL;
@@ -216,7 +216,7 @@ static void on_read(int fd, char *buf, ssize_t len, char **buf1, ssize_t *len1) 
 																jvalue->decimals_ = nrDecimals(val);
 															} else {
 																if((jvalue->string_ = REALLOC(jvalue->string_, strlen(val)+1)) == NULL) {
-																	OUT_OF_MEMORY
+																	OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 																}
 																strcpy(jvalue->string_, val);
 															}
@@ -247,7 +247,7 @@ static void on_read(int fd, char *buf, ssize_t len, char **buf1, ssize_t *len1) 
 											struct JsonNode *jstate = json_find_member(tmp, "state");
 											if(jstate != NULL && jstate->tag == JSON_STRING) {
 												if((jstate->string_ = REALLOC(jstate->string_, strlen(state)+1)) == NULL) {
-													OUT_OF_MEMORY
+													OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 												}
 												strcpy(jstate->string_, state);
 											}
@@ -341,7 +341,7 @@ static void connect_to_server(char *server, int port) {
 	uv_timer_t *socket_timeout_req = NULL;
 	
 	if((socket_timeout_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_timer_init(uv_default_loop(), socket_timeout_req);
@@ -379,7 +379,7 @@ static void *ssdp_found(int reason, void *param) {
 			}
 			if(match == 0) {
 				if((node = MALLOC(sizeof(struct ssdp_list_t))) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strncpy(node->server, data->ip, INET_ADDRSTRLEN);
 				node->port = data->port;
@@ -468,7 +468,7 @@ int main(int argc, char **argv) {
 	pilight.process = PROCESS_CLIENT;
 
 	if((fconfig = MALLOC(strlen(CONFIG_FILE)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(fconfig, CONFIG_FILE);
 
@@ -478,12 +478,12 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_NOTICE);
 
 	if((progname = MALLOC(16)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(progname, "pilight-control");
 
 	if((signal_req = MALLOC(sizeof(uv_signal_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_signal_init(uv_default_loop(), signal_req);
@@ -522,37 +522,37 @@ int main(int argc, char **argv) {
 			break;
 			case 'd':
 				if((device = REALLOC(device, strlen(optarg)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(device, optarg);
 			break;
 			case 's':
 				if((state = REALLOC(state, strlen(optarg)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(state, optarg);
 			break;
 			case 'v':
 				if((values = REALLOC(values, strlen(optarg)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(values, optarg);
 			break;
 			case 'C':
 				if((fconfig = REALLOC(fconfig, strlen(optarg)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(fconfig, optarg);
 			break;
 			case 'I':
 				if((instance = MALLOC(strlen(optarg)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(instance, optarg);
 			break;
 			case 'S':
 				if((server = REALLOC(server, strlen(optarg)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(server, optarg);
 			break;
@@ -611,7 +611,7 @@ int main(int argc, char **argv) {
 	} else {
 		ssdp_seek();
 		if((ssdp_reseek_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 
 		uv_timer_init(uv_default_loop(), ssdp_reseek_req);
@@ -622,7 +622,7 @@ int main(int argc, char **argv) {
 			fflush(stdout);
 
 			if((tty_req = MALLOC(sizeof(uv_tty_t))) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 
 			uv_tty_init(uv_default_loop(), tty_req, 0, 1);
@@ -630,7 +630,7 @@ int main(int argc, char **argv) {
 		} else {
 			uv_timer_t *ssdp_not_found_req = NULL;
 			if((ssdp_not_found_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 
 			uv_timer_init(uv_default_loop(), ssdp_not_found_req);

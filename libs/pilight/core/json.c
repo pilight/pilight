@@ -40,7 +40,7 @@ static char *json_strdup(const char *str)
 {
 	char *ret = (char*) MALLOC(strlen(str) + 1);
 	if (ret == NULL)
-		out_of_memory();
+		out_of_memory(); /*LCOV_EXCL_LINE*/
 	memset(ret, 0, strlen(str) + 1);
 	strcpy(ret, str);
 	return ret;
@@ -60,7 +60,7 @@ static void sb_init(SB *sb)
 	sb->start = (char*) MALLOC(17);
 	memset(sb->start, 0, 17);
 	if (sb->start == NULL)
-		out_of_memory();
+		out_of_memory(); /*LCOV_EXCL_LINE*/
 	sb->cur = sb->start;
 	sb->end = sb->start + 16;
 }
@@ -82,7 +82,7 @@ static void sb_grow(SB *sb, int need)
 
 	sb->start = (char*) REALLOC(sb->start, alloc + 1);
 	if (sb->start == NULL)
-		out_of_memory();
+		out_of_memory(); /*LCOV_EXCL_LINE*/
 	sb->cur = sb->start + length;
 	sb->end = sb->start + alloc;
 }
@@ -490,7 +490,7 @@ static JsonNode *mknode(JsonTag tag)
 {
 	JsonNode *ret = (JsonNode*) CALLOC(1, sizeof(JsonNode));
 	if (ret == NULL)
-		out_of_memory();
+		out_of_memory(); /*LCOV_EXCL_LINE*/
 	ret->tag = tag;
 	return ret;
 }

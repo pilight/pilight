@@ -68,7 +68,7 @@ static void *reason_code_received_free(void *param) {
 static void createMessage(char *server, int port, char *action, char *media) {
 	struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
 	if(data == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	snprintf(data->message, 1024, "{\"action\":\"%s\",\"media\":\"%s\",\"server\":\"%s\",\"port\":%d}", action, media, server, port);
 	strncpy(data->origin, "receiver", 255);
@@ -174,7 +174,7 @@ static void read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
 
 			settings->timer_req = MALLOC(sizeof(uv_timer_t));
 			if(settings->timer_req == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			settings->timer_req->data = settings;
 
@@ -222,7 +222,7 @@ static void start(struct data_t *node) {
 
 	uv_tcp_t *tcp_req = MALLOC(sizeof(uv_tcp_t));
 	if(tcp_req == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	r = uv_tcp_init(uv_default_loop(), tcp_req);
@@ -239,7 +239,7 @@ static void start(struct data_t *node) {
 
 	uv_connect_t *connect_req = MALLOC(sizeof(uv_connect_t));
 	if(connect_req == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	tcp_req->data = node;
@@ -286,7 +286,7 @@ static void *addDevice(int reason, void *param) {
 	}
 
 	if((node = MALLOC(sizeof(struct data_t)))== NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(node, '\0', sizeof(struct data_t));
 
@@ -298,7 +298,7 @@ static void *addDevice(int reason, void *param) {
 			while(jchild1) {
 				if(strcmp(jchild1->key, "server") == 0) {
 					if((node->server = MALLOC(strlen(jchild1->string_)+1)) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					strcpy(node->server, jchild1->string_);
 					has_server = 1;
@@ -329,7 +329,7 @@ static void *addDevice(int reason, void *param) {
 	}
 
 	if((node->name = MALLOC(strlen(jdevice->key)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(node->name, jdevice->key);
 

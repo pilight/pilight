@@ -128,7 +128,7 @@ ssize_t socket_recv(char *buffer, int bytes, char **data, ssize_t *ptr) {
 	*ptr += bytes;
 
 	if((*data = REALLOC(*data, *ptr+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	memset(&(*data)[(*ptr-bytes)], '\0', bytes+1);
@@ -192,7 +192,7 @@ static void client_add(uv_poll_t *req, int fd, struct uv_custom_poll_t *data) {
 
 	struct client_list_t *node = MALLOC(sizeof(struct client_list_t));
 	if(node == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	node->req = req;
 	node->fd = (int)fd;
@@ -230,21 +230,25 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 	int r = uv_fileno((uv_handle_t *)req, &fd);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
 		return;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	if(*nread == -1) {
+		/*LCOV_EXCL_START*/
 		struct reason_socket_disconnected_t *data1 = MALLOC(sizeof(struct reason_socket_disconnected_t));
 		if(data1 == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		data1->fd = (int)fd;
 		eventpool_trigger(REASON_SOCKET_DISCONNECTED, reason_socket_disconnected_free, data1);
 
 		uv_custom_close(req);
 
-    return;
+		return;
+		/*LCOV_EXCL_STOP*/
 	}
 	if(*nread > 0) {
 		buf[*nread] = '\0';
@@ -272,8 +276,10 @@ static void poll_close_cb(uv_poll_t *req) {
 	int fd = -1, r = 0;
 
 	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
 		return;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	if(fd > -1) {
@@ -289,7 +295,7 @@ static void poll_close_cb(uv_poll_t *req) {
 
 		struct reason_socket_disconnected_t *data1 = MALLOC(sizeof(struct reason_socket_disconnected_t));
 		if(data1 == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		data1->fd = (int)fd;
 		eventpool_trigger(REASON_SOCKET_DISCONNECTED, reason_socket_disconnected_free, data1);
@@ -337,13 +343,17 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	memset(buffer, '\0', BUFFER_SIZE);
 
 	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
 		return;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	if((client = accept(fd, (struct sockaddr *)&servaddr, (socklen_t *)&socklen)) < 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_NOTICE, "accept: %s", strerror(errno));
 		return;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	memset(&buffer, '\0', INET_ADDRSTRLEN+1);
@@ -371,14 +381,14 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 	struct data_t *data = MALLOC(sizeof(struct data_t));
 	if(data == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(data, 0, sizeof(struct data_t));
 	data->read_cb = server_data->read_cb;
 
 	uv_poll_t *poll_req = NULL;
 	if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	uv_custom_poll_init(&custom_poll_data, poll_req, NULL);
 
@@ -388,6 +398,7 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 	r = uv_poll_init_socket(uv_default_loop(), poll_req, client);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
 #ifdef _WIN32
 		closesocket(fd);
@@ -400,13 +411,14 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		}
 		FREE(poll_req);
 		return;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	client_add(poll_req, client, custom_poll_data);
 
 	struct reason_socket_connected_t *data1 = MALLOC(sizeof(struct reason_socket_connected_t));
 	if(data1 == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	data1->fd = (int)client;
 	eventpool_trigger(REASON_SOCKET_CONNECTED, reason_socket_connected_free, data1);
@@ -427,8 +439,10 @@ static void *socket_send_thread(int reason, void *param) {
 int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char **, ssize_t *)) {
 	const uv_thread_t pth_cur_id = uv_thread_self();
 	if(uv_thread_equal(&pth_main_id, &pth_cur_id) == 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "webserver_start can only be started from the main thread");
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	if(socket_started == 1) {
@@ -452,7 +466,8 @@ int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char
 	}
 #endif
 
-	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "socket: %s", strerror(errno));
 #ifdef _WIN32
 		closesocket(sockfd);
@@ -460,6 +475,7 @@ int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char
 		close(sockfd);
 #endif
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	unsigned long on = 1;
@@ -472,6 +488,7 @@ int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char
 #endif
 
 	if((r = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(int))) < 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "setsockopt: %s", strerror(errno));
 #ifdef _WIN32
 		closesocket(sockfd);
@@ -479,6 +496,7 @@ int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char
 		close(sockfd);
 #endif
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	memset((char *)&addr, '\0', sizeof(addr));
@@ -487,6 +505,7 @@ int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char
 	addr.sin_port = htons(port);
 
 	if((r = bind(sockfd, (struct sockaddr *)&addr, sizeof(addr))) < 0) {
+		/*LCOV_EXCL_START*/
 		int x = 0;
 		if((x = getpeername(sockfd, (struct sockaddr *)&addr, (socklen_t *)&socklen)) == 0) {
 			logprintf(LOG_ERR, "cannot bind to socket port %d, address already in use?", ntohs(addr.sin_port));
@@ -499,9 +518,11 @@ int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char
 		close(sockfd);
 #endif
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	if((listen(sockfd, 0)) < 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "listen: %s", strerror(errno));
 #ifdef _WIN32
 		closesocket(sockfd);
@@ -509,11 +530,12 @@ int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char
 		close(sockfd);
 #endif
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	uv_poll_t *poll_req = NULL;
 	if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_custom_poll_init(&custom_poll_data, poll_req, (void *)NULL);
@@ -522,7 +544,7 @@ int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char
 
 	struct data_t *data = MALLOC(sizeof(struct data_t));
 	if(data == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(data, 0, sizeof(struct data_t));
 	data->read_cb = read_cb;
@@ -530,16 +552,20 @@ int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char
 
 	r = uv_poll_init_socket(uv_default_loop(), poll_req, sockfd);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
 		FREE(poll_req);
 		goto free;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	uv_custom_write(poll_req);
 	uv_custom_read(poll_req);
 
 	if(getsockname(sockfd, (struct sockaddr *)&addr, (socklen_t *)&socklen) == -1) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "getsockname");
+		/*LCOV_EXCL_STOP*/
 	} else {
 		port = static_port = ntohs(addr.sin_port);
 	}
@@ -553,6 +579,7 @@ int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char
 	return sockfd;
 
 free:
+		/*LCOV_EXCL_START*/
 	if(sockfd > 0) {
 #ifdef _WIN32
 		closesocket(sockfd);
@@ -562,7 +589,8 @@ free:
 	}
 
 	return -1;
-	
+	/*LCOV_EXCL_STOP*/
+
 	// if(socket_server != NULL) {
 		// eventpool_fd_remove(socket_server);
 		// socket_server = NULL;
@@ -619,14 +647,16 @@ int socket_write(int sockfd, const char *msg, ...) {
 		n = vsnprintf(NULL, 0, msg, ap);
 #endif
 		if(n == -1) {
+			/*LCOV_EXCL_START*/
 			logprintf(LOG_ERR, "improperly formatted string: %s", msg);
 			return -1;
+			/*LCOV_EXCL_STOP*/
 		}
 		n += (int)len;
 		va_end(ap);
 
 		if((sendBuff = MALLOC((size_t)n+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		memset(sendBuff, '\0', (size_t)n+1);
 
@@ -691,13 +721,17 @@ int socket_connect(char *server, unsigned short port, void (*read_cb)(int, char 
 
 	r = uv_ip4_addr(server, port, &addr);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
 		goto freeuv;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "socket: %s", strerror(errno));
 		goto freeuv;
+		/*LCOV_EXCL_STOP*/
 	}
 
 #ifdef _WIN32
@@ -714,14 +748,16 @@ int socket_connect(char *server, unsigned short port, void (*read_cb)(int, char 
 #else
 		if(!(errno == EINPROGRESS || errno == EISCONN)) {
 #endif
+			/*LCOV_EXCL_START*/
 			logprintf(LOG_ERR, "connect: %s", strerror(errno));
 			goto freeuv;
+			/*LCOV_EXCL_STOP*/
 		}
 	}
 
 	uv_poll_t *poll_req = NULL;
 	if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_custom_poll_init(&custom_poll_data, poll_req, NULL);
@@ -731,7 +767,7 @@ int socket_connect(char *server, unsigned short port, void (*read_cb)(int, char 
 
 	struct data_t *data = MALLOC(sizeof(struct data_t));
 	if(data == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(data, 0, sizeof(struct data_t));
 	data->read_cb = read_cb;
@@ -739,16 +775,18 @@ int socket_connect(char *server, unsigned short port, void (*read_cb)(int, char 
 
 	r = uv_poll_init_socket(uv_default_loop(), poll_req, sockfd);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
 		FREE(poll_req);
 		goto freeuv;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	client_add(poll_req, sockfd, custom_poll_data);
 
 	struct reason_socket_connected_t *data1 = MALLOC(sizeof(struct reason_socket_connected_t));
 	if(data1 == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	data1->fd = (int)sockfd;
 	eventpool_trigger(REASON_SOCKET_CONNECTED, reason_socket_connected_free, data1);
@@ -758,8 +796,10 @@ int socket_connect(char *server, unsigned short port, void (*read_cb)(int, char 
 	return sockfd;
 
 freeuv:
+	/*LCOV_EXCL_START*/
 	if(sockfd > 0) {
 		close(sockfd);
 	}
 	return 0;
+	/*LCOV_EXCL_STOP*/
 }

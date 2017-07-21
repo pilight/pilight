@@ -176,7 +176,7 @@ static void restart(uv_timer_t *req) {
 
 			struct reason_arp_device_t *data1 = MALLOC(sizeof(struct reason_arp_device_t));
 			if(data1 == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			strcpy(data1->ip, data->found.data[i].ip);
 			strcpy(data1->mac, data->found.data[i].mac);
@@ -271,7 +271,7 @@ static void callback(u_char *user, const struct pcap_pkthdr *pkt_header, const u
 				if(strcmp(data->found.data[i].mac, mac) != 0) {
 					struct reason_arp_device_t *data1 = MALLOC(sizeof(struct reason_arp_device_t));
 					if(data == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					strcpy(data1->ip, ip);
 					strcpy(data1->mac, mac);
@@ -286,7 +286,7 @@ static void callback(u_char *user, const struct pcap_pkthdr *pkt_header, const u
 
 		uv_mutex_lock(&data->found.lock);
 		if((data->found.data = REALLOC(data->found.data, sizeof((*data->found.data))*(data->found.nr+1))) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(data->found.data[data->found.nr].mac, mac);
 		strcpy(data->found.data[data->found.nr].ip, ip);
@@ -294,7 +294,7 @@ static void callback(u_char *user, const struct pcap_pkthdr *pkt_header, const u
 
 		struct reason_arp_device_t *data1 = MALLOC(sizeof(struct reason_arp_device_t));
 		if(data1 == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(data1->ip, ip);
 		strcpy(data1->mac, mac);
@@ -376,8 +376,10 @@ void arp_scan(void) {
 
 	int err = uv_interface_addresses(&interfaces, &count);
 	if(err != 0) {
+		/* LCOV_EXCL_START */
 		logprintf(LOG_ERR, "uv_interface_addresses: %s", uv_strerror(err));
 		return;
+		/* LCOV_EXCL_STOP */
 	}
 
 	memset(&error, 0, PCAP_ERRBUF_SIZE);
@@ -394,15 +396,15 @@ void arp_scan(void) {
 				}
 			}
 			if(has_mac == 0) {
-				continue;
+				continue; /*LCOV_EXCL_LINE*/
 			}
 
 			if((data = REALLOC(data, sizeof(struct data_t *) * (nrdata+1))) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 
 			if((data[nrdata] = MALLOC(sizeof(struct data_t))) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			memset(data[nrdata], '\0', sizeof(struct data_t));
 
@@ -422,7 +424,7 @@ void arp_scan(void) {
 
 			unsigned int nrip = ipdiff(&in_min, &in_max);
 			if((data[nrdata]->search.data = MALLOC(sizeof((*data[nrdata]->search.data))*(nrip+1))) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			data[nrdata]->search.nr = nrip;
 			data[nrdata]->search.iter = 0;
@@ -459,7 +461,7 @@ void arp_scan(void) {
 			 */
 			if(((unsigned char *)&in_netmask.s_addr)[3] > 0 && ((unsigned char *)&in_min.s_addr)[3] > 0) {
 				if((data[nrdata]->search.data = REALLOC(data[nrdata]->search.data, sizeof((*data[nrdata]->search.data))*(nrip+2))) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				data[nrdata]->search.nr = nrip+1;
 
@@ -476,15 +478,19 @@ void arp_scan(void) {
 			}
 
 			if((data[nrdata]->handle = pcap_open_live(interfaces[i].name, 64, 0, 1, e)) == NULL) {
+				/* LCOV_EXCL_START */
 				logprintf(LOG_ERR, "pcap_open_live: %s", e);
 				free_data(data[nrdata]);
 				continue;
+				/* LCOV_EXCL_STOP */
 			}
 
 			if((pcap_setnonblock(data[nrdata]->handle, 1, e)) != 0) {
+				/* LCOV_EXCL_START */
 				logprintf(LOG_ERR, "pcap_setnonblock: %s", e);
 				free_data(data[nrdata]);
 				continue;
+				/* LCOV_EXCL_STOP */
 			}
 
 #ifdef _WIN32
@@ -494,7 +500,7 @@ void arp_scan(void) {
 #endif
 
 			if((data[nrdata]->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 
 			uv_timer_init(uv_default_loop(), data[nrdata]->timer_req);
@@ -503,7 +509,7 @@ void arp_scan(void) {
 
 			data[nrdata]->poll_req = NULL;
 			if((data[nrdata]->poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 
 			uv_mutex_init(&data[nrdata]->found.lock);
@@ -518,9 +524,11 @@ void arp_scan(void) {
 
 			int r = uv_poll_init_socket(uv_default_loop(), data[nrdata]->poll_req, data[nrdata]->fd);
 			if(r != 0) {
+				/* LCOV_EXCL_START */
 				logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
 				free_data(data[nrdata]);
 				continue;
+				/* LCOV_EXCL_STOP */
 			}
 
 			uv_custom_write(data[nrdata]->poll_req);

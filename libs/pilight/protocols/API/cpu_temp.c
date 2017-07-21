@@ -63,7 +63,7 @@ static void *thread(void *param) {
 		fstat(fileno(fp), &st);
 		bytes = (size_t)st.st_size;
 		if((content = REALLOC(content, bytes+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		memset(content, '\0', bytes+1);
 
@@ -78,7 +78,7 @@ static void *thread(void *param) {
 
 			struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
 			if(data == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			snprintf(data->message, 1024, "{\"id\":%d,\"temperature\":%.3f}", settings->id, (temp/1000));
 			strcpy(data->origin, "receiver");
@@ -164,7 +164,7 @@ static void *addDevice(int reason, void *param) {
 	}
 
 	if((node = MALLOC(sizeof(struct data_t)))== NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(node, '\0', sizeof(struct data_t));
 	node->interval = 10;
@@ -185,7 +185,7 @@ static void *addDevice(int reason, void *param) {
 	json_find_number(jdevice, "temperature-offset", &node->temp_offset);
 
 	if((node->name = MALLOC(strlen(jdevice->key)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(node->name, jdevice->key);
 	node->timer_req = NULL;
@@ -193,7 +193,7 @@ static void *addDevice(int reason, void *param) {
 	data = node;
 
 	if((node->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	node->timer_req->data = node;
 	uv_timer_init(uv_default_loop(), node->timer_req);

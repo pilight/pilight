@@ -121,7 +121,7 @@ static void ssdp_not_found(uv_timer_t *param) {
 static void alloc_cb(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
 	buf->len = len;
 	if((buf->base = malloc(len)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(buf->base, 0, len);
 }
@@ -201,7 +201,7 @@ static void connect_to_server(char *server, int port) {
 	uv_timer_t *socket_timeout_req = NULL;
 	
 	if((socket_timeout_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_timer_init(uv_default_loop(), socket_timeout_req);
@@ -239,7 +239,7 @@ static void *ssdp_found(int reason, void *param) {
 			}
 			if(match == 0) {
 				if((node = MALLOC(sizeof(struct ssdp_list_t))) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strncpy(node->server, data->ip, INET_ADDRSTRLEN);
 				node->port = data->port;
@@ -365,12 +365,12 @@ int main(int argc, char **argv) {
 	pilight.process = PROCESS_CLIENT;
 
 	if((progname = MALLOC(13)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(progname, "pilight-send");
 
 	if((signal_req = MALLOC(sizeof(uv_signal_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_signal_init(uv_default_loop(), signal_req);
@@ -417,7 +417,7 @@ int main(int argc, char **argv) {
 					goto close;
 				} else {
 					if((protobuffer = REALLOC(protobuffer, strlen(args)+1)) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					strcpy(protobuffer, args);
 				}
@@ -431,13 +431,13 @@ int main(int argc, char **argv) {
 			break;
 			case 'I':
 				if((instance = MALLOC(strlen(args)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(instance, args);
 			break;
 			case 'S':
 				if((server = REALLOC(server, strlen(args)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(server, args);
 			break;
@@ -446,7 +446,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'U':
 				if((uuid = REALLOC(uuid, strlen(args)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(uuid, args);
 			break;
@@ -541,14 +541,14 @@ int main(int argc, char **argv) {
 					while(tmpdev) {
 						struct pname_t *node = MALLOC(sizeof(struct pname_t));
 						if(node == NULL) {
-							OUT_OF_MEMORY
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 						}
 						if((node->name = MALLOC(strlen(tmpdev->id)+1)) == NULL) {
-							OUT_OF_MEMORY
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 						}
 						strcpy(node->name, tmpdev->id);
 						if((node->desc = MALLOC(strlen(tmpdev->desc)+1)) == NULL) {
-							OUT_OF_MEMORY
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 						}
 						strcpy(node->desc, tmpdev->desc);
 						node->next = pname;
@@ -618,7 +618,7 @@ int main(int argc, char **argv) {
 		} else {
 			ssdp_seek();
 			if((ssdp_reseek_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 
 			uv_timer_init(uv_default_loop(), ssdp_reseek_req);
@@ -629,7 +629,7 @@ int main(int argc, char **argv) {
 				fflush(stdout);
 
 				if((tty_req = MALLOC(sizeof(uv_tty_t))) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				
 				uv_tty_init(uv_default_loop(), tty_req, 0, 1);
@@ -637,7 +637,7 @@ int main(int argc, char **argv) {
 			} else {
 				uv_timer_t *ssdp_not_found_req = NULL;
 				if((ssdp_not_found_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 
 				uv_timer_init(uv_default_loop(), ssdp_not_found_req);

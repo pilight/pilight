@@ -1351,7 +1351,7 @@ static int rule_is_greater_than(const struct lc_timezone_rule *rule,
 		 * Time went back into last year.
 		 */
 		if(month == 0) {
-      return 1;
+			return 1;
 		}
 		monthday += get_months(tm->tm_year)[month-1];
 		--month;
@@ -1366,8 +1366,8 @@ static int rule_is_greater_than(const struct lc_timezone_rule *rule,
 	/*
 	 * Compare months.
 	 */
-  if(rule->month != month) {
-    return rule->month > month;
+	if(rule->month != month) {
+		return rule->month > month;
 	}
 
 	/*
@@ -1628,7 +1628,7 @@ int localtime_l(time_t t, struct tm *result, char *timezone) {
 	 * Require tv_nsec to be in bounds, like other functions that accept
 	 */
 	if(t < 0) {
-    return EINVAL;
+		return EINVAL;
 	}
 
 	const char *timezone_name = timezone_names;

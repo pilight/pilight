@@ -76,7 +76,7 @@ void **init_void_array(struct void_array *ar, size_t chunk_size, size_t item_siz
 	ar->item_size = item_size;
 	ar->nr_items = 0;
 	if (!(ar->ptr = calloc(chunk_size, ar->item_size))) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	return (ar->ptr);
 }
@@ -89,7 +89,7 @@ int add_void_array(struct void_array *ar, void *dataptr)
 		/* I hope this works with the right alignment,
 		   if not we're screwed */
 		if (!(ptr = realloc(ar->ptr, ar->item_size * ((ar->nr_items) + (ar->chunk_size + 1))))) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		ar->ptr = ptr;
 	}
@@ -108,7 +108,7 @@ void *s_malloc(size_t size)
 {
 	void *ptr;
 	if ((ptr = malloc(size)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(ptr, 0, size);
 	return (ptr);
@@ -118,7 +118,7 @@ inline char *s_strdup(char *string)
 {
 	char *ptr;
 	if (!(ptr = strdup(string))) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	return (ptr);
 }

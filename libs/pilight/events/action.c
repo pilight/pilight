@@ -94,7 +94,7 @@ void event_action_init(void) {
 	if(settings_select_string(ORIGIN_MASTER, "actions-root", &action_root) != 0) {
 		/* If no action root was set, use the default action root */
 		if((action_root = MALLOC(strlen(ACTION_ROOT)+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(action_root, ACTION_ROOT);
 		action_root_free = 1;
@@ -169,10 +169,10 @@ void event_action_init(void) {
 void event_action_register(struct event_actions_t **act, const char *name) {
 
 	if((*act = MALLOC(sizeof(struct event_actions_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	if(((*act)->name = MALLOC(strlen(name)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy((*act)->name, name);
 
@@ -233,10 +233,10 @@ unsigned long event_action_set_execution_id(char *name) {
 	}
 	if(match == 0) {
 		if((tmp = MALLOC(sizeof(struct execution_t))) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		if((tmp->name = MALLOC(strlen(name)+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(tmp->name, name);
 		tmp->id = (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;

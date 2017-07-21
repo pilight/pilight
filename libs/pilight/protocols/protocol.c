@@ -96,7 +96,7 @@ void protocol_init(void) {
 	if(settings_select_string(ORIGIN_MASTER, "protocol-root", &protocol_root) != 0) {
 		/* If no protocol root was set, use the default protocol root */
 		if((protocol_root = MALLOC(strlen(PROTOCOL_ROOT)+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(protocol_root, PROTOCOL_ROOT);
 		protocol_root_free = 1;
@@ -173,7 +173,7 @@ void protocol_init(void) {
 void protocol_register(protocol_t **proto) {
 
 	if((*proto = MALLOC(sizeof(struct protocol_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	(*proto)->options = NULL;
 	(*proto)->devices = NULL;
@@ -210,7 +210,7 @@ void protocol_register(protocol_t **proto) {
 
 	struct protocols_t *pnode = MALLOC(sizeof(struct protocols_t));
 	if(pnode == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	pnode->listener = *proto;
 	pnode->next = protocols;
@@ -221,7 +221,7 @@ struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNo
 
 	struct protocol_threads_t *node = MALLOC(sizeof(struct protocol_threads_t));
 	if(node == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	node->param = param;
@@ -292,7 +292,7 @@ void protocol_thread_free(protocol_t *proto) {
 void protocol_set_id(protocol_t *proto, const char *id) {
 
 	if((proto->id = MALLOC(strlen(id)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(proto->id, id);
 }
@@ -301,14 +301,14 @@ void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
 
 	struct protocol_devices_t *dnode = MALLOC(sizeof(struct protocol_devices_t));
 	if(dnode == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	if((dnode->id = MALLOC(strlen(id)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(dnode->id, id);
 	if((dnode->desc = MALLOC(strlen(desc)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(dnode->desc, desc);
 	dnode->next	= proto->devices;

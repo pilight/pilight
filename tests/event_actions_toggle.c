@@ -301,7 +301,7 @@ static void *control_device(int reason, void *param) {
 
 	struct reason_config_update_t *data2 = MALLOC(sizeof(struct reason_config_update_t));
 	if(data2 == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(data2, 0, sizeof(struct reason_config_update_t));
 

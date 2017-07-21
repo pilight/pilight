@@ -52,7 +52,7 @@ static void *received(int reason, void *param) {
 	protocol_gc();
 
 	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	uv_timer_init(uv_default_loop(), timer_req);
 	/*

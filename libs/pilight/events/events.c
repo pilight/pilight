@@ -91,10 +91,10 @@ void event_cache_device(struct rules_t *obj, char *device) {
 		if(exists == 0) {
 			/* Store all devices that are present in this rule */
 			if((obj->devices = REALLOC(obj->devices, sizeof(char *)*(unsigned int)(obj->nrdevices+1))) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			if((obj->devices[obj->nrdevices] = MALLOC(strlen(device)+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			strcpy(obj->devices[obj->nrdevices], device);
 			obj->nrdevices++;
@@ -344,7 +344,7 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 	char *tmp = *rule;
 
 	if(subrule == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	while(tmp[i] != '\0') {
@@ -360,7 +360,7 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 			if(buflen <= len) {
 				buflen *= 2;
 				if((subrule = REALLOC(subrule, buflen)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				memset(&subrule[len], '\0', buflen-(unsigned long)len);
 			}
@@ -369,7 +369,7 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 				unsigned long z = 1;
 				char *replace = MALLOC(len+3);
 				if(replace == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 
 				subrule[len-1] = '\0';
@@ -387,9 +387,11 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 					   e.g.: ((1 + 2) + (3 + 4))
 									 (   3    +    7   )
 					*/
+					/*LCOV_EXCL_START*/
 					if(pilight.debuglevel >= 2) {
 						fprintf(stderr, "replace %s with %s in %s\n", replace, subrule, tmp);
 					}
+					/*LCOV_EXCL_STOP*/
 					str_replace(replace, subrule, &tmp);
 
 					FREE(replace);
@@ -478,7 +480,7 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 	}
 	while(nested == 1) {
 		if((subfunction = MALLOC(buflen)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 
 		hooks = 0;
@@ -498,7 +500,7 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 				if(buflen <= len) {
 					buflen *= 2;
 					if((subfunction = REALLOC(subfunction, buflen)) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					memset(&subfunction[len], '\0', buflen-(unsigned long)len);
 				}
@@ -558,14 +560,14 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 	nl = (pos3-pos1);
 
 	if((function = MALLOC(fl+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(function, '\0', fl+1);
 	strncpy(function, &tmp[pos1], fl);
 	function[fl] = '\0';
 
 	if((name = MALLOC(nl+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(name, '\0', nl+1);
 	strncpy(name, &tmp[pos1], nl);
@@ -671,7 +673,7 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 	tmp[i-1] = t;
 
 	if((output = MALLOC(BUFFER_SIZE)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(output, '\0', BUFFER_SIZE);
 
@@ -721,7 +723,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 	char *res = MALLOC(255);
 
 	if(res == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	memset(&v1, '\0', sizeof(struct varcont_t));
@@ -776,7 +778,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 						strcpy(var1quotes, "'");
 					}
 					if((var1 = REALLOC(var1, ((pos-word)+1))) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					memset(var1, '\0', ((pos-word)+1));
 					strncpy(var1, &tmp[word], (pos-word)-hadquote[0]-hadquote[1]);
@@ -789,7 +791,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 						strcpy(funcquotes, "'");
 					}
 					if((func = REALLOC(func, ((pos-word)+1))) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					memset(func, '\0', ((pos-word)+1));
 					strncpy(func, &tmp[word], (pos-word)-hadquote[0]-hadquote[1]);
@@ -802,7 +804,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 						strcpy(var2quotes, "'");
 					}
 					if((var2 = REALLOC(var2, ((pos-word)+1))) == NULL) {
-						OUT_OF_MEMORY;
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/;
 					}
 					memset(var2, '\0', ((pos-word)+1));
 					strncpy(var2, &tmp[word], (pos-word)-hadquote[0]-hadquote[1]);
@@ -810,7 +812,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 					unsigned long l = (strlen(var1)+strlen(var2)+strlen(func))+2;
 					/* search parameter, null-terminator, and potential quotes */
 					if((search = REALLOC(search, (l+1+6))) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					memset(search, '\0', l+1);
 					l = (unsigned long)sprintf(search, "%s%s%s %s%s%s %s%s%s",
@@ -864,7 +866,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 						*/
 						char *p = MALLOC(strlen(res)+1);
 						if(p == NULL) {
-							OUT_OF_MEMORY
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 						}
 						strcpy(p, res);
 						unsigned long r = 0;
@@ -952,7 +954,7 @@ static int event_parse_action_arguments(char **arguments, struct rules_t *obj, i
 			}
 			if(a < b) {
 				if((tmp = REALLOC(tmp, (b-a)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strncpy(tmp, &(*arguments)[a], (b-a));
 				tmp[(b-a)] = '\0';
@@ -975,7 +977,7 @@ static int event_parse_action_arguments(char **arguments, struct rules_t *obj, i
 					nlen = (len-(b-a))+vallen;
 					if(len < nlen) {
 						if(((*arguments) = REALLOC((*arguments), nlen)) == NULL) {
-							OUT_OF_MEMORY
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 						}
 					}
 					memmove(&(*arguments)[a+vallen], &(*arguments)[b], nlen-(a+vallen));
@@ -1066,7 +1068,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 
 		if(match == 0) {
 			if((node = MALLOC(sizeof(struct rules_actions_t))) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			node->nr = x;
 			node->rule = obj;
@@ -1081,7 +1083,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 		if((p = strstr(&tmp[offset], " ")) != NULL) {
 			pos1 = p-tmp;
 			if((func = REALLOC(func, (pos1-offset)+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			strncpy(func, &tmp[offset], (pos1-offset));
 			func[(pos1-offset)] = '\0';
@@ -1113,7 +1115,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 				opt = node->action->options;
 				while(opt) {
 					if((search = REALLOC(search, strlen(opt->name)+3)) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					memset(search, '\0', strlen(opt->name)+3);
 					sprintf(search, " %s ", opt->name);
@@ -1122,7 +1124,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 						pos++;
 						if(pos1 < pos) {
 							if((value = REALLOC(value, (pos-pos1)+1)) == NULL) {
-								OUT_OF_MEMORY
+								OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 							}
 							strncpy(value, &tmp[pos1], (pos-pos1));
 							value[(pos-pos1)-1] = '\0';
@@ -1171,7 +1173,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 				FREE(search);
 			}
 			if((value = REALLOC(value, (pos-pos1)+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 
 			strncpy(value, &tmp[pos1], (pos-pos1));
@@ -1402,7 +1404,7 @@ int event_parse_condition(char **rule, struct rules_t *obj, int depth, unsigned 
 	}
 
 	if((subrule = MALLOC(pos+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	strncpy(subrule, tmp, pos);
@@ -1460,7 +1462,7 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 		tpos = (size_t)(tloc-rule);
 
 		if((action = MALLOC((rlen-tpos)+6+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 
 		strncpy(action, &rule[tpos+6], rlen-tpos);
@@ -1470,7 +1472,7 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 		/* Extract the command part between the IF and THEN
 		   ("IF " length = 3) */
 		if((condition = MALLOC(rlen-tlen+3+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 
 		strncpy(condition, &rule[3], rlen-tlen+3);
@@ -1621,7 +1623,7 @@ static void events_iterate(uv_work_t *req) {
 	tmp_rules = list->rules[list->ptr++];
 
 	if((str = MALLOC(strlen(tmp_rules->rule)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(str, tmp_rules->rule);
 #ifndef WIN32
@@ -1644,7 +1646,7 @@ static void events_iterate(uv_work_t *req) {
 	if(list->ptr < list->nr) {
 		uv_work_t *tp_work_req = MALLOC(sizeof(uv_work_t));
 		if(tp_work_req == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		tp_work_req->data = list;
 		if(uv_queue_work(uv_default_loop(), tp_work_req, "rules loop", events_iterate, fib_free) < 0) {
@@ -1727,7 +1729,7 @@ void *events_loop(int reason, void *param) {
 				if(match == 1 && tmp_rules->status == 0) {
 					if(list == NULL) {
 						if((list = MALLOC(sizeof(struct rule_list_t))) == NULL) {
-							OUT_OF_MEMORY
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 						}
 						list->ptr = 0;
 						list->nr = 0;
@@ -1737,7 +1739,7 @@ void *events_loop(int reason, void *param) {
 					if(list->size <= list->nr) {
 						list->size += 16;
 						if((list->rules = REALLOC(list->rules, list->size*sizeof(struct rules_t *))) == NULL) {
-							OUT_OF_MEMORY
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 						}
 					}
 
@@ -1750,7 +1752,7 @@ void *events_loop(int reason, void *param) {
 	if(list != NULL && list->nr > 0) {
 		uv_work_t *tp_work_req = MALLOC(sizeof(uv_work_t));
 		if(tp_work_req == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		tp_work_req->data = list;
 		if(uv_queue_work(uv_default_loop(), tp_work_req, "rules loop", events_iterate, fib_free) < 0) {

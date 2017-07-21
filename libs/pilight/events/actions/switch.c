@@ -370,7 +370,7 @@ static void thread(uv_work_t *req) {
 
 				uv_timer_t *timer_req = NULL;
 				if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				timer_req->data = data;
 				uv_timer_init(uv_default_loop(), timer_req);
@@ -385,13 +385,13 @@ static void thread(uv_work_t *req) {
 
 			struct reason_control_device_t *data1 = MALLOC(sizeof(struct reason_control_device_t));
 			if(data1 == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			if((data1->dev = STRDUP(data->device)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			if((data1->state = STRDUP(data->new_state)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			data1->values = NULL;
 
@@ -416,7 +416,7 @@ static void thread(uv_work_t *req) {
 
 				uv_timer_t *timer_req = NULL;
 				if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				timer_req->data = data;
 				uv_timer_init(uv_default_loop(), timer_req);
@@ -431,7 +431,7 @@ static void thread(uv_work_t *req) {
 
 			struct reason_control_device_t *data1 = MALLOC(sizeof(struct reason_control_device_t));
 			if(data1 == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			data1->dev = STRDUP(data->device);
 			data1->state = STRDUP(data->old_state);
@@ -557,10 +557,10 @@ static void prepare(struct rules_actions_t *obj, char *dev) {
 
 	struct data_t *data = MALLOC(sizeof(struct data_t));
 	if(data == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	if((data->device = MALLOC(strlen(dev)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(data->device, dev);
 	data->seconds_for = seconds_for;
@@ -575,7 +575,7 @@ static void prepare(struct rules_actions_t *obj, char *dev) {
 
 	uv_work_t *tp_work_req = MALLOC(sizeof(uv_work_t));
 	if(tp_work_req == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	tp_work_req->data = data;
 	if(uv_queue_work(uv_default_loop(), tp_work_req, "action_switch", thread, thread_free) < 0) {

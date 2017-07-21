@@ -66,7 +66,7 @@ static void hardware_remove(char *name) {
 
 void hardware_register(struct hardware_t **hw) {
 	if((*hw = MALLOC(sizeof(struct hardware_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	(*hw)->options = NULL;
 	// (*hw)->wait = 0;
@@ -98,7 +98,7 @@ void hardware_register(struct hardware_t **hw) {
 
 void hardware_set_id(hardware_t *hw, const char *id) {
 	if((hw->id = MALLOC(strlen(id)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(hw->id, id);
 }
@@ -158,7 +158,7 @@ void hardware_init(void) {
 	if(settings_select_string(ORIGIN_MASTER, "hardware-root", &hardware_root) != 0) {
 		/* If no hardware root was set, use the default hardware root */
 		if((hardware_root = MALLOC(strlen(HARDWARE_ROOT)+2)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(hardware_root, HARDWARE_ROOT);
 		hardware_root_free = 1;

@@ -92,7 +92,7 @@ static void ntp_wait(void *param) {
 	fd_set fdsread;
 
 	if((message = MALLOC(BUFFER_SIZE)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 #ifdef _WIN32

@@ -381,7 +381,7 @@ static void thread(uv_work_t *req) {
 
 				uv_timer_t *timer_req = NULL;
 				if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				timer_req->data = data;
 				uv_timer_init(uv_default_loop(), timer_req);
@@ -396,10 +396,10 @@ static void thread(uv_work_t *req) {
 
 			struct reason_control_device_t *data1 = MALLOC(sizeof(struct reason_control_device_t));
 			if(data1 == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			if((data1->dev = STRDUP(data->device)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 
 			data1->state = NULL;
@@ -430,7 +430,7 @@ static void thread(uv_work_t *req) {
 
 				uv_timer_t *timer_req = NULL;
 				if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				timer_req->data = data;
 				uv_timer_init(uv_default_loop(), timer_req);
@@ -443,10 +443,10 @@ static void thread(uv_work_t *req) {
 		case RESTORE: {
 			struct reason_control_device_t *data1 = MALLOC(sizeof(struct reason_control_device_t));
 			if(data1 == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			if((data1->dev = STRDUP(data->device)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 
 			data1->state = NULL;
@@ -510,7 +510,7 @@ static void prepare(struct rules_actions_t *obj, char *dev) {
 			if(jcolor != NULL && jcolor->tag == JSON_STRING) {
 				color = jcolor->string_;
 				if((new_color = MALLOC(strlen(color)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(new_color, color);
 			}
@@ -593,7 +593,7 @@ static void prepare(struct rules_actions_t *obj, char *dev) {
 	} else if(devices_select_number_setting(ORIGIN_ACTION, dev, "label", &itmp, NULL) == 0) {
 		int len = snprintf(NULL, 0, "%f", itmp);
 		if((old_label = MALLOC(len+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		snprintf(old_label, len, "%f", itmp);
 		free_old_label = 1;
@@ -618,7 +618,7 @@ static void prepare(struct rules_actions_t *obj, char *dev) {
 						l = 2;
 					}
 					if((label = MALLOC(l+1)) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					memset(label, '\0', l);
 					free_label = 1;
@@ -626,7 +626,7 @@ static void prepare(struct rules_actions_t *obj, char *dev) {
 					label[l] = '\0';
 				}
 				if((new_label = MALLOC(strlen(label)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(new_label, label);
 			}
@@ -635,31 +635,31 @@ static void prepare(struct rules_actions_t *obj, char *dev) {
 
 	struct data_t *data = MALLOC(sizeof(struct data_t));
 	if(data == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	if((data->device = MALLOC(strlen(dev)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(data->device, dev);
 
 	if((data->old_label = MALLOC(strlen(old_label)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(data->old_label, old_label);
 
 	if((data->new_label = MALLOC(strlen(new_label)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(data->new_label, new_label);
 
 	if((data->old_color = MALLOC(strlen(old_color)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(data->old_color, old_color);
 
 	if(new_color != NULL) {
 		if((data->new_color = MALLOC(strlen(new_color)+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(data->new_color, new_color);
 	} else {
@@ -676,7 +676,7 @@ static void prepare(struct rules_actions_t *obj, char *dev) {
 
 	uv_work_t *tp_work_req = MALLOC(sizeof(uv_work_t));
 	if(tp_work_req == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	tp_work_req->data = data;
 	if(uv_queue_work(uv_default_loop(), tp_work_req, "action_label", thread, thread_free) < 0) {

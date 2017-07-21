@@ -144,7 +144,7 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 
 								struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
 								if(data == NULL) {
-									OUT_OF_MEMORY
+									OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 								};
 								snprintf(data->message, 1024,
 									"{\"location\":\"%s\",\"country\":\"%s\",\"temperature\":%.2f,\"humidity\":%.2f,\"update\":0,\"sunrise\":%.2f,\"sunset\":%.2f,\"sun\":\"%s\"}",
@@ -238,7 +238,7 @@ static void *update(void *param) {
 
 	uv_work_t *work_req = NULL;
 	if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	work_req->data = settings;
 	uv_queue_work(uv_default_loop(), work_req, "openweathermap", thread, thread_free);
@@ -256,7 +256,7 @@ static void *enable(void *param) {
 
 	struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
 	if(data == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	};
 	snprintf(data->message, 1024,
 		"{\"location\":\"%s\",\"country\":\"%s\",\"update\":1}",
@@ -350,7 +350,7 @@ static void *addDevice(int reason, void *param) {
 	}
 
 	if((node = MALLOC(sizeof(struct data_t)))== NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(node, '\0', sizeof(struct data_t));
 
@@ -371,14 +371,14 @@ static void *addDevice(int reason, void *param) {
 				if(strcmp(jchild1->key, "location") == 0) {
 					has_location = 1;
 					if((node->location = MALLOC(strlen(jchild1->string_)+1)) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					strcpy(node->location, jchild1->string_);
 				}
 				if(strcmp(jchild1->key, "country") == 0) {
 					has_country = 1;
 					if((node->country = MALLOC(strlen(jchild1->string_)+1)) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					strcpy(node->country, jchild1->string_);
 				}
@@ -409,15 +409,15 @@ static void *addDevice(int reason, void *param) {
 	json_find_number(jdevice, "temperature-offset", &node->temp_offset);
 
 	if((node->name = MALLOC(strlen(jdevice->key)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(node->name, jdevice->key);
 	
 	if((node->enable_timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	if((node->update_timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	node->enable_timer_req->data = node;
@@ -476,7 +476,7 @@ static int createCode(struct JsonNode *code, char **message) {
 
 					uv_work_t *work_req = NULL;
 					if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					work_req->data = tmp;
 					uv_queue_work(uv_default_loop(), work_req, "openweathermap", thread, thread_free);

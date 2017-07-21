@@ -137,7 +137,7 @@ static struct data_t *data = NULL;
 
 		// struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
 		// if(data == NULL) {
-			// OUT_OF_MEMORY
+			// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		// }
 		// snprintf(data->message, 1024, "{\"gpio\":%d,\"temperature\":%.1f,\"humidity\":%.1f}", settings->id, t, h);
 		// strncpy(data->origin, "receiver", 255);
@@ -195,7 +195,7 @@ static void *addDevice(int reason, void *param) {
 	}
 
 	if((node = MALLOC(sizeof(struct data_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	node->id = 0;
 	node->temp_offset = 0;
@@ -218,7 +218,7 @@ static void *addDevice(int reason, void *param) {
 	json_find_number(jdevice, "humidity-offset", &node->humi_offset);
 
 	if((node->name = MALLOC(strlen(jdevice->key)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(node->name, jdevice->key);
 

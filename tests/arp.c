@@ -306,11 +306,11 @@ static void start_arp(void) {
 			}			 
 			 
 			if((data = REALLOC(data, sizeof(struct data_t *) * (nrdata+1))) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 
 			if((data[nrdata] = MALLOC(sizeof(struct data_t))) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			memset(data[nrdata], '\0', sizeof(struct data_t));
 
@@ -340,7 +340,7 @@ static void start_arp(void) {
 #endif
 
 			if((data[nrdata]->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 
 			uv_timer_init(uv_default_loop(), data[nrdata]->timer_req);
@@ -349,7 +349,7 @@ static void start_arp(void) {
 
 			data[nrdata]->poll_req = NULL;
 			if((data[nrdata]->poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 
 			uv_custom_poll_init(&data[nrdata]->custom_poll_data, data[nrdata]->poll_req, (void *)data[nrdata]);

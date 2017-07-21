@@ -121,10 +121,10 @@ unsigned int explode(char *str, const char *delimiter, char ***output) {
 		if(strncmp(&str[i], delimiter, p) == 0) {
 			if((i-y) > 0) {
 				if((*output = REALLOC(*output, sizeof(char *)*(n+1))) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				if(((*output)[n] = MALLOC((i-y)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strncpy((*output)[n], &str[y], i-y);
 				(*output)[n][(i-y)] = '\0';
@@ -136,10 +136,10 @@ unsigned int explode(char *str, const char *delimiter, char ***output) {
 	}
 	if(strlen(&str[y]) > 0) {
 		if((*output = REALLOC(*output, sizeof(char *)*(n+1))) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		if(((*output)[n] = MALLOC((i-y)+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strncpy((*output)[n], &str[y], i-y);
 		(*output)[n][(i-y)] = '\0';
@@ -202,7 +202,7 @@ int setenv(const char *name, const char *value, int overwrite) {
 	}
 	char *c = MALLOC(strlen(name)+1+strlen(value)+1); // one for "=" + one for term zero
 	if(c == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcat(c, name);
 	strcat(c, "=");
@@ -219,7 +219,7 @@ int unsetenv(const char *name) {
 	}
 	char *c = MALLOC(strlen(name)+1+1); // one for "=" + one for term zero
 	if(c == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcat(c, name);
 	strcat(c, "=");
@@ -326,7 +326,7 @@ int urldecode(const char *s, char *dec) {
 		c = *s++;
 		if(c == '+') {
 			c = ' ';
-		} else if(c == '%' && (!ishex(*s++) || !ishex(*s++)	|| !sscanf(s - 2, "%2x", &c))) {
+		} else if(c == '%' && (!ishex(*s++) || !ishex(*s++) || !sscanf(s - 2, "%2x", &c))) {
 			return -1;
 		}
 		if(dec) {
@@ -371,7 +371,7 @@ char *base64decode(char *src, size_t len, size_t *decsize) {
 
   dec = MALLOC(0);
   if(dec == NULL) {
-		return NULL;
+		OUT_OF_MEMORY /* LCOV_EXCL_LINE */
 	}
 
   while(len--) {
@@ -451,7 +451,7 @@ char *base64encode(char *src, size_t len) {
 
   enc = MALLOC(0);
   if(enc == NULL) {
-		return NULL;
+		OUT_OF_MEMORY /* LCOV_EXCL_LINE */
 	}
 
   while(len--) {
@@ -514,14 +514,16 @@ char *hostname(void) {
 #endif	
 	
 	if(gethostname(name, 254) != 0) {
+		/* LCOV_EXCL_START */
 		logprintf(LOG_ERR, "gethostbyname: %s", strerror(errno));
 		return NULL;
+		/* LCOV_EXCL_STOP */
 	}
 	if(strlen(name) > 0) {
 		n = explode(name, ".", &array);
 		if(n > 0) {
 			if((host = MALLOC(strlen(array[0])+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			strcpy(host, array[0]);
 		}
@@ -547,6 +549,7 @@ char *distroname(void) {
 #else
 	int rc = 1;
 	struct stat sb;
+	/* LCOV_EXCL_START */
 	if((rc = stat("/etc/redhat-release", &sb)) == 0) {
 		strcpy(dist, "RedHat/0.0");
 	} else if((rc = stat("/etc/SuSE-release", &sb)) == 0) {
@@ -560,10 +563,11 @@ char *distroname(void) {
 	} else {
 		strcpy(dist, "Unknown/0.0");
 	}
+	/* LCOV_EXCL_STOP */
 #endif
 	if(strlen(dist) > 0) {
 		if((distro = MALLOC(strlen(dist)+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(distro, dist);
 		return distro;
@@ -588,6 +592,7 @@ char *genuuid(char *ifname) {
 			if(fgets(a, 1024, fp) == 0) {
 				break;
 			}
+			/* LCOV_EXCL_START */
 			if(strstr(a, "Serial") != NULL) {
 				sscanf(a, "Serial          : %16s%*[ \n\r]", (char *)&serial);
 				if(strlen(serial) > 0 &&
@@ -602,13 +607,14 @@ char *genuuid(char *ifname) {
 					memmove(&serial[14], &serial[13], 7);
 					serial[13] = '-';
 					if((upnp_id = MALLOC(UUID_LENGTH+1)) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					strcpy(upnp_id, serial);
 					fclose(fp);
 					return upnp_id;
 				}
 			}
+			/* LCOV_EXCL_STOP */
 		}
 		fclose(fp);
 	}
@@ -616,7 +622,7 @@ char *genuuid(char *ifname) {
 #endif
 	if(dev2mac(ifname, &p) == 0) {
 		if((upnp_id = MALLOC(UUID_LENGTH+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		memset(upnp_id, '\0', UUID_LENGTH+1);
 		snprintf(upnp_id, UUID_LENGTH,
@@ -626,7 +632,7 @@ char *genuuid(char *ifname) {
 		return upnp_id;
 	}
 
-	return NULL;
+	return NULL; /* LCOV_EXCL_LINE */
 }
 
 /* Check if a given file exists */
@@ -647,7 +653,7 @@ int path_exists(char *fil) {
 	int len = strlen(fil);
 	char *tmp = MALLOC(len+1);
 	if(tmp == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(tmp, fil);
 
@@ -790,8 +796,8 @@ int str_replace(char *search, char *replace, char **str) {
 			}
 			nlen = len - (slen - rlen);
 			if(len < nlen) {
-				if(((*str) = REALLOC((*str), (size_t)nlen+1)) == NULL) {
-					OUT_OF_MEMORY
+				if(((*str) = REALLOC((*str), (size_t)nlen+1)) == NULL) { /*LCOV_EXCL_LINE*/
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				memset(&(*str)[len], '\0', (size_t)(nlen-len));
 			}
@@ -832,25 +838,31 @@ int file_get_contents(char *file, char **content) {
 	}
 
 	if(file_exists(file) == -1) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "file does not exists: %s", file);
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 	
 	if((fp = fopen(file, "rb")) == NULL) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "cannot open file: %s", file);
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	fstat(fileno(fp), &st);
 	bytes = (size_t)st.st_size;
 
 	if((*content = CALLOC(bytes+1, sizeof(char))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	if(fread(*content, sizeof(char), bytes, fp) == -1) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "cannot read file: %s", file);
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 	fclose(fp);
 	return 0;

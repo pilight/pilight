@@ -92,7 +92,7 @@ typedef struct data_t {
 void ping_add_host(struct ping_list_t **iplist, const char *ip) {
 	struct ping_list_t *node = MALLOC(sizeof(struct ping_list_t));
 	if(node == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(node, 0, sizeof(struct ping_list_t));
 	strncpy(node->ip, ip, INET_ADDRSTRLEN);
@@ -157,7 +157,7 @@ int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
 	unsigned long ipaddr = INADDR_NONE;
 	struct data_t *data = MALLOC(sizeof(struct data_t));
 	if(data == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	memset(data, 0, sizeof(struct data_t));
@@ -175,7 +175,7 @@ int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
 	data->reply.size = sizeof(ICMP_ECHO_REPLY) + sizeof(send_data) + 8;
 	data->reply.buffer = MALLOC(data->reply.size);
 	if(data->reply.buffer == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	strcpy(data->ip, data->nodes->ip);
@@ -419,8 +419,10 @@ static void write_cb(uv_poll_t *req) {
 	uv_os_fd_t fd = 0;
 	r = uv_fileno((uv_handle_t *)req, &fd);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
 		return;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	struct timeval tv;
@@ -442,7 +444,9 @@ static void write_cb(uv_poll_t *req) {
 	ip->ip_dst.s_addr = inet_addr(data->nodes->ip);
 
 	if((x = sendto(fd, buf, ip->ip_len, 0, (struct sockaddr *)&dst, sizeof(dst))) < 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "sendto: %s", strerror(errno));
+		/*LCOV_EXCL_STOP*/
 	}
 
 	data->nodes->live = 1;
@@ -536,9 +540,11 @@ int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
 	}
 #endif
 
-	if((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0){
+	if((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "socket: %s", strerror(errno));
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 #ifdef _WIN32
@@ -549,9 +555,11 @@ int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
 #endif
 
 	if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char *)&on, sizeof(on)) < 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "setsockopt: %s", strerror(errno));
 		close(sockfd);
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 #ifdef __FreeBSD__
@@ -560,13 +568,15 @@ int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
 #else
 	if(setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, (const char *)&on, sizeof(on)) < 0) {
 #endif
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "setsockopt: %s", strerror(errno));
 		close(sockfd);
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	if((data = MALLOC(sizeof(struct data_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(data, 0, sizeof(struct data_t));
 	data->callback = callback;
@@ -574,12 +584,12 @@ int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
 	data->iplist = iplist;
 
 	if((data->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	data->timer_req->data = data;
 
 	if((data->poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_custom_poll_init(&custom_poll_data, data->poll_req, (void *)data);
@@ -590,20 +600,26 @@ int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
 
 	int r = uv_poll_init_socket(uv_default_loop(), data->poll_req, sockfd);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
 		goto free;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	r = uv_timer_init(uv_default_loop(), data->timer_req);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_timer_init: %s", uv_strerror(r));
 		goto free;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	r = uv_timer_start(data->timer_req, (void (*)(uv_timer_t *))ping_timeout, 1000, 1000);		
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_timer_start: %s", uv_strerror(r));
 		goto free;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	uv_custom_write(data->poll_req);

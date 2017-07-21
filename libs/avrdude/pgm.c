@@ -66,7 +66,7 @@ PROGRAMMER * pgm_new(void)
 
   pgm = (PROGRAMMER *)MALLOC(sizeof(*pgm));
   if (pgm == NULL) {
-    OUT_OF_MEMORY
+    OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
   }
 
   memset(pgm, 0, sizeof(*pgm));

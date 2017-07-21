@@ -81,12 +81,12 @@ int main(int argc, char **argv) {
 	int i = 0, x = 0;
 
 	if((progname = MALLOC(15)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(progname, "pilight-sha256");
 
 	if((signal_req = malloc(sizeof(uv_signal_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_signal_init(uv_default_loop(), signal_req);
@@ -117,7 +117,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'p':
 				if((password = MALLOC(strlen(args)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(password, args);
 			break;
@@ -139,7 +139,7 @@ int main(int argc, char **argv) {
 
 	if(strlen(password) < 64) {
 		if((password = REALLOC(password, 65)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 	}
 

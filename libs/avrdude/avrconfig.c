@@ -35,7 +35,7 @@ TOKEN * new_token(int primary)
 
   tkn = (TOKEN *)MALLOC(sizeof(TOKEN));
   if (tkn == NULL) {
-    OUT_OF_MEMORY
+    OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
   }
 
   memset(tkn, 0, sizeof(TOKEN));
@@ -100,7 +100,7 @@ TOKEN * string(char * text)
   tkn->value.type   = V_STR;
   tkn->value.string = (char *) MALLOC(len+1);
   if (tkn->value.string == NULL) {
-    OUT_OF_MEMORY
+    OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
   }
   strcpy(tkn->value.string, text);
 

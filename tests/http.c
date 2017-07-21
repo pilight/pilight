@@ -271,7 +271,7 @@ static void http_wait(void *param) {
 	fd_set fdswrite;
 
 	if((message = MALLOC(BUFSIZE)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 #ifdef _WIN32
 	unsigned long on = 1;

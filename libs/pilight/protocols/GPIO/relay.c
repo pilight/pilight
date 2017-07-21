@@ -47,7 +47,7 @@ static int createCode(struct JsonNode *code, char **message) {
 	relay->rawlen = 0;
 	if(json_find_string(code, "default-state", &def) != 0) {
 		if((def = MALLOC(4)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(def, "off");
 		free_def = 1;
@@ -143,7 +143,7 @@ static int checkValues(struct JsonNode *code) {
 
 	if(json_find_string(code, "default-state", &def) != 0) {
 		if((def = MALLOC(4)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(def, "off");
 		free_def = 1;

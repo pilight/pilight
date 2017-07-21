@@ -52,12 +52,12 @@ int main(int argc, char **argv) {
 	memset(&comport, '\0', 255);
 
 	if((fconfig = MALLOC(strlen(CONFIG_FILE)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(fconfig, CONFIG_FILE);
 
 	if((progname = MALLOC(15)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(progname, "pilight-flash");
 
@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'C':
 				if((fconfig = REALLOC(fconfig, strlen(args)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(fconfig, args);
 			break;

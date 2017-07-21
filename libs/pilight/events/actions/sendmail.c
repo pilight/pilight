@@ -217,7 +217,7 @@ static int run(struct rules_actions_t *obj) {
 	double itmp = 0.0;
 
 	if(mail == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	jmessage = json_find_member(json, "MESSAGE");
@@ -238,7 +238,7 @@ static int run(struct rules_actions_t *obj) {
 				//smtp settings
 				if(settings_select_string(ORIGIN_ACTION, "smtp-sender", &stmp) == 0) {
 					if((mail->from = MALLOC(strlen(stmp)+1)) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					strcpy(mail->from, stmp);
 				}
@@ -256,13 +256,13 @@ static int run(struct rules_actions_t *obj) {
 				settings_select_string(ORIGIN_ACTION, "smtp-password", &spassword);
 
 				if((mail->subject = MALLOC(strlen(jval1->string_)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				if((mail->message = MALLOC(strlen(jval2->string_)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				if((mail->to = MALLOC(strlen(jval3->string_)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(mail->subject, jval1->string_);
 				strcpy(mail->message, jval2->string_);

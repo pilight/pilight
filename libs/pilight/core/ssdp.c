@@ -179,12 +179,10 @@ static int ssdp_create_header(char ***header) {
 					continue;
 				}
 				if((*header = REALLOC(*header, sizeof(char *)*((size_t)nrheader+1))) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				if(((*header)[nrheader] = MALLOC(BUFFER_SIZE)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				int port = socket_get_port();
 				if(ssdp_override_port > -1) {
@@ -207,8 +205,10 @@ static int ssdp_create_header(char ***header) {
 			}
 		}
 	} else {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "could not determine default network interface");
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 	array_free(&devs, nrdevs);
 
@@ -293,7 +293,7 @@ static void on_send(uv_udp_send_t *req, int status) {
 static void alloc(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
 	buf->len = len;
 	if((buf->base = malloc(len)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(buf->base, 0, len);
 }
@@ -309,14 +309,16 @@ static void read_cb(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const st
 			int nrheader = ssdp_create_header(&header), x = 0;
 
 			if(nrheader == -1) {
+				/*LCOV_EXCL_START*/
 				logprintf(LOG_ERR, "could not generate ssdp header");
 				return;
+				/*LCOV_EXCL_STOP*/
 			}
 			for(x=0;x<nrheader;x++) {
 				if(strlen(header[x]) > 0) {
 					uv_udp_send_t *send_req = MALLOC(sizeof(uv_udp_send_t));
 					if(send_req == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 
 					uv_buf_t buf = uv_buf_init(buffer, BUFFER_SIZE);
@@ -360,7 +362,7 @@ static void read_cb(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const st
 
 				struct reason_ssdp_received_t *data1 = MALLOC(sizeof(struct reason_ssdp_received_t));
 				if(data1 == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(data1->name, name);
 				strcpy(data1->uuid, uuid);
@@ -395,35 +397,45 @@ void ssdp_start(void) {
 	node->type = SERVER;
 	node->timer_req = NULL;
 	if((node->ssdp_req = MALLOC(sizeof(uv_udp_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	node->ssdp_req->data = node;
 
 	r = uv_udp_init(uv_default_loop(), node->ssdp_req);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_udp_init: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
 		goto close;
+		/*LCOV_EXCL_STOP*/
 	}
 	r = uv_ip4_addr("0.0.0.0", 1900, &addr);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_ip4_addr: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
 		goto close;
+		/*LCOV_EXCL_STOP*/
 	}
 	r = uv_udp_bind(node->ssdp_req, (const struct sockaddr *)&addr, UV_UDP_REUSEADDR);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_udp_bind: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
 		goto close;
+		/*LCOV_EXCL_STOP*/
 	}
 	r = uv_udp_set_membership(node->ssdp_req, "239.255.255.250", NULL, UV_JOIN_GROUP);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_udp_set_membership: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
 		goto close;
+		/*LCOV_EXCL_STOP*/
 	}
 	r = uv_udp_recv_start(node->ssdp_req, alloc, read_cb);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_udp_recv_start: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
 		goto close;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	uv_mutex_lock(&nodes_lock);
@@ -477,10 +489,10 @@ void ssdp_seek(void) {
 	struct data_t *node = MALLOC(sizeof(struct data_t));
 	node->type = CLIENT;
 	if((node->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	if((node->ssdp_req = MALLOC(sizeof(uv_udp_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	
 	node->ssdp_req->data = node;
@@ -488,12 +500,14 @@ void ssdp_seek(void) {
 	
 	r = uv_udp_init(uv_default_loop(), node->ssdp_req);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_udp_init: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
 		return;
+		/*LCOV_EXCL_STOP*/
 	}
 	
 	if((send_req = MALLOC(sizeof(uv_udp_send_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_buf_t buf = uv_buf_init(buffer, BUFFER_SIZE);
@@ -507,18 +521,24 @@ void ssdp_seek(void) {
 
 	r = uv_ip4_addr("239.255.255.250", 1900, &addr);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_ip4_addr: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
 		goto close;
+		/*LCOV_EXCL_STOP*/
 	}
 	r = uv_udp_send(send_req, node->ssdp_req, &buf, 1, (const struct sockaddr *)&addr, on_send);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_udp_send: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
 		goto close;
+		/*LCOV_EXCL_STOP*/
 	}
 	r = uv_udp_recv_start(node->ssdp_req, alloc, read_cb);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_udp_recv_start: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
 		goto close;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	uv_mutex_lock(&nodes_lock);

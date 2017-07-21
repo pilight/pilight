@@ -171,7 +171,7 @@ static void thread(uv_work_t *req) {
 
 			struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
 			if(data == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			snprintf(data->message, 1024,
 				"{\"id\":%d,\"temperature\":%.2f,\"pressure\":%.2f}",
@@ -233,7 +233,7 @@ static void *addDevice(int reason, void *param) {
 	}
 
 	if((node = MALLOC(sizeof(struct data_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(node, '\0', sizeof(struct data_t));
 	node->oversampling = 3;
@@ -317,7 +317,7 @@ static void *addDevice(int reason, void *param) {
 	}
 
 	if((node->name = MALLOC(strlen(jdevice->key)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(node->name, jdevice->key);
 
@@ -325,11 +325,11 @@ static void *addDevice(int reason, void *param) {
 	data = node;
 
 	if((node->interval_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}	
 
 	if((node->stepped_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	node->interval_req->data = node;

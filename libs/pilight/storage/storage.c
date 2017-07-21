@@ -81,7 +81,7 @@ static void *devices_update_cache(int reason, void *param) {
 	 * FIXME: clone reason_config_update_t
 	 */
 	if(data1 == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}	
 
 	data1->type = data->type;
@@ -124,7 +124,7 @@ static void *devices_update_cache(int reason, void *param) {
 								jvalue->string_ = NULL;
 							}
 							if((jvalue->string_ = REALLOC(jvalue->string_, strlen(data->values[x].string_)+1)) == NULL) {
-								OUT_OF_MEMORY
+								OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 							}
 							strcpy(jvalue->string_, data->values[x].string_);
 							jvalue->tag = JSON_STRING;
@@ -221,7 +221,7 @@ void *config_values_update(int reason, void *param) {
 
 	struct reason_config_update_t *data = MALLOC(sizeof(struct reason_config_update_t));
 	if(data == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(data, 0, sizeof(struct reason_config_update_t));
 
@@ -446,10 +446,10 @@ void *config_values_update(int reason, void *param) {
 
 void storage_register(struct storage_t **s, const char *id) {
 	if((*s = MALLOC(sizeof(struct storage_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	if(((*s)->id = MALLOC(strlen(id)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy((*s)->id, id);
 	(*s)->sync = NULL;
@@ -481,10 +481,10 @@ void devices_struct_parse(struct JsonNode *jdevices, int i) {
 	struct device_t *node = MALLOC(sizeof(struct device_t));
 	memset(node, 0, sizeof(struct device_t));
 	if(node == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	if((node->id = MALLOC(strlen(jdevices->key)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(node->id, jdevices->key);
 	node->timestamp = 0;
@@ -505,7 +505,7 @@ void devices_struct_parse(struct JsonNode *jdevices, int i) {
 				protocol = tmp_protocols->listener;
 				if(protocol_device_exists(protocol, jchilds->string_) == 0) {
 					if((node->protocols = REALLOC(node->protocols, (sizeof(struct protocol_t *)*(size_t)(node->nrprotocols+1)))) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					node->protocols[node->nrprotocols] = protocol;
 					node->nrprotocols++;
@@ -1027,7 +1027,7 @@ void devices_init_protocol_threads(struct JsonNode *jdevices, int i) {
 		int l = strlen(cpy)+6+strlen(jdevices->key);
 		char *output = MALLOC(l);
 		if(output == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		snprintf(output, l, "{\"%s\":%s}", jdevices->key, cpy);
 		eventpool_trigger(REASON_DEVICE_ADDED, reason_device_added_free, json_decode(output));
@@ -1135,7 +1135,7 @@ int rules_struct_parse(struct JsonNode *jrules, int i) {
 
 	struct rules_t *node = MALLOC(sizeof(struct rules_t));
 	if(node == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	node->next = NULL;
 	node->values = NULL;
@@ -1146,7 +1146,7 @@ int rules_struct_parse(struct JsonNode *jrules, int i) {
 	node->jtrigger = NULL;
 	node->nr = i;
 	if((node->name = MALLOC(strlen(jrules->key)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(node->name, jrules->key);
 
@@ -1165,7 +1165,7 @@ int rules_struct_parse(struct JsonNode *jrules, int i) {
 
 	node->status = 0;
 	if((node->rule = MALLOC(strlen(rule)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(node->rule, rule);
 	node->active = (unsigned short)active;
@@ -1518,7 +1518,7 @@ int settings_validate_settings(struct JsonNode *jsettings, int i) {
 			char *dir = NULL;
 			char *cpy = STRDUP(jsettings->string_);
 			if(cpy == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 
 
@@ -1985,12 +1985,12 @@ int hardware_validate_settings(struct JsonNode *jhardware, int i) {
 							l = 2;
 						}
 						if((stmp = REALLOC(stmp, l+1)) == NULL) {
-							OUT_OF_MEMORY
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 						}
 						snprintf(stmp, l, "%d", (int)jvalues->number_);
 					} else if(jvalues->tag == JSON_STRING) {
 						if((stmp = REALLOC(stmp, strlen(jvalues->string_)+1)) == NULL) {
-							OUT_OF_MEMORY
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 						}
 						strcpy(stmp, jvalues->string_);
 					}
@@ -2747,7 +2747,7 @@ static int registry_set_value_recursive(struct JsonNode *root, const char *key, 
 				member->decimals_ = decimals;
 			} else if(type == JSON_STRING) {
 				if((member->string_ = REALLOC(member->string_, strlen(svalue)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(member->string_, svalue);
 			}

@@ -81,7 +81,7 @@ static void *thread(void *param) {
 	bytes = (size_t)st.st_size;
 
 	if((content = REALLOC(content, bytes+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(content, '\0', bytes+1);
 
@@ -109,7 +109,7 @@ static void *thread(void *param) {
 	if(w1valid == 1) {
 		struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
 		if(data == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		snprintf(data->message, 1024, "{\"id\":\"%s\",\"temperature\":%.3f}", settings->id, w1temp);
 		strncpy(data->origin, "receiver", 255);
@@ -167,7 +167,7 @@ static void *addDevice(int reason, void *param) {
 	}
 
 	if((node = MALLOC(sizeof(struct data_t)))== NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(node, 0, sizeof(struct data_t));
 	node->id = NULL;
@@ -179,7 +179,7 @@ static void *addDevice(int reason, void *param) {
 		while(jchild) {
 			if(json_find_string(jchild, "id", &stmp) == 0) {
 				if((node->id = MALLOC(strlen(stmp)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(node->id, stmp);
 			}
@@ -193,7 +193,7 @@ static void *addDevice(int reason, void *param) {
 
 #ifndef _WIN32
 	if((node->sensor = REALLOC(node->sensor, strlen(source_path)+strlen(node->id)+5)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	sprintf(node->sensor, "%s28-%s/", source_path, node->id);
 	if((d = opendir(node->sensor))) {
@@ -208,7 +208,7 @@ static void *addDevice(int reason, void *param) {
 				if(strcmp(file->d_name, "w1_slave") == 0) {
 					size_t w1slavelen = strlen(node->sensor)+10;
 					if((node->w1slave = REALLOC(node->w1slave, w1slavelen+1)) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 
 					memset(node->w1slave, '\0', w1slavelen);
@@ -233,7 +233,7 @@ static void *addDevice(int reason, void *param) {
 	data = node;
 
 	if((node->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	node->timer_req->data = node;
 	uv_timer_init(uv_default_loop(), node->timer_req);

@@ -761,7 +761,7 @@ static void test_event_actions_switch_run_override(CuTest *tc) {
 	}");
 
 	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	uv_timer_init(uv_default_loop(), timer_req);
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 750, 0);

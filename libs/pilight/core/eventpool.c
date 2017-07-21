@@ -143,7 +143,7 @@ void eventpool_callback(int reason, void *(*func)(int, void *)) {
 	}
 	struct eventpool_listener_t *node = MALLOC(sizeof(struct eventpool_listener_t));
 	if(node == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	node->func = func;
 	node->reason = reason;
@@ -180,7 +180,7 @@ void eventpool_trigger(int reason, void *(*done)(void *), void *data) {
 
 	struct eventqueue_t *node = MALLOC(sizeof(struct eventqueue_t));
 	if(node == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(node, 0, sizeof(struct eventqueue_t));
 	node->reason = reason;
@@ -225,7 +225,7 @@ static void eventpool_execute(uv_async_t *handle) {
 	int nr1 = 0, nrnodes = 16, nrnodes1 = 0, i = 0;
 
 	if((node = MALLOC(sizeof(struct threadpool_tasks_t *)*nrnodes)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_mutex_lock(&listeners_lock);
@@ -246,7 +246,7 @@ static void eventpool_execute(uv_async_t *handle) {
 		} else {
 			if(threads == EVENTPOOL_THREADED) {
 				if((ref = MALLOC(sizeof(uv_sem_t))) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				uv_sem_init(ref, nr1-1);
 			}
@@ -262,12 +262,14 @@ static void eventpool_execute(uv_async_t *handle) {
 				if(listeners->reason == queue->reason) {
 					if(nrnodes1 == nrnodes) {
 						nrnodes *= 2;
+						/*LCOV_EXCL_START*/
 						if((node = REALLOC(node, sizeof(struct threadpool_tasks_t *)*nrnodes)) == NULL) {
 							OUT_OF_MEMORY
 						}
+						/*LCOV_EXCL_STOP*/
 					}
 					if((node[nrnodes1] = MALLOC(sizeof(struct threadpool_tasks_t))) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					node[nrnodes1]->func = listeners->func;
 					node[nrnodes1]->userdata = queue->data;
@@ -307,7 +309,7 @@ static void eventpool_execute(uv_async_t *handle) {
 				struct threadpool_data_t *tpdata = NULL;
 				tpdata = MALLOC(sizeof(struct threadpool_data_t));
 				if(tpdata == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				tpdata->userdata = node[i]->userdata;
 				tpdata->func = node[i]->func;
@@ -318,7 +320,7 @@ static void eventpool_execute(uv_async_t *handle) {
 
 				uv_work_t *tp_work_req = MALLOC(sizeof(uv_work_t));
 				if(tp_work_req == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				tp_work_req->data = tpdata;
 				if(uv_queue_work(uv_default_loop(), tp_work_req, reasons[node[i]->reason].reason, fib, fib_free) < 0) {
@@ -417,8 +419,10 @@ static void eventpool_update_poll(uv_poll_t *req) {
 	} else if(custom_poll_data->action != action && action > 0) {
 		uv_poll_start(req, action, uv_custom_poll_cb);
 		if(r != 0) {
+			/*LCOV_EXCL_START*/
 			logprintf(LOG_ERR, "uv_poll_start: %s", uv_strerror(r));
 			return;
+			/*LCOV_EXCL_STOP*/
 		}
 		custom_poll_data->action = action;
 	}
@@ -448,9 +452,11 @@ size_t iobuf_append(struct iobuf_t *io, const void *buf, int len) {
   return len;
 }
 
+/*LCOV_EXCL_START*/
 static void my_debug(void *ctx, int level, const char *file, int line, const char *str) {
 	printf("%s:%04d: %s", file, line, str );
 }
+/*LCOV_EXCL_STOP*/
 
 void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 	/*
@@ -540,16 +546,20 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 			custom_poll_data->dowrite = 0;
 			goto end;
 		} else if(n == MBEDTLS_ERR_SSL_WANT_WRITE) {
+			/*LCOV_EXCL_START*/
 			custom_poll_data->dowrite = 1;
 			custom_poll_data->doread = 0;
 			goto end;
+			/*LCOV_EXCL_STOP*/
 		}
 		if(n == MBEDTLS_ERR_SSL_WANT_READ || n == MBEDTLS_ERR_SSL_WANT_WRITE) {
 		} else if(n < 0) {
+			/*LCOV_EXCL_START*/
 			mbedtls_strerror(n, (char *)&buffer, BUFFER_SIZE);
 			logprintf(LOG_NOTICE, "mbedtls_ssl_handshake: %s", buffer);
 			uv_poll_stop(req);
 			return;
+			/*LCOV_EXCL_STOP*/
 		} else {
 			custom_poll_data->ssl.handshake = 1;
 		}
@@ -562,20 +572,26 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 			if(custom_poll_data->is_ssl == 1) {
 				n = mbedtls_ssl_write(&custom_poll_data->ssl.ctx, (unsigned char *)send_io->buf, send_io->len);
 					if(n == MBEDTLS_ERR_SSL_WANT_READ) {
+						/*LCOV_EXCL_START*/
 						custom_poll_data->doread = 1;
 						custom_poll_data->dowrite = 0;
 						goto end;
+						/*LCOV_EXCL_STOP*/
 					} else if(n == MBEDTLS_ERR_SSL_WANT_WRITE) {
+						/*LCOV_EXCL_START*/
 						custom_poll_data->dowrite = 1;
 						custom_poll_data->doread = 0;
 						goto end;
+						/*LCOV_EXCL_STOP*/
 					}
 				if(n == MBEDTLS_ERR_SSL_WANT_READ || n == MBEDTLS_ERR_SSL_WANT_WRITE) {
 				} else if(n < 0) {
+					/*LCOV_EXCL_START*/
 					mbedtls_strerror(n, (char *)&buffer, BUFFER_SIZE);
 					logprintf(LOG_NOTICE, "mbedtls_ssl_handshake: %s", buffer);
 					uv_poll_stop(req);
 					return;
+					/*LCOV_EXCL_STOP*/
 				}
 			} else {
 				n = (int)send((unsigned int)fd, send_io->buf, send_io->len, 0);
@@ -632,9 +648,11 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 				custom_poll_data->dowrite = 0;
 				goto end;
 			} else if(n == MBEDTLS_ERR_SSL_WANT_WRITE) {
+				/*LCOV_EXCL_START*/
 				custom_poll_data->dowrite = 1;
 				custom_poll_data->doread = 0;
 				goto end;
+				/*LCOV_EXCL_STOP*/
 			} else if(n == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
 				custom_poll_data->doread = 0;
 				if(custom_poll_data->read_cb != NULL) {
@@ -759,7 +777,7 @@ static void iobuf_init(struct iobuf_t *iobuf, size_t initial_size) {
 
 void uv_custom_poll_init(struct uv_custom_poll_t **custom_poll, uv_poll_t *poll, void *data) {
 	if((*custom_poll = MALLOC(sizeof(struct uv_custom_poll_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(*custom_poll, '\0', sizeof(struct uv_custom_poll_t));
 	iobuf_init(&(*custom_poll)->send_iobuf, 0);
@@ -850,7 +868,7 @@ void eventpool_init(enum eventpool_threads_t t) {
 	threads = t;
 
 	if((async_req = MALLOC(sizeof(uv_async_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	uv_async_init(uv_default_loop(), async_req, eventpool_execute);
 

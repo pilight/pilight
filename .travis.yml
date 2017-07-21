@@ -15,6 +15,7 @@ addons:
     packages:
       - libpcap-dev
       - libunwind8-dev
+      - lcov
 
 install:
   - curl https://apt.pilight.org/pilight.key | sudo apt-key add - && echo "deb http://apt.pilight.org/ stable main" | sudo tee -a /etc/apt/sources.list
@@ -32,4 +33,11 @@ before_script:
   - if [[ $CONFIG == "ALL_ON" ]]; then sed "s/\(set(.*\) OFF/\1 ON/" -i CMakeConfig.txt; fi
 
 script:
-  - mkdir build && pushd build && cmake .. && make && sudo ./pilight-unittest && sudo make install
+  - mkdir build && pushd build && cmake .. -DCOVERALLS=ON -DCMAKE_BUILD_TYPE=Debug && make && sudo ./pilight-unittest && sudo make install
+
+after_success:
+  - gem install coveralls-lcov
+  - lcov -c -d CMakeFiles/pilight.dir/libs/pilight/events/ -d CMakeFiles/pilight.dir/libs/pilight/core/ -d CMakeFiles/pilight.dir/libs/pilight/psutil/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/API/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/core/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/generic/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/network/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/GPIO -d CMakeFiles/pilight-unittest.dir/ -o coverage.info
+  - lcov -r coverage.info '*proc.c' '*adhoc.c' '*gc.c' '*generic_webcam.c' '*mem.c' '*CuTest.c' '*firmware.c' '*gpio_switch.c' '*relay.c' '*pushover.c' '*pushbullet.c' '*dht11.c' '*dht22.c' '*arping.c' -o coverage-filtered.info
+  - lcov --list coverage-filtered.info
+  - coveralls-lcov --repo-token ${COVERALLS_TOKEN} coverage-filtered.info

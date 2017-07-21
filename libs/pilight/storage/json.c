@@ -60,7 +60,7 @@ static void *_values_update(int reason, void *param) {
 								jvalue->string_ = NULL;
 							}
 							if((jvalue->string_ = REALLOC(jvalue->string_, strlen(data->values[x].string_)+1)) == NULL) {
-								OUT_OF_MEMORY
+								OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 							}
 							strcpy(jvalue->string_, data->values[x].string_);
 							jvalue->tag = JSON_STRING;
@@ -186,7 +186,7 @@ static int __read(char *file, int objects) {
 	char *content = NULL;
 
 	if((configfile = MALLOC(strlen(file)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(configfile, file);
 

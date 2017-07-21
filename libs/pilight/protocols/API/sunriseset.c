@@ -200,7 +200,7 @@ static void *thread(void *param) {
 
 		struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
 		if(data == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		snprintf(data->message, 1024,
 			"{\"longitude\":%.6f,\"latitude\":%.6f,\"sun\":\"%s\",\"sunrise\":%.2f,\"sunset\":%.2f}",
@@ -297,7 +297,7 @@ static void *addDevice(int reason, void *param) {
 	}
 
 	if((node = MALLOC(sizeof(struct data_t)))== NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(node, '\0', sizeof(struct data_t));
 
@@ -326,7 +326,7 @@ static void *addDevice(int reason, void *param) {
 	}
 
 	if((node->name = MALLOC(strlen(jdevice->key)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(node->name, jdevice->key);
 
@@ -334,7 +334,7 @@ static void *addDevice(int reason, void *param) {
 	data = node;
 
 	if((node->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}	
 	node->timer_req->data = node;
 	

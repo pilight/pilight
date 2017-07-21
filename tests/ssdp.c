@@ -186,12 +186,12 @@ static void test_ssdp_client(CuTest *tc) {
 
 	async_close_req = MALLOC(sizeof(uv_async_t));
 	if(async_close_req == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	uv_async_init(uv_default_loop(), async_close_req, async_close_cb);	
 
 	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	uv_timer_init(uv_default_loop(), timer_req);
 	/*
@@ -251,12 +251,12 @@ static void test_ssdp_server(CuTest *tc) {
 
 	async_close_req = MALLOC(sizeof(uv_async_t));
 	if(async_close_req == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	uv_async_init(uv_default_loop(), async_close_req, async_close_cb);	
 
 	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_timer_init(uv_default_loop(), timer_req);

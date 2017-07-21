@@ -79,7 +79,7 @@ void event_function_init(void) {
 	if(settings_select_string(ORIGIN_MASTER, "functions-root", &functions_root) != 0) {
 		/* If no function root was set, use the default function root */
 		if((functions_root = MALLOC(strlen(FUNCTION_ROOT)+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(functions_root, FUNCTION_ROOT);
 		function_root_free = 1;
@@ -153,10 +153,10 @@ void event_function_init(void) {
 
 void event_function_register(struct event_functions_t **act, const char *name) {
 	if((*act = MALLOC(sizeof(struct event_functions_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	if(((*act)->name = MALLOC(strlen(name)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy((*act)->name, name);
 

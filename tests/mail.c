@@ -306,7 +306,7 @@ static void callback(int status, struct mail_t *mail) {
 	testnr++;
 
 	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_timer_init(uv_default_loop(), timer_req);
@@ -338,7 +338,7 @@ static void mail_wait(void *param) {
 	fd_set fdswrite;
 
 	if((message = MALLOC(BUFFER_SIZE+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 #ifdef _WIN32
@@ -573,7 +573,7 @@ static void test_mail(CuTest *tc) {
 	ssl_init();
 
 	if((mail = MALLOC(sizeof(struct mail_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	while(testnr < sizeof(tests)/sizeof(tests[0])) {
@@ -623,7 +623,7 @@ static void test_mail_threaded(CuTest *tc) {
 	ssl_init();
 
 	if((mail = MALLOC(sizeof(struct mail_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	while(testnr < sizeof(tests)/sizeof(tests[0])) {

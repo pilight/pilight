@@ -62,6 +62,9 @@
 static unsigned int ***whitelist_cache = NULL;
 static unsigned int whitelist_number;
 
+/*
+ * FIXME: Replace by libuv
+ */
 int inetdevs(char ***array) {
 	unsigned int nrdevs = 0, i = 0, match = 0;
 
@@ -74,7 +77,7 @@ int inetdevs(char ***array) {
 		FREE(pAdapterInfo);
 		pAdapterInfo = MALLOC(buflen);
 		if(pAdapterInfo == NULL) {
-			OUT_OF_MEMORY;
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/;
 		}
 	}
 
@@ -90,10 +93,10 @@ int inetdevs(char ***array) {
 			}
 			if(match == 0 && strcmp(pAdapter->IpAddressList.IpAddress.String, "0.0.0.0") != 0) {
 				if((*array = REALLOC(*array, sizeof(char *)*(nrdevs+1))) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				if(((*array)[nrdevs] = MALLOC(strlen(pAdapter->AdapterName)+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy((*array)[nrdevs], pAdapter->AdapterName);
 				nrdevs++;
@@ -115,15 +118,19 @@ int inetdevs(char ***array) {
 	}
 #else
 	if(getifaddrs(&ifaddr) == -1) {
+		/*LCOV_EXCL_START*/
 		perror("getifaddrs");
 		exit(EXIT_FAILURE);
+		/*LCOV_EXCL_STOP*/
 	}
 #endif
 
 	for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+		/*LCOV_EXCL_START*/
 		if(ifa->ifa_addr == NULL) {
 			continue;
 		}
+		/*LCOV_EXCL_STOP*/
 
 		family = ifa->ifa_addr->sa_family;
 
@@ -141,8 +148,10 @@ int inetdevs(char ***array) {
                                                  sizeof(struct sockaddr_in6),
                            host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
 			if(s != 0) {
+				/*LCOV_EXCL_START*/
 				logprintf(LOG_ERR, "getnameinfo() failed: %s", gai_strerror(s));
 				exit(EXIT_FAILURE);
+				/*LCOV_EXCL_STOP*/
 			}
 			if(strlen(host) > 0) {
 				match = 0;
@@ -154,10 +163,10 @@ int inetdevs(char ***array) {
 				}
 				if(match == 0) {
 					if((*array = REALLOC(*array, sizeof(char *)*(nrdevs+1))) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					if(((*array)[nrdevs] = MALLOC(strlen(ifa->ifa_name)+1)) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					strcpy((*array)[nrdevs], ifa->ifa_name);
 					nrdevs++;
@@ -211,8 +220,10 @@ int dev2mac(char *ifname, char **mac) {
 	struct ifreq s;
 
 	if(fd < 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "could not open new socket");
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	memset(&s, '\0', sizeof(struct ifreq));
@@ -222,9 +233,9 @@ int dev2mac(char *ifname, char **mac) {
 		close(fd);
 		return 0;
 	} else {
-		logprintf(LOG_ERR, "ioctl SIOCGIFHWADDR failed");
+		logprintf(LOG_ERR, "ioctl SIOCGIFHWADDR failed"); /*LCOV_EXCL_LINE*/
 	}
-	close(fd);
+	close(fd); /*LCOV_EXCL_LINE*/
 #endif
 
 #ifdef __FreeBSD__
@@ -241,7 +252,7 @@ int dev2mac(char *ifname, char **mac) {
 	}
 #endif
 
-	return -1;
+	return -1; /*LCOV_EXCL_LINE*/
 }
 
 #ifdef __FreeBSD__
@@ -321,8 +332,10 @@ int host2ip(char *host, char *ip) {
 	hints.ai_socktype = SOCK_STREAM;
 
 	if((rv = getaddrinfo(host, NULL , NULL, &servinfo)) != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_NOTICE, "getaddrinfo: %s, %s", host, gai_strerror(rv));
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	for(p = servinfo; p != NULL; p = p->ai_next) {
@@ -349,7 +362,7 @@ struct sockaddr *sockaddr_dup(struct sockaddr *sa) {
 	socklen = sizeof(struct sockaddr_storage);
 #endif
 	if((ret = CALLOC(1, socklen)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	if (ret == NULL)
 		return NULL;
@@ -505,7 +518,9 @@ int whitelist_check(char *ip) {
 	}
 
 	if(strlen(whitelist) == 0) {
+		/*LCOV_EXCL_START*/
 		return 0;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	/* Explode ip address to a 4 elements int array */
@@ -538,18 +553,18 @@ int whitelist_check(char *ip) {
 			if(*tmp == '\0' || *tmp == ',') {
 				x = 0;
 				if((whitelist_cache = REALLOC(whitelist_cache, (sizeof(unsigned int ***)*(whitelist_number+1)))) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				if((whitelist_cache[whitelist_number] = MALLOC(sizeof(unsigned int **)*2)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				/* Lower boundary */
 				if((whitelist_cache[whitelist_number][0] = MALLOC(sizeof(unsigned int *)*4)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				/* Upper boundary */
 				if((whitelist_cache[whitelist_number][1] = MALLOC(sizeof(unsigned int *)*4)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 
 				/* Turn the whitelist ip address into a upper and lower boundary.

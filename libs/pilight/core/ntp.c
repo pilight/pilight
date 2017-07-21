@@ -197,13 +197,15 @@ static void loop(uv_timer_t *req) {
 	 */
 	const uv_thread_t pth_cur_id = uv_thread_self();
 	if(uv_thread_equal(&pth_main_id, &pth_cur_id) == 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "ntpsync can only be started from the main thread");
 		return;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	if(init == 0) {
 		if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		uv_timer_init(uv_default_loop(), timer_req);
 		init = 1;
@@ -229,36 +231,42 @@ static void loop(uv_timer_t *req) {
 
 	r = host2ip(ntp_servers.server[nr].host, p);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "host2ip");
 		return;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	r = uv_ip4_addr(ip, ntp_servers.server[nr].port, &addr);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
 		return;
+		/*LCOV_EXCL_STOP*/
 	}
 	if((client_req = MALLOC(sizeof(uv_udp_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	r = uv_udp_init(uv_default_loop(), client_req);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_udp_init: %s", uv_strerror(r));
 		FREE(client_req);
 		return;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	if((send_req = MALLOC(sizeof(uv_udp_send_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	if((timeout_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	if((data = MALLOC(sizeof(struct data_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	memset(data, 0, sizeof(struct data_t));
@@ -277,10 +285,12 @@ static void loop(uv_timer_t *req) {
 
 	r = uv_udp_send(send_req, client_req, &buf, 1, (const struct sockaddr *)&addr, on_send);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_udp_send: %s", uv_strerror(r));
 		FREE(send_req);
 		FREE(client_req);
 		return;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	timeout_req->data = data;
@@ -290,10 +300,12 @@ static void loop(uv_timer_t *req) {
 
 	r = uv_udp_recv_start(client_req, alloc, on_read);
 	if(r != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_udp_recv_start: %s", uv_strerror(r));
 		FREE(send_req);
 		FREE(client_req);
 		return;
+		/*LCOV_EXCL_STOP*/
 	}
 	logprintf(LOG_DEBUG, "syncing with ntp-server %s", ntp_servers.server[nr].host);
 

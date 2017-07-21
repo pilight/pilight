@@ -89,7 +89,7 @@ static void read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
 
 					struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
 					if(data == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					snprintf(data->message, 1024, "{\"code\":\"%s\",\"repeat\":%d,\"button\":\"%s\",\"remote\":\"%s\"}", code1, r, btn, remote);
 					strncpy(data->origin, "receiver", 255);
@@ -117,7 +117,7 @@ static void read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
 
 			timer_req = MALLOC(sizeof(uv_timer_t));
 			if(timer_req == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 
 			int r = 0;
@@ -143,7 +143,7 @@ static void read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
 
 static void alloc_cb(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
 	if((buf->base = malloc(suggested_size)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	buf->len = suggested_size;
 	memset(buf->base, '\0', buf->len);
@@ -163,11 +163,11 @@ static void start(void) {
 	int err = 0;
 	uv_connect_t *connect_req = MALLOC(sizeof(uv_connect_t));
 	if(connect_req == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	uv_pipe_t *pipe_req = MALLOC(sizeof(uv_pipe_t));
 	if(pipe_req == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	if((err = uv_pipe_init(uv_default_loop(), pipe_req, 1)) != 0) {
 		logprintf(LOG_ERR, "uv_pipe_init: %s", uv_strerror(err));
@@ -212,7 +212,7 @@ static void *addDevice(int reason, void *param) {
 	}
 
 	if((name = MALLOC(strlen(jdevice->key)+1)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(name, jdevice->key);
 

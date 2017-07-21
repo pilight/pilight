@@ -91,12 +91,12 @@ int main(int argc, char **argv) {
 	char *args = NULL;
 
 	if((progname = MALLOC(13)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(progname, "pilight-uuid");
 
 	if((signal_req = malloc(sizeof(uv_signal_t))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_signal_init(uv_default_loop(), signal_req);

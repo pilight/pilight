@@ -47,7 +47,7 @@ void options_set_string(struct options_t **opt, int id, const char *val) {
 	while(temp) {
 		if(temp->id == id && temp->id > 0) {
 			if((temp->string_ = REALLOC(temp->string_, strlen(val)+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			temp->vartype = JSON_STRING;
 			strcpy(temp->string_, val);
@@ -236,13 +236,13 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 		getOptPos++;
 		/* Reserve enough memory to store all variables */
 		if((longarg = REALLOC(longarg, 4)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		if((shortarg = REALLOC(shortarg, 2)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		if((*optarg = REALLOC(*optarg, 4)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 
 		/* The memory to null */
@@ -256,7 +256,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 			/* Copy all characters until the equals to sign.
 			   This will probably be the name of the argument */
 			if((longarg = REALLOC(longarg, strcspn(argv[getOptPos],"=")+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			memset(longarg, '\0', strcspn(argv[getOptPos],"=")+1);
 			memcpy(longarg, &argv[getOptPos][0], strcspn(argv[getOptPos],"="));
@@ -265,7 +265,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 			   This will probably be the value of the argument */
 			size_t i = strlen(&argv[getOptPos][strcspn(argv[getOptPos],"=")+1]);
 			if((*optarg = REALLOC(*optarg, i+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			memset(*optarg, '\0', i+1);
 			memcpy(*optarg, &argv[getOptPos][strcspn(argv[getOptPos],"=")+1], i);
@@ -273,7 +273,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 			/* If the argument does not contain a equals sign.
 			   Store the argument to check later if it's a long argument */
 			if((longarg = REALLOC(longarg, strlen(argv[getOptPos])+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			strcpy(longarg, argv[getOptPos]);
 		}
@@ -281,7 +281,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 		/* A short argument only contains of two characters.
 		   So only store the first two characters */
 		if((shortarg = REALLOC(shortarg, strlen(argv[getOptPos])+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		memset(shortarg, '\0', 3);
 		strncpy(shortarg, argv[getOptPos], 2);
@@ -293,7 +293,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 		   do this if the first character of the argument doesn't contain*/
 		if(strcmp(longarg, shortarg) == 0 && (getOptPos+1)<argc && argv[getOptPos+1][0] != '-') {
 			if((*optarg = REALLOC(*optarg, strlen(argv[getOptPos+1])+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			strcpy(*optarg, argv[getOptPos+1]);
 			c = shortarg[1];
@@ -303,7 +303,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 			    then we probably encountered a long argument. */
 			if(longarg[0] == '-' && longarg[1] == '-') {
 				if((gctmp = REALLOC(gctmp, strlen(&longarg[2])+1)) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(gctmp, &longarg[2]);
 
@@ -421,7 +421,7 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 	char *nname = MALLOC(strlen(name)+1);
 	int sid = 0;
 	if(nname == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(nname, name);
 	int itmp = 0;
@@ -450,11 +450,11 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 	} else {
 		struct options_t *optnode = MALLOC(sizeof(struct options_t));
 		if(optnode == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		optnode->id = id;
 		if((optnode->name = MALLOC(strlen(name)+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(optnode->name, name);
 		optnode->argtype = argtype;
@@ -464,7 +464,7 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 		optnode->string_ = NULL;
 		if(mask) {
 			if((optnode->mask = MALLOC(strlen(mask)+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			strcpy(optnode->mask, mask);
 		} else {
@@ -484,12 +484,12 @@ void options_merge(struct options_t **a, struct options_t **b) {
 	while(temp) {
 		struct options_t *optnode = MALLOC(sizeof(struct options_t));
 		if(optnode == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		optnode->id = temp->id;
 		if(temp->name) {
 			if((optnode->name = MALLOC(strlen(temp->name)+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			memset(optnode->name, '\0', strlen(temp->name)+1);
 			strcpy(optnode->name, temp->name);
@@ -498,7 +498,7 @@ void options_merge(struct options_t **a, struct options_t **b) {
 		}
 		if(temp->string_) {
 			if((optnode->string_ = MALLOC(strlen(temp->string_)+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			optnode->vartype = JSON_STRING;
 			strcpy(optnode->string_, temp->string_);
@@ -507,7 +507,7 @@ void options_merge(struct options_t **a, struct options_t **b) {
 		}
 		if(temp->mask) {
 			if((optnode->mask = MALLOC(strlen(temp->mask)+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			strcpy(optnode->mask, temp->mask);
 		} else {
