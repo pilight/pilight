@@ -227,9 +227,6 @@ static void gc(void) {
 		data = data->next;
 		FREE(tmp);
 	}
-	if(data != NULL) {
-		FREE(data);
-	}
 }
 
 static int checkValues(struct JsonNode *code) {

@@ -52,13 +52,13 @@
 #endif
 
 #include "../libs/pilight/core/arp.h"
-#include "../libs/pilight/core/log.h"
 #include "../libs/pilight/core/mem.h"
 #include "../libs/pilight/core/common.h"
+#include "../libs/pilight/core/log.h"
 #include "../libs/pilight/core/json.h"
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/protocols/protocol.h"
-#include "../libs/pilight/protocols/network/ping.h"
+#include "../libs/pilight/protocols/network/arping.h"
 
 #include "alltests.h"
 
@@ -103,62 +103,71 @@ static struct data_t **data;
 static int nrdata = 0;
 static int check = 0;
 static int check1 = 0;
+static int step = 0;
 static char min[17];
 static uv_timer_t *timer_req = NULL;
 
 static CuTest *gtc = NULL;
 
+static void close_cb(uv_handle_t *handle) {
+	FREE(handle);
+}
+
+static void *done(void *param) {
+	json_delete(param);
+	return NULL;
+}
+
 static void stop(uv_timer_t *req) {
 	uv_stop(uv_default_loop());
 }
 
-static void close_cb(uv_handle_t *handle) {
-	FREE(handle);
+static void *received(int reason, void *param) {
+	struct reason_code_received_t *data = param;
+	char msg[128], *p = msg;
+
+	memset(&msg, '\0', 128);
+
+	switch(step++) {
+		case 0:
+			snprintf(p, 128, "{\"ip\":\"%s\",\"mac\":\"AA:BB:CC:DD:EE:FF\",\"state\":\"connected\"}", min);
+			if(strcmp(data->message, msg) == 0) {
+				printf("[ %-48s ]\n", "- waiting for ip change");
+				fflush(stdout);
+				check1++;
+				check = 1;
+			}
+		break;
+		case 1:
+			snprintf(p, 128, "{\"ip\":\"%s\",\"mac\":\"FF:BB:CC:DD:EE:FF\",\"state\":\"connected\"}", min);
+			if(strcmp(data->message, msg) == 0) {
+				printf("[ %-48s ]\n", "- waiting for mac change");
+				fflush(stdout);
+				check1++;
+			}
+		break;
+		case 2:
+			if(strcmp(data->message, "{\"ip\":\"0.0.0.0\",\"mac\":\"AA:BB:CC:DD:EE:FF\",\"state\":\"disconnected\"}") == 0) {
+				printf("[ %-48s ]\n", "- waiting for disconnection");
+				fflush(stdout);
+				check1++;
+			}
+		break;
+		case 3:
+			if(strcmp(data->message, "{\"ip\":\"0.0.0.0\",\"mac\":\"FF:BB:CC:DD:EE:FF\",\"state\":\"disconnected\"}") == 0) {
+				check1++;
+				uv_timer_stop(timer_req);
+				uv_stop(uv_default_loop());
+			}
+		break;
+	}
+	return NULL;
 }
 
 static void walk_cb(uv_handle_t *handle, void *arg) {
 	if(!uv_is_closing(handle)) {
 		uv_close(handle, close_cb);
 	}
-}
-
-static void *arp_event(int reason, void *param) {
-	struct reason_arp_device_t *data1 = param;
-	switch(reason) {
-		case REASON_ARP_FOUND_DEVICE:
-			if(strcmp(data1->ip, min) == 0 && strcmp(data1->mac, "AA:BB:CC:DD:EE:FF") == 0) {
-				printf("[ %-48s ]\n", "- waiting for ip change");
-				fflush(stdout);
-
-				check1++;
-				check = 1;
-			}
-		break;
-		case REASON_ARP_LOST_DEVICE:
-			if(strcmp(data1->ip, min) == 0 && strcmp(data1->mac, "AA:BB:CC:DD:EE:FF") == 0) {
-				printf("[ %-48s ]\n", "- waiting for disconnection");
-				fflush(stdout);
-
-				check1++;
-			}
-			if(strcmp(data1->ip, min) == 0 && strcmp(data1->mac, "FF:BB:CC:DD:EE:FF") == 0) {
-				check1++;
-				arp_stop();
-				uv_stop(uv_default_loop());
-				uv_timer_stop(timer_req);
-			}
-		break;
-		case REASON_ARP_CHANGED_DEVICE:
-			if(strcmp(data1->ip, min) == 0 && strcmp(data1->mac, "FF:BB:CC:DD:EE:FF") == 0) {
-				printf("[ %-48s ]\n", "- waiting for mac change");
-				fflush(stdout);
-
-				check1++;
-			}
-		break;
-	}
-
-	return NULL;
 }
 
 static void free_test_data(struct data_t *data) {
@@ -404,7 +413,7 @@ static void start_arp(void) {
 	uv_free_interface_addresses(interfaces, count);
 }
 
-static void test_arp(CuTest *tc) {
+static void test_protocols_network_arping(CuTest *tc) {
 	if(geteuid() != 0) {
 		printf("[ %-33s (requires root)]\n", __FUNCTION__);
 		fflush(stdout);
@@ -440,13 +449,18 @@ static void test_arp(CuTest *tc) {
 	printf("[ %-48s ]\n", "- waiting for connection");
 	fflush(stdout);
 
+	arpingInit();
 	start_arp();
 	arp_scan();
 
+	char *add1 = "{\"test\":{\"protocol\":[\"arping\"],\"id\":[{\"mac\":\"AA:BB:CC:DD:EE:FF\"}],\"ip\":\"0.0.0.0\",\"state\":\"disconnected\"}}";
+	char *add2 = "{\"test1\":{\"protocol\":[\"arping\"],\"id\":[{\"mac\":\"FF:BB:CC:DD:EE:FF\"}],\"ip\":\"0.0.0.0\",\"state\":\"disconnected\"}}";
+
 	eventpool_init(EVENTPOOL_NO_THREADS);
-	eventpool_callback(REASON_ARP_FOUND_DEVICE, arp_event);
-	eventpool_callback(REASON_ARP_CHANGED_DEVICE, arp_event);
-	eventpool_callback(REASON_ARP_LOST_DEVICE, arp_event);
+
+	eventpool_trigger(REASON_DEVICE_ADDED, done, json_decode(add1));
+	eventpool_trigger(REASON_DEVICE_ADDED, done, json_decode(add2));
+	eventpool_callback(REASON_CODE_RECEIVED, received);
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -462,18 +476,19 @@ static void test_arp(CuTest *tc) {
 	}
 	FREE(data);
 
-	eventpool_gc();
-	storage_gc();
 	arp_gc();
+	storage_gc();
+	eventpool_gc();
+	protocol_gc();
 
 	CuAssertIntEquals(tc, 4, check1);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
-CuSuite *suite_arp(void) {
+CuSuite *suite_protocols_network_arping(void) {
 	CuSuite *suite = CuSuiteNew();
 
-	SUITE_ADD_TEST(suite, test_arp);
+	SUITE_ADD_TEST(suite, test_protocols_network_arping);
 
 	return suite;
 }

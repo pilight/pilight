@@ -50,6 +50,7 @@ CuSuite *suite_protocols_api_wunderground(void);
 CuSuite *suite_protocols_api_lirc(void);
 CuSuite *suite_protocols_api_xbmc(void);
 CuSuite *suite_protocols_network_ping(void);
+CuSuite *suite_protocols_network_arping(void);
 CuSuite *suite_protocols_core(void);
 CuSuite *suite_protocols_generic(void);
 CuSuite *suite_protocols_i2c(void);
@@ -149,6 +150,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_protocols_api_openweathermap();
 	suites[nr++] = suite_protocols_api_wunderground();
 	suites[nr++] = suite_protocols_network_ping();
+	suites[nr++] = suite_protocols_network_arping();
 	suites[nr++] = suite_protocols_core();
 	suites[nr++] = suite_protocols_generic();
 #ifdef __linux__

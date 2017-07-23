@@ -1421,7 +1421,9 @@ int settings_validate_settings(struct JsonNode *jsettings, int i) {
 	memset(&regex, '\0', sizeof(regex));
 #endif
 
-	if(strcmp(jsettings->key, "port") == 0) {
+	if(strcmp(jsettings->key, "port") == 0 ||
+	   strcmp(jsettings->key, "arp-interval") == 0 ||
+		 strcmp(jsettings->key, "arp-timeout") == 0) {
 		if(jsettings->tag != JSON_NUMBER) {
 			if(i > 0) {
 				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number larger than 0", i, jsettings->key);

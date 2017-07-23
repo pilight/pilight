@@ -55,6 +55,7 @@
 #include "eventpool.h"
 
 #include "../../libuv/uv.h"
+#include "../storage/storage.h"
 
 #define ARP_REQUEST 	1
 #define ARP_REPLY 		2
@@ -68,6 +69,8 @@ typedef struct data_t {
 	int run;
 	int stop;
 	int which;
+	int interval;
+	int timeout;
 	uv_poll_t *poll_req;
 	uv_timer_t *timer_req;
 
@@ -163,7 +166,7 @@ static void restart(uv_timer_t *req) {
 	}
 
 	for(i=0;i<data->found.nr;i++) {
-		if((now-data->found.data[i].lastseen) > 30) {
+		if((now-data->found.data[i].lastseen) > (data->interval*data->timeout)) {
 			uv_mutex_lock(&data->found.lock);
 			for(x=0;x<data->search.nr;x++) {
 				if(strcmp(data->search.data[x].ip, data->found.data[i].ip) == 0) {
@@ -230,7 +233,7 @@ static void write_cb(uv_poll_t *req) {
 	if(data->stop == 0) {
 		if((*iter)++ >= *nr) {
 			*iter = 0;
-			uv_timer_start(data->timer_req, (void (*)(uv_timer_t *))restart, 10000, 0);
+			uv_timer_start(data->timer_req, (void (*)(uv_timer_t *))restart, data->interval*1000, 0);
 		} else {
 			uv_custom_write(data->poll_req);
 		}
@@ -267,15 +270,22 @@ static void callback(u_char *user, const struct pcap_pkthdr *pkt_header, const u
 				/*
 				 * IP already known, update last seen timestamp
 				 */
-
 				if(strcmp(data->found.data[i].mac, mac) != 0) {
 					struct reason_arp_device_t *data1 = MALLOC(sizeof(struct reason_arp_device_t));
-					if(data == NULL) {
+					if(data1 == NULL) {
 						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					strcpy(data1->ip, ip);
 					strcpy(data1->mac, mac);
 					eventpool_trigger(REASON_ARP_CHANGED_DEVICE, reason_arp_device_free, data1);
+
+					struct reason_arp_device_t *data2 = MALLOC(sizeof(struct reason_arp_device_t));
+					if(data2 == NULL) {
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+					}
+					strcpy(data2->ip, ip);
+					strcpy(data2->mac, data->found.data[i].mac);
+					eventpool_trigger(REASON_ARP_LOST_DEVICE, reason_arp_device_free, data2);
 				}
 				strcpy(data->found.data[i].mac, mac);
 				data->found.data[i].lastseen = time(NULL);
@@ -364,6 +374,7 @@ int arp_gc(void) {
 		free_data(data[i]);
 	}
 	FREE(data);
+	nrdata = 0;
 	return 0;
 }
 
@@ -371,6 +382,7 @@ void arp_scan(void) {
 	char error[PCAP_ERRBUF_SIZE], *e = error;
 	char ip[17], netmask[17], min[17], max[17];
 	int count = 0, i = 0, x = 0, has_mac = 0;
+	double itmp = 0.0;
 	uv_interface_address_t *interfaces = NULL;
 	struct in_addr in_ip, in_netmask, in_min, in_max;
 
@@ -504,6 +516,10 @@ void arp_scan(void) {
 			}
 
 			uv_timer_init(uv_default_loop(), data[nrdata]->timer_req);
+
+			data[nrdata]->interval = 10;
+			if(settings_select_number(ORIGIN_WEBSERVER, "arp-interval", &itmp) == 0) { data[nrdata]->interval = (int)itmp; }
+			if(settings_select_number(ORIGIN_WEBSERVER, "arp-timeout", &itmp) == 0) { data[nrdata]->timeout = (int)itmp; }
 
 			data[nrdata]->timer_req->data = data[nrdata];
 
