@@ -518,6 +518,7 @@ void arp_scan(void) {
 			uv_timer_init(uv_default_loop(), data[nrdata]->timer_req);
 
 			data[nrdata]->interval = 10;
+			data[nrdata]->timeout = 3;
 			if(settings_select_number(ORIGIN_WEBSERVER, "arp-interval", &itmp) == 0) { data[nrdata]->interval = (int)itmp; }
 			if(settings_select_number(ORIGIN_WEBSERVER, "arp-timeout", &itmp) == 0) { data[nrdata]->timeout = (int)itmp; }
 

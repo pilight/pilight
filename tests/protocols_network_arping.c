@@ -102,8 +102,9 @@ typedef struct arphdr {
 static struct data_t **data;
 static int nrdata = 0;
 static int check = 0;
-static int check1 = 0;
+static int check1[4] = {0};
 static int step = 0;
+static int start = 0;
 static char min[17];
 static uv_timer_t *timer_req = NULL;
 
@@ -128,34 +129,40 @@ static void *received(int reason, void *param) {
 
 	memset(&msg, '\0', 128);
 
-	switch(step++) {
+	switch(step) {
 		case 0:
 			snprintf(p, 128, "{\"ip\":\"%s\",\"mac\":\"AA:BB:CC:DD:EE:FF\",\"state\":\"connected\"}", min);
-			if(strcmp(data->message, msg) == 0) {
+			if(check1[0] == 0 && strcmp(data->message, msg) == 0) {
 				printf("[ %-48s ]\n", "- waiting for ip change");
 				fflush(stdout);
-				check1++;
+				check1[0] = 1;
 				check = 1;
+				step++;
 			}
 		break;
 		case 1:
 			snprintf(p, 128, "{\"ip\":\"%s\",\"mac\":\"FF:BB:CC:DD:EE:FF\",\"state\":\"connected\"}", min);
-			if(strcmp(data->message, msg) == 0) {
+			if(check1[1] == 0 && strcmp(data->message, msg) == 0) {
 				printf("[ %-48s ]\n", "- waiting for mac change");
 				fflush(stdout);
-				check1++;
+				check1[1] = 1;
+				step++;
 			}
 		break;
 		case 2:
-			if(strcmp(data->message, "{\"ip\":\"0.0.0.0\",\"mac\":\"AA:BB:CC:DD:EE:FF\",\"state\":\"disconnected\"}") == 0) {
+			if(check1[2] == 0 &&
+				strcmp(data->message, "{\"ip\":\"0.0.0.0\",\"mac\":\"AA:BB:CC:DD:EE:FF\",\"state\":\"disconnected\"}") == 0) {
 				printf("[ %-48s ]\n", "- waiting for disconnection");
 				fflush(stdout);
-				check1++;
+				check1[2] = 1;
+				step++;
 			}
 		break;
 		case 3:
-			if(strcmp(data->message, "{\"ip\":\"0.0.0.0\",\"mac\":\"FF:BB:CC:DD:EE:FF\",\"state\":\"disconnected\"}") == 0) {
-				check1++;
+			if(check1[3] == 0 &&
+				strcmp(data->message, "{\"ip\":\"0.0.0.0\",\"mac\":\"FF:BB:CC:DD:EE:FF\",\"state\":\"disconnected\"}") == 0) {
+				check1[3] = 1;
+				step++;
 				uv_timer_stop(timer_req);
 				uv_stop(uv_default_loop());
 			}
@@ -233,8 +240,8 @@ static void callback(u_char *user, const struct pcap_pkthdr *pkt_header, const u
 					sprintf(ip, "%d.%d.%d.%d",
 						arpheader->tpa[0], arpheader->tpa[1], arpheader->tpa[2], arpheader->tpa[3]
 					);
-					if(strcmp(mac, "00:00:00:00:00:00") == 0 && strcmp(ip, data->srcip) == 0 && check == 0) {
-						check = 1;
+					if(strcmp(mac, "00:00:00:00:00:00") == 0 && strcmp(ip, data->srcip) == 0 && start == 0) {
+						start = 1;
 					}
 				}
 			}
@@ -259,7 +266,7 @@ static void write_cb(uv_poll_t *req) {
 	 * Respond with an arp request on the first ip
 	 * across all network devices.
 	 */
-	if(check <= nrdata) {
+	if(check <= nrdata && start == 1) {
 		check++;
 		struct in_addr in_ip, in_netmask, in_min;
 
@@ -272,7 +279,7 @@ static void write_cb(uv_poll_t *req) {
 		struct arphdr *pkt = (struct arphdr *)(packet + sizeof(struct ether_hdr));
 
 		memcpy(hdr->dstmac, data->srcmac, ETH_ALEN);
-		if(check1 == 0) {
+		if(check1[0] == 0) {
 			hdr->srcmac[0] = 0xaa;
 		} else {
 			hdr->srcmac[0] = 0xff;
@@ -481,7 +488,9 @@ static void test_protocols_network_arping(CuTest *tc) {
 	eventpool_gc();
 	protocol_gc();
 
-	CuAssertIntEquals(tc, 4, check1);
+	for(i=0;i<3;i++) {
+		CuAssertIntEquals(tc, 1, check1[i]);
+	}
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
