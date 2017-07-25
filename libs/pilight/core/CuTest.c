@@ -40,17 +40,21 @@ void CuStringInit(CuString* str)
 CuString* CuStringNew(void)
 {
 	CuString* str = (CuString*) malloc(sizeof(CuString));
+	memset(str, 0, sizeof(CuString));
 	str->length = 0;
 	str->size = STRING_MAX;
 	str->buffer = (char*) malloc(sizeof(char) * str->size);
 	str->buffer[0] = '\0';
+	memset(str->buffer, '\0', str->size);
 	return str;
 }
 
 void CuStringDelete(CuString *str)
 {
         if (!str) return;
-        free(str->buffer);
+        if(str->buffer != NULL) {
+          free(str->buffer);
+        }
         free(str);
 }
 
@@ -130,6 +134,9 @@ void CuTestDelete(CuTest *t)
 {
         if (!t) return;
         free(t->name);
+        if(t->message != NULL) {
+          free(t->message);
+        }
         free(t);
 }
 
@@ -153,9 +160,11 @@ static void CuFailInternal(CuTest* tc, const char* file, int line, CuString* str
 	CuStringInsert(string, buf, 0);
 
 	tc->failed = 1;
-	tc->message = string->buffer;
+	tc->message = strdup(string->buffer);
+	free(string->buffer);
+	string->buffer = NULL;
 	if (tc->jumpBuf != 0) longjmp(*(tc->jumpBuf), 0);
-}
+} /*LCOV_EXCL_LINE*/
 
 void CuFail_Line(CuTest* tc, const char* file, int line, const char* message2, const char* message)
 {
@@ -169,7 +178,7 @@ void CuFail_Line(CuTest* tc, const char* file, int line, const char* message2, c
 	}
 	CuStringAppend(&string, message);
 	CuFailInternal(tc, file, line, &string);
-}
+} /*LCOV_EXCL_LINE*/
 
 void CuAssert_Line(CuTest* tc, const char* file, int line, const char* message, int condition)
 {

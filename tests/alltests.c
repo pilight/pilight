@@ -185,6 +185,7 @@ int RunAllTests(void) {
 	return r;
 }
 
+
 int main(int argc, char **argv) {
 	remove("rapport.txt");
 	remove("test.log");
@@ -192,6 +193,10 @@ int main(int argc, char **argv) {
 	FILE *f = fopen("gplv3.txt", "w");
 	fprintf(f, "%s", gplv3);
 	fclose(f);
+
+	printf("[ %-48s ]\n", "test_unittest");
+	fflush(stdout);
+	assert(17 == test_unittest());
 
 	return RunAllTests();
 }
