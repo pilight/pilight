@@ -31,16 +31,41 @@
 #include "generic_webcam.h"
 
 static int checkValues(JsonNode *code) {
-	int height = 300;
+	int height = 300, num = 0;
 	double itmp = -1;
 
-	if(json_find_number(code, "gui-image-height", &itmp) == 0)
+	if(json_find_number(code, "image-height", &itmp) == 0)
 		height = (int)round(itmp);
 
 	if(height <= 0) {
-		logprintf(LOG_ERR, "Generic webcam gui-image-height cannot <= 0");
+		logprintf(LOG_ERR, "Generic webcam image-height cannot <= 0");
 		return 1;
 	}
+
+	if(json_find_number(code, "image-width", &itmp) == 0)
+		num = (int)round(itmp);
+
+	if(num <= 0) {
+		logprintf(LOG_ERR, "Generic webcam image-width cannot <= 0");
+		return 1;
+	}
+
+	if(json_find_number(code, "poll-interval", &itmp) == 0)
+		num = (int)round(itmp);
+
+	if(num <= 0) {
+		logprintf(LOG_ERR, "Generic webcam poll-interval cannot <= 0");
+		return 1;
+	}
+
+	if(json_find_number(code, "show-webcam", &itmp) == 0)
+		num = (int)round(itmp);
+
+	if(num < 0 || num > 1) {
+		logprintf(LOG_ERR, "Generic webcam show-webcam can only be 1 or 0");
+		return 1;
+	}
+
 	return 0;
 }
 

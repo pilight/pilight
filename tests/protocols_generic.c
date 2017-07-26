@@ -172,23 +172,51 @@ static void test_protocols_generic_webcam(CuTest *tc) {
 
 	memtrack();
 
-	// char message[1024];
+	genericWebcamInit();
 
-	// genericWebcamInit();
+	struct JsonNode *jcode = json_mkobject();
+	json_append_member(jcode, "id", json_mknumber(1, 0));
+	json_append_member(jcode, "url", json_mkstring("foobar"));
+	json_append_member(jcode, "image-width", json_mknumber(400, 0));
+	json_append_member(jcode, "image-height", json_mknumber(300, 0));
+	json_append_member(jcode, "show-webcam", json_mknumber(1, 0));
+	json_append_member(jcode, "poll-interval", json_mknumber(1, 0));
 
-	// struct JsonNode *jcode = json_mkobject();
-	// json_append_member(jcode, "id", json_mknumber(1, 0));
-	// json_append_member(jcode, "url", json_mkstring("foobar"));
-	// json_append_member(jcode, "image-width", json_mknumber(400, 0));
-	// json_append_member(jcode, "image-height", json_mknumber(300, 0));
-	// json_append_member(jcode, "show-webcam", json_mknumber(1, 0));
-	// json_append_member(jcode, "poll-interval", json_mknumber(1, 0));
+	CuAssertIntEquals(tc, 0, generic_webcam->checkValues(jcode));
+	json_delete(jcode);
 
-	// char *p = message;
-	// CuAssertIntEquals(tc, 0, generic_webcam->createCode(jcode, &p));
-	// CuAssertStrEquals(tc, "{\"id\":1,\"url\":\"foobar\"}", message);
+	jcode = json_mkobject();
+	json_append_member(jcode, "id", json_mknumber(1, 0));
+	json_append_member(jcode, "url", json_mkstring("foobar"));
+	json_append_member(jcode, "image-width", json_mknumber(400, 0));
+	json_append_member(jcode, "image-height", json_mknumber(-1, 0));
+	json_append_member(jcode, "show-webcam", json_mknumber(1, 0));
+	json_append_member(jcode, "poll-interval", json_mknumber(1, 0));
 
-	// json_delete(jcode);
+	CuAssertIntEquals(tc, 1, generic_webcam->checkValues(jcode));
+	json_delete(jcode);
+
+	jcode = json_mkobject();
+	json_append_member(jcode, "id", json_mknumber(1, 0));
+	json_append_member(jcode, "url", json_mkstring("foobar"));
+	json_append_member(jcode, "image-width", json_mknumber(400, 0));
+	json_append_member(jcode, "image-height", json_mknumber(300, 0));
+	json_append_member(jcode, "show-webcam", json_mknumber(-1, 0));
+	json_append_member(jcode, "poll-interval", json_mknumber(1, 0));
+
+	CuAssertIntEquals(tc, 1, generic_webcam->checkValues(jcode));
+	json_delete(jcode);
+
+	jcode = json_mkobject();
+	json_append_member(jcode, "id", json_mknumber(1, 0));
+	json_append_member(jcode, "url", json_mkstring("foobar"));
+	json_append_member(jcode, "image-width", json_mknumber(400, 0));
+	json_append_member(jcode, "image-height", json_mknumber(300, 0));
+	json_append_member(jcode, "show-webcam", json_mknumber(1, 0));
+	json_append_member(jcode, "poll-interval", json_mknumber(-1, 0));
+
+	CuAssertIntEquals(tc, 1, generic_webcam->checkValues(jcode));
+	json_delete(jcode);
 
 	protocol_gc();
 
