@@ -125,7 +125,6 @@ typedef struct clients_t {
 	int forward;
 	char media[8];
 	double cpu;
-	double ram;
 	struct clients_t *next;
 } clients_t;
 
@@ -1197,7 +1196,6 @@ static void *socket_parse_data(int reason, void *param) {
 					client->forward = 0;
 					client->stats = 0;
 					client->cpu = 0;
-					client->ram = 0;
 					strcpy(client->media, "all");
 					client->next = NULL;
 					client->id = sd;
@@ -1300,7 +1298,6 @@ static void *socket_parse_data(int reason, void *param) {
 							tmp_clients = tmp_clients->next;
 						}
 						if(exists == 1) {
-							json_find_number(jvalues, "ram", &client->ram);
 							json_find_number(jvalues, "cpu", &client->cpu);
 						}
 					}
@@ -1473,13 +1470,10 @@ static void pilight_stats(uv_timer_t *timer_req) {
 	}
 
 	if(stats == 1) {
-		double cpu = 0.0, ram = 0.0;
+		double cpu = 0.0;
 		cpu = getCPUUsage();
-		ram = getRAMUsage();
 		if(watchdog == 1 && (cpu > 90)) {
 			logprintf(LOG_CRIT, "cpu usage too high %f%%, will abort when this persists", cpu);
-		} else if(watchdog == 1 && (ram > 90)) {
-			logprintf(LOG_WARNING, "ram usage too high %f%%, will abort when this persists", ram);
 		} else {
 			if(watchdog == 1 && stats == 1 && timer_abort_req != NULL) {
 				uv_timer_stop(timer_abort_req);
@@ -1497,13 +1491,13 @@ static void pilight_stats(uv_timer_t *timer_req) {
 			 * The missing outer brackets will be
 			 * added in the broadcast function.
 			 */
-			snprintf(data->message, 1024, "{\"values\":{\"cpu\":%f,\"ram\":%f},\"origin\":\"core\",\"type\":%d}", cpu, ram, PROCESS);
-			logprintf(LOG_DEBUG, "cpu: %f%%, ram: %f%%", cpu, ram);
+			snprintf(data->message, 1024, "{\"values\":{\"cpu\":%f},\"origin\":\"core\",\"type\":%d}", cpu, PROCESS);
+			logprintf(LOG_DEBUG, "cpu: %f%%", cpu);
 			struct clients_t *tmp_clients = clients;
 			while(tmp_clients) {
-				if(tmp_clients->cpu > 0 && tmp_clients->ram > 0) {
-					logprintf(LOG_DEBUG, "- client: %s cpu: %f%%, ram: %f%%",
-								tmp_clients->uuid, tmp_clients->cpu, tmp_clients->ram);
+				if(tmp_clients->cpu > 0) {
+					logprintf(LOG_DEBUG, "- client: %s cpu: %f%%",
+								tmp_clients->uuid, tmp_clients->cpu);
 				}
 				tmp_clients = tmp_clients->next;
 			}
