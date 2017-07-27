@@ -26,6 +26,7 @@
 CuSuite *suite_common(void);
 CuSuite *suite_network(void);
 CuSuite *suite_binary(void);
+CuSuite *suite_proc(void);
 CuSuite *suite_datetime(void);
 CuSuite *suite_json(void);
 CuSuite *suite_cast(void);
@@ -124,6 +125,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_common();
 	suites[nr++] = suite_network();
 	suites[nr++] = suite_binary();
+	suites[nr++] = suite_proc();
 	suites[nr++] = suite_datetime();
 	suites[nr++] = suite_json();
 	suites[nr++] = suite_cast();

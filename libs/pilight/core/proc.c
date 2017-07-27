@@ -33,29 +33,7 @@
 #include "log.h"
 #include "mem.h"
 
-/* RAM usage */
-#ifndef _WIN32
-	static unsigned long totalram = 0;
-#endif
 static unsigned short initialized = 0;
-
-/* Mounting proc subsystem */
-#ifdef __FreeBSD__
-	static unsigned short mountproc = 1;
-#endif
-
-static FILE *fstatus = NULL;
-static FILE *fmemory = NULL;
-
-int proc_gc(void) {
-	if(fstatus != NULL) {
-		fclose(fstatus);
-	}
-	if(fmemory != NULL) {
-		fclose(fmemory);
-	}
-	return 0;
-}
 
 #ifndef _WIN32
 void getThreadCPUUsage(pthread_t pth, struct cpu_usage_t *cpu_usage) {
@@ -146,105 +124,5 @@ double getCPUUsage(void) {
 	cpu_usage.sec_start = cpu_usage.ts.tv_sec + cpu_usage.ts.tv_nsec / 1e9;
 
 	return a;
-#endif
-}
-
-double getRAMUsage(void) {
-#ifndef _WIN32
-	#if defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
-	if(totalram == 0) {
-		totalram = (size_t)sysconf(_SC_PHYS_PAGES)*(size_t)sysconf(_SC_PAGESIZE);
-	}
-	#endif
-
-	#ifdef __FreeBSD__
-		static char statusfile[] = "/compat/proc/self/status";
-		static char memfile[] = "/compat/proc/meminfo";
-	#else
-		static char statusfile[] = "/proc/self/status";
-		static char memfile[] = "/proc/meminfo";
-	#endif
-	unsigned long VmRSS = 0, value = 0, total = 0;
-	size_t len = 0;
-	ssize_t rd = 0;
-	char units[32], title[32], *line = NULL;
-
-
-	memset(title, '\0', 32);
-	memset(units, '\0', 32);
-
-	if(fstatus == NULL) {
-		if((fstatus = fopen(statusfile, "r")) == NULL) {
-			return 0.0;
-		}
-	}
-	rewind(fstatus);
-	while((rd = getline(&line, &len, fstatus)) != -1) {
-		if(strstr(line, "VmRSS:") != NULL) {
-			if(sscanf(line, "%31s %lu %s\n", title, &value, units) > 0) {
-				VmRSS = value * 1024;
-			}
-			if(line != NULL) {
-				free(line);
-				line = NULL;
-			}
-			break;
-		}
-	}
-	if(line != NULL) {
-		free(line);
-		line = NULL;
-	}
-	#ifdef __FreeBSD__
-		if(mountproc == 1) {
-			DIR* dir;
-			if(!(dir = opendir("/compat"))) {
-				mkdir("/compat", 0755);
-			} else {
-				closedir(dir);
-			}
-			if(!(dir = opendir("/compat/proc"))) {
-				mkdir("/compat/proc", 0755);
-			} else {
-				closedir(dir);
-			}
-			if(!(dir = opendir("/compat/proc/self"))) {
-				system("mount -t linprocfs none /compat/proc 2>/dev/null 1>/dev/null");
-				mountproc = 0;
-			} else {
-				closedir(dir);
-			}
-		}
-	#endif
-
-	if(fmemory == NULL) {
-		if((fmemory = fopen(memfile, "r")) != NULL) {
-			return 0.0;
-		}
-	}
-	rewind(fmemory);
-	while((rd = getline(&line, &len, fmemory)) != -1) {
-		if(strstr(line, "MemTotal:") != NULL) {
-			if(sscanf(line, "%31s %lu %s\n", title, &value, units) > 0) {
-				total = value * 1024;
-			}
-			if(line != NULL) {
-				free(line);
-				line = NULL;
-			}
-			break;
-		}
-	}
-	if(line != NULL) {
-		free(line);
-		line = NULL;
-	}
-	if(VmRSS > 0 && total > 0) {
-		return ((double)VmRSS*100)/(double)total;
-	} else {
-		return 0.0;
-	}
-#else
-	return 0.0;
 #endif
 }
