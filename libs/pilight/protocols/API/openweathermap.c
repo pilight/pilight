@@ -53,6 +53,9 @@ typedef struct settings_t {
 	char *location;
 	protocol_threads_t *thread;
 	time_t update;
+	int ointerval;
+	int interval;
+	
 	struct settings_t *next;
 } settings_t;
 
@@ -63,34 +66,155 @@ static struct settings_t *settings;
 static unsigned short loop = 1;
 static unsigned short threads = 0;
 
+
+static void callback(int code, char *data, int size, char *type, void *userdata) {
+	struct JsonNode *jdata = NULL;
+	struct JsonNode *jmain = NULL;
+	struct JsonNode *jsys = NULL;
+	struct JsonNode *node = NULL;
+	double temp = 0, sunrise = 0, sunset = 0, humi = 0;
+	struct settings_t *wnode = userdata;
+
+	time_t timenow = 0;
+	struct tm tm;
+
+	if(code == 200) {
+		if(strstr(type, "application/json") != NULL) {
+			if(json_validate(data) == true) {
+				if((jdata = json_decode(data)) != NULL) {
+					if((jmain = json_find_member(jdata, "main")) != NULL
+						 && (jsys = json_find_member(jdata, "sys")) != NULL) {
+						if((node = json_find_member(jmain, "temp")) == NULL) {
+							printf("api.openweathermap.org json has no temp key");
+						} else if(json_find_number(jmain, "humidity", &humi) != 0) {
+							printf("api.openweathermap.org json has no humidity key");
+						} else if(json_find_number(jsys, "sunrise", &sunrise) != 0) {
+							printf("api.openweathermap.org json has no sunrise key");
+						} else if(json_find_number(jsys, "sunset", &sunset) != 0) {
+							printf("api.openweathermap.org json has no sunset key");
+						} else {
+							if(node->tag != JSON_NUMBER) {
+								printf("api.openweathermap.org json has no temp key");
+							} else {
+								temp = node->number_-273.15;
+
+								timenow = time(NULL);
+								struct tm current;
+								memset(&current, '\0', sizeof(struct tm));
+	#ifdef _WIN32
+								localtime(&timenow);
+	#else
+								localtime_r(&timenow, &current);
+	#endif
+
+								int month = current.tm_mon+1;
+								int mday = current.tm_mday;
+								int year = current.tm_year+1900;
+
+								time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
+
+								openweathermap->message = json_mkobject();
+
+								JsonNode *code = json_mkobject();
+
+								json_append_member(code, "location", json_mkstring(wnode->location));
+								json_append_member(code, "country", json_mkstring(wnode->country));
+								json_append_member(code, "temperature", json_mknumber(temp, 2));
+								json_append_member(code, "humidity", json_mknumber(humi, 2));
+								json_append_member(code, "update", json_mknumber(0, 0));
+
+								time_t a = (time_t)sunrise;
+								memset(&tm, '\0', sizeof(struct tm));
+	#ifdef _WIN32
+								localtime(&a);
+	#else
+								localtime_r(&a, &tm);
+	#endif
+								json_append_member(code, "sunrise", json_mknumber((double)((tm.tm_hour*100)+tm.tm_min)/100, 2));
+
+								a = (time_t)sunset;
+								memset(&tm, '\0', sizeof(struct tm));
+	#ifdef _WIN32
+								localtime(&a);
+	#else
+								localtime_r(&a, &tm);
+	#endif
+								json_append_member(code, "sunset", json_mknumber((double)((tm.tm_hour*100)+tm.tm_min)/100, 2));
+								if(timenow > (int)round(sunrise) && timenow < (int)round(sunset)) {
+									json_append_member(code, "sun", json_mkstring("rise"));
+								} else {
+									json_append_member(code, "sun", json_mkstring("set"));
+								}
+
+								json_append_member(openweathermap->message, "message", code);
+								json_append_member(openweathermap->message, "origin", json_mkstring("receiver"));
+								json_append_member(openweathermap->message, "protocol", json_mkstring(openweathermap->id));
+
+								if(pilight.broadcast != NULL) {
+									pilight.broadcast(openweathermap->id, openweathermap->message, PROTOCOL);
+								}
+								json_delete(openweathermap->message);
+								openweathermap->message = NULL;
+
+								/* Send message when sun rises */
+								if((int)round(sunrise) > timenow) {
+									if(((int)round(sunrise)-timenow) < wnode->ointerval) {
+										wnode->interval = (int)((int)round(sunrise)-timenow);
+									}
+								/* Send message when sun sets */
+								} else if((int)round(sunset) > timenow) {
+									if(((int)round(sunset)-timenow) < wnode->ointerval) {
+										wnode->interval = (int)((int)round(sunset)-timenow);
+									}
+								/* Update all values when a new day arrives */
+								} else {
+									if((midnight-timenow) < wnode->ointerval) {
+										wnode->interval = (int)(midnight-timenow);
+									}
+								}
+
+								wnode->update = time(NULL);
+							}
+						}
+					} else {
+						logprintf(LOG_NOTICE, "api.openweathermap.org json has no current_observation key");
+					}
+					json_delete(jdata);
+				} else {
+					logprintf(LOG_NOTICE, "api.openweathermap.org json could not be parsed");
+				}
+			}  else {
+				logprintf(LOG_NOTICE, "api.openweathermap.org response was not in a valid json format");
+			}
+		} else {
+			logprintf(LOG_NOTICE, "api.openweathermap.org response was not in a valid json format");
+		}
+	} else {
+		logprintf(LOG_NOTICE, "could not reach api.openweathermap.org");
+	}
+	// if(data) {
+		// FREE(data);
+	// }
+}
+
 static void *openweathermapParse(void *param) {
 	struct protocol_threads_t *thread = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)thread->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
-	struct JsonNode *node = NULL;
-	struct JsonNode *jdata = NULL;
-	struct JsonNode *jmain = NULL;
-	struct JsonNode *jsys = NULL;
 	struct settings_t *wnode = MALLOC(sizeof(struct settings_t));
 
-	int interval = 86400, ointerval = 86400, event = 0;
+	wnode->ointerval = 86400;
+	wnode->interval = 86400;
+
+	int event = 0;
 	int firstrun = 1, nrloops = 0, timeout = 0;
-	double itmp = 0;
+	double itmp = 0.0;
 
 	char url[1024];
-	char *data = NULL;
-	char typebuf[255], *tp = typebuf;
-	double temp = 0, sunrise = 0, sunset = 0, humi = 0;
-	int ret = 0, size = 0;
-
-	time_t timenow = 0;
-	struct tm tm;
 
 	threads++;
-
-	memset(&typebuf, '\0', 255);
 
 	if(wnode == NULL) {
 		fprintf(stderr, "out of memory\n");
@@ -146,8 +270,8 @@ static void *openweathermapParse(void *param) {
 	}
 
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
-		interval = (int)round(itmp);
-	ointerval = interval;
+		wnode->interval = (int)round(itmp);
+	wnode->ointerval = wnode->interval;
 
 	while(loop) {
 		event = protocol_thread_wait(thread, INTERVAL, &nrloops);
@@ -156,130 +280,12 @@ static void *openweathermapParse(void *param) {
 			break;
 		}
 		timeout += INTERVAL;
-		if(timeout >= interval || event != ETIMEDOUT || firstrun == 1) {
+		if(timeout >= wnode->interval || event != ETIMEDOUT || firstrun == 1) {
 			timeout = 0;
-			interval = ointerval;
+			wnode->interval = wnode->ointerval;
 
-			data = NULL;
 			sprintf(url, "http://api.openweathermap.org/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493", wnode->location, wnode->country);
-			data = http_get_content(url, &tp, &ret, &size);
-			if(ret == 200) {
-				if(strstr(typebuf, "application/json") != NULL) {
-					if(json_validate(data) == true) {
-						if((jdata = json_decode(data)) != NULL) {
-							if((jmain = json_find_member(jdata, "main")) != NULL
-							   && (jsys = json_find_member(jdata, "sys")) != NULL) {
-								if((node = json_find_member(jmain, "temp")) == NULL) {
-									printf("api.openweathermap.org json has no temp key");
-								} else if(json_find_number(jmain, "humidity", &humi) != 0) {
-									printf("api.openweathermap.org json has no humidity key");
-								} else if(json_find_number(jsys, "sunrise", &sunrise) != 0) {
-									printf("api.openweathermap.org json has no sunrise key");
-								} else if(json_find_number(jsys, "sunset", &sunset) != 0) {
-									printf("api.openweathermap.org json has no sunset key");
-								} else {
-									if(node->tag != JSON_NUMBER) {
-										printf("api.openweathermap.org json has no temp key");
-									} else {
-										temp = node->number_-273.15;
-
-										timenow = time(NULL);
-										struct tm current;
-										memset(&current, '\0', sizeof(struct tm));
-#ifdef _WIN32
-										localtime(&timenow);
-#else
-										localtime_r(&timenow, &current);
-#endif
-
-										int month = current.tm_mon+1;
-										int mday = current.tm_mday;
-										int year = current.tm_year+1900;
-
-										time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
-
-										openweathermap->message = json_mkobject();
-
-										JsonNode *code = json_mkobject();
-
-										json_append_member(code, "location", json_mkstring(wnode->location));
-										json_append_member(code, "country", json_mkstring(wnode->country));
-										json_append_member(code, "temperature", json_mknumber(temp, 2));
-										json_append_member(code, "humidity", json_mknumber(humi, 2));
-										json_append_member(code, "update", json_mknumber(0, 0));
-
-										time_t a = (time_t)sunrise;
-										memset(&tm, '\0', sizeof(struct tm));
-#ifdef _WIN32
-										localtime(&a);
-#else
-										localtime_r(&a, &tm);
-#endif
-										json_append_member(code, "sunrise", json_mknumber((double)((tm.tm_hour*100)+tm.tm_min)/100, 2));
-
-										a = (time_t)sunset;
-										memset(&tm, '\0', sizeof(struct tm));
-#ifdef _WIN32
-										localtime(&a);
-#else
-										localtime_r(&a, &tm);
-#endif
-										json_append_member(code, "sunset", json_mknumber((double)((tm.tm_hour*100)+tm.tm_min)/100, 2));
-										if(timenow > (int)round(sunrise) && timenow < (int)round(sunset)) {
-											json_append_member(code, "sun", json_mkstring("rise"));
-										} else {
-											json_append_member(code, "sun", json_mkstring("set"));
-										}
-
-										json_append_member(openweathermap->message, "message", code);
-										json_append_member(openweathermap->message, "origin", json_mkstring("receiver"));
-										json_append_member(openweathermap->message, "protocol", json_mkstring(openweathermap->id));
-
-										if(pilight.broadcast != NULL) {
-											pilight.broadcast(openweathermap->id, openweathermap->message, PROTOCOL);
-										}
-										json_delete(openweathermap->message);
-										openweathermap->message = NULL;
-
-										/* Send message when sun rises */
-										if((int)round(sunrise) > timenow) {
-											if(((int)round(sunrise)-timenow) < ointerval) {
-												interval = (int)((int)round(sunrise)-timenow);
-											}
-										/* Send message when sun sets */
-										} else if((int)round(sunset) > timenow) {
-											if(((int)round(sunset)-timenow) < ointerval) {
-												interval = (int)((int)round(sunset)-timenow);
-											}
-										/* Update all values when a new day arrives */
-										} else {
-											if((midnight-timenow) < ointerval) {
-												interval = (int)(midnight-timenow);
-											}
-										}
-
-										wnode->update = time(NULL);
-									}
-								}
-							} else {
-								logprintf(LOG_NOTICE, "api.openweathermap.org json has no current_observation key");
-							}
-							json_delete(jdata);
-						} else {
-							logprintf(LOG_NOTICE, "api.openweathermap.org json could not be parsed");
-						}
-					}  else {
-						logprintf(LOG_NOTICE, "api.openweathermap.org response was not in a valid json format");
-					}
-				} else {
-					logprintf(LOG_NOTICE, "api.openweathermap.org response was not in a valid json format");
-				}
-			} else {
-				logprintf(LOG_NOTICE, "could not reach api.openweathermap.org");
-			}
-			if(data) {
-				FREE(data);
-			}
+			http_get_content(url, callback, wnode);
 		} else {
 			openweathermap->message = json_mkobject();
 			JsonNode *code = json_mkobject();

@@ -56,6 +56,7 @@
 #include "libs/pilight/core/network.h"
 #include "libs/pilight/core/gc.h"
 #include "libs/pilight/core/log.h"
+#include "libs/pilight/core/ssl.h"
 #include "libs/pilight/core/options.h"
 #include "libs/pilight/core/socket.h"
 #include "libs/pilight/core/json.h"
@@ -72,8 +73,8 @@
 #endif
 
 #ifdef WEBSERVER
-	#ifdef WEBSERVER_HTTPS	
-		#include "libs/polarssl/polarssl/md5.h"
+	#ifdef WEBSERVER_HTTPS
+		#include <mbedtls/md5.h>
 	#endif
 	#include "libs/pilight/core/webserver.h"
 #endif
@@ -84,6 +85,9 @@
 #include "libs/pilight/config/settings.h"
 #include "libs/pilight/config/gui.h"
 
+static uv_signal_t *signal_req = NULL;
+static uv_timer_t *timer_abort_req = NULL;
+static uv_timer_t *timer_stats_req = NULL;
 
 #ifdef _WIN32
 static char server_name[40];
@@ -214,6 +218,18 @@ static int webserver_http_port = WEBSERVER_HTTP_PORT;
 static char *webserver_root = NULL;
 static int webserver_root_free = 0;
 #endif
+
+static void *reason_forward_free(void *param) {
+	FREE(param);
+	return NULL;
+}
+
+static void *reason_socket_send_free(void *param) {
+	struct reason_socket_send_t *data = param;
+	FREE(data->buffer);
+	FREE(data);
+	return NULL;
+}
 
 static void client_remove(int id) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
@@ -936,11 +952,10 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 	int sd = socket_get_clients(i);
 	int x = 0;
 	FILE *f;
-	unsigned char *p = NULL;
-	unsigned char buff[BUFFER_SIZE];
+	char *p = NULL;
+	char buff[BUFFER_SIZE];
 	char *cache = NULL;
 	char *path = NULL, buf[INET_ADDRSTRLEN+1];
-	char *mimetype = NULL;
 	struct stat sb;
 	struct sockaddr_in sockin;
 	socklen_t len = sizeof(sockin);
@@ -960,8 +975,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 			sprintf(path, "%s/logo.png", webserver_root);
 			if((f = fopen(path, "rb"))) {
 				fstat(fileno(f), &sb);
-				mimetype = webserver_mimetype("image/png");
-				webserver_create_header(&p, "200 OK", mimetype, (unsigned int)sb.st_size);
+				webserver_create_header(&p, "200 OK", "image/png", (unsigned int)sb.st_size);
 				send(sd, (const char *)buff, (size_t)(p-buff), MSG_NOSIGNAL);
 				x = 0;
 				if((cache = MALLOC(BUFFER_SIZE)) == NULL) {
@@ -975,15 +989,13 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 				}
 				fclose(f);
 				FREE(cache);
-				FREE(mimetype);
 			} else {
 				logprintf(LOG_WARNING, "pilight logo not found");
 			}
 			FREE(path);
 		} else {
 		    /* Catch all webserver page to inform users on which port the webserver runs */
-			mimetype = webserver_mimetype("text/html");
-			webserver_create_header(&p, "200 OK", mimetype, (unsigned int)BUFFER_SIZE);
+			webserver_create_header(&p, "200 OK", "text/html", (unsigned int)BUFFER_SIZE);
 			send(sd, (const char *)buff, (size_t)(p-buff), MSG_NOSIGNAL);
 			if(webserver_enable == 1) {
 				if((cache = MALLOC(BUFFER_SIZE)) == NULL) {
@@ -1008,7 +1020,6 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 			} else {
 				send(sd, "<body><center><img src=\"logo.png\"></center></body></html>", 57, MSG_NOSIGNAL);
 			}
-			FREE(mimetype);
 		}
 	}
 }
@@ -1457,6 +1468,521 @@ static void socket_parse_data(int i, char *buffer) {
 	}
 }
 
+/* Rewrite code start */
+
+static int socket_parse_responses(char *buffer, char *media, char **respons) {
+	struct JsonNode *json = NULL;
+	char *action = NULL, *status = NULL;
+
+	if(strcmp(buffer, "HEART") == 0) {
+		if((*respons = MALLOC(strlen("BEAT")+1)) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		strcpy(*respons, "BEAT");
+		return 0;
+	}	else {
+		if(pilight.runmode != ADHOC) {
+			logprintf(LOG_DEBUG, "socket recv: %s", buffer);
+		}
+
+		if(json_validate(buffer) == true) {
+			json = json_decode(buffer);
+			if((json_find_string(json, "status", &status)) == 0) {
+				if(strcmp(status, "success") == 0) {
+					if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+					}
+					strcpy(*respons, "{\"status\":\"success\"}");
+					json_delete(json);
+					return 0;
+				}
+			}
+			if((json_find_string(json, "action", &action)) == 0) {
+				if(strcmp(action, "send") == 0) {
+					if(send_queue(json, ORIGIN_SENDER) == 0) {
+						if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+						}
+						strcpy(*respons, "{\"status\":\"success\"}");
+						json_delete(json);
+						return 0;
+					} else {
+						if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+						}
+						strcpy(*respons, "{\"status\":\"failed\"}");
+						json_delete(json);
+						return 0;
+					}
+				} else if(strcmp(action, "control") == 0) {
+					struct JsonNode *code = NULL;
+					char *device = NULL;
+					struct devices_t *dev = NULL;
+					if((code = json_find_member(json, "code")) == NULL || code->tag != JSON_OBJECT) {
+						logprintf(LOG_ERR, "client did not send any codes");
+						json_delete(json);
+						return -1;
+					} else {
+						/* Check if a location and device are given */
+						if(json_find_string(code, "device", &device) != 0) {
+							logprintf(LOG_ERR, "client did not send a device");
+							json_delete(json);
+							return -1;
+						/* Check if the device and location exists in the config file */
+						} else if(devices_get(device, &dev) == 0) {
+							char *state = NULL;
+							struct JsonNode *values = NULL;
+
+							json_find_string(code, "state", &state);
+							if((values = json_find_member(code, "values")) != NULL) {
+								values = json_first_child(values);
+							}
+
+							if(control_device(dev, state, values, ORIGIN_SENDER) == 0) {
+								if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
+									OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+								}
+								strcpy(*respons, "{\"status\":\"success\"}");
+								json_delete(json);
+								return 0;
+							} else {
+								if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+									OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+								}
+								strcpy(*respons, "{\"status\":\"failed\"}");
+								json_delete(json);
+								return 0;
+							}
+						} else {
+							logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
+							json_delete(json);
+							return -1;
+						}
+					}
+				} 
+				// else if(strcmp(action, "registry") == 0) {
+					// struct JsonNode *value = NULL;
+					// char *type = NULL;
+					// char *key = NULL;
+					// char *sval = NULL;
+					// double nval = 0.0;
+					// int dec = 0;
+					// if(json_find_string(json, "type", &type) != 0) {
+						// logprintf(LOG_ERR, "client did not send a type of action");
+						// json_delete(json);
+						// return -1;
+					// } else {
+						// if(strcmp(type, "set") == 0) {
+							// if(json_find_string(json, "key", &key) != 0) {
+								// logprintf(LOG_ERR, "client did not send a registry key");
+								// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+									// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+								// }
+								// strcpy(*respons, "{\"status\":\"failed\"}");
+								// json_delete(json);
+								// return 0;
+							// } else if((value = json_find_member(json, "value")) == NULL) {
+								// logprintf(LOG_ERR, "client did not send a registry value");
+								// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+									// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+								// }
+								// strcpy(*respons, "{\"status\":\"failed\"}");
+								// json_delete(json);
+								// return 0;
+							// } else {
+								// if(value->tag == JSON_NUMBER) {
+									// if(registry_update(ORIGIN_MASTER, key, json_mknumber(value->number_, value->decimals_)) == 0) {
+										// if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
+											// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+										// }
+										// strcpy(*respons, "{\"status\":\"success\"}");
+										// json_delete(json);
+										// return 0;
+									// } else {
+										// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+											// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+										// }
+										// strcpy(*respons, "{\"status\":\"failed\"}");
+										// json_delete(json);
+										// return 0;
+									// }
+								// } else if(value->tag == JSON_STRING) {
+									// if(registry_update(ORIGIN_MASTER, key, json_mkstring(value->string_)) == 0) {
+										// if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
+											// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+										// }
+										// strcpy(*respons, "{\"status\":\"success\"}");
+										// json_delete(json);
+										// return 0;
+									// } else {
+										// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+											// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+										// }
+										// strcpy(*respons, "{\"status\":\"failed\"}");
+										// json_delete(json);
+										// return 0;
+									// }
+								// } else {
+									// logprintf(LOG_ERR, "registry value can only be a string or number");
+									// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+										// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+									// }
+									// strcpy(*respons, "{\"status\":\"failed\"}");
+									// json_delete(json);
+									// return 0;
+								// }
+							// }
+						// } else if(strcmp(type, "remove") == 0) {
+							// if(json_find_string(json, "key", &key) != 0) {
+								// logprintf(LOG_ERR, "client did not send a registry key");
+								// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+									// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+								// }
+								// strcpy(*respons, "{\"status\":\"failed\"}");
+								// json_delete(json);
+								// return 0;
+							// } else {
+								// if(registry_delete(ORIGIN_MASTER, key) == 0) {
+									// if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
+										// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+									// }
+									// strcpy(*respons, "{\"status\":\"success\"}");
+									// json_delete(json);
+									// return 0;
+								// } else {
+									// logprintf(LOG_ERR, "registry value can only be a string or number");
+									// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+										// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+									// }
+									// strcpy(*respons, "{\"status\":\"failed\"}");
+									// json_delete(json);
+									// return 0;
+								// }
+							// }
+						// } else if(strcmp(type, "get") == 0) {
+							// if(json_find_string(json, "key", &key) != 0) {
+								// logprintf(LOG_ERR, "client did not send a registry key");
+								// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+									// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+								// }
+								// strcpy(*respons, "{\"status\":\"failed\"}");
+								// json_delete(json);
+								// return 0;
+							// } else {
+								// if(registry_select_number(ORIGIN_MASTER, key, &nval, &dec) == 0) {
+									// struct JsonNode *jsend = json_mkobject();
+									// json_append_member(jsend, "message", json_mkstring("registry"));
+									// json_append_member(jsend, "value", json_mknumber(nval, dec));
+									// json_append_member(jsend, "key", json_mkstring(key));
+									// char *output = json_stringify(jsend, NULL);
+									// if((*respons = MALLOC(strlen(output)+1)) == NULL) {
+										// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+									// }
+									// strcpy(*respons, output);
+									// json_free(output);
+									// json_delete(jsend);
+									// json_delete(json);
+									// return 0;
+								// } else if(registry_select_string(ORIGIN_MASTER, key, &sval) == 0) {
+									// struct JsonNode *jsend = json_mkobject();
+									// json_append_member(jsend, "message", json_mkstring("registry"));
+									// json_append_member(jsend, "value", json_mkstring(sval));
+									// json_append_member(jsend, "key", json_mkstring(key));
+									// char *output = json_stringify(jsend, NULL);
+									// if((*respons = MALLOC(strlen(output)+1)) == NULL) {
+										// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+									// }
+									// strcpy(*respons, output);
+									// json_free(output);
+									// json_delete(jsend);
+									// json_delete(json);
+									// return 0;
+								// } else {
+									// logprintf(LOG_ERR, "registry key '%s' does not exist", key);
+									// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+										// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+									// }
+									// strcpy(*respons, "{\"status\":\"failed\"}");
+									// json_delete(json);
+									// return 0;
+								// }
+							// }
+						// }
+					// }
+				// } 
+				else if(strcmp(action, "request config") == 0) {
+					struct JsonNode *jsend = json_mkobject();
+					struct JsonNode *jconfig = NULL;
+					jconfig = config_print(CONFIG_INTERNAL, media);
+					json_append_member(jsend, "message", json_mkstring("config"));
+					json_append_member(jsend, "config", jconfig);
+					char *output = json_stringify(jsend, NULL);
+					str_replace("%", "%%", &output);
+					if((*respons = MALLOC(strlen(output)+1)) == NULL) {
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+					}
+					strcpy(*respons, output);
+					json_free(output);
+					json_delete(jsend);
+					json_delete(json);
+					return 0;
+				} else if(strcmp(action, "request values") == 0) {
+					struct JsonNode *jsend = json_mkobject();
+#ifdef PILIGHT_REWRITE
+					struct JsonNode *jvalues = values_print(media);
+#else
+					JsonNode *jvalues = devices_values(media);
+#endif
+					json_append_member(jsend, "message", json_mkstring("values"));
+					json_append_member(jsend, "values", jvalues);
+					char *output = json_stringify(jsend, NULL);
+					if((*respons = MALLOC(strlen(output)+1)) == NULL) {
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+					}
+					strcpy(*respons, output);
+					json_free(output);
+					json_delete(jsend);
+					json_delete(json);
+					return 0;
+				}
+			} else {
+				json_delete(json);
+				return -1;
+			}
+		}
+	}
+	return -1;
+}
+
+static void *socket_parse_data1(int reason, void *param) {
+	struct reason_socket_received_t *data = param;
+
+	struct sockaddr_in address;
+	socklen_t socklen = sizeof(address);
+
+	struct JsonNode *json = NULL;
+	struct JsonNode *options = NULL;
+	struct clients_t *tmp_clients = NULL;
+	struct clients_t *client = NULL;
+	char *action = NULL, *media = NULL, *status = NULL, *respons = NULL;
+	char all[] = "all";
+	int error = 0, exists = 0, sd = -1;
+
+	if(strlen(data->type) == 0) {
+		logprintf(LOG_ERR, "socket data misses a socket type");
+	}
+
+	if(data->buffer == NULL) {
+		logprintf(LOG_ERR, "socket message incorrectly formatted");
+		return NULL;
+	}
+
+	sd = data->fd;
+	getpeername(sd, (struct sockaddr*)&address, &socklen);
+
+	tmp_clients = clients;
+	while(tmp_clients) {
+		if(tmp_clients->id == sd) {
+			exists = 1;
+			client = tmp_clients;
+			break;
+		}
+		tmp_clients = tmp_clients->next;
+	}
+	if(exists == 0) {
+		media = all;
+	} else {
+		media = client->media;
+	}
+
+	if(json_validate(data->buffer) == true) {
+		json = json_decode(data->buffer);
+		if((json_find_string(json, "action", &action)) == 0) {
+			if(strcmp(action, "identify") == 0) {
+				/* Check if client doesn't already exist */
+				if(exists == 0) {
+					if((client = MALLOC(sizeof(struct clients_t))) == NULL) {
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+					}
+					client->core = 0;
+					client->config = 0;
+					client->receiver = 0;
+					client->forward = 0;
+					client->stats = 0;
+					client->cpu = 0;
+					strcpy(client->media, "all");
+					client->next = NULL;
+					client->id = sd;
+					memset(client->uuid, '\0', sizeof(client->uuid));
+				}
+				if(json_find_string(json, "media", &media) == 0) {
+					if(strcmp(media, "all") == 0 || strcmp(media, "mobile") == 0 ||
+						 strcmp(media, "desktop") == 0 || strcmp(media, "web") == 0) {
+						strcpy(client->media, media);
+					}
+				} else {
+					strcpy(client->media, "all");
+				}
+				char *t = NULL;
+				if(json_find_string(json, "uuid", &t) == 0) {
+					strcpy(client->uuid, t);
+				}
+				if((options = json_find_member(json, "options")) != NULL) {
+					struct JsonNode *childs = json_first_child(options);
+					while(childs) {
+						if(strcmp(childs->key, "core") == 0 &&
+							 childs->tag == JSON_NUMBER) {
+							if((int)childs->number_ == 1) {
+								client->core = 1;
+							} else {
+								client->core = 0;
+							}
+						} else if(strcmp(childs->key, "stats") == 0 &&
+							 childs->tag == JSON_NUMBER) {
+							if((int)childs->number_ == 1) {
+								client->stats = 1;
+							} else {
+								client->stats = 0;
+							}
+						} else if(strcmp(childs->key, "receiver") == 0 &&
+							 childs->tag == JSON_NUMBER) {
+							if((int)childs->number_ == 1) {
+								client->receiver = 1;
+							} else {
+								client->receiver = 0;
+							}
+						} else if(strcmp(childs->key, "config") == 0 &&
+							 childs->tag == JSON_NUMBER) {
+							if((int)childs->number_ == 1) {
+								client->config = 1;
+							} else {
+								client->config = 0;
+							}
+						} else if(strcmp(childs->key, "forward") == 0 &&
+							 childs->tag == JSON_NUMBER) {
+							if((int)childs->number_ == 1) {
+								client->forward = 1;
+							} else {
+								client->forward = 0;
+							}
+						} else {
+						 error = 1;
+						 break;
+						}
+						childs = childs->next;
+					}
+				}
+				if(exists == 0) {
+					if(error == -1) {
+						FREE(client);
+					} else {
+						tmp_clients = clients;
+						if(tmp_clients) {
+							while(tmp_clients->next != NULL) {
+								tmp_clients = tmp_clients->next;
+							}
+							tmp_clients->next = client;
+						} else {
+							client->next = clients;
+							clients = client;
+						}
+						socket_write(sd, "{\"status\":\"success\"}");
+						json_delete(json);
+						return NULL;
+					}
+				}
+				json_delete(json);
+				return NULL;
+			/*
+			 * Parse received codes from nodes
+			 */
+			} else if(strcmp(action, "update") == 0) {
+				if(exists == 1) {
+					struct JsonNode *jvalues = NULL;
+					char *pname = NULL;
+					if((jvalues = json_find_member(json, "values")) != NULL) {
+						exists = 0;
+						tmp_clients = clients;
+						while(tmp_clients) {
+							if(tmp_clients->id == sd) {
+								exists = 1;
+								client = tmp_clients;
+								break;
+							}
+							tmp_clients = tmp_clients->next;
+						}
+						if(exists == 1) {
+							json_find_number(jvalues, "cpu", &client->cpu);
+						}
+					}
+					if(json_find_string(json, "protocol", &pname) == 0) {
+						char *out = MALLOC(strlen(data->buffer)+1);
+						if(out == NULL) {
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+						}
+						strcpy(out, data->buffer);
+						eventpool_trigger(REASON_FORWARD, reason_forward_free, out);
+						json_delete(json);
+						return NULL;
+					}
+				}
+				json_delete(json);
+				return NULL;
+			} else if((json_find_string(json, "status", &status)) == 0) {
+				tmp_clients = clients;
+				while(tmp_clients) {
+					if(tmp_clients->id == sd) {
+						exists = 1;
+						client = tmp_clients;
+						break;
+					}
+					tmp_clients = tmp_clients->next;
+				}
+				if(strcmp(status, "success") == 0) {
+					logprintf(LOG_DEBUG, "client \"%s\" successfully executed our latest request", client->uuid);
+					json_delete(json);
+					return NULL;
+				} else if(strcmp(status, "failed") == 0) {
+					logprintf(LOG_DEBUG, "client \"%s\" failed executing our latest request", client->uuid);
+					json_delete(json);
+					return NULL;
+				}
+
+				json_delete(json);
+				return NULL;
+			}
+		}
+	}
+
+	if(socket_parse_responses(data->buffer, media, &respons) == 0) {
+		struct reason_socket_send_t *data1 = MALLOC(sizeof(struct reason_socket_send_t));
+		if(data1 == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		data1->fd = sd;
+		if((data1->buffer = MALLOC(strlen(respons)+1)) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/;
+		}
+		strcpy(data1->buffer, respons);
+		strncpy(data1->type, data->type, 255);
+
+		eventpool_trigger(REASON_SOCKET_SEND, reason_socket_send_free, data1);
+
+		FREE(respons);
+		json_delete(json);
+		return NULL;
+	} else {
+		logprintf(LOG_ERR, "could not parse response to: %s", data->buffer);
+		client_remove(sd);
+		socket_close(sd);
+		json_delete(json);
+		return NULL;
+	}
+	json_delete(json);
+	return NULL;
+}
+/* Rewrite code end */
+
 static void socket_client_disconnected(int i) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -1782,6 +2308,16 @@ static void daemonize(void) {
 }
 #endif
 
+static void close_cb(uv_handle_t *handle) {
+	FREE(handle);
+}
+
+static void walk_cb(uv_handle_t *handle, void *arg) {
+	if(!uv_is_closing(handle)) {
+		uv_close(handle, close_cb);
+	}
+}
+
 /* Garbage collector of main program */
 int main_gc(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
@@ -1853,6 +2389,7 @@ int main_gc(void) {
 		FREE(pid_file);
 	}
 #endif
+	eventpool_gc();
 #ifdef WEBSERVER
 	if(webserver_enable == 1) {
 		webserver_gc();
@@ -1885,6 +2422,7 @@ int main_gc(void) {
 		FREE(configtmp);
 	}
 
+	uv_stop(uv_default_loop());
 	gc_clear();
 	FREE(progname);
 	xfree();
@@ -1967,117 +2505,64 @@ void openconsole(void) {
 }
 #endif
 
-void *pilight_stats(void *param) {
-	int checkram = 0, checkcpu = 0, i = -1, x = 0, watchdog = 1, stats = 1;
+static void pilight_abort(uv_timer_t *timer_req) {
+	exit(EXIT_FAILURE);
+}
+
+static void pilight_stats(uv_timer_t *timer_req) {
+	int watchdog = 1, stats = 1;
+	// double itmp = 0.0;
 	settings_find_number("watchdog-enable", &watchdog);
 	settings_find_number("stats-enable", &stats);
 
-	while(main_loop) {
-		if(pilight.runmode == STANDALONE) {
-			registerVersion();
-		}
-
-		if(stats == 1) {
-			double cpu = 0.0, ram = 0.0;
-			cpu = getCPUUsage();
-			ram = getRAMUsage();
-
-			if(threadprofiler == 1) {
-				threads_cpu_usage(1);
-			}
-			if(watchdog == 1 && (i > -1) && (cpu > 60)) {
-				if(nodaemon == 1 && threadprofiler == 0) {
-					threads_cpu_usage(x);
-					x ^= 1;
-				}
-				if(checkcpu == 0) {
-					if(cpu > 90) {
-						logprintf(LOG_CRIT, "cpu usage way too high %f%%", cpu);
-					} else {
-						logprintf(LOG_WARNING, "cpu usage too high %f%%", cpu);
-					}
-					logprintf(LOG_WARNING, "checking again in 10 seconds");
-					sleep(10);
-				} else {
-					if(cpu > 90) {
-						logprintf(LOG_ALERT, "cpu usage still way too high %f%%, exiting", cpu);
-					} else {
-						logprintf(LOG_CRIT, "cpu usage still too high %f%%, stopping", cpu);
-					}
-				}
-				if(checkcpu == 1) {
-					if(cpu > 90) {
-						exit(EXIT_FAILURE);
-					} else {
-						main_gc();
-						break;
-					}
-				}
-				checkcpu = 1;
-			} else if(watchdog == 1 && (i > -1) && (ram > 60)) {
-				if(checkram == 0) {
-					if(ram > 90) {
-						logprintf(LOG_CRIT, "ram usage way too high %f%%", ram);
-						exit(EXIT_FAILURE);
-					} else {
-						logprintf(LOG_WARNING, "ram usage too high %f%%", ram);
-					}
-					logprintf(LOG_WARNING, "checking again in 10 seconds");
-					sleep(10);
-				} else {
-					if(ram > 90) {
-						logprintf(LOG_ALERT, "ram usage still way too high %f%%, exiting", ram);
-					} else {
-						logprintf(LOG_CRIT, "ram usage still too high %f%%, stopping", ram);
-					}
-				}
-				if(checkram == 1) {
-					if(ram > 90) {
-						exit(EXIT_FAILURE);
-					} else {
-						main_gc();
-						break;
-					}
-				}
-				checkram = 1;
-			} else {
-				checkcpu = 0;
-				checkram = 0;
-				if((i > 0 && i%3 == 0) || (i == -1)) {
-					procProtocol->message = json_mkobject();
-					struct JsonNode *code = json_mkobject();
-					json_append_member(code, "cpu", json_mknumber(cpu, 16));
-					if(ram > 0) {
-						json_append_member(code, "ram", json_mknumber(ram, 16));
-					}
-					logprintf(LOG_DEBUG, "cpu: %f%%, ram: %f%%", cpu, ram);
-					json_append_member(procProtocol->message, "values", code);
-					json_append_member(procProtocol->message, "origin", json_mkstring("core"));
-					json_append_member(procProtocol->message, "type", json_mknumber(PROCESS, 0));
-					struct clients_t *tmp_clients = clients;
-					while(tmp_clients) {
-						if(tmp_clients->cpu > 0 && tmp_clients->ram > 0) {
-							logprintf(LOG_DEBUG, "- client: %s cpu: %f%%, ram: %f%%",
-										tmp_clients->uuid, tmp_clients->cpu, tmp_clients->ram);
-						}
-						tmp_clients = tmp_clients->next;
-					}
-					pilight.broadcast(procProtocol->id, procProtocol->message, STATS);
-					json_delete(procProtocol->message);
-					procProtocol->message = NULL;
-
-					i = 0;
-					x = 0;
-				}
-				i++;
-			}
-		}
-		sleep(1);
+	if(pilight.runmode == STANDALONE) {
+		registerVersion();
 	}
-	return (void *)NULL;
+
+	if(stats == 1) {
+		double cpu = 0.0;
+		cpu = getCPUUsage();
+		if(watchdog == 1 && (cpu > 90)) {
+			logprintf(LOG_CRIT, "cpu usage too high %f%%, will abort when this persists", cpu);
+		} else {
+			if(watchdog == 1 && stats == 1 && timer_abort_req != NULL) {
+				uv_timer_stop(timer_abort_req);
+				uv_timer_start(timer_abort_req, pilight_abort, 9000, -1);
+			}
+
+			procProtocol->message = json_mkobject();
+			struct JsonNode *code = json_mkobject();
+			json_append_member(code, "cpu", json_mknumber(cpu, 16));
+			logprintf(LOG_DEBUG, "cpu: %f%%", cpu);
+			json_append_member(procProtocol->message, "values", code);
+			json_append_member(procProtocol->message, "origin", json_mkstring("core"));
+			json_append_member(procProtocol->message, "type", json_mknumber(PROCESS, 0));
+			struct clients_t *tmp_clients = clients;
+			while(tmp_clients) {
+				if(tmp_clients->cpu > 0 && tmp_clients->ram > 0) {
+					logprintf(LOG_DEBUG, "- client: %s cpu: %f%%",
+								tmp_clients->uuid, tmp_clients->cpu);
+				}
+				tmp_clients = tmp_clients->next;
+			}
+			pilight.broadcast(procProtocol->id, procProtocol->message, STATS);
+			json_delete(procProtocol->message);
+			procProtocol->message = NULL;
+		}
+	}
+	return;
+}
+
+static void signal_cb(uv_signal_t *handle, int signum) {
+	logprintf(LOG_INFO, "Interrupt signal received. Please wait while pilight is shutting down");
+	main_gc();	
+	uv_stop(uv_default_loop());
 }
 
 int start_pilight(int argc, char **argv) {
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	memcpy((void *)&pth_main_id, &pth_cur_id, sizeof(uv_thread_t));
+
 	struct options_t *options = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;
 
@@ -2095,6 +2580,13 @@ int start_pilight(int argc, char **argv) {
 	}
 	strcpy(progname, "pilight-daemon");
 
+	if((signal_req = MALLOC(sizeof(uv_signal_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+
+	uv_signal_init(uv_default_loop(), signal_req);
+	uv_signal_start(signal_req, signal_cb, SIGINT);		
+	
 	if((configtmp = MALLOC(strlen(CONFIG_FILE)+1)) == NULL) {
 		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
@@ -2266,11 +2758,11 @@ int start_pilight(int argc, char **argv) {
 	}
 #endif
 
-	/* Run main garbage collector when quiting the daemon */
-	gc_attach(main_gc);
+	// /* Run main garbage collector when quiting the daemon */
+	// gc_attach(main_gc);
 
-	/* Catch all exit signals for gc */
-	gc_catch();
+	// /* Catch all exit signals for gc */
+	// gc_catch();
 
 	int nrdevs = 0, x = 0;
 	char **devs = NULL;
@@ -2321,6 +2813,7 @@ int start_pilight(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 
+	eventpool_init(EVENTPOOL_THREADED);
 	protocol_init();
 	config_init();
 
@@ -2330,6 +2823,10 @@ int start_pilight(int argc, char **argv) {
 	pilight.control = &control_device;
 	pilight.receive = &receive_parse_api;
 
+/* Rewrite */
+	eventpool_callback(REASON_SOCKET_RECEIVED, socket_parse_data1);
+
+	
 	if(config_read() != EXIT_SUCCESS) {
 		goto clear;
 	}
@@ -2375,7 +2872,7 @@ int start_pilight(int argc, char **argv) {
 		goto clear;
 	}
 	if(file_get_contents(pemfile, &content) == 0) {
-		md5((const unsigned char *)content, strlen((char *)content), (unsigned char *)p);
+		mbedtls_md5((const unsigned char *)content, strlen((char *)content), (unsigned char *)p);
 		for(i = 0; i < 32; i+=2) {
 			sprintf(&md5conv[i], "%02x", md5sum[i/2] );
 		}
@@ -2512,6 +3009,7 @@ int start_pilight(int argc, char **argv) {
 		}
 	}
 
+	ssl_init();
 	if(pilight.runmode == STANDALONE) {
 		socket_start((unsigned short)port);
 		if(standalone == 0) {
@@ -2627,9 +3125,13 @@ int start_pilight(int argc, char **argv) {
 		webserver_start();
 		/* Register a seperate thread in which the webserver communicates the main daemon */
 		threads_register("webserver client", &webserver_clientize, (void *)NULL, 0);
+#ifdef PILIGHT_DEVELOPMENT
 		if(webgui_websockets == 1) {
 			threads_register("webserver broadcast", &webserver_broadcast, (void *)NULL, 0);
 		}
+#else
+	webserver_start();
+#endif
 	} else {
 		webserver_enable = 0;
 	}
@@ -2640,10 +3142,16 @@ int start_pilight(int argc, char **argv) {
 		threads_register("ntp sync", &ntpthread, NULL, 0);
 	}
 
-#ifdef _WIN32
-	threads_register("stats", &pilight_stats, NULL, 0);
-#endif
+// #ifdef _WIN32
+	// threads_register("stats", &pilight_stats, NULL, 0);
+// #endif
 
+	timer_stats_req = MALLOC(sizeof(uv_timer_t));
+	if(timer_stats_req == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	uv_timer_init(uv_default_loop(), timer_stats_req);
+	uv_timer_start(timer_stats_req, pilight_stats, 1000, 3000);
 	return EXIT_SUCCESS;
 
 clear:
@@ -2654,6 +3162,7 @@ clear:
 	if(main_loop == 1) {
 		main_gc();
 	}
+	uv_stop(uv_default_loop());
 	return EXIT_FAILURE;
 }
 
@@ -2821,7 +3330,14 @@ int main(int argc, char **argv) {
 
 	int ret = start_pilight(argc, argv);
 	if(ret == EXIT_SUCCESS) {
-		pilight_stats((void *)NULL);
+		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+		uv_walk(uv_default_loop(), walk_cb, NULL);
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+			uv_run(uv_default_loop(), UV_RUN_ONCE);
+		}
+		// pilight_stats((void *)NULL);
 	}
 	return ret;
 }

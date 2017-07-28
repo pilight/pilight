@@ -128,6 +128,19 @@ static int checkArguments(struct rules_actions_t *obj) {
 	return 0;
 }
 
+static void callback(int status, struct mail_t *mail) {
+	if(status == 0) {
+		logprintf(LOG_INFO, "successfully sent sendmail action message");
+	} else {
+		logprintf(LOG_INFO, "failed to send sendmail action message");
+	}
+	FREE(mail->from);
+	FREE(mail->to);
+	FREE(mail->message);
+	FREE(mail->subject);
+	FREE(mail);
+}
+
 static void *thread(void *param) {
 	struct rules_actions_t *pth = (struct rules_actions_t *)param;
 	struct JsonNode *arguments = pth->parsedargs;
@@ -145,7 +158,7 @@ static void *thread(void *param) {
 
 	struct mail_t mail;
 	char *shost = NULL, *suser = NULL, *spassword = NULL;
-	int sport = 0;
+	int sport = 0, ssl = 0;
 
 	jmessage = json_find_member(arguments, "MESSAGE");
 	jsubject = json_find_member(arguments, "SUBJECT");
@@ -168,12 +181,13 @@ static void *thread(void *param) {
 				settings_find_number("smtp-port", &sport);
 				settings_find_string("smtp-user", &suser);
 				settings_find_string("smtp-password", &spassword);
+				settings_find_number("smtp-ssl", &ssl);
 
 				mail.subject = jval1->string_;
 				mail.message = jval2->string_;
 				mail.to = jval3->string_;
 
-				if(sendmail(shost, suser, spassword, sport, &mail) != 0) {
+				if(sendmail(shost, suser, spassword, sport, ssl, &mail, callback) != 0) {
 					logprintf(LOG_ERR, "Sendmail failed to send message \"%s\"", jval2->string_);
 				}
 			}
