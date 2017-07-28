@@ -1128,23 +1128,21 @@ function parseValues(data) {
 }
 
 function parseData(data) {
-	if(data.hasOwnProperty("gui") && data.hasOwnProperty("devices")) {
-		createGUI(data);
-		if('registry' in data && 'pilight' in data['registry']) {
-			if('version' in data['registry']['pilight']) {
-				if('current' in data['registry']['pilight']['version']) {
-					iPLVersion = data['registry']['pilight']['version']['current'];
+	if(data.hasOwnProperty("config")) {
+		config = data['config'];
+		if(config.hasOwnProperty("gui") && config.hasOwnProperty("devices")) {
+			createGUI(config);
+			if('registry' in config && 'pilight' in config['registry']) {
+				if('version' in config['registry']['pilight']) {
+					if('current' in config['registry']['pilight']['version']) {
+						iPLVersion = config['registry']['pilight']['version']['current'];
+					}
+					if('available' in config['registry']['pilight']['version']) {
+						iNPLVersion = config['registry']['pilight']['version']['available'];
+					}
 				}
-				if('available' in data['registry']['pilight']['version']) {
-					iNPLVersion = data['registry']['pilight']['version']['available'];
-				}
+				updateVersions();
 			}
-			if('firmware' in data['registry']['pilight']) {
-				if('version' in data['registry']['pilight']['firmware']) {
-					iFWVersion = data['registry']['pilight']['firmware']['version'];
-				}
-			}
-			updateVersions();
 		}
 		if(oWebsocket) {
 			oWebsocket.send("{\"action\":\"request values\"}");
@@ -1155,14 +1153,10 @@ function parseData(data) {
 		} else if(data['origin'] == "core") {
 			if(data['type'] == -1) {
 				updateProcStatus(data['values']);
-			} else if(data['type'] == -2) {
-				iFWVersion = data['values']['version'];
-				updateVersions();
 			}
 		}
-	} else if(data.constructor === Array &&
-			data[0]['devices'].length > 0) {
-		$.each(data, function(dindex, dvalues) {
+	} else if(data.hasOwnProperty("values")) {
+		$.each(data['values'], function(dindex, dvalues) {
 			parseValues(dvalues);
 		});
 	}
@@ -1284,10 +1278,27 @@ $(document).ready(function() {
 		/* Use an AJAX request to check if the user want to enforce
 		   an AJAX connection, or if he wants to use websockets */
 		$.get(sHTTPProtocol+'://'+location.host+'/config?internal&'+$.now(), function(txt) {
-			var data = $.parseJSON(txt);
-			if('registry' in data && 'webgui' in data['registry'] &&
-				 'tabs' in data['registry']['webgui']) {
-				 bShowTabs = data['registry']['webgui']['tabs'];
+			var data = $.parseJSON(JSON.stringify(txt));
+			if('registry' in data) {
+				if('webgui' in data['registry'] &&
+					'tabs' in data['registry']['webgui']) {
+					bShowTabs = data['registry']['webgui']['tabs'];
+				}
+	
+				if(sHTTPProtocol == "https") {
+					if('webserver' in data['registry'] &&
+						 'ssl' in data['registry']['webserver'] &&
+						 'certificate' in data['registry']['webserver']['ssl'] &&
+						 'secure' in data['registry']['webserver']['ssl']['certificate']) {
+					 if(data['registry']['webserver']['ssl']['certificate']['secure'] == 0) {
+						 pemfile = 'pilight.pem';
+						 if('location' in data['registry']['webserver']['ssl']['certificate']) {
+							 pemfile = data['registry']['webserver']['ssl']['certificate']['location'];
+						 }
+						 alert(language['insecure_certificate'].format(pemfile));
+						}
+					}
+				}
 			}
 			if('settings' in data && 'webgui-websockets' in data['settings']) {
 				if(data['settings']['webgui-websockets'] == 0) {

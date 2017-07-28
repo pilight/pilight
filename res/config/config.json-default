@@ -13,8 +13,6 @@
 		"whitelist": "",
 		"gpio-platform": "none"
 	},
-	"hardware": {
-		"none": { }
-	},
+	"hardware": { },
 	"registry": { }
 }

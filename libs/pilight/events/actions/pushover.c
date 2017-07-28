@@ -113,6 +113,14 @@ static int checkArguments(struct rules_actions_t *obj) {
 	return 0;
 }
 
+static void callback(int code, char *data, int size, char *type, void *userdata) {
+	if(code == 200) {
+		logprintf(LOG_DEBUG, "pushover action succeeded with message: %s", data);
+	} else {
+		logprintf(LOG_NOTICE, "pushover action failed (%d) with message: %s", code, data);
+	}
+}
+
 static void *thread(void *param) {
 	struct rules_actions_t *pth = (struct rules_actions_t *)param;
 	// struct rules_t *obj = pth->obj;
@@ -132,9 +140,7 @@ static void *thread(void *param) {
 
 	action_pushover->nrthreads++;
 
-	char url[1024], typebuf[70];
-	char *data = NULL, *tp = typebuf;
-	int ret = 0, size = 0;
+	char url[1024];
 
 	jtitle = json_find_member(arguments, "TITLE");
 	jmessage = json_find_member(arguments, "MESSAGE");
@@ -154,7 +160,6 @@ static void *thread(void *param) {
 			if(jval1 != NULL && jval2 != NULL && jval3 != NULL && jval4 != NULL &&
 			 jval1->tag == JSON_STRING && jval2->tag == JSON_STRING &&
 			 jval3->tag == JSON_STRING && jval4->tag == JSON_STRING) {
-				data = NULL;
 				strcpy(url, "https://api.pushover.net/1/messages.json");
 				char *message = urlencode(jval2->string_);
 				char *token = urlencode(jval3->string_);
@@ -166,19 +171,13 @@ static void *thread(void *param) {
 				l += strlen("&message=")+strlen("&title=");
 				char content[l+2];
 				sprintf(content, "token=%s&user=%s&title=%s&message=%s", token, user, title, message);
-				data = http_post_content(url, &tp, &ret, &size, "application/x-www-form-urlencoded", content);
-				if(ret == 200) {
-					logprintf(LOG_DEBUG, "pushover action succeeded with message: %s", data);
-				} else {
-					logprintf(LOG_NOTICE, "pushover action failed (%d) with message: %s", ret, data);
-				}
+
+				http_post_content(url, "application/x-www-form-urlencoded", content, callback, NULL);
+
 				FREE(message);
 				FREE(token);
 				FREE(user);
 				FREE(title);
-				if(data != NULL) {
-					FREE(data);
-				}
 			}
 		}
 	}
