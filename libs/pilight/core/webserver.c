@@ -985,22 +985,22 @@ static void webserver_process(uv_async_t *handle) {
 		tmp = broadcast_list;
 
 		while(clients) {
-			// if(tmp->fd > 0) {
-				// int fd = 0, r = 0;
+			if(tmp->fd > 0) {
+				int fd = 0, r = 0;
 
-				// if((r = uv_fileno((uv_handle_t *)clients->req, (uv_os_fd_t *)&fd)) != 0) {
-					// /*LCOV_EXCL_START*/
-					// logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
-					// continue;
-					// /*LCOV_EXCL_STOP*/
-				// }
+				if((r = uv_fileno((uv_handle_t *)clients->req, (uv_os_fd_t *)&fd)) != 0) {
+					/*LCOV_EXCL_START*/
+					logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
+					continue;
+					/*LCOV_EXCL_STOP*/
+				}
 
-				// if(fd == tmp->fd) {
-					// websocket_write(clients->req, WEBSOCKET_OPCODE_TEXT, tmp->out, tmp->len);
-				// }
-			// } else if(clients->is_websocket == 1) {
+				if(fd == tmp->fd) {
+					websocket_write(clients->req, WEBSOCKET_OPCODE_TEXT, tmp->out, tmp->len);
+				}
+			} else if(clients->is_websocket == 1) {
 				websocket_write(clients->req, 1, tmp->out, tmp->len);
-			// }
+			}
 			clients = clients->next;
 		}
 		if(tmp->len > 0) {
@@ -1826,118 +1826,6 @@ static int webserver_init(int port, int is_ssl) {
 
 	server_write_cb(poll_req);
 
-	return 0;
-}
-
-void *webserver_clientize(void *param) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	int sockfd = 0;
-	char *recvBuff = NULL;
-	unsigned int failures = 0;
-
-	while(loop && failures <= 5) {
-		struct ssdp_list_t *ssdp_list = NULL;
-		int standalone = 0;
-		settings_find_number("standalone", &standalone);
-		if(ssdp_seek(&ssdp_list) == -1 || standalone == 1) {
-			logprintf(LOG_NOTICE, "no pilight ssdp connections found");
-			char server[16] = "127.0.0.1";
-			if((sockfd = socket_connect(server, (unsigned short)socket_get_port())) == -1) {
-				logprintf(LOG_ERR, "could not connect to pilight-daemon");
-				failures++;
-				continue;
-			}
-		} else {
-			if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
-				logprintf(LOG_ERR, "could not connect to pilight-daemon");
-				failures++;
-				continue;
-			}
-		}
-		if(ssdp_list != NULL) {
-			ssdp_free(ssdp_list);
-		}
-
-		struct JsonNode *jclient = json_mkobject();
-		struct JsonNode *joptions = json_mkobject();
-		json_append_member(jclient, "action", json_mkstring("identify"));
-		json_append_member(joptions, "config", json_mknumber(1, 0));
-		json_append_member(joptions, "core", json_mknumber(1, 0));
-		json_append_member(jclient, "options", joptions);
-		json_append_member(jclient, "media", json_mkstring("web"));
-		char *out = json_stringify(jclient, NULL);
-		socket_write(sockfd, out);
-		json_free(out);
-		json_delete(jclient);
-
-		if(socket_read(sockfd, &recvBuff, 0) != 0
-			 || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
-				failures++;
-			continue;
-		}
-		failures = 0;
-		while(loop) {
-			if(websockets == 1) {
-				if(socket_read(sockfd, &recvBuff, 0) != 0) {
-					break;
-				} else {
-					char **array = NULL;
-					unsigned int n = explode(recvBuff, "\n", &array), i = 0;
-					for(i=0;i<n;i++) {
-						struct connection_t c;
-						memset(&c, 0, sizeof(struct connection_t));
-
-#ifdef _WIN32
-						uv_mutex_lock(&webserver_lock);
-#else
-						pthread_mutex_lock(&webserver_lock);
-#endif
-						struct broadcast_list_t *node = MALLOC(sizeof(struct broadcast_list_t));
-						if(node == NULL) {
-							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-						}
-						memset(node, 0, sizeof(struct broadcast_list_t));
-						node->fd = sockfd;
-						if((node->out = STRDUP(array[i])) == NULL) {
-							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-						}
-						node->len = strlen(array[i]);
-
-						struct broadcast_list_t *tmp = broadcast_list;
-						if(tmp != NULL) {
-							while(tmp->next != NULL) {
-								tmp = tmp->next;
-							}
-							tmp->next = node;
-							node = tmp;
-						} else {
-							node->next = broadcast_list;
-							broadcast_list = node;
-						}
-
-#ifdef _WIN32
-						uv_mutex_unlock(&webserver_lock);
-#else
-						pthread_mutex_unlock(&webserver_lock);
-#endif
-						uv_async_send(async_req);
-					}
-					array_free(&array, n);
-				}
-			} else {
-				sleep(1);
-			}
-		}
-	}
-
-	if(recvBuff != NULL) {
-		FREE(recvBuff);
-		recvBuff = NULL;
-	}
-	if(sockfd > 0) {
-		socket_close(sockfd);
-	}
 	return 0;
 }
 

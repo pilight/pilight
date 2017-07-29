@@ -228,6 +228,13 @@ static void *reason_forward_free(void *param) {
 	return NULL;
 }
 
+
+static void *reason_broadcast_core_free(void *param) {
+	char *code = param;
+	FREE(code);
+	return NULL;
+}
+
 static void *reason_socket_send_free(void *param) {
 	struct reason_socket_send_t *data = param;
 	FREE(data->buffer);
@@ -332,6 +339,7 @@ void *broadcast(void *param) {
 						}
 						tmp_clients = tmp_clients->next;
 					}
+
 					if(pilight.runmode == ADHOC && sockfd > 0) {
 						struct JsonNode *jupdate = json_decode(conf);
 						json_append_member(jupdate, "action", json_mkstring("update"));
@@ -344,7 +352,7 @@ void *broadcast(void *param) {
 					if(broadcasted == 1) {
 						logprintf(LOG_DEBUG, "broadcasted: %s", conf);
 					}
-					json_free(conf);
+					eventpool_trigger(REASON_BROADCAST_CORE, reason_broadcast_core_free, conf);
 				} else {
 					/* Update the config */
 					if(devices_update(bcqueue->protoname, bcqueue->jmessage, bcqueue->origin, &jret) == 0) {
@@ -400,8 +408,9 @@ void *broadcast(void *param) {
 							}
 							tmp_clients = tmp_clients->next;
 						}
+						eventpool_trigger(REASON_BROADCAST_CORE, reason_broadcast_core_free, tmp);
 
-						json_free(tmp);
+						// json_free(tmp);
 						json_delete(jret);
 					}
 
@@ -483,7 +492,8 @@ void *broadcast(void *param) {
 						logprintf(LOG_DEBUG, "broadcasted: %s", out);
 					}
 					json_free(internal);
-					json_free(out);
+					// json_free(out);
+					eventpool_trigger(REASON_BROADCAST_CORE, reason_broadcast_core_free, out);
 				}
 			}
 			struct bcqueue_t *tmp = bcqueue;
@@ -3145,7 +3155,6 @@ int start_pilight(int argc, char **argv) {
 	if(webserver_enable == 1 && pilight.runmode == STANDALONE) {
 		webserver_start();
 		/* Register a seperate thread in which the webserver communicates the main daemon */
-		threads_register("webserver client", &webserver_clientize, (void *)NULL, 0);
 #ifdef PILIGHT_DEVELOPMENT
 		if(webgui_websockets == 1) {
 			threads_register("webserver broadcast", &webserver_broadcast, (void *)NULL, 0);
