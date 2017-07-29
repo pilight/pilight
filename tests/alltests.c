@@ -200,5 +200,9 @@ int main(int argc, char **argv) {
 	fflush(stdout);
 	assert(17 == test_unittest());
 
+	printf("[ %-48s ]\n", "test_memory");
+	fflush(stdout);
+	assert(0 == test_memory());
+
 	return RunAllTests();
 }

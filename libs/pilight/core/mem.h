@@ -12,6 +12,7 @@
 #define OUT_OF_MEMORY fprintf(stderr, "out of memory in %s #%d\n", __FILE__, __LINE__),exit(EXIT_FAILURE);
 
 int xfree(void);
+void xabort(void);
 void memtrack(void);
 
 void *__malloc(unsigned long, const char *, int);

@@ -75,6 +75,7 @@ void memtrack(void) {
 }
 
 int xfree(void) {
+	int x = openallocs;
 	if(memdbg == 1) {
 #ifdef _WIN32
 		DWORD dwWaitResult = WaitForSingleObject(lock, INFINITE);
@@ -103,18 +104,21 @@ int xfree(void) {
 		fprintf(stderr, "NOTICE: memory allocations total: %lu, still open: %lu\n", totalnrallocs, openallocs);*/
 		totalnrallocs = 0;
 		memdbg = 2;
+		openallocs = 0;
 	}
-	return openallocs;
+	return x;
 }
 
 void *__malloc(unsigned long a, const char *file, int line) {
 	if(memdbg == 1) {
 		struct mallocs_t *node = malloc(sizeof(mallocs_t));
 		if((node->p = malloc(a)) == NULL) {
+			/*LCOV_EXCL_START*/
 			fprintf(stderr, "out of memory in %s at line #%d\n", file, line);
 			free(node);
 			xfree();
 			exit(EXIT_FAILURE);
+			/*LCOV_EXCL_STOP*/
 		}
 #ifdef _WIN32
 		InterlockedIncrement(&openallocs);
@@ -149,7 +153,7 @@ void *__malloc(unsigned long a, const char *file, int line) {
 char *___strdup(char *a, const char *file, int line) {
 	char *d = __malloc(strlen(a) + 1, file, line);
 	if(d == NULL) {
-		return NULL;
+		return NULL; /*LCOV_EXCL_LINE*/
 	}
 	strcpy(d, a);
 	return d;
@@ -172,6 +176,7 @@ void *__realloc(void *a, unsigned long b, const char *file, int line) {
 					strcpy(tmp->file, file);
 					tmp->size = b;
 					if((a = realloc(a, b)) == NULL) {
+						/*LCOV_EXCL_START*/
 						fprintf(stderr, "out of memory in %s at line #%d\n", file, line);
 #ifdef _WIN32
 						ReleaseMutex(lock);
@@ -180,6 +185,7 @@ void *__realloc(void *a, unsigned long b, const char *file, int line) {
 #endif
 						xfree();
 						exit(EXIT_FAILURE);
+						/*LCOV_EXCL_STOP*/
 					}
 					tmp->p = a;
 					break;
@@ -197,7 +203,8 @@ void *__realloc(void *a, unsigned long b, const char *file, int line) {
 			} else if(tmp != NULL && tmp->p != NULL) {
 				return a;
 			} else {
-				return __malloc(b, file, line);
+				/* This line should not be reached */
+				return __malloc(b, file, line); /*LCOV_EXCL_LINE*/
 			}
 		}
 	} else {
@@ -208,11 +215,13 @@ void *__realloc(void *a, unsigned long b, const char *file, int line) {
 void *__calloc(unsigned long a, unsigned long b, const char *file, int line) {
 	if(memdbg == 1) {
 		struct mallocs_t *node = malloc(sizeof(mallocs_t));
-		if((node->p = malloc(a*b)) == NULL) {
+		if((node->p = calloc(a, b)) == NULL) {
+			/*LCOV_EXCL_START*/
 			fprintf(stderr, "out of memory in %s at line #%d\n", file, line);
 			free(node);
 			xfree();
 			exit(EXIT_FAILURE);
+			/*LCOV_EXCL_STOP*/
 		}
 #ifdef _WIN32
 		InterlockedIncrement(&openallocs);
@@ -221,7 +230,6 @@ void *__calloc(unsigned long a, unsigned long b, const char *file, int line) {
 		__sync_add_and_fetch(&openallocs, 1);
 		__sync_add_and_fetch(&totalnrallocs, 1);
 #endif
-		memset(node->p, '\0', a*b);
 		node->size = a*b;
 		node->line = line;
 		strcpy(node->file, file);
@@ -243,6 +251,10 @@ void *__calloc(unsigned long a, unsigned long b, const char *file, int line) {
 	} else {
 		return calloc(a, b);
 	}
+}
+
+void xabort(void) {
+	memdbg = 0;
 }
 
 void __free(void *a, const char *file, int line) {
