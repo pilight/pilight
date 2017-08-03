@@ -311,7 +311,7 @@ static void broadcast_queue(char *protoname, struct JsonNode *json, enum origin_
 void *broadcast(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	int broadcasted = 0;
+	int broadcasted = 0/*, free_conf = 1*/;
 
 	pthread_mutex_lock(&bcqueue_lock);
 	while(main_loop) {
@@ -3153,18 +3153,20 @@ int start_pilight(int argc, char **argv) {
 
 	/* Register a seperate thread for the webserver */
 	if(webserver_enable == 1 && pilight.runmode == STANDALONE) {
-		webserver_start();
 		/* Register a seperate thread in which the webserver communicates the main daemon */
 #ifdef PILIGHT_DEVELOPMENT
 		if(webgui_websockets == 1) {
 			threads_register("webserver broadcast", &webserver_broadcast, (void *)NULL, 0);
 		}
-#else
-	webserver_start();
 #endif
 	} else {
 		webserver_enable = 0;
 	}
+#ifndef PILIGHT_DEVELOPMENT
+	if(webserver_enable == 1) {
+		webserver_start();
+	}
+#endif
 #endif
 
 	char *ntpsync = NULL;
