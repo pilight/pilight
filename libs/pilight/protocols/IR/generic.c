@@ -21,7 +21,6 @@
 #include "../../core/dso.h"
 #include "../../core/log.h"
 #include "../../core/binary.h"
-#include "../../core/gc.h"
 #include "../../storage/storage.h"
 #include "../protocol.h"
 #include "generic.h"

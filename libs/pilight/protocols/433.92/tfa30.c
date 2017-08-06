@@ -29,7 +29,6 @@
 #include "../../core/log.h"
 #include "../protocol.h"
 #include "../../core/binary.h"
-#include "../../core/gc.h"
 #include "tfa30.h"
 //
 // Protocol characteristics: High signal length between 300 and 1500 ms

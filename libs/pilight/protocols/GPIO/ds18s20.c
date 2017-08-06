@@ -30,7 +30,6 @@
 #include "../protocol.h"
 #include "../../core/binary.h"
 #include "../../core/json.h"
-#include "../../core/gc.h"
 #include "ds18s20.h"
 
 typedef struct data_t {
@@ -284,12 +283,16 @@ void ds18s20Init(void) {
 	options_add(&ds18s20->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
 	memset(source_path, '\0', 21);
+#ifdef PILIGHT_UNITTEST
 	char *path = getenv("PILIGHT_DS18S20_PATH");
 	if(path == NULL) {
 		snprintf(source_path, 20, "/sys/bus/w1/devices/");
 	} else {
 		snprintf(source_path, 20, "%s", path);
 	}
+#else
+	snprintf(source_path, 20, "/sys/bus/w1/devices/");
+#endif
 	ds18s20->gc=&gc;
 
 	eventpool_callback(REASON_DEVICE_ADDED, addDevice);

@@ -42,7 +42,6 @@
 #include <assert.h>
 
 #include "log.h"
-#include "gc.h"
 #include "../../libuv/uv.h"
 #include "mem.h"
 #include "network.h"
@@ -856,10 +855,6 @@ void eventpool_init(enum eventpool_threads_t t) {
 	 */
 	const uv_thread_t pth_cur_id = uv_thread_self();
 	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
-
-	if(running() == 0) {
-		return;
-	}
 
 	if(eventpoolinit == 1) {
 		return;

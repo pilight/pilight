@@ -27,7 +27,6 @@
 #include "../../core/log.h"
 #include "../protocol.h"
 #include "../../core/binary.h"
-#include "../../core/gc.h"
 #include "eurodomest_switch.h"
 
 // Timing from http://forum.pilight.org/attachment.php?aid=595

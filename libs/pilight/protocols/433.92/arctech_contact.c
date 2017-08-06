@@ -27,7 +27,6 @@
 #include "../../core/log.h"
 #include "../protocol.h"
 #include "../../core/binary.h"
-#include "../../core/gc.h"
 #include "arctech_contact.h"
 
 #define PULSE_MULTIPLIER	4

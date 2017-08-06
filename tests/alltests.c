@@ -16,6 +16,7 @@
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/network.h"
+#include "../libs/pilight/protocols/protocol.h"
 #include "../libs/libuv/uv.h"
 
 #include "alltests.h"
@@ -56,6 +57,7 @@ CuSuite *suite_protocols_core(void);
 CuSuite *suite_protocols_generic(void);
 CuSuite *suite_protocols_i2c(void);
 CuSuite *suite_protocols_gpio_ds18x20(void);
+CuSuite *suite_hardware_433gpio(void);
 CuSuite *suite_event_operators(void);
 CuSuite *suite_event_functions(void);
 CuSuite *suite_event_actions_switch(void);
@@ -158,6 +160,7 @@ int RunAllTests(void) {
 #ifdef __linux__
 	suites[nr++] = suite_protocols_i2c();
 	suites[nr++] = suite_protocols_gpio_ds18x20();
+	suites[nr++] = suite_hardware_433gpio();
 #endif
 	suites[nr++] = suite_event_operators();
 	suites[nr++] = suite_event_functions();
@@ -187,7 +190,6 @@ int RunAllTests(void) {
 	return r;
 }
 
-
 int main(int argc, char **argv) {
 	remove("rapport.txt");
 	remove("test.log");
@@ -196,6 +198,10 @@ int main(int argc, char **argv) {
 	fprintf(f, "%s", gplv3);
 	fclose(f);
 
+	/*
+	 * Testing the debug code. If this doesn't work
+	 * everything else will fail as well.
+	 */
 	printf("[ %-48s ]\n", "test_unittest");
 	fflush(stdout);
 	assert(17 == test_unittest());

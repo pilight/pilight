@@ -28,7 +28,6 @@
 #include "../../core/log.h"
 #include "../../core/eventpool.h"
 #include "../../core/binary.h"
-#include "../../core/gc.h"
 #include "../../core/json.h"
 #ifndef _WIN32
 	#include <wiringx.h>

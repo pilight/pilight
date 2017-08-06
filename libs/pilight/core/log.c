@@ -24,7 +24,6 @@
 
 #include "pilight.h"
 #include "common.h"
-#include "gc.h"
 #include "log.h"
 #include "../../libuv/uv.h"
 

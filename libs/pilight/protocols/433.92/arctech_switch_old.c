@@ -17,7 +17,6 @@
 #include "../../core/log.h"
 #include "../protocol.h"
 #include "../../core/binary.h"
-#include "../../core/gc.h"
 #include "arctech_switch_old.h"
 
 #define PULSE_MULTIPLIER	3

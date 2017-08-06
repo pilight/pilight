@@ -17,7 +17,6 @@
 #include "../../core/log.h"
 #include "../protocol.h"
 #include "../../core/binary.h"
-#include "../../core/gc.h"
 #include "alecto_ws1700.h"
 
 #define PULSE_MULTIPLIER	20

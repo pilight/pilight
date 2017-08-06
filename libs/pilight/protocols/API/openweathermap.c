@@ -31,7 +31,6 @@
 #include "../protocol.h"
 #include "../../core/binary.h"
 #include "../../core/json.h"
-#include "../../core/gc.h"
 #include "openweathermap.h"
 
 #define INTERVAL	600

@@ -27,7 +27,6 @@
 #include "../../core/log.h"
 #include "../protocol.h"
 #include "../../core/binary.h"
-#include "../../core/gc.h"
 #include "ninjablocks_weather.h"
 
 #define PULSE_MULTIPLIER	2

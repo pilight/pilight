@@ -20,7 +20,6 @@
 #include "../../core/common.h"
 #include "../../core/dso.h"
 #include "../../core/log.h"
-#include "../../core/gc.h"
 #include "../protocol.h"
 #include "relay.h"
 

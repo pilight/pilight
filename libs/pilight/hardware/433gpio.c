@@ -23,10 +23,11 @@
 #include "../hardware/hardware.h"
 #include "433gpio.h"
 
-static int gpio_433_in = 0;
-static int gpio_433_out = 0;
+static int gpio_433_in = -1;
+static int gpio_433_out = -1;
+static int pollpri = UV_PRIORITIZED;
 
-#if defined(__arm__) || defined(__mips__)
+#if defined(__arm__) || defined(__mips__) || defined(PILIGHT_UNITTEST)
 typedef struct timestamp_t {
 	unsigned long first;
 	unsigned long second;
@@ -56,7 +57,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 	int duration = 0;
 	int fd = req->io_watcher.fd;
 
-	if(events & UV_PRIORITIZED) {
+	if(events & pollpri) {
 		uint8_t c = 0;
 
 		(void)read(fd, &c, 1);
@@ -92,7 +93,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 		}
 	};
 	if(events & UV_DISCONNECT) {
-		FREE(req);
+		FREE(req); /*LCOV_EXCL_LINE*/
 	}
 	return;
 }
@@ -127,7 +128,7 @@ static void *gpio433Send(int reason, void *param) {
 #endif
 
 static unsigned short int gpio433HwInit(void) {
-#if defined(__arm__) || defined(__mips__)
+#if defined(__arm__) || defined(__mips__) || defined(PILIGHT_UNITTEST)
 
 	/* Make sure the pilight sender gets
 	   the highest priority available */
@@ -164,20 +165,28 @@ static unsigned short int gpio433HwInit(void) {
 		}
 		if(wiringXISR(gpio_433_in, ISR_MODE_BOTH) < 0) {
 			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_433_in);
-			return EXIT_SUCCESS;
+			return EXIT_FAILURE;
 		}
 	}
-	if(gpio_433_in > 0) {
+	if(gpio_433_in >= 0) {
 		if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		int fd = wiringXSelectableFd(gpio_433_in);
-
 		memset(data.rbuffer, '\0', sizeof(data.rbuffer));
 		data.rptr = 0;
 
 		uv_poll_init(uv_default_loop(), poll_req, fd);
-		uv_poll_start(poll_req, UV_PRIORITIZED, poll_cb);
+
+#ifdef PILIGHT_UNITTEST
+		char *dev = getenv("PILIGHT_433GPIO_READ");
+		if(dev == NULL) {
+			pollpri = UV_PRIORITIZED; /*LCOV_EXCL_LINE*/
+		} else {
+			pollpri = UV_READABLE;
+		}
+#endif
+		uv_poll_start(poll_req, pollpri, poll_cb);
 	}
 
 	eventpool_callback(REASON_SEND_CODE, gpio433Send);
@@ -189,7 +198,7 @@ static unsigned short int gpio433HwInit(void) {
 #endif
 }
 
-static unsigned short gpio433Settings(JsonNode *json) {
+static unsigned short gpio433Settings(struct JsonNode *json) {
 	if(strcmp(json->key, "receiver") == 0) {
 		if(json->tag == JSON_NUMBER) {
 			gpio_433_in = (int)json->number_;

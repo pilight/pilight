@@ -26,7 +26,6 @@
 #include "../../core/log.h"
 #include "../protocol.h"
 #include "../../core/binary.h"
-#include "../../core/gc.h"
 #include "conrad_rsl_contact.h"
 
 #define PULSE_MULTIPLIER	5

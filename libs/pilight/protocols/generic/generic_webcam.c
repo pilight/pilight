@@ -27,7 +27,6 @@
 #include "../../core/log.h"
 #include "../protocol.h"
 #include "../../core/binary.h"
-#include "../../core/gc.h"
 #include "generic_webcam.h"
 
 static int checkValues(JsonNode *code) {

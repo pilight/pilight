@@ -56,7 +56,6 @@
 #include "sha256cache.h"
 #include "pilight.h"
 #include "network.h"
-#include "gc.h"
 #include "log.h"
 #include "json.h"
 #include "webserver.h"

@@ -42,7 +42,6 @@
 #include "../protocol.h"
 #include "../../core/binary.h"
 #include "../../core/json.h"
-#include "../../core/gc.h"
 #include "xbmc.h"
 
 typedef struct data_t {

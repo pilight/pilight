@@ -32,7 +32,6 @@
 #include "../protocol.h"
 #include "../../core/binary.h"
 #include "../../core/json.h"
-#include "../../core/gc.h"
 #include "wunderground.h"
 
 #define INTERVAL	900

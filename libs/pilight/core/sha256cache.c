@@ -17,7 +17,6 @@
 #include "common.h"
 #include "mem.h"
 #include "log.h"
-#include "gc.h"
 
 int sha256cache_gc(void) {
 	struct sha256cache_t *tmp = sha256cache;

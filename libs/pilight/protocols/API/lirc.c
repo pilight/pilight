@@ -40,7 +40,6 @@
 #include "../protocol.h"
 #include "../../core/binary.h"
 #include "../../core/json.h"
-#include "../../core/gc.h"
 #include "lirc.h"
 
 #ifndef _WIN32
@@ -249,12 +248,16 @@ void lircInit(void) {
 
 	memset(socket_path, '\0', BUFFER_SIZE);
 
+#ifdef PILIGHT_UNITTEST
 	char *dev = getenv("PILIGHT_LIRC_DEV");
 	if(dev == NULL) {
 		strcpy(socket_path, "/dev/lircd");
 	} else {
 		strcpy(socket_path, dev);
 	}
+#else
+	strcpy(socket_path, "/dev/lircd");
+#endif
 	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
 #endif
 }

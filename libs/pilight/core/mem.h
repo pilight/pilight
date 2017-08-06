@@ -24,11 +24,19 @@ void __free(void *, const char *, int);
  */
 char *___strdup(char *, const char *, int);
 
-#define MALLOC(a) __malloc(a, __FILE__, __LINE__)
-#define REALLOC(a, b) __realloc(a, b, __FILE__, __LINE__)
-#define CALLOC(a, b) __calloc(a, b, __FILE__, __LINE__)
-#define STRDUP(a) ___strdup(a, __FILE__, __LINE__)
-#define FREE(a) __free((void *)(a), __FILE__, __LINE__),(a)=NULL
+#ifdef PILIGHT_UNITTEST
+	#define MALLOC(a) __malloc(a, __FILE__, __LINE__)
+	#define REALLOC(a, b) __realloc(a, b, __FILE__, __LINE__)
+	#define CALLOC(a, b) __calloc(a, b, __FILE__, __LINE__)
+	#define STRDUP(a) ___strdup(a, __FILE__, __LINE__)
+	#define FREE(a) __free((void *)(a), __FILE__, __LINE__),(a)=NULL
+#else
+	#define MALLOC(a) malloc(a)
+	#define REALLOC(a, b) realloc(a, b)
+	#define CALLOC(a, b) calloc(a, b)
+	#define STRDUP(a) strdup(a)
+	#define FREE(a) free(a),(a)=NULL
+#endif
 
 #define _MALLOC malloc
 #define _REALLOC realloc

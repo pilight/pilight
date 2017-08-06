@@ -27,7 +27,6 @@
 #include "../../core/log.h"
 #include "../protocol.h"
 #include "../../core/binary.h"
-#include "../../core/gc.h"
 #include "quigg_screen.h"
 
 #define	PULSE_QUIGG_SCREEN_SHORT	700

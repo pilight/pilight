@@ -29,7 +29,6 @@
 #include "../protocol.h"
 #include "../../core/binary.h"
 #include "../../core/json.h"
-#include "../../core/gc.h"
 #include "cpu_temp.h"
 
 static char cpu_path[PATH_MAX] = "/sys/class/thermal/thermal_zone0/temp";

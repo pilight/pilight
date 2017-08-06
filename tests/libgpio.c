@@ -1,0 +1,102 @@
+/*
+	Copyright (C) 2013 - 2016 CurlyMo
+
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <string.h>
+#include <assert.h>
+#include <stdarg.h>
+#include <unistd.h>
+#include <sys/time.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#define __USE_GNU
+#include <dlfcn.h>
+
+#include "../libs/pilight/core/log.h"
+#include "../libs/pilight/core/mem.h"
+#include "../libs/libuv/uv.h"
+
+static uv_os_fd_t fd[255] = { -1 };
+
+#ifdef _WIN32
+__declspec(dllexport)
+#endif
+int wiringXSetup(char *name, void (*func)(int, char *, int, const char *, ...)) {
+	if(name != NULL && strcmp(name, "test") == 0) {
+		return -999;
+	}
+	int i = 0;
+	for(i=0;i<255;i++) {
+		fd[i] = -1;
+	}
+	if(name == NULL || strcmp(name, "gpio-stub") == 0) {
+		return 0;
+	}
+	return -1;
+}
+
+int wiringXValidGPIO(int gpio) {
+	if(gpio == 0 || gpio == 1 || gpio == 2) {
+		return 0;
+	}
+	return -1;
+}
+
+int digitalWrite(int gpio, int mode) {
+	return ((send(fd[gpio], "a", 1, 0) == 1) ? 0 : -1);
+}
+
+int wiringXSelectableFd(int gpio) {
+	return fd[gpio];
+}
+
+int pinMode(int gpio, int mode) {
+	struct sockaddr_un address;
+
+	if((fd[gpio] = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+		logprintf(LOG_ERR, "socket");
+		return -1;
+	}
+
+	/* start with a clean address structure */
+	memset(&address, 0, sizeof(struct sockaddr_un));
+
+	address.sun_family = AF_UNIX;
+	snprintf(address.sun_path, 128, "/dev/gpio%d", gpio);
+
+	if(connect(fd[gpio], (struct sockaddr *)&address, sizeof(struct sockaddr_un)) != 0) {
+		logprintf(LOG_ERR, "connect");
+		return -1;
+	}
+
+	return 0;
+}
+
+int wiringXGC(void) {
+	int *(*real)(void) = dlsym(RTLD_NEXT, "wiringXGC");
+	if (NULL == real) {
+			fprintf(stderr, "dlsym");
+	}
+	real();
+	int i = 0;
+	for(i=0;i<255;i++) {
+		if(fd[i] > 0) {
+			close(fd[i]);
+		}
+	}
+  return 0;
+}
+
+int wiringXISR(int gpio, int mode) {
+	if(gpio == 2) {
+		return -1;
+	}
+	return pinMode(gpio, mode);
+}

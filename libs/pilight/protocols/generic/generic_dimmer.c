@@ -17,7 +17,6 @@
 #include "../../core/log.h"
 #include "../protocol.h"
 #include "../../core/binary.h"
-#include "../../core/gc.h"
 #include "generic_dimmer.h"
 
 static int checkValues(struct JsonNode *code) {

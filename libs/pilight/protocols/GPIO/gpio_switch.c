@@ -21,7 +21,6 @@
 #include "../../core/common.h"
 #include "../../core/dso.h"
 #include "../../core/log.h"
-#include "../../core/gc.h"
 #include "../../core/eventpool.h"
 #include "../protocol.h"
 #include "gpio_switch.h"

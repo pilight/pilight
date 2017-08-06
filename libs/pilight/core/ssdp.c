@@ -37,7 +37,6 @@
 #include "network.h"
 #include "socket.h"
 #include "log.h"
-#include "gc.h"
 #include "ssdp.h"
 
 #include "../../libuv/uv.h"

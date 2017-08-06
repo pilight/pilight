@@ -44,7 +44,6 @@
 #include "libs/pilight/core/network.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/options.h"
-#include "libs/pilight/core/gc.h"
 
 static uv_signal_t *signal_req = NULL;
 

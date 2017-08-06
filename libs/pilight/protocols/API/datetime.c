@@ -44,7 +44,6 @@
 #include "../../core/binary.h"
 #include "../../core/ntp.h"
 #include "../../core/json.h"
-#include "../../core/gc.h"
 #include "../../core/datetime.h"
 #include "datetime.h"
 

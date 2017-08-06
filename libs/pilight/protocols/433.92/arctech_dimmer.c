@@ -17,7 +17,6 @@
 #include "../../core/log.h"
 #include "../protocol.h"
 #include "../../core/binary.h"
-#include "../../core/gc.h"
 #include "arctech_dimmer.h"
 
 #define LEARN_REPEATS			40

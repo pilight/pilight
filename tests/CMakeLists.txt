@@ -12,4 +12,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR WIN32)
 	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/i2c-dev.h")
 endif()
 
+list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/libgpio.c")
+list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/libdso.c")
+
 set(${PROJECT_NAME}_files ${${PROJECT_NAME}_sources} ${${PROJECT_NAME}_headers} CACHE INTERNAL "")

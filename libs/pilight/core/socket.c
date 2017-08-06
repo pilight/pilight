@@ -27,7 +27,6 @@
 #include "pilight.h"
 #include "network.h"
 #include "log.h"
-#include "gc.h"
 #include "socket.h"
 
 typedef struct data_t {

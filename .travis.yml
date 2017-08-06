@@ -33,11 +33,11 @@ before_script:
   - if [[ $CONFIG == "ALL_ON" ]]; then sed "s/\(set(.*\) OFF/\1 ON/" -i CMakeConfig.txt; fi
 
 script:
-  - mkdir build && pushd build && cmake .. -DCOVERALLS=ON -DCMAKE_BUILD_TYPE=Debug && make && sudo ./pilight-unittest && sudo make install
+  - mkdir build && pushd build && cmake .. -DPILIGHT_UNITTEST=1 -DCOVERALLS=ON -DCMAKE_BUILD_TYPE=Debug && make && sudo LD_PRELOAD=libgpio.so ./pilight-unittest && sudo make install
 
 after_success:
   - gem install coveralls-lcov
-  - lcov -c -d CMakeFiles/pilight.dir/libs/pilight/events/ -d CMakeFiles/pilight.dir/libs/pilight/core/ -d CMakeFiles/pilight.dir/libs/pilight/psutil/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/API/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/core/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/generic/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/network/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/GPIO -o coverage.info
-  - lcov -r coverage.info '*adhoc.c' '*gc.c' '*firmware.c' '*gpio_switch.c' '*relay.c' '*pushover.c' '*pushbullet.c' '*dht11.c' '*dht22.c' -o coverage-filtered.info
+  - lcov -c -d CMakeFiles/pilight.dir/libs/pilight/hardware/ -d CMakeFiles/pilight.dir/libs/pilight/events/ -d CMakeFiles/pilight.dir/libs/pilight/core/ -d CMakeFiles/pilight.dir/libs/pilight/psutil/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/API/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/core/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/generic/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/network/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/GPIO -o coverage.info
+  - lcov -r coverage.info '*433nano.c' '*IRgpio.c' '*none.c' '*zwave.cpp' '*adhoc.c' '*firmware.c' '*gpio_switch.c' '*relay.c' '*pushover.c' '*pushbullet.c' '*dht11.c' '*dht22.c' -o coverage-filtered.info
   - lcov --list coverage-filtered.info
   - if [[ "$TRAVIS_EVENT_TYPE" != "pull_request" ]]; then coveralls-lcov --repo-token ${COVERALLS_TOKEN} coverage-filtered.info; fi

@@ -41,7 +41,6 @@
 #include "../../core/log.h"
 #include "../protocol.h"
 #include "../../core/json.h"
-#include "../../core/gc.h"
 #include "arping.h"
 
 #define CONNECTED				1

@@ -27,7 +27,6 @@
 #include "../../core/log.h"
 #include "../protocol.h"
 #include "../../core/binary.h"
-#include "../../core/gc.h"
 #include "alecto_wx500.h"
 //
 // Protocol characteristics: SYNC bit: 526/8942, Logical 0: 526/1578, Logical 1: 526/3419

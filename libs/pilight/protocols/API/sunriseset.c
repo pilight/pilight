@@ -32,7 +32,6 @@
 #include "../../core/log.h"
 #include "../protocol.h"
 #include "../../core/json.h"
-#include "../../core/gc.h"
 #include "sunriseset.h"
 
 #define PI 3.1415926

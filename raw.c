@@ -28,7 +28,6 @@
 #include "libs/pilight/core/ssdp.h"
 #include "libs/pilight/core/socket.h"
 #include "libs/pilight/core/dso.h"
-#include "libs/pilight/core/gc.h"
 
 #include "libs/pilight/protocols/protocol.h"
 

@@ -21,7 +21,6 @@
 #include "libs/pilight/core/eventpool.h"
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/common.h"
-#include "libs/pilight/core/gc.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/options.h"
 #include "libs/pilight/core/socket.h"

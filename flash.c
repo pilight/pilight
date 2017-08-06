@@ -20,7 +20,6 @@
 #endif
 
 #include "libs/pilight/core/pilight.h"
-#include "libs/pilight/core/gc.h"
 #include "libs/pilight/core/common.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/options.h"
@@ -159,7 +158,6 @@ close:
 	wiringXGC();
 #endif
 	log_gc();
-	gc_clear();
 	FREE(progname);
 	return (EXIT_SUCCESS);
 }
