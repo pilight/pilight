@@ -229,6 +229,11 @@ static void *reason_forward_free(void *param) {
 	return NULL;
 }
 
+static void *reason_send_code_free(void *param) {
+	struct reason_send_code_t *data = param;
+	FREE(data);
+	return NULL;
+}
 
 static void *reason_broadcast_core_free(void *param) {
 	char *code = param;
@@ -722,12 +727,16 @@ void *send_code(void *param) {
 				tmp_confhw = tmp_confhw->next;
 			}
 			if(hw != NULL) {
+#ifdef PILIGHT_DEVELOPMENT
 				if((hw->comtype == COMOOK || hw->comtype == COMPLSTRAIN) && hw->sendOOK != NULL) {
 					if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
 						hw->wait = 1;
 						pthread_mutex_unlock(&hw->lock);
 						pthread_cond_signal(&hw->signal);
 					}
+#else
+				if((hw->comtype == COMOOK) || (hw->comtype == COMPLSTRAIN && hw->sendOOK != NULL)) {
+#endif
 					logprintf(LOG_DEBUG, "**** RAW CODE ****");
 					if(log_level_get() >= LOG_DEBUG) {
 						for(i=0;i<sendqueue->length;i++) {
@@ -737,20 +746,46 @@ void *send_code(void *param) {
 					}
 					logprintf(LOG_DEBUG, "**** RAW CODE ****");
 
+					/*
+					 * Rewrite start
+					 */
+					struct reason_send_code_t *data = MALLOC(sizeof(struct reason_send_code_t));
+					if(data == NULL) {
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+					}
+					data->origin = ORIGIN_SENDER;
+					memset(&data->message, 0, 255);
+					// snprintf(data->message, 1024, "{\"message\":%s}", message);
+					data->rawlen = sendqueue->length;
+					memcpy(data->pulses, sendqueue->code, data->rawlen*sizeof(int));
+					data->txrpt = protocol->txrpt;
+					strncpy(data->protocol, protocol->id, 255);
+					data->hwtype = hw->hwtype;
+
+					memset(data->uuid, 0, UUID_LENGTH+1);
+					eventpool_trigger(REASON_SEND_CODE, reason_send_code_free, data);
+					/*
+					 * Rewrite end
+					 */
+
+#ifdef PILIGHT_DEVELOPMENT
 					if(hw->sendOOK(sendqueue->code, sendqueue->length, protocol->txrpt) == 0) {
 						logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
 					} else {
 						logprintf(LOG_ERR, "failed to send code");
 					}
+#endif
 					if(strcmp(protocol->id, "raw") == 0) {
 						int plslen = sendqueue->code[sendqueue->length-1]/PULSE_DIV;
 						receive_queue(sendqueue->code, sendqueue->length, plslen, -1);
 					}
+#ifdef PILIGHT_DEVELOPMENT
 					if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
 						hw->wait = 0;
 						pthread_mutex_unlock(&hw->lock);
 						pthread_cond_signal(&hw->signal);
 					}
+#endif
 				} else if(hw->comtype == COMAPI && hw->sendAPI != NULL) {
 					if(message != NULL) {
 						if(hw->sendAPI(message) == 0) {
@@ -2067,66 +2102,103 @@ void *receivePulseTrain(void *param) {
 	return (void *)NULL;
 }
 
-void *receiveOOK(void *param) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+#ifdef PILIGHT_DEVELOPMENT
+// void *receiveOOK(void *param) {
+	// logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	struct rawcode_t r;
-	r.length = 0;
-	int plslen = 0, duration = 0;
-	struct timeval tp;
-	struct timespec ts;
+	// struct rawcode_t r;
+	// r.length = 0;
+	// int plslen = 0, duration = 0;
+	// struct timeval tp;
+	// struct timespec ts;
 
-#ifdef _WIN32
-	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
-#else
-	/* Make sure the pilight receiving gets
-	   the highest priority available */
-	struct sched_param sched;
-	memset(&sched, 0, sizeof(sched));
-	sched.sched_priority = 70;
-	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
+// #ifdef _WIN32
+	// SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+// #else
+	// /* Make sure the pilight receiving gets
+	   // the highest priority available */
+	// struct sched_param sched;
+	// memset(&sched, 0, sizeof(sched));
+	// sched.sched_priority = 70;
+	// pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
+// #endif
+
+	// struct hardware_t *hw = (hardware_t *)param;
+	// pthread_mutex_lock(&hw->lock);
+	// hw->running = 1;
+
+	// while(main_loop == 1 && hw->receiveOOK != NULL && hw->stop == 0) {
+		// if(hw->wait == 0) {
+			// pthread_mutex_lock(&hw->lock);
+			// logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
+			// duration = hw->receiveOOK();
+			// if(duration > 0) {
+				// r.pulses[r.length++] = duration;
+				// if(r.length > MAXPULSESTREAMLENGTH-1) {
+					// r.length = 0;
+				// }
+				// if(duration > hw->mingaplen) {
+					// if(duration < hw->maxgaplen) {
+						// plslen = duration/PULSE_DIV;
+					// }
+					// /* Let's do a little filtering here as well */
+					// if(r.length >= hw->minrawlen && r.length <= hw->maxrawlen) {
+						// receive_queue(r.pulses, r.length, plslen, hw->hwtype);
+					// }
+					// r.length = 0;
+				// }
+			// /* Hardware failure */
+			// } else if(duration == -1) {
+				// pthread_mutex_unlock(&hw->lock);
+				// gettimeofday(&tp, NULL);
+				// ts.tv_sec = tp.tv_sec;
+				// ts.tv_nsec = tp.tv_usec * 1000;
+				// ts.tv_sec += 1;
+				// pthread_mutex_lock(&hw->lock);
+				// pthread_cond_timedwait(&hw->signal, &hw->lock, &ts);
+			// }
+			// pthread_mutex_unlock(&hw->lock);
+		// } else {
+			// pthread_cond_wait(&hw->signal, &hw->lock);
+		// }
+	// }
+	// hw->running = 0;
+	// return (void *)NULL;
+// }
 #endif
 
-	struct hardware_t *hw = (hardware_t *)param;
-	pthread_mutex_lock(&hw->lock);
-	hw->running = 1;
+static void *receivePulseTrain1(int reason, void *param) {
+	struct reason_received_pulsetrain_t *data = param;
+	int plslen = 0;
 
-	while(main_loop == 1 && hw->receiveOOK != NULL && hw->stop == 0) {
-		if(hw->wait == 0) {
-			pthread_mutex_lock(&hw->lock);
-			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
-			duration = hw->receiveOOK();
-			if(duration > 0) {
-				r.pulses[r.length++] = duration;
-				if(r.length > MAXPULSESTREAMLENGTH-1) {
-					r.length = 0;
-				}
-				if(duration > hw->mingaplen) {
-					if(duration < hw->maxgaplen) {
-						plslen = duration/PULSE_DIV;
-					}
-					/* Let's do a little filtering here as well */
-					if(r.length >= hw->minrawlen && r.length <= hw->maxrawlen) {
-						receive_queue(r.pulses, r.length, plslen, hw->hwtype);
-					}
-					r.length = 0;
-				}
-			/* Hardware failure */
-			} else if(duration == -1) {
-				pthread_mutex_unlock(&hw->lock);
-				gettimeofday(&tp, NULL);
-				ts.tv_sec = tp.tv_sec;
-				ts.tv_nsec = tp.tv_usec * 1000;
-				ts.tv_sec += 1;
-				pthread_mutex_lock(&hw->lock);
-				pthread_cond_timedwait(&hw->signal, &hw->lock, &ts);
+	if(data->hardware != NULL && data->pulses != NULL && data->length > 0) {
+#ifndef PILIGHT_REWRITE
+		int hwtype = 0;
+		struct conf_hardware_t *tmp_confhw = conf_hardware;
+		while(tmp_confhw) {
+			if(strcmp(tmp_confhw->hardware->id, data->hardware) == 0) {
+				hwtype = tmp_confhw->hardware->hwtype;
 			}
-			pthread_mutex_unlock(&hw->lock);
-		} else {
-			pthread_cond_wait(&hw->signal, &hw->lock);
+			tmp_confhw = tmp_confhw->next;
 		}
+#endif
+#ifdef PILIGHT_REWRITE
+		struct hardware_t *hw = NULL;
+		if(hardware_select_struct(ORIGIN_MASTER, data->hardware, &hw) == 0) {
+#endif
+			plslen = data->pulses[data->length-1]/PULSE_DIV;
+			if(data->length > 0) {
+#ifdef PILIGHT_REWRITE
+				receive_parse_code(data->pulses, data->length, plslen, hw->hwtype);
+#else
+				receive_queue(data->pulses, data->length, plslen, hwtype);
+#endif
+			}
+#ifdef PILIGHT_REWRITE
+		}
+#endif
 	}
-	hw->running = 0;
+
 	return (void *)NULL;
 }
 
@@ -2888,8 +2960,8 @@ int start_pilight(int argc, char **argv) {
 
 /* Rewrite */
 	eventpool_callback(REASON_SOCKET_RECEIVED, socket_parse_data1);
+	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain1);
 
-	
 	if(config_read() != EXIT_SUCCESS) {
 		goto clear;
 	}
@@ -3155,7 +3227,9 @@ int start_pilight(int argc, char **argv) {
 				tmp_confhw->hardware->wait = 0;
 				tmp_confhw->hardware->stop = 0;
 				if(tmp_confhw->hardware->comtype == COMOOK) {
-					threads_register(tmp_confhw->hardware->id, &receiveOOK, (void *)tmp_confhw->hardware, 0);
+#ifdef PILIGHT_DEVELOPMENT
+					// threads_register(tmp_confhw->hardware->id, &receiveOOK, (void *)tmp_confhw->hardware, 0);
+#endif
 				} else if(tmp_confhw->hardware->comtype == COMPLSTRAIN) {
 					threads_register(tmp_confhw->hardware->id, &receivePulseTrain, (void *)tmp_confhw->hardware, 0);
 				} else if(tmp_confhw->hardware->comtype == COMAPI) {
