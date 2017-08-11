@@ -163,6 +163,7 @@ static void test_hardware_433gpio_receive(CuTest *tc) {
 	if(wiringXSetup("test", foo) != -999) {
 		printf("[ %-31.31s (preload libgpio)]\n", __FUNCTION__);
 		fflush(stdout);
+		wiringXGC();
 		return;
 	}
 	printf("[ %-48s ]\n", __FUNCTION__);
@@ -224,6 +225,7 @@ static void test_hardware_433gpio_param(CuTest *tc) {
 	if(wiringXSetup("test", foo) != -999) {
 		printf("[ %-31.31s (preload libgpio)]\n", __FUNCTION__);
 		fflush(stdout);
+		wiringXGC();
 		return;
 	}
 
@@ -285,6 +287,7 @@ static void test_hardware_433gpio_param1(CuTest *tc) {
 	if(wiringXSetup("test", foo) != -999) {
 		printf("[ %-31.31s (preload libgpio)]\n", __FUNCTION__);
 		fflush(stdout);
+		wiringXGC();
 		return;
 	}
 	printf("[ %-48s ]\n", __FUNCTION__);
@@ -335,6 +338,7 @@ static void test_hardware_433gpio_param2(CuTest *tc) {
 	if(wiringXSetup("test", foo) != -999) {
 		printf("[ %-31.31s (preload libgpio)]\n", __FUNCTION__);
 		fflush(stdout);
+		wiringXGC();
 		return;
 	}
 	printf("[ %-48s ]\n", __FUNCTION__);
@@ -394,6 +398,7 @@ static void test_hardware_433gpio_param3(CuTest *tc) {
 	if(wiringXSetup("test", foo) != -999) {
 		printf("[ %-31.31s (preload libgpio)]\n", __FUNCTION__);
 		fflush(stdout);
+		wiringXGC();
 		return;
 	}
 	printf("[ %-48s ]\n", __FUNCTION__);
@@ -453,6 +458,7 @@ static void test_hardware_433gpio_param4(CuTest *tc) {
 	if(wiringXSetup("test", foo) != -999) {
 		printf("[ %-31.31s (preload libgpio)]\n", __FUNCTION__);
 		fflush(stdout);
+		wiringXGC();
 		return;
 	}
 	printf("[ %-48s ]\n", __FUNCTION__);

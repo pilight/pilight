@@ -39,7 +39,6 @@ static void test_memory1(CuTest *tc) {
 
 	{
 		memtrack();
-
 		char *a = MALLOC(128);
 		CuAssertPtrNotNull(tc, a);
 
@@ -51,7 +50,7 @@ static void test_memory1(CuTest *tc) {
 		}
 		CuAssertIntEquals(tc, 1, check);
 
-		char *b = REALLOC(a, 10);
+		char *b = REALLOC(a, 256);
 		CuAssertPtrEquals(tc, a, b);
 
 		FREE(a);
@@ -230,7 +229,8 @@ int test_memory(void) {
 	SUITE_ADD_TEST(suite, test_memory1);
 
 	CuSuiteRun(suite);
+	int x = suite->failCount;
 	CuSuiteDelete(suite);
 
-	return suite->failCount;
+	return x;
 }

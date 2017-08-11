@@ -159,6 +159,7 @@ void test_hardware_433gpio_receive_too_large_pulse(CuTest *tc) {
 	if(wiringXSetup("test", foo) != -999) {
 		printf("[ %-31.31s (preload libgpio)]\n", __FUNCTION__);
 		fflush(stdout);
+		wiringXGC();
 		return;
 	}
 	printf("[ %-48s ]\n", __FUNCTION__);

@@ -11,6 +11,7 @@
 #include <string.h>
 #include <assert.h>
 #include <mbedtls/sha256.h>
+#include <valgrind/valgrind.h>
 
 #include "../libs/pilight/core/log.h"
 #include "../libs/pilight/core/CuTest.h"
@@ -57,6 +58,7 @@ CuSuite *suite_protocols_core(void);
 CuSuite *suite_protocols_generic(void);
 CuSuite *suite_protocols_i2c(void);
 CuSuite *suite_protocols_gpio_ds18x20(void);
+CuSuite *suite_protocols_gpio_switch(void);
 CuSuite *suite_hardware_433gpio(void);
 CuSuite *suite_event_operators(void);
 CuSuite *suite_event_functions(void);
@@ -160,6 +162,7 @@ int RunAllTests(void) {
 #ifdef __linux__
 	suites[nr++] = suite_protocols_i2c();
 	suites[nr++] = suite_protocols_gpio_ds18x20();
+	suites[nr++] = suite_protocols_gpio_switch();
 	suites[nr++] = suite_hardware_433gpio();
 #endif
 	suites[nr++] = suite_event_operators();
@@ -206,9 +209,10 @@ int main(int argc, char **argv) {
 	fflush(stdout);
 	assert(17 == test_unittest());
 
-	printf("[ %-48s ]\n", "test_memory");
-	fflush(stdout);
-	assert(0 == test_memory());
-
+	if(!RUNNING_ON_VALGRIND) {
+		printf("[ %-48s ]\n", "test_memory");
+		fflush(stdout);
+		assert(0 == test_memory());
+	}
 	return RunAllTests();
 }

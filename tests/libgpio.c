@@ -23,6 +23,7 @@
 #include "../libs/pilight/core/mem.h"
 #include "../libs/libuv/uv.h"
 
+static int state[255] = { 0 };
 static uv_os_fd_t fd[255] = { -1 };
 
 #ifdef _WIN32
@@ -35,6 +36,7 @@ int wiringXSetup(char *name, void (*func)(int, char *, int, const char *, ...)) 
 	int i = 0;
 	for(i=0;i<255;i++) {
 		fd[i] = -1;
+		state[i] = 0;
 	}
 	if(name == NULL || strcmp(name, "gpio-stub") == 0) {
 		return 0;
@@ -51,6 +53,11 @@ int wiringXValidGPIO(int gpio) {
 
 int digitalWrite(int gpio, int mode) {
 	return ((send(fd[gpio], "a", 1, 0) == 1) ? 0 : -1);
+}
+
+int digitalRead(int gpio) {
+	state[gpio] ^= 1;
+	return state[gpio];
 }
 
 int wiringXSelectableFd(int gpio) {
@@ -81,8 +88,8 @@ int pinMode(int gpio, int mode) {
 
 int wiringXGC(void) {
 	int *(*real)(void) = dlsym(RTLD_NEXT, "wiringXGC");
-	if (NULL == real) {
-			fprintf(stderr, "dlsym");
+	if(NULL == real) {
+		fprintf(stderr, "dlsym");
 	}
 	real();
 	int i = 0;

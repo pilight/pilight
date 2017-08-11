@@ -25,13 +25,14 @@
 #include "../protocol.h"
 #include "gpio_switch.h"
 
-#if !defined(__FreeBSD__) && !defined(_WIN32)
+#if (!defined(__FreeBSD__) && !defined(_WIN32)) || defined(PILIGHT_UNITTEST)
 #include <wiringx.h>
 
 typedef struct data_t {
 	unsigned int id;
 	unsigned int state;
 	unsigned int resolution;
+	int pollpri;
 	uv_poll_t *poll_req;
 	uv_timer_t *timer_req;
 
@@ -55,7 +56,7 @@ static void createMessage(int gpio, int state) {
 	strncpy(data->origin, "receiver", 255);
 	data->protocol = gpio_switch->id;
 	if(strlen(pilight_uuid) > 0) {
-		data->uuid = pilight_uuid;
+		data->uuid = pilight_uuid; /*LCOV_EXCL_LINE*/
 	} else {
 		data->uuid = NULL;
 	}
@@ -68,7 +69,7 @@ static void poll_cb(uv_poll_t *req, int status, int events);
 static void restart(uv_timer_t *req) {
 	struct data_t *data = req->data;
 
-	uv_poll_start(data->poll_req, UV_PRIORITIZED, poll_cb);
+	uv_poll_start(data->poll_req, data->pollpri, poll_cb);
 	uv_timer_stop(req);
 }
 
@@ -76,7 +77,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 	int fd = req->io_watcher.fd;
 	struct data_t *node = req->data;
 
-	if(events & UV_PRIORITIZED) {
+	if(events & node->pollpri) {
 		uint8_t c = 0;
 
 		(void)read(fd, &c, 1);
@@ -97,7 +98,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 	}
 }
 
-#if defined(__arm__) || defined(__mips__)
+#if defined(__arm__) || defined(__mips__) || defined(PILIGHT_UNITTEST)
 static void *addDevice(int reason, void *param) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
@@ -106,7 +107,6 @@ static void *addDevice(int reason, void *param) {
 	struct data_t *node = NULL;
 	int match = 0;
 	double itmp = 0.0;
-
 
 	if(param == NULL) {
 		return NULL;
@@ -155,6 +155,7 @@ static void *addDevice(int reason, void *param) {
 
 	if(wiringXISR(node->id, ISR_MODE_BOTH) < 0) {
 		logprintf(LOG_ERR, "unable to register interrupt for pin %d", node->id);
+		FREE(node);
 		return EXIT_SUCCESS;
 	}
 
@@ -172,7 +173,17 @@ static void *addDevice(int reason, void *param) {
 	int fd = wiringXSelectableFd(node->id);
 
 	uv_poll_init(uv_default_loop(), node->poll_req, fd);
-	uv_poll_start(node->poll_req, UV_PRIORITIZED, poll_cb);
+
+	node->pollpri = UV_PRIORITIZED;
+#ifdef PILIGHT_UNITTEST
+	char *dev = getenv("PILIGHT_GPIO_SWITCH_READ");
+	if(dev == NULL) {
+		node->pollpri = UV_PRIORITIZED; /*LCOV_EXCL_LINE*/
+	} else {
+		node->pollpri = UV_READABLE;
+	}
+#endif
+	uv_poll_start(node->poll_req, node->pollpri, poll_cb);
 
 	node->next = data;
 	data = node;
@@ -184,13 +195,13 @@ static void *addDevice(int reason, void *param) {
 static int checkValues(struct JsonNode *jvalues) {
 	double readonly = 0.0;
 
-#if defined(__arm__) || defined(__mips__)	
+#if defined(__arm__) || defined(__mips__) || defined(PILIGHT_UNITTEST)
 	struct JsonNode *jid = NULL;
 	char *platform = GPIO_PLATFORM;
 	if(settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
 		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
 		return -1;
-	}	
+	}
 	if(wiringXSetup(platform, _logprintf) < 0) {
 		logprintf(LOG_ERR, "unable to setup wiringX") ;
 		return -1;
@@ -253,11 +264,11 @@ void gpioSwitchInit(void) {
 	options_add(&gpio_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&gpio_switch->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
-#if !defined(__FreeBSD__) && !defined(_WIN32)
+#if (!defined(__FreeBSD__) && !defined(_WIN32)) || defined(PILIGHT_UNITTEST)
 	gpio_switch->checkValues=&checkValues;
 	gpio_switch->gc = &gc;
 
-	#if defined(__arm__) || defined(__mips__)
+	#if defined(__arm__) || defined(__mips__) || defined(PILIGHT_UNITTEST)
 		eventpool_callback(REASON_DEVICE_ADDED, addDevice);
 	#endif
 #endif
