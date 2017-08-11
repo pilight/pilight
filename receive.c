@@ -28,6 +28,9 @@
 #include "libs/pilight/core/ssdp.h"
 #include "libs/pilight/protocols/protocol.h"
 
+#define INCLUDE		1
+#define EXCLUDE		2
+
 static uv_tty_t *tty_req = NULL;
 static uv_signal_t *signal_req = NULL;
 
@@ -40,7 +43,7 @@ static unsigned short stats = 0;
 static unsigned short connecting = 0;
 static unsigned short connected = 0;
 static unsigned short found = 0;
-static unsigned short filteropt = 0;
+static unsigned short filtertype = 0;
 
 typedef struct ssdp_list_t {
 	char server[INET_ADDRSTRLEN+1];
@@ -99,6 +102,40 @@ static void alloc_cb(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
 	memset(buf->base, 0, len);
 }
 
+static void output(struct JsonNode *json) {
+	if(filtertype != 0) {
+		int filtered = 0, j = 0;
+		char *protocol = NULL;
+		if(filtertype == INCLUDE) {
+			filtered = 1;
+		}
+		json_find_string(json, "protocol", &protocol);
+		for(j=0;j<nrfilter;j++) {
+			if(strcmp(filters[j], protocol) == 0) {
+				if(filtertype == INCLUDE) {
+					filtered = 0;
+					break;
+				} else if(filtertype == EXCLUDE) {
+					filtered = 1;
+					break;
+				}
+			}
+		}
+		if(filtered == 0) {
+			char *out = json_stringify(json, "\t");
+			printf("%s\n", out);
+			json_free(out);
+		}
+	} else {
+		char *out = json_stringify(json, "\t");
+		printf("%s\n", out);
+		json_free(out);
+	}
+	json_delete(json);
+
+	return;
+}
+
 static void on_read(int fd, char *buf, ssize_t len, char **buf1, ssize_t *len1) {
 	if(strcmp(buf, "1") != 0 &&
 	   strncmp(buf, "{\"status\":\"success\"}", 20) != 0) {
@@ -109,10 +146,7 @@ static void on_read(int fd, char *buf, ssize_t len, char **buf1, ssize_t *len1) 
 				for(i=0;i<n;i++) {
 					struct JsonNode *json = json_decode(array[i]);
 					if(json != NULL) {
-						char *out = json_stringify(json, "\t");
-						printf("%s\n", out);
-						json_delete(json);
-						json_free(out);
+						output(json);
 					} else {
 						logprintf(LOG_ERR, "invalid JSON received: %s", buf);
 					}
@@ -121,10 +155,7 @@ static void on_read(int fd, char *buf, ssize_t len, char **buf1, ssize_t *len1) 
 			} else {
 				struct JsonNode *json = json_decode(*buf1);
 				if(json != NULL) {
-					char *out = json_stringify(json, "\t");
-					printf("%s\n", out);
-					json_delete(json);
-					json_free(out);
+					output(json);
 				} else {
 					logprintf(LOG_ERR, "invalid JSON received: %s", buf);
 				}
@@ -177,7 +208,7 @@ static void connect_to_server(char *server, int port) {
 	}
 
 	uv_timer_init(uv_default_loop(), socket_timeout_req);
-	uv_timer_start(socket_timeout_req, timeout_cb, 1000, 0);	
+	uv_timer_start(socket_timeout_req, timeout_cb, 1000, 0);
 }
 
 static int select_server(int server) {
@@ -282,13 +313,13 @@ static void main_loop(int onclose) {
 	if(onclose == 1) {
 		signal_cb(NULL, SIGINT);
 	}
-	uv_run(uv_default_loop(), UV_RUN_DEFAULT);	
+	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
 	uv_run(uv_default_loop(), UV_RUN_ONCE);
 
 	if(onclose == 1) {
 		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
-			uv_run(uv_default_loop(), UV_RUN_DEFAULT);	
+			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 		}
 	}
 }
@@ -316,7 +347,7 @@ int main(int argc, char **argv) {
 	}
 
 	uv_signal_init(uv_default_loop(), signal_req);
-	uv_signal_start(signal_req, signal_cb, SIGINT);	
+	uv_signal_start(signal_req, signal_cb, SIGINT);
 
 	struct options_t *options = NULL;
 
@@ -332,6 +363,7 @@ int main(int argc, char **argv) {
 	options_add(&options, 'I', "instance", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 's', "stats", OPTION_NO_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 	options_add(&options, 'F', "filter", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
+	options_add(&options, 'X', "exclude", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
 
 	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where
@@ -352,7 +384,8 @@ int main(int argc, char **argv) {
 				printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
 				printf("\t -I --instance=name\t\tconnect to pilight instance\n");
 				printf("\t -s --stats\t\t\tshow CPU and RAM statistics\n");
-				printf("\t -F --filter=protocol\t\tfilter out protocol(s)\n");
+				printf("\t -F --filter=protocol\t\tfilter to include protocol(s) in output\n");
+				printf("\t -X --exclude=protocol\t\texclude protocol(s) from output\n");
 				goto close;
 			break;
 			case 'V':
@@ -378,11 +411,23 @@ int main(int argc, char **argv) {
 				stats = 1;
 			break;
 			case 'F':
-				if((filter = REALLOC(filter, strlen(args)+1)) == NULL) {
+				if((filter = MALLOC(strlen(args)+1)) == NULL) {
 					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				strcpy(filter, args);
-				filteropt = 1;
+				filtertype = INCLUDE;
+			break;
+			case 'X':
+				if(filtertype == 0) {
+					if((filter = MALLOC(strlen(args)+1)) == NULL) {
+						OUT_OF_MEMORY /* LCOV_EXCL_LINE */
+					}
+					strcpy(filter, args);
+					filtertype = EXCLUDE;
+				} else {
+					logprintf(LOG_ERR, "Cannot filter and exclude simultaneously");
+					goto close;
+				}
 			break;
 			default:
 				printf("Usage: %s \n", progname);
@@ -391,13 +436,14 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	if(filteropt == 1) {
+	if(filtertype > 0) {
 		struct protocol_t *protocol = NULL;
-		nrfilter = explode(filter, ",", &filters);
 		unsigned int match = 0, j = 0;
 
 		protocol_init();
 
+		nrfilter = explode(filter, ",", &filters);
+		
 		for(j=0;j<nrfilter;j++) {
 			match = 0;
 			struct protocols_t *pnode = protocols;
@@ -466,6 +512,10 @@ close:
 		options_delete(options);
 		options_gc();
 		options = NULL;
+	}
+
+	if(filter != NULL) {
+		FREE(filter);
 	}
 
 	main_loop(1);
