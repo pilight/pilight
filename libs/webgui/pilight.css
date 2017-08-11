@@ -65,15 +65,15 @@
 }
 
 .pendingsw .ui-icon-loader {
-	background: transparent url('smallloader.gif') no-repeat 10px 7px;
+	background: transparent url('images/smallloader.gif') no-repeat 10px 7px;
 }
 
 .pendingsw .ui-icon-off {
-	background: transparent url('off.png') no-repeat 10px 6px;
+	background: transparent url('images/off.png') no-repeat 10px 6px;
 }
 
 .pendingsw .ui-icon-on {
-	background: transparent url('on.png') no-repeat 10px 6px;
+	background: transparent url('images/on.png') no-repeat 10px 6px;
 }
 
 @media screen and (-webkit-min-device-pixel-ratio:0) {
@@ -246,101 +246,101 @@ div.webcam_image {
 }
 
 div.battery.red {
-	background: url('battery_red.png') 0px 0px no-repeat;
+	background: url('images/battery_red.png') 0px 0px no-repeat;
 }
 
 div.battery.green {
-	background: url('battery_green.png') 0px 0px no-repeat;
+	background: url('images/battery_green.png') 0px 0px no-repeat;
 }
 
 div.sunrise_icon.gray {
-	background: url('sunrise_gray.png') 0px 0px no-repeat;
+	background: url('images/sunrise_gray.png') 0px 0px no-repeat;
 }
 
 div.sunrise_icon.yellow {
-	background: url('sunrise_yellow.png') 0px 0px no-repeat;
+	background: url('images/sunrise_yellow.png') 0px 0px no-repeat;
 }
 
 div.sunset_icon.gray {
-	background: url('sunset_gray.png') 0px 0px no-repeat;
+	background: url('images/sunset_gray.png') 0px 0px no-repeat;
 }
 
 div.sunset_icon.blue {
-	background: url('sunset_blue.png') 0px 0px no-repeat;
+	background: url('images/sunset_blue.png') 0px 0px no-repeat;
 }
 
 div.temperature_icon {
-	background: url('temp.png') 0px 0px no-repeat;
+	background: url('images/temp.png') 0px 0px no-repeat;
 }
 
 div.humidity_icon {
-	background: url('humi.png') 0px 0px no-repeat;
+	background: url('images/humi.png') 0px 0px no-repeat;
 }
 
 div.pressure_icon {
-	background: url('pressure.png') 0px 0px no-repeat;
+	background: url('images/pressure.png') 0px 0px no-repeat;
 }
 
 div.rain_icon {
-	background: url('rain.png') 0px 0px no-repeat;
+	background: url('images/rain.png') 0px 0px no-repeat;
 }
 
 div.windavg_icon {
-	background: url('windavg.png') 0px 0px no-repeat;
+	background: url('images/windavg.png') 0px 0px no-repeat;
 }
 
 div.winddir_icon {
-	background: url('winddir.png') 0px 0px no-repeat;
+	background: url('images/winddir.png') 0px 0px no-repeat;
 }
 
 div.windgust_icon {
-	background: url('windgust.png') 0px 0px no-repeat;
+	background: url('images/windgust.png') 0px 0px no-repeat;
 }
 
 div.update_active {
-	background: url('update_active.png') 0px 0px no-repeat;
+	background: url('images/update_active.png') 0px 0px no-repeat;
 }
 
 div.update_inactive {
-	background: url('update_inactive.png') 0px 0px no-repeat;
+	background: url('images/update_inactive.png') 0px 0px no-repeat;
 }
 
 div.action_icon.play {
-	background: url('play.png') 0px 0px no-repeat;
+	background: url('images/play.png') 0px 0px no-repeat;
 }
 
 div.action_icon.stop {
-	background: url('stop.png') 0px 0px no-repeat;
+	background: url('images/stop.png') 0px 0px no-repeat;
 }
 
 div.action_icon.pause {
-	background: url('pause.png') 0px 0px no-repeat;
+	background: url('images/pause.png') 0px 0px no-repeat;
 }
 
 div.action_icon.screen_active {
-	background: url('screen_active.png') 0px 0px no-repeat;
+	background: url('images/screen_active.png') 0px 0px no-repeat;
 }
 
 div.action_icon.screen_inactive {
-	background: url('screen_inactive.png') 0px 0px no-repeat;
+	background: url('images/screen_inactive.png') 0px 0px no-repeat;
 }
 
 div.action_icon.shutdown {
-	background: url('shutdown.png') 0px 0px no-repeat;
+	background: url('images/shutdown.png') 0px 0px no-repeat;
 }
 
 div.action_icon.home {
-	background: url('home.png') 0px 0px no-repeat;
+	background: url('images/home.png') 0px 0px no-repeat;
 }
 
 div.media_icon.movie {
-	background: url('movie.png') 0px 0px no-repeat;
+	background: url('images/movie.png') 0px 0px no-repeat;
 }
 
 div.media_icon.episode {
-	background: url('episode.png') 0px 0px no-repeat;
+	background: url('images/episode.png') 0px 0px no-repeat;
 }
 
 div.media_icon.song {
-	background: url('song.png') 0px 0px no-repeat;
+	background: url('images/song.png') 0px 0px no-repeat;
 }
