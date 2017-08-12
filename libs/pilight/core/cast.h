@@ -6,13 +6,14 @@
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
-#ifndef _EVENT_OPERATOR_MULTIPLY_H_
-#define _EVENT_OPERATOR_MULTIPLY_H_
+#ifndef _CAST_H_
+#define _CAST_H_
 
-#include "../operator.h"
+#include "common.h"
+#include "../events/events.h" /* rewrite */
 
-struct event_operators_t *operator_multiply;
-
-void operatorMultiplyInit(void);
+int cast2bool(struct varcont_t **);
+int cast2int(struct varcont_t **);
+int cast2str(struct varcont_t **);
 
 #endif

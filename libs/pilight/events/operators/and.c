@@ -1,32 +1,34 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#ifndef _WIN32
+	#include <unistd.h>
+#endif
 
 #include "../operator.h"
 #include "../../core/dso.h"
+#include "../../core/cast.h"
 #include "and.h"
 
-static void operatorAndCallback(double a, double b, char **ret) {
-	if(a > 0 && b > 0) {
+static void operatorAndCallback(struct varcont_t *a, struct varcont_t *b, char **ret) {
+	struct varcont_t aa, *aaa = &aa;
+	struct varcont_t bb, *bbb = &bb;
+
+	memcpy(&aa, a, sizeof(struct varcont_t));
+	memcpy(&bb, b, sizeof(struct varcont_t));
+
+	cast2bool(&aaa);
+	cast2bool(&bbb);
+
+	if(aa.bool_ == 1 && bb.bool_ == 1) {
 		strcpy(*ret, "1");
 	} else {
 		strcpy(*ret, "0");
@@ -38,7 +40,7 @@ __attribute__((weak))
 #endif
 void operatorAndInit(void) {
 	event_operator_register(&operator_and, "AND");
-	operator_and->callback_number = &operatorAndCallback;
+	operator_and->callback = &operatorAndCallback;
 }
 
 #if defined(MODULE) && !defined(_WIN32)

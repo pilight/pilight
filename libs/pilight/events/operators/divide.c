@@ -1,32 +1,38 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#ifndef _WIN32
+	#include <unistd.h>
+#endif
 
 #include "../operator.h"
 #include "../../core/dso.h"
+#include "../../core/cast.h"
 #include "divide.h"
 
-static void operatorDivideCallback(double a, double b, char **ret) {
-	sprintf(*ret, "%f", (a / b));
+static void operatorDivideCallback(struct varcont_t *a, struct varcont_t *b, char **ret) {
+	struct varcont_t aa, *aaa = &aa;
+	struct varcont_t bb, *bbb = &bb;
+
+	memcpy(&aa, a, sizeof(struct varcont_t));
+	memcpy(&bb, b, sizeof(struct varcont_t));
+
+	cast2int(&aaa);
+	cast2int(&bbb);
+
+	if(aaa->number_ == 0 || bbb->number_ == 0) {
+		strcpy(*ret, "0.000000");
+	} else {
+		sprintf(*ret, "%.6f", (aaa->number_ / bbb->number_));
+	}
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -34,13 +40,13 @@ __attribute__((weak))
 #endif
 void operatorDivideInit(void) {
 	event_operator_register(&operator_divide, "/");
-	operator_divide->callback_number = &operatorDivideCallback;
+	operator_divide->callback = &operatorDivideCallback;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "/";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
 	module->reqcommit = "87";
 }

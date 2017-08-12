@@ -1,38 +1,43 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
+#ifndef _WIN32
+	#include <unistd.h>
+#endif
 
 #include "../../core/pilight.h"
 #include "../operator.h"
 #include "../../core/dso.h"
+#include "../../core/cast.h"
 #include "ne.h"
 
-static void operatorNeCallback(double a, double b, char **ret) {
-	if(fabs(a-b) >= EPSILON) {
+static void operatorNeCallback(struct varcont_t *a, struct varcont_t *b, char **ret) {
+	struct varcont_t aa, *aaa = &aa;
+	struct varcont_t bb, *bbb = &bb;
+
+	memcpy(&aa, a, sizeof(struct varcont_t));
+	memcpy(&bb, b, sizeof(struct varcont_t));
+
+	cast2str(&aaa);
+	cast2str(&bbb);
+
+	if(strcmp(aa.string_, bb.string_) != 0) {
 		strcpy(*ret, "1");
 	} else {
 		strcpy(*ret, "0");
 	}
+
+	FREE(aa.string_);
+	FREE(bb.string_);
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -40,7 +45,7 @@ __attribute__((weak))
 #endif
 void operatorNeInit(void) {
 	event_operator_register(&operator_ne, "!=");
-	operator_ne->callback_number = &operatorNeCallback;
+	operator_ne->callback = &operatorNeCallback;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
