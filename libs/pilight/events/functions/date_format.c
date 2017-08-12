@@ -164,7 +164,6 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 			return -1;
 		}
 #endif
-	printf("%s %s\n", datetime, format);
 		if(strptime(datetime, format, &tm) == NULL) {
 			logprintf(LOG_ERR, "DATE_FORMAT is unable to parse \"%s\" as \"%s\" ", datetime, format);
 #ifndef PILIGHT_DEVELOPMENT
