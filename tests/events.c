@@ -23,6 +23,8 @@
 #include "../libs/pilight/events/operators/ne.h"
 #include "../libs/pilight/events/operators/or.h"
 #include "../libs/pilight/events/operators/gt.h"
+#include "../libs/pilight/events/operators/lt.h"
+#include "../libs/pilight/events/operators/plus.h"
 #include "../libs/pilight/events/action.h"
 #include "../libs/pilight/events/actions/switch.h"
 #include "../libs/pilight/events/actions/dim.h"
@@ -47,6 +49,13 @@ static struct reason_code_received_t updates2[] = {
 		"{\"id\":1,\"unit\":1,\"state\":\"on\"}",
 		"receiver",
 		"arctech_switch",
+		"1234",
+		0
+	},
+	{
+		"{\"longitude\":1,\"latitude\":1,\"year\":2017,\"month\":1,\"day\":1,\"hour\":1,\"minute\":1,\"second\":1,\"weekday\":1}",
+		"receiver",
+		"datetime",
 		"1234",
 		0
 	}
@@ -283,6 +292,20 @@ static struct tests_t get_tests[] = {
 		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[1],
+		{ &receives[1] },
+		{ 1, 0 }
+	},
+	{
+		/*
+		 * This rule is intentionally written without hooks.
+		 */
+		"valid_device_param",
+		"{\"devices\":{\"dimmer\":{\"protocol\":[\"generic_dimmer\"],\"id\":[{\"id\":100}],\"state\":\"off\",\"dimlevel\":10}}," \
+		"\"gui\":{},"\
+		"\"rules\":{\"switch\":{\"rule\":\"IF datetime.hour < datetime.hour + 10 THEN switch DEVICE dimmer TO on\",\"active\":1}},"\
+		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		UV_RUN_DEFAULT,
+		1, &updates2[1],
 		{ &receives[1] },
 		{ 1, 0 }
 	},
@@ -530,6 +553,8 @@ static void test_events(CuTest *tc) {
 		operatorNeInit();
 		operatorOrInit();
 		operatorGtInit();
+		operatorLtInit();
+		operatorPlusInit();
 		actionSwitchInit();
 		actionToggleInit();
 		actionDimInit();
