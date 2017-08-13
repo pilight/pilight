@@ -63,6 +63,7 @@
 #define ORIGIN_ACTION ACTION
 
 static unsigned short loop = 1;
+static char *dummy = "a";
 static char true_[2];
 static char false_[2];
 static char dot_[2];
@@ -232,6 +233,15 @@ int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varc
 						}
 						if(strcmp(options->name, name) == 0) {
 							match2 = 1;
+							if(options->vartype == JSON_NUMBER) {
+								varcont->number_ = 0;
+								varcont->decimals_ = 0;
+								varcont->type_ = JSON_NUMBER;
+							}
+							if(options->vartype == JSON_STRING) {
+								varcont->string_ = dummy;
+								varcont->type_ = JSON_STRING;
+							}
 						}
 						options = options->next;
 					}
@@ -272,7 +282,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varc
 				}
 			}
 			array_free(&array, n);
-			return 1;
+			return 0;
 		} else if(recvtype == 1) {
 			if(validate == 1) {
 				if(origin == ORIGIN_RULE) {
