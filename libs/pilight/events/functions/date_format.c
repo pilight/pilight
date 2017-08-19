@@ -126,7 +126,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	int second = tm.tm_sec;
 	int weekday = tm.tm_wday;
 
-	datefix(&year, &month, &day, &hour, &minute, &second);
+	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
 
 	tm.tm_year = year-1900;
 	tm.tm_mon = month-1;

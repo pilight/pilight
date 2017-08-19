@@ -79,8 +79,6 @@ static void callback1(int code, char *data, int size, char *type, void *userdata
 	struct JsonNode *jsunr = NULL;
 	struct JsonNode *jsuns = NULL;
 
-	time_t timenow = 0;
-
 	char *shour = NULL, *smin = NULL;
 	char *rhour = NULL, *rmin = NULL;
 	
@@ -105,19 +103,30 @@ static void callback1(int code, char *data, int size, char *type, void *userdata
 								temp = wnode->node->number_;
 								sscanf(wnode->stmp, "%d%%", &humi);
 
+								time_t timenow;
 								timenow = time(NULL);
+
 								struct tm current;
 								memset(&current, '\0', sizeof(struct tm));
-	#ifdef _WIN32
-								localtime(&timenow);
-	#else
-								localtime_r(&timenow, &current);
-	#endif
+								/*
+								 * Retrieving the current day is fine with
+								 * the UTC timezone, because we don't do
+								 * anything with the hours, minutes or seconds.
+								 * We just need to know what day, month, and year
+								 * we are in.
+								 */
+#ifdef _WIN32
+								struct tm *ptm;
+								ptm = gmtime(&timenow);
+								memcpy(&current, ptm, sizeof(struct tm));
+#else
+								gmtime_r(&timenow, &current);
+#endif
 								int month = current.tm_mon+1;
 								int mday = current.tm_mday;
 								int year = current.tm_year+1900;
 
-								time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
+								time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59)+1);
 								time_t sunset = 0;
 								time_t sunrise = 0;
 
@@ -131,9 +140,9 @@ static void callback1(int code, char *data, int size, char *type, void *userdata
 								json_append_member(code, "temperature", json_mknumber((double)temp, 2));
 								json_append_member(code, "humidity", json_mknumber((double)humi, 0));
 								json_append_member(code, "update", json_mknumber(0, 0));
-								sunrise = datetime2ts(year, month, mday, atoi(rhour), atoi(rmin), 0, 0);
+								sunrise = datetime2ts(year, month, mday, atoi(rhour), atoi(rmin), 0);
 								json_append_member(code, "sunrise", json_mknumber((double)((atoi(rhour)*100)+atoi(rmin))/100, 2));
-								sunset = datetime2ts(year, month, mday, atoi(shour), atoi(smin), 0, 0);
+								sunset = datetime2ts(year, month, mday, atoi(shour), atoi(smin), 0);
 								json_append_member(code, "sunset", json_mknumber((double)((atoi(shour)*100)+atoi(smin))/100, 2));
 								if(timenow > sunrise && timenow < sunset) {
 									json_append_member(code, "sun", json_mkstring("rise"));

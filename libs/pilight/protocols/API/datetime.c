@@ -75,7 +75,7 @@ static void *thread(void *param) {
 	struct tm tm;
 	char *tz = NULL;
 	time_t t;
-	int target_offset = 0, counter = 0, dst = 0, x = 0;
+	int counter = 0;
 	double longitude = 0.0, latitude = 0.0;
 
 	threads++;
@@ -105,14 +105,9 @@ static void *thread(void *param) {
 	}
 
 	t = time(NULL);
-	t -= getntpdiff();
-	dst = isdst(t, tz);
 	if(isntpsynced() == 0) {
-		x = 1;
+		t -= getntpdiff();
 	}
-
-	/* Check how many hours we differ from UTC? */
-	target_offset = tzoffset(UTC, tz);
 
 	while(loop) {
 		pthread_mutex_lock(&lock);
@@ -120,31 +115,15 @@ static void *thread(void *param) {
 		t -= getntpdiff();
 
 		/* Get UTC time */
-#ifdef _WIN32
-		struct tm *tm1;
-		if((tm1 = gmtime(&t)) != NULL) {
-			memcpy(&tm, tm1, sizeof(struct tm));
-#else
-		if(gmtime_r(&t, &tm) != NULL) {
-#endif
+		if(localtime_l(t, &tm, tz) == 0) {
 			int year = tm.tm_year+1900;
 			int month = tm.tm_mon+1;
 			int day = tm.tm_mday;
-			/* Add our hour difference to the UTC time */
-			tm.tm_hour += target_offset;
-			/* Add possible daylist savings time hour */
-			tm.tm_hour += dst;
 			int hour = tm.tm_hour;
 			int minute = tm.tm_min;
 			int second = tm.tm_sec;
 			int weekday = tm.tm_wday+1;
-
-			datefix(&year, &month, &day, &hour, &minute, &second);
-
-			if((minute == 0 && second == 0) || (isntpsynced() == 0 && x == 0)) {
-				x = 1;
-				dst = isdst(t, tz);
-			}
+			int dst = tm.tm_isdst;
 
 			datetime->message = json_mkobject();
 
