@@ -111,7 +111,7 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 								int mday = current.tm_mday;
 								int year = current.tm_year+1900;
 
-								time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
+								time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59)+1);
 
 								openweathermap->message = json_mkobject();
 

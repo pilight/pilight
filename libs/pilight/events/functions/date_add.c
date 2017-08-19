@@ -213,8 +213,9 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	int hour = tm.tm_hour;
 	int minute = tm.tm_min;
 	int second = tm.tm_sec;
+	int weekday = 0;
 
-	datefix(&year, &month, &day, &hour, &minute, &second);
+	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
 
 #ifdef PILIGHT_DEVELOPMENT
 	snprintf(p, BUFFER_SIZE, "\"%04d-%02d-%02d %02d:%02d:%02d\"", year, month, day, hour, minute, second);

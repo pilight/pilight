@@ -119,8 +119,7 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 #else
 	gmtime_r(&timenow, &gmt);
 #endif
-	char utc[] = "UTC";
-	time_t utct = datetime2ts(gmt.tm_year+1900, gmt.tm_mon+1, gmt.tm_mday, gmt.tm_hour, gmt.tm_min, gmt.tm_sec, utc);
+	time_t utct = datetime2ts(gmt.tm_year+1900, gmt.tm_mon+1, gmt.tm_mday, gmt.tm_hour, gmt.tm_min, gmt.tm_sec);
 	json_append_member(rval, "timestamp", json_mknumber((double)utct, 0));
 
 	json_find_string(json, "uuid", &uuid);

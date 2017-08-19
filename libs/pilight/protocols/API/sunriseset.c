@@ -51,7 +51,7 @@
 static unsigned short loop = 1;
 static unsigned short threads = 0;
 
-static double calculate(int year, int month, int day, double lon, double lat, int rising, int tz) {
+static double calculate(int year, int month, int day, double lon, double lat, int rising) {
 	int N = (int)((floor(275 * month / 9)) - ((floor((month + 9) / 12)) *
 			((1 + floor((year - 4 * floor(year / 4) + 2) / 3)))) + (int)day - 30);
 
@@ -100,7 +100,7 @@ static double calculate(int year, int month, int day, double lon, double lat, in
 
 	double hour = UT-min;
 
-	return ((round(hour)+min)+tz)*100;
+	return ((round(hour)+min))*100;
 }
 
 static void *thread(void *param) {
@@ -114,8 +114,7 @@ static void *thread(void *param) {
 
 	time_t timenow = 0;
 	struct tm tm;
-	int nrloops = 0, risetime = 0, settime = 0, hournow = 0, newdst = 0;
-	int firstrun = 0, target_offset = 0, x = 0, dst = 0, dstchange = 0;
+	int nrloops = 0, risetime = 0, settime = 0, hournow = 0, firstrun = 0;
 	int year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0;
 
 	threads++;
@@ -145,54 +144,29 @@ static void *thread(void *param) {
 	}
 
 	timenow = time(NULL);
-	timenow -= getntpdiff();
-	dst = isdst(timenow, tz);
 	if(isntpsynced() == 0) {
-		x = 1;
+		timenow -= getntpdiff();
 	}
-
-	/* Check how many hours we differ from UTC? */
-	target_offset = tzoffset(UTC, tz);
 
 	while(loop) {
 		protocol_thread_wait(thread, 1, &nrloops);
 		timenow = time(NULL);
-		timenow -= getntpdiff();
+		if(isntpsynced() == 0) {
+			timenow -= getntpdiff();
+		}
 
-			/* Get UTC time */
-#ifdef _WIN32
-		struct tm *tm1;
-		if((tm1 = gmtime(&timenow)) != NULL) {
-			memcpy(&tm, tm1, sizeof(struct tm));
-#else
-		if(gmtime_r(&timenow, &tm) != NULL) {
-#endif
+
+		if(localtime_l(timenow, &tm, tz) == 0) {
 			year = tm.tm_year+1900;
 			month = tm.tm_mon+1;
 			day = tm.tm_mday;
-			/* Add our hour difference to the UTC time */
-			tm.tm_hour += target_offset;
-			/* Add possible daylist savings time hour */
-			tm.tm_hour += dst;
 			hour = tm.tm_hour;
 			minute = tm.tm_min;
 			second = tm.tm_sec;
 
-			datefix(&year, &month, &day, &hour, &minute, &second);
-
-			if((minute == 0 && second == 1) || (isntpsynced() == 0 && x == 0)) {
-				x = 1;
-				if((newdst = isdst(timenow, tz)) != dst) {
-					dstchange = 1;
-				} else {
-					dstchange = 0;
-				}
-				dst = newdst;
-			}
-
 			hournow = (hour*100)+minute;
 			if(((hournow == 0 || hournow == risetime || hournow == settime) && second == 0)
-				 || (settime == 0 && risetime == 0) || dstchange == 1) {
+				 || (settime == 0 && risetime == 0)) {
 
 				if(settime == 0 && risetime == 0) {
 					firstrun = 1;
@@ -200,19 +174,8 @@ static void *thread(void *param) {
 
 				sunriseset->message = json_mkobject();
 				JsonNode *code = json_mkobject();
-				risetime = (int)calculate(year, month, day, longitude, latitude, 1, target_offset);
-				settime = (int)calculate(year, month, day, longitude, latitude, 0, target_offset);
-
-				if(dst == 1) {
-					risetime += 100;
-					settime += 100;
-					if(risetime > 2400) {
-						risetime -= 2400;
-					}
-					if(settime > 2400) {
-						settime -= 2400;
-					}
-				}
+				risetime = (int)calculate(year, month, day, longitude, latitude, 1);
+				settime = (int)calculate(year, month, day, longitude, latitude, 0);
 
 				json_append_member(code, "longitude", json_mknumber(longitude, 6));
 				json_append_member(code, "latitude", json_mknumber(latitude, 6));
