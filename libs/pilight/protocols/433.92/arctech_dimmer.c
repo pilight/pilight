@@ -281,7 +281,7 @@ static int createCode(struct JsonNode *code) {
 			unit = 0;
 		}
 		if(dimlevel >= 0) {
-			state = -1;
+			state = 1;
 		}
 		createMessage(id, unit, state, all, dimlevel, learn);
 		createStart();
