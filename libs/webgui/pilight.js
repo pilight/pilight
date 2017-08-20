@@ -152,7 +152,7 @@ function toggleTabs() {
 			'text': '',
 			'textVisible': true,
 			'theme': 'b'
-		});		
+		});
 		window.setTimeout(function() {
 			document.location = document.location;
 		}, 1000);
@@ -310,7 +310,7 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 			$('#'+sDevId+'_pendingsw').button('disable');
 			$('#'+sDevId+'_pendingsw').text(language.toggling);
 			$('#'+sDevId+'_pendingsw').button('refresh');
-			
+
 			if(oWebsocket) {
 				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+((aStates[sDevId] == "off") ? "on" : "off")+'"}}';
 				oWebsocket.send(json);
@@ -1296,7 +1296,7 @@ $(document).ready(function() {
 					'tabs' in data['registry']['webgui']) {
 					bShowTabs = data['registry']['webgui']['tabs'];
 				}
-	
+
 				if(sHTTPProtocol == "https") {
 					if('webserver' in data['registry'] &&
 						 'ssl' in data['registry']['webserver'] &&
