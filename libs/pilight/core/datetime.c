@@ -102,7 +102,7 @@ struct lc_timezone_rule {
 #define TIMEBASE_STD 1    // Rule applies to the standard time.
 #define TIMEBASE_UTC 2    // Rule applies to time in UTC.
 	uint32_t save : 4;      // The amount of time in 10 minutes.
-	char abbreviation[5];   // Abbreviation of timezone name (e.g., CEST).
+	char abbreviation[6];   // Abbreviation of timezone name (e.g., CEST).
 };
 
 struct lc_timezone_era {
@@ -112,7 +112,7 @@ struct lc_timezone_era {
   int64_t end : 38;                      // Timestamp at which this era ends.
   uint8_t end_save : 4;                  // Daylight savings at the end time.
   char abbreviation_std[6];  // Abbreviation of standard time (e.g., CET).
-  char abbreviation_dst[4];  // Abbreviation of DST (e.g., CEST).
+  char abbreviation_dst[6];  // Abbreviation of DST (e.g., CEST).
 };
 
 struct ruleset {
@@ -1254,7 +1254,7 @@ static const char *get_months(time_t year) {
   static const char common[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
   return is_leap(year) ? leap : common;
 }
-																		
+
 static void ruleset_add(struct ruleset *ruleset, const struct lc_timezone_rule *rule) {
 	assert(ruleset->rules_count < (sizeof(ruleset->rules)/sizeof(ruleset->rules[0])));
 
@@ -1411,7 +1411,7 @@ static const struct lc_timezone_rule *determine_applicable_rule(
 	 * may be the case that the code below obtains no matching rule, for
 	 * example if the timestamp is lower than any of the starting times of
 	 * the rules.
-	 * 
+	 *
 	 * This rule has no influence on the time computation, but at least
 	 * ensures that we have a proper timezone abbreviation.
 	 */
@@ -1777,7 +1777,7 @@ void datefix(int *year, int *month, int *day, int *hour, int *minute, int *secon
 time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seconds) {
 	int smin = 60, shour = (smin*60), sday = (shour*24);
 	int i = 0;
- 	time_t t = 0;
+	time_t t = 0;
 	if(year < 1970) {
 		return -1;
 	}
@@ -1822,7 +1822,7 @@ time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seco
 	}
 
 	t += sday*day;
-	if(month > 11) 	{ t += 30*sday; }	
+	if(month > 11) 	{ t += 30*sday; }
 	if(month > 10) 	{ t += 31*sday; }
 	if(month > 9) 	{ t += 30*sday; }
 	if(month > 8) 	{ t += 31*sday; }
@@ -1837,7 +1837,7 @@ time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seco
 	t += (hour*shour);
 	t += (minutes*smin);
 	t += (seconds);
-	
+
 	t -= 86400;
 
 	return t;
