@@ -102,7 +102,7 @@ struct lc_timezone_rule {
 #define TIMEBASE_STD 1    // Rule applies to the standard time.
 #define TIMEBASE_UTC 2    // Rule applies to time in UTC.
 	uint32_t save : 4;      // The amount of time in 10 minutes.
-	char abbreviation[5];   // Abbreviation of timezone name (e.g., CEST).
+	char abbreviation[6];   // Abbreviation of timezone name (e.g., CEST).
 };
 
 struct lc_timezone_era {
@@ -112,7 +112,7 @@ struct lc_timezone_era {
   int64_t end : 38;                      // Timestamp at which this era ends.
   uint8_t end_save : 4;                  // Daylight savings at the end time.
   char abbreviation_std[6];  // Abbreviation of standard time (e.g., CET).
-  char abbreviation_dst[4];  // Abbreviation of DST (e.g., CEST).
+  char abbreviation_dst[6];  // Abbreviation of DST (e.g., CEST).
 };
 
 struct ruleset {
