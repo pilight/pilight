@@ -60,8 +60,7 @@ static void createMessage(int id, int unit, int state, int all, int dimlevel, in
 		json_append_member(arctech_dimmer->message, "unit", json_mknumber(unit, 0));
 	}
 
-	if(dimlevel >= 0) {
-		state = 1;
+	if(dimlevel >= 0 && state == 1) {
 		json_append_member(arctech_dimmer->message, "dimlevel", json_mknumber(dimlevel, 0));
 	}
 
@@ -279,7 +278,7 @@ static int createCode(struct JsonNode *code) {
 			unit = 0;
 		}
 		if(dimlevel >= 0) {
-			state = -1;
+			state = 1;
 		}
 		createMessage(id, unit, state, all, dimlevel, learn);
 		createStart();

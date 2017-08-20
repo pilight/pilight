@@ -480,17 +480,21 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 
 			if(oWebsocket) {
 				if('all' in aValues && aValues['all'] == 1) {
-					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all":1,"dimlevel":'+$('#'+sDevId+'_dimmer').val()+'}}}';
 				} else {
-					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}';
+					if(this.value == "on") {
+						var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"dimlevel":'+$('#'+sDevId+'_dimmer').val()+'}}}';
+					} else {
+						var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}';
+					}
 				}
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
 				if('all' in aValues && aValues['all'] == 1) {
-					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value+'&values[all]=1');
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value+'&values[all]=1&values[dimlevel]='+$('#'+sDevId+'_dimmer').val());
 				} else {
-					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value);
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value+'&values[dimlevel]='+$('#'+sDevId+'_dimmer').val());
 				}
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
