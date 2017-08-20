@@ -47,8 +47,7 @@ static void createMessage(char **message, int id, int unit, int state, int all, 
 		x += snprintf(&(*message)[x], 255-x, "\"unit\":%d,", unit);
 	}
 
-	if(dimlevel >= 0) {
-		state = 1;
+	if(dimlevel >= 0 && state == 1) {
 		x += snprintf(&(*message)[x], 255-x, "\"dimlevel\":%d,", dimlevel);
 	}
 
@@ -267,7 +266,7 @@ static int createCode(struct JsonNode *code, char **message) {
 			unit = 0;
 		}
 		if(dimlevel >= 0) {
-			state = -1;
+			state = 1;
 		}
 		createMessage(message, id, unit, state, all, dimlevel, learn);
 		createStart();
