@@ -601,8 +601,12 @@ int whitelist_check(char *ip) {
 		unsigned int wupper = whitelist_cache[x][1][0] << 24 | whitelist_cache[x][1][1] << 16 | whitelist_cache[x][1][2] << 8 | whitelist_cache[x][1][3];
 		unsigned int nip = client[0] << 24 | client[1] << 16 | client[2] << 8 | client[3];
 
+#ifdef PILIGHT_UNITTEST
+		if((nip >= wlower && nip <= wupper)) {
+#else
 		/* Always allow 127.0.0.1 connections */
 		if((nip >= wlower && nip <= wupper) || (nip == 2130706433)) {
+#endif
 			error = 0;
 		}
 	}
