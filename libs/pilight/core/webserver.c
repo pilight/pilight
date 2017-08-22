@@ -1588,7 +1588,7 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	}
 
 	memset(&buffer, '\0', INET_ADDRSTRLEN+1);
-	uv_ip4_name((void *)&(servaddr.sin_addr), buffer, INET_ADDRSTRLEN+1);
+	uv_inet_ntop(AF_INET, (void *)&(servaddr.sin_addr), buffer, INET_ADDRSTRLEN+1);
 
 	if(whitelist_check(buffer) != 0) {
 		logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", buffer, ntohs(servaddr.sin_port));
