@@ -29,9 +29,11 @@
 #define AUTH 				1
 #define WEBSOCKET1	2
 #define WEBSOCKET2	3
+#define WHITELIST		4
 
 static int run = GET;
 static CuTest *gtc = NULL;
+static uv_timer_t *timer_req = NULL;
 
 static int steps = 0;
 
@@ -137,8 +139,16 @@ static void async_close_cb(uv_async_t *handle) {
 }
 
 static void callback(int code, char *data, int size, char *type, void *userdata) {
-	if(run == GET) {
+	if(run == GET || run == WHITELIST) {
 		int len = sizeof(get_tests)/sizeof(get_tests[0]);
+		/*
+		 * This code should never be reached, but when it does
+		 * the config size is larger than the expected 220 due
+		 * to the additional whitelist parameter.
+		 */
+		if(run == WHITELIST && size == 242) {
+			size = 220;
+		}
 		CuAssertIntEquals(gtc, get_tests[testnr].code, code);
 		CuAssertIntEquals(gtc, get_tests[testnr].size, size);
 		CuAssertStrEquals(gtc, get_tests[testnr].type, type);
@@ -280,6 +290,10 @@ static void write_cb(uv_poll_t *req) {
 	}
 }
 
+static void stop(uv_timer_t *req) {
+	uv_async_send(async_close_req);
+}
+
 static void *test(void) {
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct sockaddr_in addr;
@@ -410,7 +424,7 @@ static void test_webserver(CuTest *tc) {
 
 	ssl_init();
 
-	if(run == GET || run == AUTH) {
+	if(run == GET || run == WHITELIST || run == AUTH) {
 		eventpool_init(EVENTPOOL_NO_THREADS);
 	} else if(run == WEBSOCKET1 || run == WEBSOCKET2) {
 		eventpool_init(EVENTPOOL_THREADED);
@@ -418,8 +432,9 @@ static void test_webserver(CuTest *tc) {
 	}
 	webserver_start();
 
-	if(run == GET) {
+	if(run == GET || run == WHITELIST) {
 		char *file = STRDUP(get_tests[testnr].url);
+		CuAssertPtrNotNull(tc, file);
 		str_replace("127.0.0.1:", "..", &file);
 		str_replace("10080", "", &file);
 		str_replace("10443", "", &file);
@@ -430,6 +445,7 @@ static void test_webserver(CuTest *tc) {
 		http_get_content(get_tests[testnr].url, callback, NULL);
 	} else if(run == AUTH) {
 		char *file = STRDUP(auth_tests[testnr].url);
+		CuAssertPtrNotNull(tc, file);
 		str_replace("127.0.0.1:", "..", &file);
 		str_replace("10080", "", &file);
 		str_replace("10443", "", &file);
@@ -442,6 +458,13 @@ static void test_webserver(CuTest *tc) {
 		test();
 	}
 
+	if(run == WHITELIST) {
+		timer_req = MALLOC(sizeof(uv_timer_t));
+		CuAssertPtrNotNull(tc, timer_req);
+		uv_timer_init(uv_default_loop(), timer_req);
+		uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);
+	}
+
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
 	uv_run(uv_default_loop(), UV_RUN_ONCE);
@@ -450,13 +473,21 @@ static void test_webserver(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
-	if(run == GET || run == AUTH) {
+	if(run == GET || run == WHITELIST || run == AUTH) {
 		http_gc();
 	}
 	ssl_gc();
 	storage_gc();
 	eventpool_gc();
 
+	switch(run) {
+		case WHITELIST:
+			CuAssertIntEquals(tc, 0, testnr);
+		break;
+		case GET:
+			CuAssertIntEquals(tc, 20, testnr);
+		break;
+	}
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -481,6 +512,30 @@ static void test_webserver_get(CuTest *tc) {
 	steps = 0;
 
 	run = GET;
+	test_webserver(tc);
+}
+
+static void test_webserver_whitelist(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	if(gtc != NULL && gtc->failed == 1) {
+		return;
+	}
+
+	FILE *f = fopen("webserver.json", "w");
+	fprintf(f,
+		"{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"pem-file\":\"../res/pilight.pem\",\"webserver-root\":\"../libs/webgui/\","\
+		"\"webserver-enable\":1,\"webserver-http-port\":10080,\"webserver-https-port\":10443,\"whitelist\":\"0.0.0.0\"},"\
+		"\"hardware\":{},\"registry\":{}}"
+	);
+	fclose(f);
+
+	gtc = tc;
+	steps = 0;
+
+	run = WHITELIST;
 	test_webserver(tc);
 }
 
@@ -561,6 +616,7 @@ CuSuite *suite_webserver(void) {
 	CuSuite *suite = CuSuiteNew();
 
 	SUITE_ADD_TEST(suite, test_webserver_get);
+	SUITE_ADD_TEST(suite, test_webserver_whitelist);
 	SUITE_ADD_TEST(suite, test_webserver_auth);
 	SUITE_ADD_TEST(suite, test_webserver_websocket1);
 	SUITE_ADD_TEST(suite, test_webserver_websocket2);
