@@ -128,7 +128,7 @@ static void test_whitelist_check(CuTest *tc) {
 		FILE *f = fopen("network_whitelist.json", "w");
 		fprintf(f,
 			"{\"devices\":{},\"gui\":{},\"rules\":{},"\
-			"\"settings\":{\"whitelist\":\"1.1.1.1\"},"\
+			"\"settings\":{\"whitelist\":\"1.1.1.1,127.0.0.1\"},"\
 			"\"hardware\":{},\"registry\":{}}"
 		);
 		fclose(f);
@@ -137,6 +137,9 @@ static void test_whitelist_check(CuTest *tc) {
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("network_whitelist.json", CONFIG_SETTINGS));
 
+		/*
+		 * When we are unit testing localhost is not allowed by default
+		 */
 		CuAssertIntEquals(tc, 0, whitelist_check("127.0.0.1"));
 		whitelist_free();
 
