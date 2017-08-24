@@ -213,6 +213,9 @@ static unsigned short gpio433Settings(struct JsonNode *json) {
 			return EXIT_FAILURE;
 		}
 	}
+	if(gpio_433_out > -1 && gpio_433_in > -1 && gpio_433_in == gpio_433_out) {
+		return EXIT_FAILURE;
+	}
 	return EXIT_SUCCESS;
 }
 

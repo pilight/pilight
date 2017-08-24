@@ -514,6 +514,66 @@ static void test_hardware_433gpio_param4(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
+static void test_hardware_433gpio_param5(CuTest *tc) {
+	if(wiringXSetup("test", foo) != -999) {
+		printf("[ %-31.31s (preload libgpio)]\n", __FUNCTION__);
+		fflush(stdout);
+		wiringXGC();
+		return;
+	}
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	memtrack();
+
+	hardware_init();
+	gpio433Init();
+
+	FILE *f = fopen("hardware_433gpio.json", "w");
+	fprintf(f,
+		"{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"gpio-platform\":\"gpio-stub\"},"\
+		"\"hardware\":{},\"registry\":{}}"
+	);
+	fclose(f);
+	eventpool_init(EVENTPOOL_NO_THREADS);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("hardware_433gpio.json", CONFIG_SETTINGS));
+
+	struct hardware_t *hardware = NULL;
+	if(hardware_select_struct(ORIGIN_MASTER, "433gpio", &hardware) == 0) {
+		if(hardware->init != NULL) {
+			if(hardware->comtype == COMOOK) {
+				struct JsonNode *jsettings = json_decode( "{\"433gpio\":{\"receiver\":2,\"sender\":2}}");
+
+				struct JsonNode *jchild = json_first_child(jsettings);
+				struct JsonNode *jreceiver = json_first_child(jchild);
+				struct JsonNode *jsender = jreceiver->next;
+
+				CuAssertIntEquals(tc, EXIT_SUCCESS, hardware->settings(jreceiver));
+				CuAssertIntEquals(tc, EXIT_FAILURE, hardware->settings(jsender));
+				json_delete(jsettings);
+				CuAssertIntEquals(tc, EXIT_FAILURE, hardware->init());
+			}
+		}
+	}
+
+	uv_run(uv_default_loop(), UV_RUN_NOWAIT);
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
+	}
+
+	storage_gc();
+	hardware_gc();
+	eventpool_gc();
+	wiringXGC();
+
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
 CuSuite *suite_hardware_433gpio(void) {
 	CuSuite *suite = CuSuiteNew();
 
@@ -522,6 +582,7 @@ CuSuite *suite_hardware_433gpio(void) {
 	SUITE_ADD_TEST(suite, test_hardware_433gpio_param2);
 	SUITE_ADD_TEST(suite, test_hardware_433gpio_param3);
 	SUITE_ADD_TEST(suite, test_hardware_433gpio_param4);
+	SUITE_ADD_TEST(suite, test_hardware_433gpio_param5);
 	SUITE_ADD_TEST(suite, test_hardware_433gpio_receive);
 	SUITE_ADD_TEST(suite, test_hardware_433gpio_receive_too_large_pulse);
 	SUITE_ADD_TEST(suite, test_hardware_433gpio_send);
