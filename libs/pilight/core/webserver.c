@@ -84,6 +84,7 @@
 static int https_port = WEBSERVER_HTTPS_PORT;
 #endif
 
+#ifdef WEBSERVER
 static uv_poll_t *poll_http_req = NULL;
 static uv_poll_t *poll_https_req = NULL;
 static uv_async_t *async_req = NULL;
@@ -248,6 +249,7 @@ static void create_404_header(const char *in, char **p) {
 		"</body></html>",
 		(const char *)in);
 }
+#endif // webserver
 
 const char *http_get_header(struct connection_t *conn, const char *s) {
 	int i = 0;
@@ -261,6 +263,7 @@ const char *http_get_header(struct connection_t *conn, const char *s) {
 	return NULL;
 }
 
+#ifdef WEBSERVER
 void send_auth_request(uv_poll_t *req) {
 	/*
 	 * Make sure we execute in the main thread
@@ -1075,6 +1078,7 @@ static void *broadcast(int reason, void *param) {
 
 	return NULL;
 }
+#endif //webserver
 
 static char *skip(char **buf, const char *delimiters) {
   char *p, *begin_word, *end_word, *end_delimiters;
@@ -1192,6 +1196,7 @@ int http_parse_request(char *buffer, struct connection_t *c) {
 	return 0;
 }
 
+#ifdef WEBSERVER
 static void webserver_client_add(uv_poll_t *req) {
 	/*
 	 * Make sure we execute in the main thread
@@ -1879,3 +1884,4 @@ int webserver_start(void) {
 
 	return 0;
 }
+#endif //webserver

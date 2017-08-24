@@ -51,10 +51,12 @@ typedef struct connection_t {
 #endif
 } connection_t;
 
+#ifdef WEBSERVER
 int webserver_gc(void);
 int webserver_start(void);
 void *webserver_broadcast(void *);
 void webserver_create_header(char **, const char *, char *, unsigned long);
+#endif
 int http_parse_request(char *, struct connection_t *);
 const char *http_get_header(struct connection_t *, const char *);
 

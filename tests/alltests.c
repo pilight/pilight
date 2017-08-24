@@ -43,7 +43,9 @@ CuSuite *suite_arp(void);
 CuSuite *suite_http(void);
 CuSuite *suite_ping(void);
 CuSuite *suite_mail(void);
+#ifdef WEBSERVER
 CuSuite *suite_webserver(void);
+#endif
 CuSuite *suite_socket(void);
 CuSuite *suite_log(void);
 CuSuite *suite_protocols_433(void);
@@ -130,22 +132,24 @@ int RunAllTests(void) {
 	suites[nr++] = suite_network();
 	suites[nr++] = suite_binary();
 	suites[nr++] = suite_proc();
-	suites[nr++] = suite_datetime();
-	suites[nr++] = suite_json();
-	suites[nr++] = suite_cast();
+	suites[nr++] = suite_datetime(); // Ported
+	suites[nr++] = suite_json(); // Ported
+	suites[nr++] = suite_cast(); // Ported
 	suites[nr++] = suite_sha256cache();
 	suites[nr++] = suite_strptime();
 	suites[nr++] = suite_options();
 	suites[nr++] = suite_dso(); // Fix the dll creation
-	suites[nr++] = suite_eventpool();
+	suites[nr++] = suite_eventpool(); // Ported
 	suites[nr++] = suite_log();
 	suites[nr++] = suite_ssdp();
 	suites[nr++] = suite_ping();
 	suites[nr++] = suite_ntp();
 	suites[nr++] = suite_arp();
-	suites[nr++] = suite_http();
-	suites[nr++] = suite_mail();
-	suites[nr++] = suite_webserver();
+	suites[nr++] = suite_http(); // Ported
+	suites[nr++] = suite_mail(); // Ported
+#ifdef WEBSERVER
+	suites[nr++] = suite_webserver(); // Ported
+#endif
 	suites[nr++] = suite_socket();
 	suites[nr++] = suite_protocols_433();
 	suites[nr++] = suite_protocols_api();
@@ -165,14 +169,14 @@ int RunAllTests(void) {
 	suites[nr++] = suite_protocols_gpio_switch();
 	suites[nr++] = suite_hardware_433gpio();
 #endif
-	suites[nr++] = suite_event_operators();
-	suites[nr++] = suite_event_functions();
+	suites[nr++] = suite_event_operators(); // Ported
+	suites[nr++] = suite_event_functions(); // Ported
 	suites[nr++] = suite_event_actions_switch();
 	suites[nr++] = suite_event_actions_toggle();
 	suites[nr++] = suite_event_actions_label();
 	suites[nr++] = suite_event_actions_dim();
 	suites[nr++] = suite_event_actions_mail();
-	suites[nr++] = suite_events();
+	suites[nr++] = suite_events(); // Ported
 
 	for(i=0;i<nr;i++) {
 		CuSuiteAddSuite(suite, suites[i]);

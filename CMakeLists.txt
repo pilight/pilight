@@ -20,6 +20,10 @@ if(COVERALLS)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage") # enabling coverage
 endif()
 
+if(${WEBSERVER_HTTPS} MATCHES "OFF")
+	set(WEBSERVER OFF CACHE BOOL "enable the built-in webserver")
+endif()
+
 if(WIN32)
 	add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else()
