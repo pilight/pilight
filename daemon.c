@@ -2500,6 +2500,7 @@ int main_gc(void) {
 #endif
 	dso_gc();
 	log_gc();
+	ssl_gc();
 	if(configtmp != NULL) {
 		FREE(configtmp);
 	}
