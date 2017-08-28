@@ -113,9 +113,9 @@ static void *thread(void *param) {
 	char UTC[] = "UTC", *tz = NULL;
 
 	time_t timenow = 0;
-	struct tm tm;
+	struct tm tm, tm_utc;
 	int nrloops = 0, risetime = 0, settime = 0, hournow = 0, firstrun = 0;
-	int year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0;
+	int year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0, offset = 0;
 
 	threads++;
 
@@ -164,6 +164,10 @@ static void *thread(void *param) {
 			minute = tm.tm_min;
 			second = tm.tm_sec;
 
+			if(localtime_l(timenow, &tm_utc, UTC) == 0) {
+				offset = tm.tm_hour-tm_utc.tm_hour;
+			}
+
 			hournow = (hour*100)+minute;
 			if(((hournow == 0 || hournow == risetime || hournow == settime) && second == 0)
 				 || (settime == 0 && risetime == 0)) {
@@ -174,8 +178,8 @@ static void *thread(void *param) {
 
 				sunriseset->message = json_mkobject();
 				JsonNode *code = json_mkobject();
-				risetime = (int)calculate(year, month, day, longitude, latitude, 1);
-				settime = (int)calculate(year, month, day, longitude, latitude, 0);
+				risetime = (int)calculate(year, month, day, longitude, latitude, 1)+(offset*100);
+				settime = (int)calculate(year, month, day, longitude, latitude, 0)+(offset*100);
 
 				json_append_member(code, "longitude", json_mknumber(longitude, 6));
 				json_append_member(code, "latitude", json_mknumber(latitude, 6));
