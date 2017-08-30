@@ -188,6 +188,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 						}
 						return -1;
 					}
+					array_free(&array, l);
 				}
 				jdchild = jdchild->next;
 			}
