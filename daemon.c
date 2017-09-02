@@ -67,6 +67,7 @@
 #include "libs/pilight/core/proc.h"
 #include "libs/pilight/core/ntp.h"
 #include "libs/pilight/core/config.h"
+#include "libs/pilight/lua/lua.h"
 
 #ifdef EVENTS
 	#include "libs/pilight/events/events.h"
@@ -2537,6 +2538,7 @@ int main_gc(void) {
 	dso_gc();
 	log_gc();
 	ssl_gc();
+	plua_gc();
 	if(configtmp != NULL) {
 		FREE(configtmp);
 	}

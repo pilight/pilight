@@ -16,13 +16,11 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _EVENT_OPERATOR_NE_H_
-#define _EVENT_OPERATOR_NE_H_
+#ifndef _PLUA_LIBRARY_H_
+#define _PLUA_LIBRARY_H_
 
-#include "../operator.h"
+#include <lua.h>
 
-struct event_operators_t *operator_ne;
-
-void operatorNeInit(void);
+void plua_register_library(struct lua_State *);
 
 #endif
