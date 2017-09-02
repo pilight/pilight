@@ -347,30 +347,33 @@ static void eventpool_execute(uv_async_t *handle) {
 int eventpool_gc(void) {
 	if(lockinit == 1) {
 		uv_mutex_lock(&listeners_lock);
-		struct eventqueue_t *queue = NULL;
-		while(eventqueue) {
-			queue = eventqueue;
-			if(eventqueue->data != NULL && eventqueue->done != NULL) {
-				eventqueue->done(eventqueue->data);
-			}
-			eventqueue = eventqueue->next;
-			FREE(queue);
+	}
+	struct eventqueue_t *queue = NULL;
+	while(eventqueue) {
+		queue = eventqueue;
+		if(eventqueue->data != NULL && eventqueue->done != NULL) {
+			eventqueue->done(eventqueue->data);
 		}
-		struct eventpool_listener_t *listeners = NULL;
-		while(eventpool_listeners) {
-			listeners = eventpool_listeners;
-			eventpool_listeners = eventpool_listeners->next;
-			FREE(listeners);
-		}
-		if(eventpool_listeners != NULL) {
-			FREE(eventpool_listeners);
-		}
-		threads = EVENTPOOL_NO_THREADS;
+		eventqueue = eventqueue->next;
+		FREE(queue);
+	}
+	struct eventpool_listener_t *listeners = NULL;
+	while(eventpool_listeners) {
+		listeners = eventpool_listeners;
+		eventpool_listeners = eventpool_listeners->next;
+		FREE(listeners);
+	}
+	if(eventpool_listeners != NULL) {
+		FREE(eventpool_listeners);
+	}
+	threads = EVENTPOOL_NO_THREADS;
 
-		int i = 0;
-		for(i=0;i<REASON_END;i++) {
-			nrlisteners[i] = 0;
-		}
+	int i = 0;
+	for(i=0;i<REASON_END;i++) {
+		nrlisteners[i] = 0;
+	}
+
+	if(lockinit == 1) {
 		uv_mutex_unlock(&listeners_lock);
 	}
 	eventpoolinit = 0;

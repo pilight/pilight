@@ -19,6 +19,7 @@
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/eventpool.h"
+#include "../libs/pilight/lua/lua.h"
 #include "../libs/pilight/protocols/protocol.h"
 #include "../libs/pilight/events/events.h"
 #include "../libs/pilight/events/action.h"
@@ -72,7 +73,6 @@ static void test_event_actions_switch_check_parameters(CuTest *tc) {
 	actionSwitchInit();
 	CuAssertStrEquals(tc, "switch", action_switch->name);
 
-	eventpool_init(EVENTPOOL_NO_THREADS);
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_switch.json", CONFIG_DEVICES));
 
@@ -461,6 +461,7 @@ static void test_event_actions_switch_check_parameters(CuTest *tc) {
 	uv_walk(uv_default_loop(), walk_cb, NULL);
 	uv_run(uv_default_loop(), UV_RUN_ONCE);
 
+
 	event_action_gc();
 	event_function_gc();
 	protocol_gc();
@@ -746,6 +747,11 @@ static void test_event_actions_switch_run_override(CuTest *tc) {
 	actionSwitchInit();
 	CuAssertStrEquals(tc, "switch", action_switch->name);
 
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_switch.json", CONFIG_SETTINGS));
+	event_operator_init();
+	storage_gc();
+
 	event_init();
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_switch.json", CONFIG_DEVICES | CONFIG_RULES));
@@ -798,6 +804,7 @@ static void test_event_actions_switch_run_override(CuTest *tc) {
 	protocol_gc();
 	eventpool_gc();
 	storage_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, steps);
 	CuAssertIntEquals(tc, 0, xfree());
@@ -806,15 +813,21 @@ static void test_event_actions_switch_run_override(CuTest *tc) {
 CuSuite *suite_event_actions_switch(void) {
 	CuSuite *suite = CuSuiteNew();
 
-	FILE *f = fopen("event_actions_switch.json", "w");
-	fprintf(f,
-		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
+	char config[1024] = "{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
 		"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
 		"\"gui\":{},\"rules\":{"\
 			"\"rule1\":{\"rule\":\"IF switch.state == on THEN switch DEVICE switch TO on\",\"active\":1}"\
-		"},\"settings\":{},\"hardware\":{},\"registry\":{}}"
-	);
+		"},\"settings\":{\"operators-root\":\"%s../libs/pilight/events/operators/\"},\"hardware\":{},\"registry\":{}}";
+	char *file = STRDUP(__FILE__);
+	if(file == NULL) {
+		OUT_OF_MEMORY
+	}
+	str_replace("event_actions_switch.c", "", &file);
+
+	FILE *f = fopen("event_actions_switch.json", "w");
+	fprintf(f, config, file);
 	fclose(f);
+	FREE(file);	
 
 	SUITE_ADD_TEST(suite, test_event_actions_switch_check_parameters);
 	SUITE_ADD_TEST(suite, test_event_actions_switch_run);

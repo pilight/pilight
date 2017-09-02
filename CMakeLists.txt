@@ -275,11 +275,45 @@ if(NOT WIN32)
 	else()
 		message(STATUS "Looking for libmbedx509 - found (${CMAKE_MBEDX509_LIBS_INIT})")
 	endif()
+
+	find_library(CMAKE_LUA_LIBS_INIT
+		NAME lua lua5 lua 5.1 lua5.2 lua5.3
+		PATHS
+			${CROSS_COMPILE_LIBS}
+			/usr/lib
+			/usr/lib32
+			/usr/lib64
+			/usr/lib/i386-linux-gnu
+			/usr/lib/x86_64-linux-gnu
+			/usr/local/lib
+			/usr/local/lib32
+			/usr/local/lib64
+			/usr/lib/arm-linux-gnueabi
+			/usr/lib/arm-linux-gnueabihf
+			/usr/lib/aarch64-linux-gnu
+		NO_DEFAULT_PATH)
+
+	if(${CMAKE_LUA_LIBS_INIT} MATCHES "CMAKE_LUA_LIBS_INIT-NOTFOUND")
+		message(FATAL_ERROR "Looking for liblua - not found")
+	else()
+		if(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.1.*")
+			set(CMAKE_LUA_LIBS_VERSION "5.1")
+		elseif(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.2.*")
+			set(CMAKE_LUA_LIBS_VERSION "5.2")
+		elseif(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.3.*")
+			set(CMAKE_LUA_LIBS_VERSION "5.3")
+		elseif(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.*")
+			set(CMAKE_LUA_LIBS_VERSION "5")
+		endif()
+		find_path(CMAKE_LUA_INCLUDE_DIR "lua${CMAKE_LUA_LIBS_VERSION}/lua.h")
+		message(STATUS "Looking for liblua - found (${CMAKE_LUA_LIBS_INIT})")
+	endif()
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/inc)
 include_directories(${PROJECT_SOURCE_DIR}/libs/libuv)
 include_directories(/usr/local/include/)
+include_directories("${CMAKE_LUA_INCLUDE_DIR}/lua${CMAKE_LUA_LIBS_VERSION}/")
 
 add_subdirectory(inc)
 add_subdirectory(libs)
@@ -383,6 +417,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_MBEDTLS_LIBS_INIT})
 	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_MBEDCRYPTO_LIBS_INIT})
 	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_MBEDX509_LIBS_INIT})
+	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_LUA_LIBS_INIT})
 
 	if(CMAKE_BUILD_TYPE MATCHES DEBUG AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^mips")
 		target_link_libraries(${PROJECT_NAME}_static pthread)
@@ -405,6 +440,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_MBEDTLS_LIBS_INIT})
 	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_MBEDCRYPTO_LIBS_INIT})
 	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_MBEDX509_LIBS_INIT})
+	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_LUA_LIBS_INIT})
 
 	if(${WEBSERVER_HTTPS} MATCHES "ON")
 		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_SSL_LIBS_INIT})

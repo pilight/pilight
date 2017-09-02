@@ -20,6 +20,7 @@
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/eventpool.h"
 #include "../libs/pilight/protocols/protocol.h"
+#include "../libs/pilight/lua/lua.h"
 #include "../libs/pilight/events/events.h"
 #include "../libs/pilight/events/action.h"
 #include "../libs/pilight/events/operator.h"
@@ -1062,6 +1063,11 @@ static void test_event_actions_dim_run_override(CuTest *tc) {
 	actionDimInit();
 	CuAssertStrEquals(tc, "dim", action_dim->name);
 
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_SETTINGS));
+	event_operator_init();
+	storage_gc();
+
 	event_init();
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_DEVICES | CONFIG_RULES));
@@ -1114,6 +1120,7 @@ static void test_event_actions_dim_run_override(CuTest *tc) {
 	protocol_gc();
 	eventpool_gc();
 	storage_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, steps);
 	CuAssertIntEquals(tc, 0, xfree());
@@ -1122,15 +1129,21 @@ static void test_event_actions_dim_run_override(CuTest *tc) {
 CuSuite *suite_event_actions_dim(void) {
 	CuSuite *suite = CuSuiteNew();
 
-	FILE *f = fopen("event_actions_dimmer.json", "w");
-	fprintf(f,
-		"{\"devices\":{\"dimmer\":{\"protocol\":[\"generic_dimmer\"],\"id\":[{\"id\":100}],\"state\":\"off\",\"dimlevel\":1,\"dimlevel-minimum\":1,\"dimlevel-maximum\":15}," \
+	char config[1024] = "{\"devices\":{\"dimmer\":{\"protocol\":[\"generic_dimmer\"],\"id\":[{\"id\":100}],\"state\":\"off\",\"dimlevel\":1,\"dimlevel-minimum\":1,\"dimlevel-maximum\":15}," \
 		"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"bar\",\"color\":\"green\"}}," \
 		"\"gui\":{},\"rules\":{"\
 			"\"rule1\":{\"rule\":\"IF dimmer.state == on THEN dim DEVICE dimmer TO 1\",\"active\":1}"\
-		"},\"settings\":{},\"hardware\":{},\"registry\":{}}"
-	);
+		"},\"settings\":{\"operators-root\":\"%s../libs/pilight/events/operators/\"},\"hardware\":{},\"registry\":{}}";
+	char *file = STRDUP(__FILE__);
+	if(file == NULL) {
+		OUT_OF_MEMORY
+	}
+	str_replace("event_actions_dim.c", "", &file);
+
+	FILE *f = fopen("event_actions_dimmer.json", "w");
+	fprintf(f, config, file);
 	fclose(f);
+	FREE(file);	
 
 	SUITE_ADD_TEST(suite, test_event_actions_dim_check_parameters);
 	SUITE_ADD_TEST(suite, test_event_actions_dim_run);

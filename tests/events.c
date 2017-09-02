@@ -17,14 +17,9 @@
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/binary.h"
+#include "../libs/pilight/lua/lua.h"
 #include "../libs/pilight/events/events.h"
 #include "../libs/pilight/events/operator.h"
-#include "../libs/pilight/events/operators/eq.h"
-#include "../libs/pilight/events/operators/ne.h"
-#include "../libs/pilight/events/operators/or.h"
-#include "../libs/pilight/events/operators/gt.h"
-#include "../libs/pilight/events/operators/lt.h"
-#include "../libs/pilight/events/operators/plus.h"
 #include "../libs/pilight/events/action.h"
 #include "../libs/pilight/events/actions/switch.h"
 #include "../libs/pilight/events/actions/dim.h"
@@ -129,7 +124,7 @@ static struct tests_t get_tests[] = {
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF 1 == 1 THEN switch DEVICE switch TO on\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[0],
 		{ &receives[0] },
@@ -140,7 +135,7 @@ static struct tests_t get_tests[] = {
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF 1 == 0 THEN switch DEVICE switch TO on\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_NOWAIT,
 		0, &updates1[0],
 		{ NULL }, { 0 }
@@ -150,7 +145,7 @@ static struct tests_t get_tests[] = {
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF ((1 == 1)) THEN switch DEVICE switch TO on\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[0],
 		{ &receives[0] },
@@ -161,7 +156,7 @@ static struct tests_t get_tests[] = {
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF 1 == 1 AND a == a THEN switch DEVICE switch TO on\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[0],
 		{ &receives[0] },
@@ -172,7 +167,7 @@ static struct tests_t get_tests[] = {
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF 1 == '1' THEN switch DEVICE switch TO on\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[0],
 		{ &receives[0] },
@@ -183,7 +178,7 @@ static struct tests_t get_tests[] = {
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF 1 == \\\"1\\\" THEN switch DEVICE switch TO on\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[0],
 		{ &receives[0] },
@@ -194,7 +189,7 @@ static struct tests_t get_tests[] = {
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF 1 == 1 OR a == b THEN switch DEVICE switch TO on\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[0],
 		{ &receives[0] },
@@ -205,7 +200,7 @@ static struct tests_t get_tests[] = {
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF 1 == 2 OR a == a THEN switch DEVICE switch TO on\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[0],
 		{ &receives[0] },
@@ -216,7 +211,7 @@ static struct tests_t get_tests[] = {
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF 1 == 2 OR a == a AND 1 == a THEN switch DEVICE switch TO on\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_NOWAIT,
 		0, &updates1[0],
 		{ &receives[0] },
@@ -227,7 +222,7 @@ static struct tests_t get_tests[] = {
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF 1 == 1 OR a == b AND 1 == 1 THEN switch DEVICE switch TO on\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[0],
 		{ &receives[0] },
@@ -238,7 +233,7 @@ static struct tests_t get_tests[] = {
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF 1 == 2 OR 1 == 1 AND 2 == 1 AND 1 == 1 THEN switch DEVICE switch TO on\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_NOWAIT,
 		0, &updates1[0],
 		{ NULL }, { 0 }
@@ -248,7 +243,7 @@ static struct tests_t get_tests[] = {
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF 1 == 0 OR (2 == 0 AND (2 == 2 OR 1 == 1)) THEN switch DEVICE switch TO on\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_NOWAIT,
 		0, &updates1[0],
 		{ NULL }, { 0 }
@@ -258,7 +253,7 @@ static struct tests_t get_tests[] = {
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF 0 > 10 AND 10 > 2 THEN switch DEVICE switch TO on\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_NOWAIT,
 		0, &updates1[0],
 		{ NULL }, { 0 }
@@ -268,7 +263,7 @@ static struct tests_t get_tests[] = {
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF . == on THEN switch DEVICE switch TO on\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_NOWAIT,
 		0, &updates1[0],
 		{ NULL }, { 0 }
@@ -278,7 +273,7 @@ static struct tests_t get_tests[] = {
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF switch.state == off THEN switch DEVICE switch TO on\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[0],
 		{ &receives[0] },
@@ -289,7 +284,7 @@ static struct tests_t get_tests[] = {
 		"{\"devices\":{\"dimmer\":{\"protocol\":[\"generic_dimmer\"],\"id\":[{\"id\":100}],\"state\":\"off\",\"dimlevel\":10}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF dimmer.dimlevel == 10 THEN switch DEVICE dimmer TO on\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[1],
 		{ &receives[1] },
@@ -303,7 +298,7 @@ static struct tests_t get_tests[] = {
 		"{\"devices\":{\"dimmer\":{\"protocol\":[\"generic_dimmer\"],\"id\":[{\"id\":100}],\"state\":\"off\",\"dimlevel\":10}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF datetime.hour < datetime.hour + 10 THEN switch DEVICE dimmer TO on\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		1, &updates2[1],
 		{ &receives[1] },
@@ -317,7 +312,7 @@ static struct tests_t get_tests[] = {
 		"}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF switch.state != switch1.state THEN switch DEVICE switch TO switch1.state\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[0],
 		{ &receives[0] },
@@ -328,7 +323,7 @@ static struct tests_t get_tests[] = {
 		"{\"devices\":{\"dimmer\":{\"protocol\":[\"generic_dimmer\"],\"id\":[{\"id\":100}],\"state\":\"off\",\"dimlevel\":10}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF 1 == 1 THEN dim DEVICE dimmer TO RANDOM(1, 10)\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[1],
 		{ NULL }, { 0 }
@@ -342,7 +337,7 @@ static struct tests_t get_tests[] = {
 		"},"\
 		"\"gui\":{},"\
 		"\"rules\":{\"dimmer\":{\"rule\":\"IF 1 == 1 THEN dim DEVICE dimmer TO RANDOM(dimmer1.dimlevel, dimmer2.dimlevel)\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[1],
 		{ NULL }, { 0 }
@@ -354,7 +349,7 @@ static struct tests_t get_tests[] = {
 		"},"\
 		"\"gui\":{},"\
 		"\"rules\":{\"dimmer\":{\"rule\":\"IF 1 == 1 THEN dim DEVICE dimmer TO DATE_FORMAT('2016,01,02', '%%Y,%%m,%%d', %%d)\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[1],
 		{ &receives[1] },
@@ -368,7 +363,7 @@ static struct tests_t get_tests[] = {
 		"},"\
 		"\"gui\":{},"\
 		"\"rules\":{\"dimmer\":{\"rule\":\"IF 1 == 1 THEN dim DEVICE dimmer TO 2 AND switch DEVICE switch TO on\",\"active\":1}},"\
-		"\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[1],
 		{ &receives[1], &receives[0] },
@@ -384,7 +379,7 @@ static struct tests_t get_tests[] = {
 		"\"rules\":{"\
 			"\"dimmer\":{\"rule\":\"IF 1 == 1 THEN dim DEVICE dimmer TO 2\",\"active\":1},"\
 			"\"switch\":{\"rule\":\"IF 1 == 1 THEN switch DEVICE switch TO on\",\"active\":1}"\
-		"},\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[1],
 		{ &receives[1], &receives[0] },
@@ -400,7 +395,7 @@ static struct tests_t get_tests[] = {
 		"\"rules\":{"\
 			"\"dimmer\":{\"rule\":\"IF 1 == 1 THEN dim DEVICE dimmer TO 2\",\"active\":0},"\
 			"\"switch\":{\"rule\":\"IF 1 == 1 THEN switch DEVICE switch TO on\",\"active\":1}"\
-		"},\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[1],
 		{ &receives[0] },
@@ -414,7 +409,7 @@ static struct tests_t get_tests[] = {
 		"\"gui\":{},"\
 		"\"rules\":{"\
 			"\"switch\":{\"rule\":\"IF DATE_FORMAT(DATE_ADD('2015-01-01 21:00:00', RANDOM(1, 59) MINUTE), '%%Y-%%m-%%d %%H:%%M:%%S', '%%H.%%M') > 21.00 THEN switch DEVICE switch TO on\",\"active\":1}"\
-		"},\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[1],
 		{ &receives[0] },
@@ -428,7 +423,7 @@ static struct tests_t get_tests[] = {
 		"\"gui\":{},"\
 		"\"rules\":{"\
 			"\"switch\":{\"rule\":\"IF arctech_switch.id == 1 AND arctech_switch.unit == 1 THEN switch DEVICE switch TO on\",\"active\":1}"\
-		"},\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		1, &updates2[0],
 		{ &receives[0] },
@@ -443,7 +438,7 @@ static struct tests_t get_tests[] = {
 		"\"gui\":{},"\
 		"\"rules\":{"\
 			"\"switch\":{\"rule\":\"IF switch.state == off AND DATE_FORMAT(test, %%Y%%m%%d%%H%%M%%S) == 20160314205648 THEN switch DEVICE switch TO on\",\"active\":1}"\
-		"},\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[0],
 		{ &receives[0] },
@@ -458,7 +453,7 @@ static struct tests_t get_tests[] = {
 		"\"gui\":{},"\
 		"\"rules\":{"\
 			"\"switch\":{\"rule\":\"IF switch.state == off AND DATE_FORMAT(DATE_ADD(test, +12 HOUR), '%%Y-%%m-%%d %%H:%%M:%%S', '%%Y%%m%%d%%H%%M%%S') == 20160315085648 THEN switch DEVICE switch TO on\",\"active\":1}"\
-		"},\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_DEFAULT,
 		0, &updates1[0],
 		{ &receives[0] },
@@ -473,7 +468,7 @@ static struct tests_t get_tests[] = {
 		"\"gui\":{},"\
 		"\"rules\":{"\
 			"\"switch\":{\"rule\":\"IF switch1.state == off THEN toggle DEVICE switch BETWEEN on AND off\",\"active\":1}"\
-		"},\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		UV_RUN_NOWAIT,
 		0, &updates1[0],
 		{ &receives[2] },
@@ -542,19 +537,28 @@ static void test_events(CuTest *tc) {
 
 		memtrack();
 
+		char settings[1024] = "{\"operators-root\":\"%s../libs/pilight/events/operators/\"}";
+		char settings1[1024], *p = settings1;
+		char *file = STRDUP(__FILE__);
+		CuAssertPtrNotNull(tc, file);
+		memset(&settings1, '\0', 1024);
+		str_replace("events.c", "", &file);
+		snprintf(p, 1024, settings, file);
+		FREE(file);
+
 		FILE *f = fopen("events.json", "w");
 		fprintf(f,
 			get_tests[testnr].config,
-			""
+			settings1
 		);
 		fclose(f);
 
-		operatorEqInit();
-		operatorNeInit();
-		operatorOrInit();
-		operatorGtInit();
-		operatorLtInit();
-		operatorPlusInit();
+		storage_init();
+		CuAssertIntEquals(tc, 0, storage_read("events.json", CONFIG_SETTINGS));
+		event_operator_init();
+		storage_gc();
+
+		storage_init();
 		actionSwitchInit();
 		actionToggleInit();
 		actionDimInit();
@@ -566,9 +570,8 @@ static void test_events(CuTest *tc) {
 		genericDimmerInit();
 		datetimeInit();
 
-		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("events.json", CONFIG_DEVICES | CONFIG_RULES));
-
+		
 		eventpool_init(EVENTPOOL_NO_THREADS);
 		eventpool_callback(REASON_CONTROL_DEVICE, control_device);
 		event_init();
@@ -600,6 +603,7 @@ static void test_events(CuTest *tc) {
 		protocol_gc();
 		storage_gc();
 		eventpool_gc();
+		plua_gc();
 
 		int len = sizeof(receives)/sizeof(receives[0]), i = 0, x = 0;
 

@@ -14,21 +14,8 @@
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/binary.h"
-#include "../libs/pilight/events/operators/and.h"
-#include "../libs/pilight/events/operators/divide.h"
-#include "../libs/pilight/events/operators/eq.h"
-#include "../libs/pilight/events/operators/ge.h"
-#include "../libs/pilight/events/operators/gt.h"
-#include "../libs/pilight/events/operators/intdivide.h"
-#include "../libs/pilight/events/operators/is.h"
-#include "../libs/pilight/events/operators/le.h"
-#include "../libs/pilight/events/operators/lt.h"
-#include "../libs/pilight/events/operators/minus.h"
-#include "../libs/pilight/events/operators/modulus.h"
-#include "../libs/pilight/events/operators/multiply.h"
-#include "../libs/pilight/events/operators/ne.h"
-#include "../libs/pilight/events/operators/plus.h"
-#include "../libs/pilight/events/operators/or.h"
+#include "../libs/pilight/lua/lua.h"
+#include "../libs/pilight/events/operator.h"
 
 #include "alltests.h"
 
@@ -44,9 +31,9 @@ static void test_event_operator_and(CuTest *tc) {
 
 	memtrack();
 
-	operatorAndInit();
-	CuAssertStrEquals(tc, "AND", operator_and->name);
-	CuAssertPtrNotNull(tc, operator_and->callback);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_operator.json", CONFIG_SETTINGS));
+	event_operator_init();
 
 	/*
 	 * Numbers
@@ -55,42 +42,42 @@ static void test_event_operator_and(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_and->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("AND", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;	
-	operator_and->callback(&v1, &v2, &p);
+	v2.number_ = 1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("AND", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;	
-	operator_and->callback(&v1, &v2, &p);
+	v2.number_ = 1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("AND", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;	
-	operator_and->callback(&v1, &v2, &p);
+	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("AND", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = -1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;	
-	operator_and->callback(&v1, &v2, &p);
+	v2.number_ = -1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("AND", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 2; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;	
-	operator_and->callback(&v1, &v2, &p);
+	v2.number_ = 2; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("AND", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	/*
@@ -100,22 +87,22 @@ static void test_event_operator_and(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = empty; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_and->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("AND", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = _false; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_and->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("AND", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = zero; v1.type_ = JSON_STRING;
 	v2.string_ = two; v2.type_ = JSON_STRING;
-	operator_and->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("AND", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0", p);
 
 	/*
 	 * Mixed variable types
@@ -124,17 +111,20 @@ static void test_event_operator_and(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 123; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_and->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("AND", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 123; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.bool_ = 1; v2.type_ = JSON_BOOL;
-	operator_and->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);	
-	
+	CuAssertIntEquals(tc, 0, event_operator_callback("AND", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
+
+	storage_gc();
 	event_operator_gc();
+	eventpool_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -150,9 +140,9 @@ static void test_event_operator_divide(CuTest *tc) {
 
 	memtrack();
 
-	operatorDivideInit();
-	CuAssertStrEquals(tc, "/", operator_divide->name);
-	CuAssertPtrNotNull(tc, operator_divide->callback);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_operator.json", CONFIG_SETTINGS));
+	event_operator_init();
 
 	/*
 	 * Numbers
@@ -161,37 +151,37 @@ static void test_event_operator_divide(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_divide->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("/", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_divide->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("/", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_divide->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("/", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_divide->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0.500000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("/", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0.500000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_divide->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "-0.500000", p);	
-	
+	CuAssertIntEquals(tc, 0, event_operator_callback("/", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "-0.500000", p);
+
 	/*
 	 * Strings
 	 */
@@ -199,14 +189,14 @@ static void test_event_operator_divide(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = two; v1.type_ = JSON_STRING;
 	v2.string_ = two; v2.type_ = JSON_STRING;
-	operator_divide->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1.000000", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("/", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = two; v2.type_ = JSON_STRING;
-	operator_divide->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("/", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0.000000", p);
 
 	/*
@@ -216,16 +206,20 @@ static void test_event_operator_divide(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 8; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = two; v2.type_ = JSON_STRING;
-	operator_divide->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("/", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "4.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.bool_ = 2; v1.type_ = JSON_BOOL;
 	v2.string_ = half; v2.type_ = JSON_STRING;
-	operator_divide->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("/", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "2.000000", p);
-	event_operator_gc();	
+
+	storage_gc();
+	event_operator_gc();
+	eventpool_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -241,9 +235,9 @@ static void test_event_operator_eq(CuTest *tc) {
 
 	memtrack();
 
-	operatorEqInit();
-	CuAssertStrEquals(tc, "==", operator_eq->name);
-	CuAssertPtrNotNull(tc, operator_eq->callback);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_operator.json", CONFIG_SETTINGS));
+	event_operator_init();
 
 	/*
 	 * Numbers
@@ -252,63 +246,63 @@ static void test_event_operator_eq(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_eq->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("==", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_eq->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("==", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_eq->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("==", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_eq->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("==", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = -4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_eq->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("==", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = -2; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_eq->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("==", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2.012345; v1.type_ = JSON_NUMBER; v1.decimals_ = 6;
 	v2.number_ = 2.012345; v2.type_ = JSON_NUMBER; v2.decimals_ = 6;
-	operator_eq->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("==", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2.0123456; v1.type_ = JSON_NUMBER; v1.decimals_ = 7;
 	v2.number_ = 2.0123456; v2.type_ = JSON_NUMBER; v2.decimals_ = 7;
-	operator_eq->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("==", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2.0123456; v1.type_ = JSON_NUMBER; v1.decimals_ = 7;
 	v2.number_ = 2.0123457; v2.type_ = JSON_NUMBER; v2.decimals_ = 7;
-	operator_eq->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("==", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	/*
@@ -318,15 +312,15 @@ static void test_event_operator_eq(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_eq->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("==", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = empty; v2.type_ = JSON_STRING;
-	operator_eq->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("==", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0", p);
 
 	/*
 	 * Mixed variable types
@@ -335,24 +329,27 @@ static void test_event_operator_eq(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_eq->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("==", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = one; v2.type_ = JSON_STRING;
-	operator_eq->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("==", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.bool_ = 1; v2.type_ = JSON_BOOL;
-	operator_eq->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("==", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
+	storage_gc();
 	event_operator_gc();
+	eventpool_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -369,9 +366,9 @@ static void test_event_operator_ge(CuTest *tc) {
 
 	memtrack();
 
-	operatorGeInit();
-	CuAssertStrEquals(tc, ">=", operator_ge->name);
-	CuAssertPtrNotNull(tc, operator_ge->callback);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_operator.json", CONFIG_SETTINGS));
+	event_operator_init();
 
 	/*
 	 * Numbers
@@ -379,50 +376,50 @@ static void test_event_operator_ge(CuTest *tc) {
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 0; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_ge->callback(&v1, &v2, &p);
+	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback(">=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 0; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_ge->callback(&v1, &v2, &p);
+	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback(">=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 4; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_ge->callback(&v1, &v2, &p);
+	v2.number_ = 4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback(">=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = -4; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_ge->callback(&v1, &v2, &p);
+	v2.number_ = -4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback(">=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = -2; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_ge->callback(&v1, &v2, &p);
+	v2.number_ = -2; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback(">=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2.012345; v1.type_ = JSON_NUMBER; v1.decimals_ = 6;
-	v2.number_ = 2.012345; v2.type_ = JSON_NUMBER; v1.decimals_ = 6;
-	operator_ge->callback(&v1, &v2, &p);
+	v2.number_ = 2.012345; v2.type_ = JSON_NUMBER; v2.decimals_ = 6;
+	CuAssertIntEquals(tc, 0, event_operator_callback(">=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2.012345; v1.type_ = JSON_NUMBER; v1.decimals_ = 6;
-	v2.number_ = 2.012346; v2.type_ = JSON_NUMBER; v1.decimals_ = 6;
-	operator_ge->callback(&v1, &v2, &p);
+	v2.number_ = 2.012346; v2.type_ = JSON_NUMBER; v2.decimals_ = 6;
+	CuAssertIntEquals(tc, 0, event_operator_callback(">=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	/*
@@ -432,35 +429,35 @@ static void test_event_operator_ge(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = foo1; v2.type_ = JSON_STRING;
-	operator_ge->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback(">=", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_ge->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback(">=", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo1; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_ge->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback(">=", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = food; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_ge->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback(">=", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = food; v2.type_ = JSON_STRING;
-	operator_ge->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback(">=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	/*
@@ -470,17 +467,20 @@ static void test_event_operator_ge(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = zero; v2.type_ = JSON_STRING;
-	operator_ge->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback(">=", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = zero; v2.type_ = JSON_STRING;
-	operator_ge->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback(">=", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
+	storage_gc();
 	event_operator_gc();
+	eventpool_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -497,9 +497,9 @@ static void test_event_operator_gt(CuTest *tc) {
 
 	memtrack();
 
-	operatorGtInit();
-	CuAssertStrEquals(tc, ">", operator_gt->name);
-	CuAssertPtrNotNull(tc, operator_gt->callback);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_operator.json", CONFIG_SETTINGS));
+	event_operator_init();
 
 	/*
 	 * Numbers
@@ -507,50 +507,50 @@ static void test_event_operator_gt(CuTest *tc) {
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 0; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_gt->callback(&v1, &v2, &p);
+	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback(">", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 0; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_gt->callback(&v1, &v2, &p);
+	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback(">", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 4; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_gt->callback(&v1, &v2, &p);
+	v2.number_ = 4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback(">", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = -4; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_gt->callback(&v1, &v2, &p);
+	v2.number_ = -4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback(">", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = -2; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_gt->callback(&v1, &v2, &p);
+	v2.number_ = -2; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback(">", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2.012345; v1.type_ = JSON_NUMBER; v1.decimals_ = 6;
-	v2.number_ = 2.012345; v2.type_ = JSON_NUMBER; v1.decimals_ = 6;
-	operator_gt->callback(&v1, &v2, &p);
+	v2.number_ = 2.012345; v2.type_ = JSON_NUMBER; v2.decimals_ = 6;
+	CuAssertIntEquals(tc, 0, event_operator_callback(">", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2.012345; v1.type_ = JSON_NUMBER; v1.decimals_ = 6;
-	v2.number_ = 2.012346; v2.type_ = JSON_NUMBER; v1.decimals_ = 6;
-	operator_gt->callback(&v1, &v2, &p);
+	v2.number_ = 2.012346; v2.type_ = JSON_NUMBER; v2.decimals_ = 6;
+	CuAssertIntEquals(tc, 0, event_operator_callback(">", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	/*
@@ -560,35 +560,35 @@ static void test_event_operator_gt(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = foo1; v2.type_ = JSON_STRING;
-	operator_gt->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback(">", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_gt->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback(">", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo1; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_gt->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback(">", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = food; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_gt->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback(">", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = food; v2.type_ = JSON_STRING;
-	operator_gt->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback(">", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	/*
@@ -598,17 +598,20 @@ static void test_event_operator_gt(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = zero; v2.type_ = JSON_STRING;
-	operator_gt->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback(">", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = zero; v2.type_ = JSON_STRING;
-	operator_gt->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback(">", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
+	storage_gc();
 	event_operator_gc();
+	eventpool_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -624,9 +627,9 @@ static void test_event_operator_intdivide(CuTest *tc) {
 
 	memtrack();
 
-	operatorIntDivideInit();
-	CuAssertStrEquals(tc, "\\", operator_int_divide->name);
-	CuAssertPtrNotNull(tc, operator_int_divide->callback);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_operator.json", CONFIG_SETTINGS));
+	event_operator_init();
 
 	/*
 	 * Numbers
@@ -634,44 +637,44 @@ static void test_event_operator_intdivide(CuTest *tc) {
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 1; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_int_divide->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1.000000", p);	
+	v2.number_ = 1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("\\", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 0; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_int_divide->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0.000000", p);	
+	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("\\", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 0; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_int_divide->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0.000000", p);	
+	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("\\", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 4; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 2; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_int_divide->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "2.000000", p);	
+	v2.number_ = 2; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("\\", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "2.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 4; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_int_divide->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "-0.000000", p);	
+	v2.number_ = 4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("\\", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "-0.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 10; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 3; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_int_divide->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "3.000000", p);	
+	v2.number_ = 3; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("\\", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "3.000000", p);
 
 	/*
 	 * Strings
@@ -680,22 +683,22 @@ static void test_event_operator_intdivide(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_int_divide->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0.000000", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("\\", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = two; v1.type_ = JSON_STRING;
 	v2.string_ = one; v2.type_ = JSON_STRING;
-	operator_int_divide->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "2.000000", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("\\", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "2.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = one; v1.type_ = JSON_STRING;
 	v2.string_ = two; v2.type_ = JSON_STRING;
-	operator_int_divide->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0.000000", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("\\", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0.000000", p);
 
 	/*
 	 * Mixed variable types
@@ -704,24 +707,27 @@ static void test_event_operator_intdivide(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_int_divide->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("\\", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = one; v2.type_ = JSON_STRING;
-	operator_int_divide->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("\\", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.bool_ = 1; v2.type_ = JSON_BOOL;
-	operator_int_divide->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1.000000", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("\\", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1.000000", p);
 
+	storage_gc();
 	event_operator_gc();
+	eventpool_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -757,6 +763,7 @@ static void test_event_operator_intdivide(CuTest *tc) {
 	// CuAssertStrEquals(tc, "1", p);
 
 	// event_operator_gc();
+	// plua_gc();
 
 	// CuAssertIntEquals(tc, 0, xfree());
 // }
@@ -773,9 +780,9 @@ static void test_event_operator_le(CuTest *tc) {
 
 	memtrack();
 
-	operatorLeInit();
-	CuAssertStrEquals(tc, "<=", operator_le->name);
-	CuAssertPtrNotNull(tc, operator_le->callback);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_operator.json", CONFIG_SETTINGS));
+	event_operator_init();
 
 	/*
 	 * Numbers
@@ -783,50 +790,50 @@ static void test_event_operator_le(CuTest *tc) {
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 0; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_le->callback(&v1, &v2, &p);
+	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("<=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 0; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_le->callback(&v1, &v2, &p);
+	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("<=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 4; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_le->callback(&v1, &v2, &p);
+	v2.number_ = 4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("<=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = -4; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_le->callback(&v1, &v2, &p);
+	v2.number_ = -4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("<=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = -2; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_le->callback(&v1, &v2, &p);
+	v2.number_ = -2; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("<=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2.012345; v1.type_ = JSON_NUMBER; v1.decimals_ = 6;
-	v2.number_ = 2.012345; v2.type_ = JSON_NUMBER; v1.decimals_ = 6;
-	operator_le->callback(&v1, &v2, &p);
+	v2.number_ = 2.012345; v2.type_ = JSON_NUMBER; v2.decimals_ = 6;
+	CuAssertIntEquals(tc, 0, event_operator_callback("<=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2.012345; v1.type_ = JSON_NUMBER; v1.decimals_ = 6;
-	v2.number_ = 2.012346; v2.type_ = JSON_NUMBER; v1.decimals_ = 6;
-	operator_le->callback(&v1, &v2, &p);
+	v2.number_ = 2.012346; v2.type_ = JSON_NUMBER; v2.decimals_ = 6;
+	CuAssertIntEquals(tc, 0, event_operator_callback("<=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	/*
@@ -836,35 +843,35 @@ static void test_event_operator_le(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = foo1; v2.type_ = JSON_STRING;
-	operator_le->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("<=", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_le->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("<=", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo1; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_le->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("<=", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = food; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_le->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("<=", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = food; v2.type_ = JSON_STRING;
-	operator_le->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("<=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	/*
@@ -874,17 +881,20 @@ static void test_event_operator_le(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = zero; v2.type_ = JSON_STRING;
-	operator_le->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("<=", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = zero; v2.type_ = JSON_STRING;
-	operator_le->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("<=", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
+	storage_gc();
 	event_operator_gc();
+	eventpool_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -901,9 +911,9 @@ static void test_event_operator_lt(CuTest *tc) {
 
 	memtrack();
 
-	operatorLtInit();
-	CuAssertStrEquals(tc, "<", operator_lt->name);
-	CuAssertPtrNotNull(tc, operator_lt->callback);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_operator.json", CONFIG_SETTINGS));
+	event_operator_init();
 
 	/*
 	 * Numbers
@@ -911,50 +921,50 @@ static void test_event_operator_lt(CuTest *tc) {
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 0; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_lt->callback(&v1, &v2, &p);
+	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("<", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 0; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_lt->callback(&v1, &v2, &p);
+	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("<", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 4; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_lt->callback(&v1, &v2, &p);
+	v2.number_ = 4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("<", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = -4; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_lt->callback(&v1, &v2, &p);
+	v2.number_ = -4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("<", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = -2; v2.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	operator_lt->callback(&v1, &v2, &p);
+	v2.number_ = -2; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("<", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2.012345; v1.type_ = JSON_NUMBER; v1.decimals_ = 6;
-	v2.number_ = 2.012345; v2.type_ = JSON_NUMBER; v1.decimals_ = 6;
-	operator_lt->callback(&v1, &v2, &p);
+	v2.number_ = 2.012345; v2.type_ = JSON_NUMBER; v2.decimals_ = 6;
+	CuAssertIntEquals(tc, 0, event_operator_callback("<", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2.012345; v1.type_ = JSON_NUMBER; v1.decimals_ = 6;
-	v2.number_ = 2.012346; v2.type_ = JSON_NUMBER; v1.decimals_ = 6;
-	operator_lt->callback(&v1, &v2, &p);
+	v2.number_ = 2.012346; v2.type_ = JSON_NUMBER; v2.decimals_ = 6;
+	CuAssertIntEquals(tc, 0, event_operator_callback("<", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	/*
@@ -964,35 +974,35 @@ static void test_event_operator_lt(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = foo1; v2.type_ = JSON_STRING;
-	operator_lt->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("<", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_lt->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("<", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo1; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_lt->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("<", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = food; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_lt->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("<", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = food; v2.type_ = JSON_STRING;
-	operator_lt->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("<", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	/*
@@ -1002,17 +1012,20 @@ static void test_event_operator_lt(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = zero; v2.type_ = JSON_STRING;
-	operator_lt->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("<", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = zero; v2.type_ = JSON_STRING;
-	operator_lt->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("<", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
-	
+
+	storage_gc();
 	event_operator_gc();
+	eventpool_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -1028,9 +1041,9 @@ static void test_event_operator_minus(CuTest *tc) {
 
 	memtrack();
 
-	operatorMinusInit();
-	CuAssertStrEquals(tc, "-", operator_minus->name);
-	CuAssertPtrNotNull(tc, operator_minus->callback);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_operator.json", CONFIG_SETTINGS));
+	event_operator_init();
 
 	/*
 	 * Numbers
@@ -1039,36 +1052,36 @@ static void test_event_operator_minus(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_minus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("-", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_minus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("-", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_minus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("-", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_minus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "-2.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("-", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "-2.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_minus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "-6.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("-", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "-6.000000", p);
 
 	/*
 	 * Strings
@@ -1077,14 +1090,14 @@ static void test_event_operator_minus(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = two; v1.type_ = JSON_STRING;
 	v2.string_ = two; v2.type_ = JSON_STRING;
-	operator_minus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0.000000", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("-", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = two; v2.type_ = JSON_STRING;
-	operator_minus->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("-", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "-2.000000", p);
 
 	/*
@@ -1094,17 +1107,20 @@ static void test_event_operator_minus(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 8; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = two; v2.type_ = JSON_STRING;
-	operator_minus->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("-", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "6.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.bool_ = 2; v1.type_ = JSON_BOOL;
 	v2.string_ = half; v2.type_ = JSON_STRING;
-	operator_minus->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("-", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0.500000", p);
 
-	event_operator_gc();	
+	storage_gc();
+	event_operator_gc();
+	eventpool_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -1120,9 +1136,9 @@ static void test_event_operator_modulus(CuTest *tc) {
 
 	memtrack();
 
-	operatorModulusInit();
-	CuAssertStrEquals(tc, "%", operator_modulus->name);
-	CuAssertPtrNotNull(tc, operator_modulus->callback);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_operator.json", CONFIG_SETTINGS));
+	event_operator_init();
 
 	/*
 	 * Numbers
@@ -1131,71 +1147,71 @@ static void test_event_operator_modulus(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_modulus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("%", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_modulus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("%", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_modulus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "2.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("%", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "2.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = -4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_modulus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "-2.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("%", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "-2.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = -2; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_modulus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("%", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 27; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 16; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_modulus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "11.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("%", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "11.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 30; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 3; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_modulus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("%", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 35; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 3; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_modulus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "2.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("%", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "2.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
-	v1.number_ = 2.012345; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 2.012345; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_modulus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0.000000", p);	
+	v1.number_ = 2.012345; v1.type_ = JSON_NUMBER; v1.decimals_ = 6;
+	v2.number_ = 2.012345; v2.type_ = JSON_NUMBER; v2.decimals_ = 6;
+	CuAssertIntEquals(tc, 0, event_operator_callback("%", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
-	v1.number_ = 2.012345; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 2.012346; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_modulus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "2.012345", p);	
+	v1.number_ = 2.012345; v1.type_ = JSON_NUMBER; v1.decimals_ = 6;
+	v2.number_ = 2.012346; v2.type_ = JSON_NUMBER; v2.decimals_ = 6;
+	CuAssertIntEquals(tc, 0, event_operator_callback("%", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "2.012345", p);
 
 	/*
 	 * Strings
@@ -1204,14 +1220,14 @@ static void test_event_operator_modulus(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = two; v1.type_ = JSON_STRING;
 	v2.string_ = two; v2.type_ = JSON_STRING;
-	operator_modulus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0.000000", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("%", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = two; v2.type_ = JSON_STRING;
-	operator_modulus->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("%", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	/*
@@ -1221,17 +1237,20 @@ static void test_event_operator_modulus(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 8; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = two; v2.type_ = JSON_STRING;
-	operator_modulus->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("%", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.bool_ = 2; v1.type_ = JSON_BOOL;
 	v2.string_ = half; v2.type_ = JSON_STRING;
-	operator_modulus->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("%", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0.000000", p);
 
+	storage_gc();
 	event_operator_gc();
+	eventpool_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -1247,9 +1266,9 @@ static void test_event_operator_multiply(CuTest *tc) {
 
 	memtrack();
 
-	operatorMultiplyInit();
-	CuAssertStrEquals(tc, "*", operator_multiply->name);
-	CuAssertPtrNotNull(tc, operator_multiply->callback);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_operator.json", CONFIG_SETTINGS));
+	event_operator_init();
 
 	/*
 	 * Numbers
@@ -1258,37 +1277,37 @@ static void test_event_operator_multiply(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_multiply->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("*", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_multiply->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("*", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_multiply->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("*", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_multiply->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "8.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("*", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "8.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_multiply->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "-8.000000", p);	
-	
+	CuAssertIntEquals(tc, 0, event_operator_callback("*", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "-8.000000", p);
+
 	/*
 	 * Strings
 	 */
@@ -1296,14 +1315,14 @@ static void test_event_operator_multiply(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = two; v1.type_ = JSON_STRING;
 	v2.string_ = two; v2.type_ = JSON_STRING;
-	operator_multiply->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "4.000000", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("*", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "4.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = two; v2.type_ = JSON_STRING;
-	operator_multiply->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("*", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0.000000", p);
 
 	/*
@@ -1313,17 +1332,20 @@ static void test_event_operator_multiply(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 8; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = two; v2.type_ = JSON_STRING;
-	operator_multiply->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("*", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "16.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.bool_ = 2; v1.type_ = JSON_BOOL;
 	v2.string_ = half; v2.type_ = JSON_STRING;
-	operator_multiply->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("*", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0.500000", p);
 
-	event_operator_gc();	
+	storage_gc();
+	event_operator_gc();
+	eventpool_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -1339,9 +1361,9 @@ static void test_event_operator_ne(CuTest *tc) {
 
 	memtrack();
 
-	operatorNeInit();
-	CuAssertStrEquals(tc, "!=", operator_ne->name);
-	CuAssertPtrNotNull(tc, operator_ne->callback);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_operator.json", CONFIG_SETTINGS));
+	event_operator_init();
 
 	/*
 	 * Numbers
@@ -1350,63 +1372,63 @@ static void test_event_operator_ne(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_ne->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("!=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_ne->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("!=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_ne->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("!=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_ne->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("!=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = -4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_ne->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("!=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = -2; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_ne->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("!=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2.012345; v1.type_ = JSON_NUMBER; v1.decimals_ = 6;
 	v2.number_ = 2.012345; v2.type_ = JSON_NUMBER; v2.decimals_ = 6;
-	operator_ne->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("!=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2.0123456; v1.type_ = JSON_NUMBER; v1.decimals_ = 7;
 	v2.number_ = 2.0123456; v2.type_ = JSON_NUMBER; v2.decimals_ = 7;
-	operator_ne->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("!=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2.0123456; v1.type_ = JSON_NUMBER; v1.decimals_ = 7;
 	v2.number_ = 2.0123457; v2.type_ = JSON_NUMBER; v2.decimals_ = 7;
-	operator_ne->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("!=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	/*
@@ -1416,15 +1438,15 @@ static void test_event_operator_ne(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_ne->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("!=", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = empty; v2.type_ = JSON_STRING;
-	operator_ne->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("!=", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
 	/*
 	 * Mixed variable types
@@ -1433,27 +1455,29 @@ static void test_event_operator_ne(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_ne->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("!=", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = one; v2.type_ = JSON_STRING;
-	operator_ne->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("!=", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.bool_ = 1; v2.type_ = JSON_BOOL;
-	operator_ne->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("!=", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0", p);
 
+	storage_gc();
 	event_operator_gc();
+	eventpool_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
-
 }
 
 static void test_event_operator_or(CuTest *tc) {
@@ -1468,9 +1492,9 @@ static void test_event_operator_or(CuTest *tc) {
 
 	memtrack();
 
-	operatorOrInit();
-	CuAssertStrEquals(tc, "OR", operator_or->name);
-	CuAssertPtrNotNull(tc, operator_or->callback);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_operator.json", CONFIG_SETTINGS));
+	event_operator_init();
 
 	/*
 	 * Numbers
@@ -1479,42 +1503,42 @@ static void test_event_operator_or(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_or->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("OR", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;	
-	operator_or->callback(&v1, &v2, &p);
+	v2.number_ = 1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("OR", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;	
-	operator_or->callback(&v1, &v2, &p);
+	v2.number_ = 1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("OR", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;	
-	operator_or->callback(&v1, &v2, &p);
+	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("OR", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "0", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = -1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;	
-	operator_or->callback(&v1, &v2, &p);
+	v2.number_ = -1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("OR", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
-	v2.number_ = 2; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;	
-	operator_or->callback(&v1, &v2, &p);
+	v2.number_ = 2; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
+	CuAssertIntEquals(tc, 0, event_operator_callback("OR", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	/*
@@ -1524,22 +1548,22 @@ static void test_event_operator_or(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = empty; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_or->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("OR", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = _false; v1.type_ = JSON_STRING;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_or->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("OR", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = zero; v1.type_ = JSON_STRING;
 	v2.string_ = two; v2.type_ = JSON_STRING;
-	operator_or->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("OR", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
 
 	/*
 	 * Mixed variable types
@@ -1548,17 +1572,20 @@ static void test_event_operator_or(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 123; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = foo; v2.type_ = JSON_STRING;
-	operator_or->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("OR", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 123; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.bool_ = 1; v2.type_ = JSON_BOOL;
-	operator_or->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1", p);	
-	
+	CuAssertIntEquals(tc, 0, event_operator_callback("OR", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1", p);
+
+	storage_gc();
 	event_operator_gc();
+	eventpool_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -1574,9 +1601,9 @@ static void test_event_operator_plus(CuTest *tc) {
 
 	memtrack();
 
-	operatorPlusInit();
-	CuAssertStrEquals(tc, "+", operator_plus->name);
-	CuAssertPtrNotNull(tc, operator_plus->callback);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_operator.json", CONFIG_SETTINGS));
+	event_operator_init();
 
 	/*
 	 * Numbers
@@ -1585,37 +1612,37 @@ static void test_event_operator_plus(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 1; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_plus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "2.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("+", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "2.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 1; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_plus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "1.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("+", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "1.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 0; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 0; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_plus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "0.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("+", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "0.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_plus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "6.000000", p);	
+	CuAssertIntEquals(tc, 0, event_operator_callback("+", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "6.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = -2; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.number_ = 4; v2.type_ = JSON_NUMBER; v2.decimals_ = 0;
-	operator_plus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "2.000000", p);	
-	
+	CuAssertIntEquals(tc, 0, event_operator_callback("+", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "2.000000", p);
+
 	/*
 	 * Strings
 	 */
@@ -1623,14 +1650,14 @@ static void test_event_operator_plus(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = two; v1.type_ = JSON_STRING;
 	v2.string_ = two; v2.type_ = JSON_STRING;
-	operator_plus->callback(&v1, &v2, &p);
-	CuAssertStrEquals(tc, "4.000000", p);		
+	CuAssertIntEquals(tc, 0, event_operator_callback("+", &v1, &v2, &p));
+	CuAssertStrEquals(tc, "4.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.string_ = foo; v1.type_ = JSON_STRING;
 	v2.string_ = two; v2.type_ = JSON_STRING;
-	operator_plus->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("+", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "2.000000", p);
 
 	/*
@@ -1640,23 +1667,39 @@ static void test_event_operator_plus(CuTest *tc) {
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.number_ = 8; v1.type_ = JSON_NUMBER; v1.decimals_ = 0;
 	v2.string_ = two; v2.type_ = JSON_STRING;
-	operator_plus->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("+", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "10.000000", p);
 
 	memset(&v1, 0, sizeof(struct varcont_t));
 	memset(&v2, 0, sizeof(struct varcont_t));
 	v1.bool_ = 2; v1.type_ = JSON_BOOL;
 	v2.string_ = half; v2.type_ = JSON_STRING;
-	operator_plus->callback(&v1, &v2, &p);
+	CuAssertIntEquals(tc, 0, event_operator_callback("+", &v1, &v2, &p));
 	CuAssertStrEquals(tc, "1.500000", p);
 
-	event_operator_gc();	
+	storage_gc();
+	event_operator_gc();
+	eventpool_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
 CuSuite *suite_event_operators(void) {
 	CuSuite *suite = CuSuiteNew();
+
+	char config[1024] = "{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"operators-root\":\"%s../libs/pilight/events/operators/\"},\"hardware\":{},\"registry\":{}}";
+	char *file = STRDUP(__FILE__);
+	if(file == NULL) {
+		OUT_OF_MEMORY
+	}
+	str_replace("event_operators.c", "", &file);
+
+	FILE *f = fopen("event_operator.json", "w");
+	fprintf(f, config, file);
+	fclose(f);
+	FREE(file);
 
 	SUITE_ADD_TEST(suite, test_event_operator_and);
 	SUITE_ADD_TEST(suite, test_event_operator_divide);

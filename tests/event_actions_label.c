@@ -19,6 +19,7 @@
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/eventpool.h"
+#include "../libs/pilight/lua/lua.h"
 #include "../libs/pilight/protocols/protocol.h"
 #include "../libs/pilight/events/action.h"
 #include "../libs/pilight/events/function.h"
@@ -783,6 +784,11 @@ static void test_event_actions_label_run_override(CuTest *tc) {
 	actionLabelInit();
 	CuAssertStrEquals(tc, "label", action_label->name);
 
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_SETTINGS));
+	event_operator_init();
+	storage_gc();
+
 	event_init();
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_DEVICES | CONFIG_RULES));
@@ -836,6 +842,7 @@ static void test_event_actions_label_run_override(CuTest *tc) {
 	protocol_gc();
 	eventpool_gc();
 	storage_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, steps);
 	CuAssertIntEquals(tc, 0, xfree());
@@ -844,15 +851,21 @@ static void test_event_actions_label_run_override(CuTest *tc) {
 CuSuite *suite_event_actions_label(void) {
 	CuSuite *suite = CuSuiteNew();
 
-	FILE *f = fopen("event_actions_label.json", "w");
-	fprintf(f,
-		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
+	char config[1024] = "{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
 		"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"bar\",\"color\":\"green\"}}," \
 		"\"gui\":{},\"rules\":{"\
 			"\"rule1\":{\"rule\":\"IF label.label == bar THEN label DEVICE label TO bar\",\"active\":1}"\
-		"},\"settings\":{},\"hardware\":{},\"registry\":{}}"
-	);
+		"},\"settings\":{\"operators-root\":\"%s../libs/pilight/events/operators/\"},\"hardware\":{},\"registry\":{}}";
+	char *file = STRDUP(__FILE__);
+	if(file == NULL) {
+		OUT_OF_MEMORY
+	}
+	str_replace("event_actions_label.c", "", &file);
+
+	FILE *f = fopen("event_actions_label.json", "w");
+	fprintf(f, config, file);
 	fclose(f);
+	FREE(file);	
 
 	SUITE_ADD_TEST(suite, test_event_actions_label_check_parameters);
 	SUITE_ADD_TEST(suite, test_event_actions_label_run);

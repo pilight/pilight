@@ -11,18 +11,11 @@
 
 #include "../core/common.h"
 
-typedef struct event_operators_t {
-	char *name;
-	void (*callback)(struct varcont_t *a, struct varcont_t *b, char **ret);
-	// void (*callback_number)(double a, double b, char **ret);
-	unsigned short type;
-	struct event_operators_t *next;
-} event_operators_t;
-
-struct event_operators_t *event_operators;
+#include "events.h" /* rewrite */
 
 void event_operator_init(void);
-void event_operator_register(struct event_operators_t **op, const char *name);
+int event_operator_callback(char *, struct varcont_t *, struct varcont_t *, char **);
+int event_operator_exists(char *);
 int event_operator_gc(void);
 
 #endif
