@@ -276,11 +276,45 @@ if(NOT WIN32)
 	else()
 		message(STATUS "Looking for libmbedx509 - found (${CMAKE_MBEDX509_LIBS_INIT})")
 	endif()
+
+	find_library(CMAKE_LUA_LIBS_INIT
+		NAME lua lua5 lua 5.1 lua5.2 lua5.3
+		PATHS
+			${CROSS_COMPILE_LIBS}
+			/usr/lib
+			/usr/lib32
+			/usr/lib64
+			/usr/lib/i386-linux-gnu
+			/usr/lib/x86_64-linux-gnu
+			/usr/local/lib
+			/usr/local/lib32
+			/usr/local/lib64
+			/usr/lib/arm-linux-gnueabi
+			/usr/lib/arm-linux-gnueabihf
+			/usr/lib/aarch64-linux-gnu
+		NO_DEFAULT_PATH)
+
+	if(${CMAKE_LUA_LIBS_INIT} MATCHES "CMAKE_LUA_LIBS_INIT-NOTFOUND")
+		message(FATAL_ERROR "Looking for liblua - not found")
+	else()
+		if(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.1.*")
+			set(CMAKE_LUA_LIBS_VERSION "5.1")
+		elseif(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.2.*")
+			set(CMAKE_LUA_LIBS_VERSION "5.2")
+		elseif(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.3.*")
+			set(CMAKE_LUA_LIBS_VERSION "5.3")
+		elseif(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.*")
+			set(CMAKE_LUA_LIBS_VERSION "5")
+		endif()
+		find_path(CMAKE_LUA_INCLUDE_DIR "lua${CMAKE_LUA_LIBS_VERSION}/lua.h")
+		message(STATUS "Looking for liblua - found (${CMAKE_LUA_LIBS_INIT})")
+	endif()
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/inc)
 include_directories(${PROJECT_SOURCE_DIR}/libs/libuv)
 include_directories(/usr/local/include/)
+include_directories("${CMAKE_LUA_INCLUDE_DIR}/lua${CMAKE_LUA_LIBS_VERSION}/")
 
 add_subdirectory(inc)
 add_subdirectory(libs)
@@ -341,6 +375,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_MBEDTLS_LIBS_INIT})
 	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_MBEDCRYPTO_LIBS_INIT})
 	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_MBEDX509_LIBS_INIT})
+	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_LUA_LIBS_INIT})
 
 	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_THREAD_LIBS_INIT})
 	target_link_libraries(${PROJECT_NAME}_static m)
@@ -352,9 +387,10 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	endif()
 	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_DL_LIBS})
 	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_WIRINGX_LIBS_INIT})
-	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_MBEDTLS_LIBS_INIT})
-	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_MBEDCRYPTO_LIBS_INIT})
-	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_MBEDX509_LIBS_INIT})
+	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_MBEDTLS_LIBS_INIT})
+	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_MBEDCRYPTO_LIBS_INIT})
+	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_MBEDX509_LIBS_INIT})
+	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_LUA_LIBS_INIT})
 	
 	if(${PROTOCOL_ARPING} MATCHES "ON")
 		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_PCAP_LIBS_INIT})
@@ -370,9 +406,9 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 
 	if(NOT WIN32)
 		install(CODE "execute_process(COMMAND rm /usr/local/lib/lib${PROJECT_NAME}.so)")
-		install(FILES ${CMAKE_BINARY_DIR}/lib${PROJECT_NAME}.so DESTINATION lib/${PROJECT_NAME}/ RENAME lib${PROJECT_NAME}.so.${VERSION} COMPONENT ${PROJECT_NAME})
-		install(FILES ${CMAKE_BINARY_DIR}/lib${PROJECT_NAME}.a DESTINATION lib/${PROJECT_NAME}/ RENAME lib${PROJECT_NAME}.a COMPONENT ${PROJECT_NAME})
-		install(CODE "execute_process(COMMAND ln -s \"/usr/local/lib/${PROJECT_NAME}/lib${PROJECT_NAME}.so.${VERSION}\" \"/usr/local/lib/lib${PROJECT_NAME}.so\")")	
+		install(FILES ${CMAKE_BINARY_DIR}/lib${PROJECT_NAME}.so DESTINATION lib RENAME lib${PROJECT_NAME}.so.${VERSION} COMPONENT ${PROJECT_NAME})
+		install(FILES ${CMAKE_BINARY_DIR}/lib${PROJECT_NAME}.a DESTINATION lib RENAME lib${PROJECT_NAME}.a COMPONENT ${PROJECT_NAME})
+		install(CODE "execute_process(COMMAND ln -s \"/usr/local/lib/lib${PROJECT_NAME}.so.${VERSION}\" \"/usr/local/lib/lib${PROJECT_NAME}.so\")")
 
 		if(EXISTS "/usr/local/lib/${PROJECT_NAME}/protocols")
 			install(CODE "execute_process(COMMAND find /usr/local/lib/${PROJECT_NAME}/protocols/ -type f -exec rm {} \\;)")
@@ -385,6 +421,9 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		endif()
 		if(EXISTS "/usr/local/lib/${PROJECT_NAME}/operators")
 			install(CODE "execute_process(COMMAND find /usr/local/lib/${PROJECT_NAME}/operators/ -type f -exec rm {} \\;)")
+		endif()
+		if(EXISTS "/usr/local/${PROJECT_NAME}/operators")
+			install(CODE "execute_process(COMMAND find /usr/local/${PROJECT_NAME}/operators/ -type f -exec rm {} \\;)")
 		endif()
 
 		if(EXISTS "/etc/${PROJECT_NAME}/config.json")
@@ -407,7 +446,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		if(WIN32)
 			install(DIRECTORY ${PROJECT_SOURCE_DIR}/libs/webgui/ DESTINATION web/ COMPONENT webgui)
 		else()
-			install(DIRECTORY ${PROJECT_SOURCE_DIR}/libs/webgui/ DESTINATION /usr/local/share/${PROJECT_NAME} COMPONENT webgui)
+			install(DIRECTORY ${PROJECT_SOURCE_DIR}/libs/webgui/ DESTINATION /usr/local/${PROJECT_NAME}/webgui COMPONENT webgui)
 		endif()
 	endif()	
 

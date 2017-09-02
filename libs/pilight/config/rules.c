@@ -47,6 +47,8 @@ static int rules_parse(JsonNode *root) {
 	char *rule = NULL;
 	double active = 1.0;
 
+	event_operator_init();
+
 	if(root->tag == JSON_OBJECT) {
 		jrules = json_first_child(root);
 		while(jrules) {
@@ -251,7 +253,6 @@ int rules_gc(void) {
 }
 
 void rules_init(void) {
-	event_operator_init();
 	event_action_init();
 	event_function_init();
 

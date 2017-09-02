@@ -5,3 +5,16 @@ pilight version 7.0
 <a href="https://flattr.com/submit/auto?user_id=pilight&url=http%3A%2F%2Fwww.pilight.org" target="_blank"><img src="http://api.flattr.com/button/flattr-badge-large.png" alt="Flattr this" title="Flattr this" border="0"></a>
 
 Visit http://www.pilight.org or http://wiki.pilight.org for more information.
+
+# Dependencies
+The pilight development code depends on the following packages:
+
+1. [https://github.com/ARMmbed/mbedtls](libmbedtls)
+2. [https://github.com/ARMmbed/mbedtls](libmbedx509)
+3. [https://github.com/ARMmbed/mbedtls](libmbedcrypto)
+4. [https://github.com/lua/lua](liblua5.2)
+5. [https://github.com/wiringx/wiringx](libwiringx) (rewrite branch)
+6. [http://www.tcpdump.org/release/](libpcap)
+7. [http://download.savannah.nongnu.org/releases/libunwind/](libunwind)
+
+Either manually compile each of these packages or install them by using the package repository of your distribution of choice

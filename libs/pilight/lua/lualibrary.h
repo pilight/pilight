@@ -6,13 +6,11 @@
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
-#ifndef _EVENT_OPERATOR_MULTIPLY_H_
-#define _EVENT_OPERATOR_MULTIPLY_H_
+#ifndef _PLUA_LIBRARY_H_
+#define _PLUA_LIBRARY_H_
 
-#include "../operator.h"
+#include <lua.h>
 
-struct event_operators_t *operator_multiply;
-
-void operatorMultiplyInit(void);
+void plua_register_library(struct lua_State *);
 
 #endif

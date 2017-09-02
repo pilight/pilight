@@ -34,7 +34,7 @@
 	#ifdef _WIN32
 		#define WEBSERVER_ROOT				"c:/pilight/web/"
 	#else
-		#define WEBSERVER_ROOT				"/usr/local/share/pilight/"
+		#define WEBSERVER_ROOT				"/usr/local/pilight/webgui/"
 	#endif
 	#define WEBSERVER_ENABLE			1
 	#define WEBSERVER_CACHE				1
@@ -55,18 +55,18 @@
 	#define PROTOCOL_ROOT						"c:/pilight/protocols/"
 	#define HARDWARE_ROOT						"c:/pilight/hardware/"
 	#define OPERATOR_ROOT						"c:/pilight/operators/"
-	#define FUNCTION_ROOT						"c:/pilight/functions/"	
-	#define ACTION_ROOT							"c:/pilight/actions/"	
+	#define FUNCTION_ROOT						"c:/pilight/functions/"
+	#define ACTION_ROOT							"c:/pilight/actions/"
 
 	#define CONFIG_FILE							"c:/pilight/config.json"
 	#define LOG_FILE								"c:/pilight/pilight.log"
 	#define PEM_FILE								"c:/pilight/pilight.pem"
 #else
-	#define PROTOCOL_ROOT						"/usr/local/lib/pilight/protocols/"
-	#define HARDWARE_ROOT						"/usr/local/lib/pilight/hardware/"
-	#define OPERATOR_ROOT						"/usr/local/lib/pilight/operators/"
-	#define FUNCTION_ROOT						"/usr/local/lib/pilight/functions/"	
-	#define ACTION_ROOT							"/usr/local/lib/pilight/actions/"	
+	#define PROTOCOL_ROOT						"/usr/local/pilight/protocols/"
+	#define HARDWARE_ROOT						"/usr/local/pilight/hardware/"
+	#define OPERATOR_ROOT						"/usr/local/pilight/operators/"
+	#define FUNCTION_ROOT						"/usr/local/pilight/functions/"
+	#define ACTION_ROOT							"/usr/local/pilight/actions/"
 
 	#define PID_FILE								"/var/run/pilight.pid"
 	#define CONFIG_FILE							"/etc/pilight/config.json"

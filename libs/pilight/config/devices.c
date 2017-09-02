@@ -442,9 +442,9 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 	if(update == 1) {
 		json_append_member(rroot, "origin", json_mkstring("update"));
 		json_append_member(rroot, "type",  json_mknumber((int)protocol->devtype, 0));
-		if(strlen(pilight_uuid) > 0 && (protocol->hwtype == SENSOR || protocol->hwtype == HWRELAY)) {
+		//if(strlen(pilight_uuid) > 0 && (protocol->hwtype == SENSOR || protocol->hwtype == HWRELAY)) {
 			json_append_member(rroot, "uuid",  json_mkstring(pilight_uuid));
-		}
+		//}
 		json_append_member(rroot, "devices", rdev);
 		json_append_member(rroot, "values", rval);
 

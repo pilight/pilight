@@ -819,7 +819,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 	struct varcont_t v1;
 	struct varcont_t v2;
 	char *var1 = NULL, *func = NULL, *var2 = NULL, *tmp = *rule, *search = NULL;
-	int element = 0, i = 0, match = 0, error = 0, hasquote[2] = {0}, hadquote[2] = {0};
+	int element = 0, match = 0, error = 0, hasquote[2] = {0}, hadquote[2] = {0};
 	char var1quotes[2], var2quotes[2], funcquotes[2];
 	unsigned long len = strlen(tmp), pos = 0, word = 0;
 	char *res = MALLOC(255);
@@ -942,52 +942,47 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 				fprintf(stderr, "%s / %s / %s\n", var1, func, var2);
 			}
 
-			i = 0;
 			/* Check if the operator exists */
 			match = 0;
-			struct event_operators_t *tmp_operator = event_operators;
-			while(tmp_operator) {
-				if(strcmp(func, tmp_operator->name) == 0) {
-					match = 1;
-					int ret1 = 0, ret2 = 0;
-					if(tmp_operator->callback != NULL) {
-						ret1 = event_lookup_variable(var1, obj, &v1, validate, ORIGIN_RULE);
-						ret2 = event_lookup_variable(var2, obj, &v2, validate, ORIGIN_RULE);
-						if(ret1 == -1 || ret2 == -1) {
-							error = -1;
-							goto close;
-						} else if(ret1 == 0 && ret2 == 0) {
-							/* Solve the formula */
-							tmp_operator->callback(&v1, &v2, &res);
-						}
+			int ret1 = 0, ret2 = 0;
+			if(event_operator_exists(func) == 0) {
+				match = 1;
+				ret1 = event_lookup_variable(var1, obj, &v1, validate, ORIGIN_RULE);
+				ret2 = event_lookup_variable(var2, obj, &v2, validate, ORIGIN_RULE);
+				if(ret1 == -1 || ret2 == -1) {
+					error = -1;
+					goto close;
+				} else if(ret1 == 0 && ret2 == 0) {
+					/* Solve the formula */
+					if(event_operator_callback(func, &v1, &v2, &res) != 0) {
+						logprintf(LOG_ERR, "rule #%d: an unexpected error occurred while parsing", obj->nr);
+						error = -1;
+						goto close;
 					}
-					if(res != 0) {
-						/* Replace the subpart of the formula with the solutions in case of simple AND's
-						   e.g.: 0 AND 1 AND 1 AND 0
-								     0 AND 1 AND 0
-						*/
-						char *p = MALLOC(strlen(res)+1);
-						if(p == NULL) {
-							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-						}
-						strcpy(p, res);
-						unsigned long r = 0;
-						// printf("replace %s with %s in %s\n", search, p, tmp);
-						if((r = (unsigned long)str_replace(search, p, &tmp)) == -1) {
-							logprintf(LOG_ERR, "rule #%d: an unexpected error occurred while parsing", obj->nr);
-							FREE(p);
-							error = -1;
-							goto close;
-						}
-						len = r;
-						FREE(p);
-					}
-					pos = 0, word = 0, element = 0;
-					break;
 				}
-				i++;
-				tmp_operator = tmp_operator->next;
 			}
+			if(res != 0) {
+				/* Replace the subpart of the formula with the solutions in case of simple AND's
+					 e.g.: 0 AND 1 AND 1 AND 0
+								 0 AND 1 AND 0
+				*/
+				char *p = MALLOC(strlen(res)+1);
+				if(p == NULL) {
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+				}
+				strcpy(p, res);
+				unsigned long r = 0;
+				// printf("replace %s with %s in %s\n", search, p, tmp);
+				if((r = (unsigned long)str_replace(search, p, &tmp)) == -1) {
+					logprintf(LOG_ERR, "rule #%d: an unexpected error occurred while parsing", obj->nr);
+					FREE(p);
+					error = -1;
+					goto close;
+				}
+				len = r;
+				FREE(p);
+			}
+			pos = 0, word = 0, element = 0;
 			if(match == 0) {
 				logprintf(LOG_ERR, "rule #%d invalid: operator \"%s\" does not exist", obj->nr, func);
 				error = -1;
