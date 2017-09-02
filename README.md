@@ -9,12 +9,12 @@ Visit http://www.pilight.org or http://wiki.pilight.org for more information.
 # Dependencies
 The pilight development code depends on the following packages:
 
-1. [https://github.com/ARMmbed/mbedtls](libmbedtls)
-2. [https://github.com/ARMmbed/mbedtls](libmbedx509)
-3. [https://github.com/ARMmbed/mbedtls](libmbedcrypto)
-4. [https://github.com/lua/lua](liblua5.2)
-5. [https://github.com/wiringx/wiringx](libwiringx) (rewrite branch)
-6. [http://www.tcpdump.org/release/](libpcap)
-7. [http://download.savannah.nongnu.org/releases/libunwind/](libunwind)
+1. [libmbedtls](https://github.com/ARMmbed/mbedtls)
+2. [libmbedx509](https://github.com/ARMmbed/mbedtls)
+3. [libmbedcrypto](https://github.com/ARMmbed/mbedtls)
+4. [liblua5.2](https://github.com/lua/lua)
+5. [libwiringx](https://github.com/wiringx/wiringx) (rewrite branch)
+6. [libpcap](http://www.tcpdump.org/release/)
+7. [libunwind](http://download.savannah.nongnu.org/releases/libunwind/)
 
 Either manually compile each of these packages or install them by using the package repository of your distribution of choice
