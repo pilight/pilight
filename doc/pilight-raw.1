@@ -1,0 +1,56 @@
+.TH pilight-raw 1 "10 July 2017" "7.0-dev" "pilight 7.0-dev"
+.SH NAME
+pilight-raw \- Print received raw streams
+.SH SYNOPSIS
+.B pilight-raw
+.br
+.B pilight-raw [\fIOPTION\fR]...
+.SH DESCRIPTION
+.B pilight-raw
+is a tool to print raw streams as they are picked up by the receiver hardware.
+.PP
+Prints data to STDOUT until interrupted with ^C.
+.PP
+This tool requires root privileges.
+.SH OPTIONS
+Mandatory arguments to long options are mandatory for short options too.
+.TP
+\fB\-H\fR, \fB\-\-help\fR
+Print allowed options and exit
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version information and exit
+.TP
+\fB\-L\fR, \fB\-\-linefeed\fR
+Structure raw printout with newlines between (probably) separate 
+pulsetrains.
+.TP
+\fB\-C\fR, \fB\-\-config\fR=\fIPATH_TO_CONFIG\fR
+Path to configuration file
+.SH BUGS
+Please report all bugs on GitHub <https://github.com/pilight/pilight/>.
+.SH AUTHOR
+.PP
+Curlymo <info@pilight.org>
+and contributors.
+.PP
+This man page was originally written by
+pilino1234 <pilino1234@zoho.eu>.
+.SH WWW
+https://www.pilight.org/
+.SH SEE ALSO
+.B pilight-control(1)
+.br
+.B pilight-daemon(1)
+.br
+.B pilight-debug(1)
+.br
+.B pilight-flash(1)
+.br
+.B pilight-receive(1)
+.br
+.B pilight-send(1)
+.br
+.B pilight-sha256(1)
+.br
+.B pilight-uuid(1)

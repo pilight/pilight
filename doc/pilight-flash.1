@@ -1,0 +1,67 @@
+.TH pilight-flash 1 "10 July 2017" "7.0-dev" "pilight 7.0-dev"
+.SH NAME
+pilight-flash \- Flash hardware with pilight firmware
+.SH SYNOPSIS
+.B pilight-flash \fI--file FIRMWARE_FILE\fR
+.br
+.B pilight-control [\fIOPTION\fR]... \fI--file FIRMWARE_FILE\fR
+.SH DESCRIPTION
+.B pilight-control
+is a tool to flash pilight firmware to ATMel chips (such as the ATTiny and
+ATMega).
+.PP
+The pilight ATMel firmware pre-filters streams and prevents noise from
+reaching the pilight daemon. This lowers the CPU usage of the pilight daemon
+greatly, because the pilight daemon will not continuously attempt to interpret
+noise as valid protocols. 
+Currently supported chips are the ATTiny25, ATTiny45, ATTiny85, and ATMega328P.
+.PP
+Besides acting as a pre-filter, the firmware also allows using pilight with 
+senders and receivers on non GPIO-capable hardware (such as most desktops, 
+servers, etc.) The flashed ATMega chip is connected via USB, and the sender and
+receiver are wired to the GPIO pins on the chip.
+Consult the pilight wiki <https://wiki.pilight.org/> and the manual
+<https://manual.pilight.org/> for wiring schematics.
+.PP
+.SH OPTIONS
+Mandatory arguments to long options are mandatory for short options too.
+.TP
+\fB\-H\fR, \fB\-\-help\fR
+Print allowed options and exit
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version information and exit
+.TP
+\fB\-C\fR, \fB\-\-config\fR=\fIPATH_TO_CONFIG\fR
+Configuration file to be used. The config contains comport or GPIO pin numbers
+needed for communicating with chip.
+.TP
+\fB\-f\fR, \fB\-\-file\fR=\fIPATH_TO_FIRMWARE\fR
+Firmware file to flashed
+.SH BUGS
+Please report all bugs on GitHub <https://github.com/pilight/pilight/>.
+.SH AUTHOR
+.PP
+Curlymo <info@pilight.org>
+and contributors.
+.PP
+This man page was originally written by
+pilino1234 <pilino1234@zoho.eu>.
+.SH WWW
+https://www.pilight.org/
+.SH SEE ALSO
+.B pilight-control(1)
+.br
+.B pilight-daemon(1)
+.br
+.B pilight-debug(1)
+.br
+.B pilight-raw(1)
+.br
+.B pilight-receive(1)
+.br
+.B pilight-send(1)
+.br
+.B pilight-sha256(1)
+.br
+.B pilight-uuid(1)

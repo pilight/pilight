@@ -1,0 +1,54 @@
+.TH pilight-sha256 1 "10 July 2017" "7.0-dev" "pilight 7.0-dev"
+.SH NAME
+pilight-sha256 \- Generate a pilight SHA-256 hash for a password
+.SH SYNOPSIS
+.B pilight-sha256 \fI--password PASSWORD\fR
+.SH DESCRIPTION
+.B pilight-sha256
+is a tool to generate a SHA-256 hash for a webgui password to avoid storing
+cleartext passwords in configuration files. 
+.PP
+The hash can be added to config.json under "settings"\->"webserver-password".
+Consult the pilight wiki <http://wiki.pilight.org/> for configuration details.
+.PP
+Prints the hashed PASSWORD to STDOUT. 
+.PP
+.SH OPTIONS
+Mandatory arguments to long options are mandatory for short options too.
+.TP
+\fB\-H\fR, \fB\-\-help\fR
+Print allowed options and exit
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version information and exit
+.TP
+\fB\-p\fR, \fB\-\-password\fR=\fIPASSWORD\fR
+Password to hash
+.PP
+.SH BUGS
+Please report all bugs on GitHub <https://github.com/pilight/pilight/>.
+.SH AUTHOR
+.PP
+Curlymo <info@pilight.org>
+and contributors.
+.PP
+This man page was originally written by
+pilino1234 <pilino1234@zoho.eu>.
+.SH WWW
+https://www.pilight.org/
+.SH SEE ALSO
+.B pilight-control(1)
+.br
+.B pilight-daemon(1)
+.br
+.B pilight-debug(1)
+.br
+.B pilight-flash(1)
+.br
+.B pilight-raw(1)
+.br
+.B pilight-receive(1)
+.br
+.B pilight-send(1)
+.br
+.B pilight-uuid(1)
