@@ -278,7 +278,7 @@ if(NOT WIN32)
 	endif()
 
 	find_library(CMAKE_LUA_LIBS_INIT
-		NAME lua lua5 lua 5.1 lua5.2 lua5.3
+		NAME lua lua5 lua5.1 lua5.2 lua5.3
 		PATHS
 			${CROSS_COMPILE_LIBS}
 			/usr/lib
