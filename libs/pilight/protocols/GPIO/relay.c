@@ -22,7 +22,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <math.h>
+#ifndef _WIN32
 #include <wiringx.h>
+#endif
 
 #include "../../core/pilight.h"
 #include "../../core/common.h"
@@ -36,6 +38,7 @@
 #include "defines.h"
 
 static char *state = NULL;
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 
 static void createMessage(int gpio, int state) {
 	relay->message = json_mkobject();
@@ -212,6 +215,7 @@ static int checkValues(JsonNode *code) {
 static void gc(void) {
 	FREE(state);
 }
+#endif
 
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
@@ -235,10 +239,12 @@ void relayInit(void) {
 	options_add(&relay->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	options_add(&relay->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 	relay->checkValues=&checkValues;
 	relay->createCode=&createCode;
 	relay->printHelp=&printHelp;
 	relay->gc=&gc;
+#endif
 }
 
 #if defined(MODULE) && !defined(_WIN32)

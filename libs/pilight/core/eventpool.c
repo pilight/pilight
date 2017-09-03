@@ -56,7 +56,11 @@ struct eventqueue_t {
 	struct eventqueue_t *next;
 } eventqueue_t;
 
+#ifdef _WIN32
+static volatile long nrlisteners[REASON_END] = {0};
+#else
 static int nrlisteners[REASON_END] = {0};
+#endif
 static struct eventqueue_t *eventqueue = NULL;
 
 static int threads = EVENTPOOL_NO_THREADS;
@@ -681,7 +685,11 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 				if(custom_poll_data->is_udp == 1) {
 					n = (int)recv((unsigned int)fd, buffer, BUFFER_SIZE, 0);
 				} else {
+#ifdef _WIN32
+					n = recvfrom((SOCKET)fd, buffer, BUFFER_SIZE, 0, NULL, (socklen_t *)&fromlen);
+#else
 					n = recvfrom(fd, buffer, BUFFER_SIZE, 0, NULL, (socklen_t *)&fromlen);
+#endif
 				}
 			}
 		}

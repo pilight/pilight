@@ -15,10 +15,9 @@
 #include <sys/types.h>
 #include <time.h>
 #include <limits.h>
-
+#include <dirent.h>
 #ifndef _WIN32
 	#include <libgen.h>
-	#include <dirent.h>
 	#include <unistd.h>
 #endif
 
