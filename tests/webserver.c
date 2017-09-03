@@ -84,34 +84,34 @@ static struct tests_t get_tests[] = {
 	/*
 	 * Regular pilight webgui loading until config call
 	 */
-	{ "http://127.0.0.1:10080/", 1639, "", 200 },
+	{ "http://127.0.0.1:10080/", 1674, "", 200 },
 	{ "http://127.0.0.1:10080/jquery-2.1.4.min.js", 84345, "", 200 },
 	{ "http://127.0.0.1:10080/jquery.mobile-1.4.5.min.js", 200144, "", 200 },
 	{ "http://127.0.0.1:10080/moment.min.js", 35416, "", 200 },
 	{ "http://127.0.0.1:10080/pilight.js", 48689, "", 200 },
 	{ "http://127.0.0.1:10080/jquery.mobile-1.4.5.min.css", 207466, "", 200 },
-	{ "http://127.0.0.1:10080/pilight.css", 6065, "", 200 },
+	{ "http://127.0.0.1:10080/pilight.css", 6261, "", 200 },
 	{ "http://127.0.0.1:10080/pilight.jquery.theme.css", 25683, "", 200 },
-	{ "http://127.0.0.1:10080/ajax-loader.gif", 4782, "", 200 },
+	{ "http://127.0.0.1:10080/images/ajax-loader.gif", 6242, "", 200 },
 	{ "http://127.0.0.1:10080/config", 220, "application/json", 200 },
 	/*
 	 * Regular pilight ssl webgui loading until config call
 	 */
-	{ "https://127.0.0.1:10443/", 1639, "", 200 },
+	{ "https://127.0.0.1:10443/", 1674, "", 200 },
 	{ "https://127.0.0.1:10443/jquery-2.1.4.min.js", 84345, "", 200 },
 	{ "https://127.0.0.1:10443/jquery.mobile-1.4.5.min.js", 200144, "", 200 },
 	{ "https://127.0.0.1:10443/moment.min.js", 35416, "", 200 },
 	{ "https://127.0.0.1:10443/pilight.js", 48689, "", 200 },
 	{ "https://127.0.0.1:10443/jquery.mobile-1.4.5.min.css", 207466, "", 200 },
-	{ "https://127.0.0.1:10443/pilight.css", 6065, "", 200 },
+	{ "https://127.0.0.1:10443/pilight.css", 6261, "", 200 },
 	{ "https://127.0.0.1:10443/pilight.jquery.theme.css", 25683, "", 200 },
-	{ "https://127.0.0.1:10443/ajax-loader.gif", 4782, "", 200 },
+	{ "https://127.0.0.1:10443/images/ajax-loader.gif", 6242, "", 200 },
 	{ "https://127.0.0.1:10443/config", 220, "application/json", 200 },
 	{ "https://127.0.0.1:10443/nonexisting", 214, "text/html", 404 }
 };
 
 static struct tests_t auth_tests[] = {
-	{ "http://test:test@127.0.0.1:10080/", 1639, "", 200 },
+	{ "http://test:test@127.0.0.1:10080/", 1674, "", 200 },
 	{ "http://test1:test1@127.0.0.1:10080/", 0, "", 401 }
 };
 
