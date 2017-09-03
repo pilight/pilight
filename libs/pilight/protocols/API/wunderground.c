@@ -702,7 +702,7 @@ static void *enable(void *param) {
 	char message[1024];
 	snprintf(message, 1024,
 		"{\"origin\":\"receiver\",\"protocol\":\"%s\",\"message\":"\
-			"{\"api\":\"%s\",\"location\":\"%s\",\"country\":\"%s\",\"update\":1"\
+			"{\"api\":\"%s\",\"location\":\"%s\",\"country\":\"%s\",\"update\":1}"\
 		"}",
 		wunderground->id, settings->api, settings->location, settings->country
 	);
