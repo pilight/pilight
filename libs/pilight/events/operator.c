@@ -75,12 +75,12 @@ void event_operator_init(void) {
 	FREE(f);
 }
 
-static int plua_operator_module_run(struct lua_State *L, char *file, struct varcont_t *a, struct varcont_t *b, char **ret) {
+static int plua_operator_module_run(struct lua_State *l, char *file, struct varcont_t *a, struct varcont_t *b, char **ret) {
 #if LUA_VERSION_NUM <= 502
-	lua_getfield(L, -1, "run");
-	if(strcmp(lua_typename(L, lua_type(L, -1)), "function") != 0) {
+	lua_getfield(l, -1, "run");
+	if(strcmp(lua_typename(l, lua_type(l, -1)), "function") != 0) {
 #else
-	if(lua_getfield(L, -1, "run") == 0) {
+	if(lua_getfield(l, -1, "run") == 0) {
 #endif
 		logprintf(LOG_ERR, "%s: run function missing", file);
 		return 0;
@@ -95,14 +95,14 @@ static int plua_operator_module_run(struct lua_State *L, char *file, struct varc
 			}
 			memset(tmp, 0, len+1);
 			sprintf(tmp, "%.*f", a->decimals_, a->number_);
-			lua_pushstring(L, tmp);
+			lua_pushstring(l, tmp);
 			FREE(tmp);
 		} break;
 		case JSON_STRING:
-			lua_pushstring(L, a->string_);
+			lua_pushstring(l, a->string_);
 		break;
 		case JSON_BOOL:
-			lua_pushboolean(L, a->bool_);
+			lua_pushboolean(l, a->bool_);
 		break;
 	}
 	switch(b->type_) {
@@ -114,37 +114,37 @@ static int plua_operator_module_run(struct lua_State *L, char *file, struct varc
 			}
 			memset(tmp, 0, len+1);
 			sprintf(tmp, "%.*f", b->decimals_, b->number_);
-			lua_pushstring(L, tmp);
+			lua_pushstring(l, tmp);
 			FREE(tmp);
 		} break;
 		case JSON_STRING:
-			lua_pushstring(L, b->string_);
+			lua_pushstring(l, b->string_);
 		break;
 		case JSON_BOOL:
-			lua_pushboolean(L, b->bool_);
+			lua_pushboolean(l, b->bool_);
 		break;
 	}
 
-	if(lua_pcall(L, 2, 1, 0) == LUA_ERRRUN) {
-		if(strcmp(lua_typename(L, lua_type(L, -1)), "nil") == 0) {
+	if(lua_pcall(l, 2, 1, 0) == LUA_ERRRUN) {
+		if(strcmp(lua_typename(l, lua_type(l, -1)), "nil") == 0) {
 			logprintf(LOG_ERR, "%s: syntax error", file);
 			return 0;
 		}
-		if(strcmp(lua_typename(L, lua_type(L, -1)), "string") == 0) {
-			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
-			lua_pop(L, 1);
+		if(strcmp(lua_typename(l, lua_type(l, -1)), "string") == 0) {
+			logprintf(LOG_ERR, "%s", lua_tostring(l,  -1));
+			lua_pop(l, 1);
 			return 0;
 		}
 	}
 
-	if(lua_isstring(L, -1) == 0) {
-		logprintf(LOG_ERR, "%s: the run function returned %s, string expected", file, lua_typename(L, lua_type(L, -1)));
+	if(lua_isstring(l, -1) == 0) {
+		logprintf(LOG_ERR, "%s: the run function returned %s, string expected", file, lua_typename(l, lua_type(l, -1)));
 		return 0;
 	}
 
-	strcpy(*ret, lua_tostring(L, -1));
+	strcpy(*ret, lua_tostring(l, -1));
 
-	lua_pop(L, 1);
+	lua_pop(l, 1);
 
 	return 1;
 }
@@ -155,17 +155,18 @@ int event_operator_exists(char *module) {
 
 int event_operator_callback(char *module, struct varcont_t *a, struct varcont_t *b, char **ret) {
 	struct lua_State *L = plua_get_state();
+	struct lua_State *l = lua_newthread(L);
 
 	char name[255], *p = name;
 	memset(name, '\0', 255);
 
 	sprintf(p, "operator.%s", module);
 
-	lua_getglobal(L, name);
-	if(lua_isnil(L, -1) != 0) {
+	lua_getglobal(l, name);
+	if(lua_isnil(l, -1) != 0) {
 		return -1;
 	}
-	if(lua_istable(L, -1) != 0) {
+	if(lua_istable(l, -1) != 0) {
 		char *file = NULL;
 		struct plua_module_t *tmp = plua_get_modules();
 		while(tmp) {
@@ -175,12 +176,12 @@ int event_operator_callback(char *module, struct varcont_t *a, struct varcont_t 
 			}
 			tmp = tmp->next;
 		}
-		if(plua_operator_module_run(L, file, a, b, ret) == 0) {
-			lua_pop(L, -1);
+		if(plua_operator_module_run(l, file, a, b, ret) == 0) {
+			lua_pop(l, -1);
 			return -1;
 		}
 	}
-	lua_pop(L, -1);
+	lua_pop(l, -1);
 
 	return 0;
 }
