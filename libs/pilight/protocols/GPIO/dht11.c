@@ -31,8 +31,8 @@
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
+	#include <wiringx.h>
 #endif
-#include <wiringx.h>
 #include <pthread.h>
 
 #include "../../core/pilight.h"

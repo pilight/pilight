@@ -23,8 +23,8 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include <wiringx.h>
 #ifndef _WIN32
+	#include <wiringx.h>
 	#include <regex.h>
 	#include <sys/ioctl.h>
 	#include <dlfcn.h>
@@ -41,7 +41,6 @@
 #include "../core/threads.h"
 #include "../core/pilight.h"
 #include "../core/common.h"
-#include "../core/irq.h"
 #include "../core/log.h"
 #include "../core/json.h"
 #include "../core/dso.h"

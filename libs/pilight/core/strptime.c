@@ -32,7 +32,7 @@
 #undef __XSI_VISIBLE
 #include <time.h>
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__MINGW32__)
 	#define strncasecmp(x,y,z) _strnicmp(x,y,z)
 #endif
 

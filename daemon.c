@@ -47,7 +47,9 @@
 #include <time.h>
 #include <ctype.h>
 #include <dirent.h>
+#ifndef _WIN32
 #include <wiringx.h>
+#endif
 
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/threads.h"
@@ -60,7 +62,6 @@
 #include "libs/pilight/core/options.h"
 #include "libs/pilight/core/socket.h"
 #include "libs/pilight/core/json.h"
-#include "libs/pilight/core/irq.h"
 #include "libs/pilight/core/ssdp.h"
 #include "libs/pilight/core/dso.h"
 #include "libs/pilight/core/firmware.h"

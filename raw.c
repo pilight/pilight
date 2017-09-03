@@ -26,18 +26,20 @@
 #include <time.h>
 #include <math.h>
 #include <string.h>
+#ifndef _WIN32
 #include <wiringx.h>
+#endif
 
 #include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/network.h"
 #include "libs/pilight/core/config.h"
+#include "libs/pilight/core/options.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/datetime.h"
 #include "libs/pilight/core/ssdp.h"
 #include "libs/pilight/core/socket.h"
 #include "libs/pilight/core/threads.h"
-#include "libs/pilight/core/irq.h"
 #include "libs/pilight/core/dso.h"
 #include "libs/pilight/core/gc.h"
 

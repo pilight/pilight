@@ -22,9 +22,9 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include <wiringx.h>
 
 #ifndef _WIN32
+	#include <wiringx.h>
 	#include <regex.h>
 #endif
 #include <sys/stat.h>
@@ -203,10 +203,13 @@ static int settings_parse(JsonNode *root) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larger than 0", jsettings->key);
 				return -1;
-			} else if(wiringXValidGPIO((int)jsettings->number_) != 0) {
+			}
+#ifndef _WIN32
+			else if(wiringXValidGPIO((int)jsettings->number_) != 0) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid GPIO number", jsettings->key);
 				return -1;
 			}
+#endif
 		} else if(strcmp(jsettings->key, "gpio-platform") == 0) {
 			if(jsettings->tag != JSON_STRING) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a supported gpio platform", jsettings->key);
@@ -216,10 +219,12 @@ static int settings_parse(JsonNode *root) {
 				return -1;
 			} else {
 				if(strcmp(jsettings->string_, "none") != 0) {
+#ifndef _WIN32
 					if(wiringXSetup(jsettings->string_, logprintf1) != 0) {
 						logprintf(LOG_ERR, "config setting \"%s\" must contain a supported gpio platform", jsettings->key);
 						return -1;
 					}
+#endif
 				}
 				settings_add_string(jsettings->key, jsettings->string_);
 			}

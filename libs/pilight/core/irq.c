@@ -24,7 +24,9 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <unistd.h>
+#ifndef _WIN32
 #include <wiringx.h>
+#endif
 
 #include "irq.h"
 #include "gc.h"

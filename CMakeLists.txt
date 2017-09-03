@@ -62,6 +62,8 @@ if(NOT WIN32)
 	set(CMAKE_EXE_LINKER_FLAGS "  -Wl,-rpath=.,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
 	set(CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=.,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
 	set(CMAKE_MODULE_LINKER_FLAGS " -Wl,-rpath=.,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
+else()
+	set(CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc")
 endif()
 
 if(NOT WIN32)
@@ -203,108 +205,108 @@ if(NOT WIN32)
 	else()
 		message(STATUS "Looking for libwiringx - found (${CMAKE_WIRINGX_LIBS_INIT})")
 	endif()
+endif()
 
-	find_library(CMAKE_MBEDTLS_LIBS_INIT
-		NAME mbedtls
-		PATHS
-			${CROSS_COMPILE_LIBS}
-			/usr/lib
-			/usr/lib32
-			/usr/lib64
-			/usr/lib/i386-linux-gnu
-			/usr/lib/x86_64-linux-gnu
-			/usr/local/lib
-			/usr/local/lib32
-			/usr/local/lib64
-			/usr/lib/arm-linux-gnueabi
-			/usr/lib/arm-linux-gnueabihf
-			/usr/lib/aarch64-linux-gnu
-		NO_DEFAULT_PATH)
+find_library(CMAKE_MBEDTLS_LIBS_INIT
+	NAME mbedtls
+	PATHS
+		${CROSS_COMPILE_LIBS}
+		/usr/lib
+		/usr/lib32
+		/usr/lib64
+		/usr/lib/i386-linux-gnu
+		/usr/lib/x86_64-linux-gnu
+		/usr/local/lib
+		/usr/local/lib32
+		/usr/local/lib64
+		/usr/lib/arm-linux-gnueabi
+		/usr/lib/arm-linux-gnueabihf
+		/usr/lib/aarch64-linux-gnu
+	NO_DEFAULT_PATH)
 
-	if(${CMAKE_MBEDTLS_LIBS_INIT} MATCHES "CMAKE_MBEDTLS_LIBS_INIT-NOTFOUND")
-		message(FATAL_ERROR "Looking for libmbedtls - not found")
-	else()
-		message(STATUS "Looking for libmbedtls - found (${CMAKE_MBEDTLS_LIBS_INIT})")
+if(${CMAKE_MBEDTLS_LIBS_INIT} MATCHES "CMAKE_MBEDTLS_LIBS_INIT-NOTFOUND")
+	message(FATAL_ERROR "Looking for libmbedtls - not found")
+else()
+	message(STATUS "Looking for libmbedtls - found (${CMAKE_MBEDTLS_LIBS_INIT})")
+endif()
+
+find_library(CMAKE_MBEDCRYPTO_LIBS_INIT
+	NAME mbedcrypto
+	PATHS
+		${CROSS_COMPILE_LIBS}
+		/usr/lib
+		/usr/lib32
+		/usr/lib64
+		/usr/lib/i386-linux-gnu
+		/usr/lib/x86_64-linux-gnu
+		/usr/local/lib
+		/usr/local/lib32
+		/usr/local/lib64
+		/usr/lib/arm-linux-gnueabi
+		/usr/lib/arm-linux-gnueabihf
+		/usr/lib/aarch64-linux-gnu
+	NO_DEFAULT_PATH)
+
+if(${CMAKE_MBEDCRYPTO_LIBS_INIT} MATCHES "CMAKE_MBEDCRYPTO_LIBS_INIT-NOTFOUND")
+	message(FATAL_ERROR "Looking for libmbedcrypto - not found")
+else()
+	message(STATUS "Looking for libmbedcrypto - found (${CMAKE_MBEDCRYPTO_LIBS_INIT})")
+endif()
+
+find_library(CMAKE_MBEDX509_LIBS_INIT
+	NAME mbedx509
+	PATHS
+		${CROSS_COMPILE_LIBS}
+		/usr/lib
+		/usr/lib32
+		/usr/lib64
+		/usr/lib/i386-linux-gnu
+		/usr/lib/x86_64-linux-gnu
+		/usr/local/lib
+		/usr/local/lib32
+		/usr/local/lib64
+		/usr/lib/arm-linux-gnueabi
+		/usr/lib/arm-linux-gnueabihf
+		/usr/lib/aarch64-linux-gnu
+	NO_DEFAULT_PATH)
+
+if(${CMAKE_MBEDX509_LIBS_INIT} MATCHES "CMAKE_MBEDX509_LIBS_INIT-NOTFOUND")
+	message(FATAL_ERROR "Looking for libmbedx509 - not found")
+else()
+	message(STATUS "Looking for libmbedx509 - found (${CMAKE_MBEDX509_LIBS_INIT})")
+endif()
+
+find_library(CMAKE_LUA_LIBS_INIT
+	NAME lua lua5 lua5.1 lua5.2 lua5.3
+	PATHS
+		${CROSS_COMPILE_LIBS}
+		/usr/lib
+		/usr/lib32
+		/usr/lib64
+		/usr/lib/i386-linux-gnu
+		/usr/lib/x86_64-linux-gnu
+		/usr/local/lib
+		/usr/local/lib32
+		/usr/local/lib64
+		/usr/lib/arm-linux-gnueabi
+		/usr/lib/arm-linux-gnueabihf
+		/usr/lib/aarch64-linux-gnu
+	NO_DEFAULT_PATH)
+
+if(${CMAKE_LUA_LIBS_INIT} MATCHES "CMAKE_LUA_LIBS_INIT-NOTFOUND")
+	message(FATAL_ERROR "Looking for liblua - not found")
+else()
+	if(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.1.*")
+		set(CMAKE_LUA_LIBS_VERSION "5.1")
+	elseif(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.2.*")
+		set(CMAKE_LUA_LIBS_VERSION "5.2")
+	elseif(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.3.*")
+		set(CMAKE_LUA_LIBS_VERSION "5.3")
+	elseif(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.*")
+		set(CMAKE_LUA_LIBS_VERSION "5")
 	endif()
-
-	find_library(CMAKE_MBEDCRYPTO_LIBS_INIT
-		NAME mbedcrypto
-		PATHS
-			${CROSS_COMPILE_LIBS}
-			/usr/lib
-			/usr/lib32
-			/usr/lib64
-			/usr/lib/i386-linux-gnu
-			/usr/lib/x86_64-linux-gnu
-			/usr/local/lib
-			/usr/local/lib32
-			/usr/local/lib64
-			/usr/lib/arm-linux-gnueabi
-			/usr/lib/arm-linux-gnueabihf
-			/usr/lib/aarch64-linux-gnu
-		NO_DEFAULT_PATH)
-
-	if(${CMAKE_MBEDCRYPTO_LIBS_INIT} MATCHES "CMAKE_MBEDCRYPTO_LIBS_INIT-NOTFOUND")
-		message(FATAL_ERROR "Looking for libmbedcrypto - not found")
-	else()
-		message(STATUS "Looking for libmbedcrypto - found (${CMAKE_MBEDCRYPTO_LIBS_INIT})")
-	endif()
-
-	find_library(CMAKE_MBEDX509_LIBS_INIT
-		NAME mbedx509
-		PATHS
-			${CROSS_COMPILE_LIBS}
-			/usr/lib
-			/usr/lib32
-			/usr/lib64
-			/usr/lib/i386-linux-gnu
-			/usr/lib/x86_64-linux-gnu
-			/usr/local/lib
-			/usr/local/lib32
-			/usr/local/lib64
-			/usr/lib/arm-linux-gnueabi
-			/usr/lib/arm-linux-gnueabihf
-			/usr/lib/aarch64-linux-gnu
-		NO_DEFAULT_PATH)
-
-	if(${CMAKE_MBEDX509_LIBS_INIT} MATCHES "CMAKE_MBEDX509_LIBS_INIT-NOTFOUND")
-		message(FATAL_ERROR "Looking for libmbedx509 - not found")
-	else()
-		message(STATUS "Looking for libmbedx509 - found (${CMAKE_MBEDX509_LIBS_INIT})")
-	endif()
-
-	find_library(CMAKE_LUA_LIBS_INIT
-		NAME lua lua5 lua5.1 lua5.2 lua5.3
-		PATHS
-			${CROSS_COMPILE_LIBS}
-			/usr/lib
-			/usr/lib32
-			/usr/lib64
-			/usr/lib/i386-linux-gnu
-			/usr/lib/x86_64-linux-gnu
-			/usr/local/lib
-			/usr/local/lib32
-			/usr/local/lib64
-			/usr/lib/arm-linux-gnueabi
-			/usr/lib/arm-linux-gnueabihf
-			/usr/lib/aarch64-linux-gnu
-		NO_DEFAULT_PATH)
-
-	if(${CMAKE_LUA_LIBS_INIT} MATCHES "CMAKE_LUA_LIBS_INIT-NOTFOUND")
-		message(FATAL_ERROR "Looking for liblua - not found")
-	else()
-		if(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.1.*")
-			set(CMAKE_LUA_LIBS_VERSION "5.1")
-		elseif(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.2.*")
-			set(CMAKE_LUA_LIBS_VERSION "5.2")
-		elseif(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.3.*")
-			set(CMAKE_LUA_LIBS_VERSION "5.3")
-		elseif(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.*")
-			set(CMAKE_LUA_LIBS_VERSION "5")
-		endif()
-		find_path(CMAKE_LUA_INCLUDE_DIR "lua${CMAKE_LUA_LIBS_VERSION}/lua.h")
-		message(STATUS "Looking for liblua - found (${CMAKE_LUA_LIBS_INIT})")
-	endif()
+	find_path(CMAKE_LUA_INCLUDE_DIR "lua${CMAKE_LUA_LIBS_VERSION}/lua.h")
+	message(STATUS "Looking for liblua - found (${CMAKE_LUA_LIBS_INIT})")
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/inc)
@@ -340,16 +342,24 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	add_library(${PROJECT_NAME} OBJECT ${libs_files})
 	set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
-	add_library(${PROJECT_NAME}_shared SHARED $<TARGET_OBJECTS:${PROJECT_NAME}>)
+	if(WIN32)
+		add_library(${PROJECT_NAME}_shared STATIC $<TARGET_OBJECTS:${PROJECT_NAME}>)
+	else()
+		add_library(${PROJECT_NAME}_shared SHARED $<TARGET_OBJECTS:${PROJECT_NAME}>)
+	endif()
 	add_library(${PROJECT_NAME}_static STATIC $<TARGET_OBJECTS:${PROJECT_NAME}>)
 
 	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_THREAD_LIBS_INIT})
 	if(WIN32)
 		target_link_libraries(${PROJECT_NAME}_shared ws2_32)
+		target_link_libraries(${PROJECT_NAME}_shared user32)
+		target_link_libraries(${PROJECT_NAME}_shared userenv)
 		target_link_libraries(${PROJECT_NAME}_shared wsock32)
 		target_link_libraries(${PROJECT_NAME}_shared iphlpapi)
 		target_link_libraries(${PROJECT_NAME}_shared psapi)
 		target_link_libraries(${PROJECT_NAME}_static ws2_32)
+		target_link_libraries(${PROJECT_NAME}_static user32)
+		target_link_libraries(${PROJECT_NAME}_static userenv)
 		target_link_libraries(${PROJECT_NAME}_static wsock32)
 		target_link_libraries(${PROJECT_NAME}_static iphlpapi)
 		target_link_libraries(${PROJECT_NAME}_static psapi)
