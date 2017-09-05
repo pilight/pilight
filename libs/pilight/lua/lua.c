@@ -14,7 +14,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
-#include <assert.h>
 #include <limits.h>
 
 #ifndef _WIN32
@@ -62,26 +61,21 @@ struct plua_module_t *modules = NULL;
 	// printf("\n");  /* end the listing */
 // }
 
-static int plua_get_table_string_by_key(struct lua_State *l, const char *key, const char **ret) {
-	/*
-	 * Check if we are called as a seperate lua thread
-	 */
-	assert(L != l);
-
+static int plua_get_table_string_by_key(struct lua_State *L, const char *key, const char **ret) {
 	/*
 	 * Push the key we want to retrieve on the stack
 	 *
 	 * stack now contains: -1 => key -2 => table
 	 */
-	lua_pushstring(l, key);
+	lua_pushstring(L, key);
 
-	if(lua_istable(l, -2) == 0) {
+	if(lua_istable(L, -2) == 0) {
 		/*
 		 * Remove the key from the stack again
 		 *
 		 * stack now contains: -1 => table
 		 */
-		lua_pop(l, 1);
+		lua_pop(L, 1);
 		return 0;
 	}
 
@@ -90,55 +84,50 @@ static int plua_get_table_string_by_key(struct lua_State *l, const char *key, co
 	 *
 	 * stack now contains: -1 => value -2 => table
 	 */
-	lua_gettable(l, -2);
+	lua_gettable(L, -2);
 
 	/*
 	 * Check if the first element is a number
 	 */
-	if(lua_isstring(l, -1) == 0) {
+	if(lua_isstring(L, -1) == 0) {
 		/*
 		 * Remove the value from the stack again
 		 *
 		 * stack now contains: -1 => table
 		 */
-		lua_pop(l, 1);
+		lua_pop(L, 1);
 		return 0;
 	}
 
-	*ret = lua_tostring(l, -1);
+	*ret = lua_tostring(L, -1);
 
 	/*
 	 * stack now contains: -1 => table
 	 */
-	lua_pop(l, 1);
+	lua_pop(L, 1);
 	return 1;
 }
 
-// static int plua_get_table_double_by_key(struct lua_State *l, const char *key, double *ret) {
-	// /*
-	 // * Check if we are called as a seperate lua thread
-	 // */
-	// assert(L != l);
-
+// static int plua_get_table_double_by_key(struct lua_State *L, const char *key, double *ret) {
 	// /*
 	 // * Push the key we want to retrieve on the stack
 	 // *
 	 // * stack now contains: -1 => key -2 => table
 	 // */
-	// lua_pushstring(l, key);
+	// lua_pushstring(L, key);
 
 	// /*
 	 // * Replace the key at -1 with it value in table -2
 	 // *
 	 // * stack now contains: -1 => value -2 => table
 	 // */
-	// if(lua_istable(l, -2) == 0) {
+	// if(lua_istable(L, -2) == 0) {
 		// /*
 		 // * Remove the key from the stack again
 		 // *
 		 // * stack now contains: -1 => table
 		 // */
-		// lua_pop(l, 1);
+		// lua_pop(L, 1);
 		// return 0;
 	// }
 	// /*
@@ -146,38 +135,33 @@ static int plua_get_table_string_by_key(struct lua_State *l, const char *key, co
 	 // *
 	 // * stack now contains: -1 => value -2 => table
 	 // */
-	// lua_gettable(l, -2);
+	// lua_gettable(L, -2);
 
 	// /*
 	 // * Check if the first element is a number
 	 // */
-	// if(lua_isnumber(l, -1) == 0) {
+	// if(lua_isnumber(L, -1) == 0) {
 		// /*
 		 // * Remove the value from the stack again
 		 // *
 		 // * stack now contains: -1 => table
 		 // */
-		// lua_pop(l, 1);
+		// lua_pop(L, 1);
 		// return 0;
 	// }
 
-	// *ret = lua_tonumber(l, -1);
+	// *ret = lua_tonumber(L, -1);
 
 	// /*
 	 // * stack now contains: -1 => table
 	 // */
-	// lua_pop(l, 1);
+	// lua_pop(L, 1);
 
 	// return 1;
 // }
 
-static int plua_table_has_keys(lua_State *l, char **keys, int number) {
-	/*
-	 * Check if we are called as a seperate lua thread
-	 */
-	assert(L != l);
-
-	if(lua_istable(l, -1) == 0) {
+static int plua_table_has_keys(lua_State *L, char **keys, int number) {
+	if(lua_istable(L, -1) == 0) {
 		return 0;
 	}
 
@@ -189,15 +173,15 @@ static int plua_table_has_keys(lua_State *l, char **keys, int number) {
 	 *
 	 * stack now contains: -1 => table -2 => table
 	 */
-	lua_pushvalue(l, -1);
+	lua_pushvalue(L, -1);
 
 	/*
 	 * stack now contains: -1 => nil -2 => table -3 => table
 	 */
-	lua_pushnil(l);
+	lua_pushnil(L);
 
 	int match = 0, nrkeys = 0;
-	while(lua_next(l, -2)) {
+	while(lua_next(L, -2)) {
 		nrkeys++;
 
 		/*
@@ -207,9 +191,9 @@ static int plua_table_has_keys(lua_State *l, char **keys, int number) {
 		 *
 		 * stack now contains: -1 => key -2 => value; -3 => key -4 => table -5 => table
 		 */
-		lua_pushvalue(l, -2);
+		lua_pushvalue(L, -2);
 
-		const char *k = lua_tostring(l, -1); // key
+		const char *k = lua_tostring(L, -1); // key
 
 		for(i=0;i<number;i++) {
 			if(strcmp(keys[i], k) == 0) {
@@ -223,7 +207,7 @@ static int plua_table_has_keys(lua_State *l, char **keys, int number) {
 		 *
 		 * stack now contains: -1 => key -2 => table -3 => table
 		 */
-		lua_pop(l, 2);
+		lua_pop(L, 2);
 	}
 	/*
 	 * After the last lua_next call stack now contains:
@@ -238,27 +222,22 @@ static int plua_table_has_keys(lua_State *l, char **keys, int number) {
 	 *
 	 * stack now contains -1 => table
 	 */
-	lua_pop(l, 1);
+	lua_pop(L, 1);
 
 	return 1;
 }
 
-static int plua_module_init(struct lua_State *l, char *file, struct plua_module_t *mod) {
-	/*
-	 * Check if we are called as a seperate lua thread
-	 */
-	assert(L != l);
-
+static int plua_module_init(struct lua_State *L, char *file, struct plua_module_t *mod) {
 	/*
 	 * Function info is at top of stack
 	 *
 	 * stack now contains -1 => function
 	 */
 #if LUA_VERSION_NUM <= 502
-	lua_getfield(l, -1, "info");
-	if(strcmp(lua_typename(l, lua_type(l, -1)), "function") != 0) {
+	lua_getfield(L, -1, "info");
+	if(strcmp(lua_typename(L, lua_type(L, -1)), "function") != 0) {
 #else
-	if(lua_getfield(l, -1, "info") == 0) {
+	if(lua_getfield(L, -1, "info") == 0) {
 #endif
 		logprintf(LOG_ERR, "%s: info function missing", file);
 		return 0;
@@ -269,41 +248,41 @@ static int plua_module_init(struct lua_State *l, char *file, struct plua_module_
 	 *
 	 * stack now contains -1 => function
 	 */
-	if(lua_pcall(l, 0, 1, 0) == LUA_ERRRUN) {
-		if(strcmp(lua_typename(l, lua_type(l, -1)), "string") == 0) {
-			logprintf(LOG_ERR, "%s", lua_tostring(l,  -1));
-			lua_pop(l, 1);
+	if(lua_pcall(L, 0, 1, 0) == LUA_ERRRUN) {
+		if(strcmp(lua_typename(L, lua_type(L, -1)), "string") == 0) {
+			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
+			lua_pop(L, 1);
 			return 0;
 		}
 	}
 
-	if(lua_istable(l, -1) == 0) {
-		logprintf(LOG_ERR, "%s: the info function returned %s, table expected", file, lua_typename(l, lua_type(l, -1)));
+	if(lua_istable(L, -1) == 0) {
+		logprintf(LOG_ERR, "%s: the info function returned %s, table expected", file, lua_typename(L, lua_type(L, -1)));
 		return 0;
 	}
 
 	char *keys[12] = {"name", "version", "reqversion", "reqcommit"};
-	if(plua_table_has_keys(l, keys, 4) == 0) {
+	if(plua_table_has_keys(L, keys, 4) == 0) {
 		logprintf(LOG_ERR, "%s: the info table has invalid keys", file);
 		return 0;
 	}
 
 	const char *name = NULL, *version = NULL, *reqversion = NULL, *reqcommit = NULL;
-	if(plua_get_table_string_by_key(l, "name", &name) == 0) {
+	if(plua_get_table_string_by_key(L, "name", &name) == 0) {
 		logprintf(LOG_ERR, "%s: the info table 'name' key is missing or invalid", file);
 		return 0;
 	}
 
-	if(plua_get_table_string_by_key(l, "version", &version) == 0) {
+	if(plua_get_table_string_by_key(L, "version", &version) == 0) {
 		logprintf(LOG_ERR, "%s: the info table 'version' key is missing or invalid", file);
 		return 0;
 	}
 
-	if(plua_get_table_string_by_key(l, "reqversion", &reqversion) == 0) {
+	if(plua_get_table_string_by_key(L, "reqversion", &reqversion) == 0) {
 		logprintf(LOG_ERR, "%s: the info table 'reqversion' key is missing or invalid", file);
 		return 0;
 	}
-	if(plua_get_table_string_by_key(l, "reqcommit", &reqcommit) == 0) {
+	if(plua_get_table_string_by_key(L, "reqcommit", &reqcommit) == 0) {
 		logprintf(LOG_ERR, "%s: the info table 'reqcommit' key is missing or invalid", file);
 		return 0;
 	}
@@ -342,7 +321,7 @@ static int plua_module_init(struct lua_State *l, char *file, struct plua_module_
 		 *
 		 * The stack now contains: nothing
 		 */
-		lua_pop(l, 1);
+		lua_pop(L, 1);
 		return 0;
 	}
 
@@ -351,7 +330,7 @@ static int plua_module_init(struct lua_State *l, char *file, struct plua_module_
 	 *
 	 * The stack now contains: nothing
 	 */
-	lua_pop(l, 1);
+	lua_pop(L, 1);
 	return 1;
 }
 
@@ -359,8 +338,6 @@ void plua_module_load(char *file, int type) {
 	if(L == NULL) {
 		return;
 	}
-
-	struct lua_State *l = lua_newthread(L);
 	struct plua_module_t *module = MALLOC(sizeof(struct plua_module_t));
 	char name[255] = { '\0' }, *p = name;
 
@@ -368,27 +345,27 @@ void plua_module_load(char *file, int type) {
 		OUT_OF_MEMORY
 	}
 
-	if(luaL_dofile(l, file) != 0) {
-		logprintf(LOG_ERR, "%s", lua_tostring(l,  1));
-		lua_pop(l, 1);
+	if(luaL_dofile(L, file) != 0) {
+		logprintf(LOG_ERR, "%s", lua_tostring(L,  1));
+		lua_pop(L, 1);
 	}
 
-	if(lua_istable(l, -1) == 0) {
+	if(lua_istable(L, -1) == 0) {
 		logprintf(LOG_ERR, "%s: does not return a table");
-		lua_pop(l, 1);
+		lua_pop(L, 1);
 		return;
 	}
 
 	module->type = type;
 	strcpy(module->file, file);
-	if(plua_module_init(l, file, module) != 0) {
+	if(plua_module_init(L, file, module) != 0) {
 		memset(p, '\0', sizeof(name));
 		switch(module->type) {
 			case OPERATOR:
 				sprintf(p, "operator.%s", module->name);
 			break;
 		}
-		lua_setglobal(l, name);
+		lua_setglobal(L, name);
 
 		module->next = modules;
 		modules = module;
@@ -460,7 +437,6 @@ int plua_module_exists(char *module, int type) {
 	if(L == NULL) {
 		return 1;
 	}
-	struct lua_State *l = lua_newthread(L);
 	char name[255], *p = name;
 	memset(name, '\0', 255);
 
@@ -470,16 +446,16 @@ int plua_module_exists(char *module, int type) {
 		} break;
 	}
 
-	lua_getglobal(l, name);
-	if(lua_isnil(l, -1) != 0) {
-		lua_pop(l, -1);
+	lua_getglobal(L, name);
+	if(lua_isnil(L, -1) != 0) {
+		lua_pop(L, -1);
 		return -1;
 	}
-	if(lua_istable(l, -1) == 0) {
-		lua_pop(l, -1);
+	if(lua_istable(L, -1) == 0) {
+		lua_pop(L, -1);
 		return -1;
 	}
-	lua_pop(l, -1);
+	lua_pop(L, -1);
 
 	return 0;
 }

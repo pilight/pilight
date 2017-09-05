@@ -1166,8 +1166,8 @@ static int control_device(struct devices_t *dev, char *state, struct JsonNode *v
 	/* Construct the right json object */
 	json_append_member(code, "protocol", jprotocols);
 	if(dev->dev_uuid != NULL && dev->cst_uuid == 1) {
-	/*if(dev->dev_uuid != NULL && (dev->protocols->listener->hwtype == SENSOR
-	   || dev->protocols->listener->hwtype == HWRELAY)) {*/
+	// if(dev->dev_uuid != NULL && (dev->protocols->listener->hwtype == SENSOR
+	   // || dev->protocols->listener->hwtype == HWRELAY)) {
 		json_append_member(code, "uuid", json_mkstring(dev->dev_uuid));
 	}
 	json_append_member(json, "code", code);
