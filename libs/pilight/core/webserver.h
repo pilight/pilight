@@ -31,6 +31,7 @@ typedef struct connection_t {
 
   char *content;
   size_t content_len;
+  char mimetype[255];
 
   int is_websocket;
 	int ping;
