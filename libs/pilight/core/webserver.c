@@ -496,8 +496,15 @@ static size_t send_chunked_data(uv_poll_t *req, void *data, unsigned long data_l
 	struct connection_t *conn = custom_poll_data->data;
 
 	if(conn->flags == 0) {
-		char *a = "HTTP/1.1 200 OK\r\nKeep-Alive: timeout=15, max=100\r\nTransfer-Encoding: chunked\r\n\r\n";
-		iobuf_append(&custom_poll_data->send_iobuf, a, strlen(a));
+		char a[255], *p = a;
+		memset(p, '\0', 255);
+		int i = snprintf(p, 255,
+			"HTTP/1.1 200 OK\r\nKeep-Alive: timeout=15, max=100\r\n"\
+			"Content-Type: %s\r\nTransfer-Encoding: chunked\r\n\r\n",
+			conn->mimetype
+		);
+
+		iobuf_append(&custom_poll_data->send_iobuf, p, i);
 		conn->flags = 1;
 	}
 	write_chunk(req, data, data_len);
@@ -721,7 +728,6 @@ static int request_handler(uv_poll_t *req) {
 	struct connection_t *conn = custom_poll_data->data;
 
 	char *ext = NULL;
-	char *mimetype = NULL;
 	char buffer[4096], *p = buffer;
 
 	memset(buffer, '\0', 4096);
@@ -815,7 +821,7 @@ static int request_handler(uv_poll_t *req) {
 			/* Retrieve the extension of the requested file and create a mimetype accordingly */
 			dot = strrchr(conn->request, '.');
 			if(dot == NULL || dot == conn->request) {
-				mimetype = STRDUP("text/plain");
+				strcpy(conn->mimetype, "text/plain");
 			} else {
 				if((ext = REALLOC(ext, strlen(dot)+1)) == NULL) {
 					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -824,25 +830,25 @@ static int request_handler(uv_poll_t *req) {
 				strcpy(ext, dot+1);
 
 				if(strcmp(ext, "html") == 0) {
-					mimetype = STRDUP("text/html");
+					strcpy(conn->mimetype, "text/html");
 				} else if(strcmp(ext, "xml") == 0) {
-					mimetype = STRDUP("text/xml");
+					strcpy(conn->mimetype, "text/xml");
 				} else if(strcmp(ext, "png") == 0) {
-					mimetype = STRDUP("image/png");
+					strcpy(conn->mimetype, "image/png");
 				} else if(strcmp(ext, "gif") == 0) {
-					mimetype = STRDUP("image/gif");
+					strcpy(conn->mimetype, "image/gif");
 				} else if(strcmp(ext, "ico") == 0) {
-					mimetype = STRDUP("image/x-icon");
+					strcpy(conn->mimetype, "image/x-icon");
 				} else if(strcmp(ext, "jpg") == 0) {
-					mimetype = STRDUP("image/jpg");
+					strcpy(conn->mimetype, "image/jpg");
 				} else if(strcmp(ext, "css") == 0) {
-					mimetype = STRDUP("text/css");
+					strcpy(conn->mimetype, "text/css");
 				} else if(strcmp(ext, "js") == 0) {
-					mimetype = STRDUP("text/javascript");
+					strcpy(conn->mimetype, "text/javascript");
 				} else if(strcmp(ext, "php") == 0) {
-					mimetype = STRDUP("application/x-httpd-php");
+					strcpy(conn->mimetype, "application/x-httpd-php");
 				} else {
-					mimetype = STRDUP("text/plain");
+					strcpy(conn->mimetype, "text/plain");
 				}
 			}
 			FREE(ext);
@@ -851,7 +857,6 @@ static int request_handler(uv_poll_t *req) {
 			p = buffer;
 
 			if(access(conn->request, F_OK) != 0) {
-				FREE(mimetype);
 				goto filenotfound;
 			}
 
@@ -859,7 +864,6 @@ static int request_handler(uv_poll_t *req) {
 			if((cl = http_get_header(conn, "Content-Length"))) {
 				if(atoi(cl) > MAX_UPLOAD_FILESIZE) {
 					char line[1024] = {'\0'};
-					FREE(mimetype);
 					sprintf(line, "Webserver Warning: POST Content-Length of %d bytes exceeds the limit of %d bytes in Unknown on line 0", MAX_UPLOAD_FILESIZE, atoi(cl));
 					webserver_create_header(&p, "200 OK", "text/plain", strlen(line));
 					iobuf_append(&custom_poll_data->send_iobuf, buffer, (int)(p-buffer));
@@ -899,7 +903,6 @@ static int request_handler(uv_poll_t *req) {
 				long arg = fcntl(conn->file_fd, F_GETFL, NULL);
 				fcntl(conn->file_fd, F_SETFL, arg | O_NONBLOCK);
 #endif
-				FREE(mimetype);
 
 				if(file_read_cb(conn->file_fd, req) == 0) {
 					return MG_MORE;
@@ -908,7 +911,6 @@ static int request_handler(uv_poll_t *req) {
 				}
 			}
 
-			FREE(mimetype);
 			return MG_MORE;
 		}
 	} else if(websockets == WEBGUI_WEBSOCKETS) {
