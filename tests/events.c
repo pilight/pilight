@@ -25,9 +25,6 @@
 #include "../libs/pilight/events/actions/dim.h"
 #include "../libs/pilight/events/actions/toggle.h"
 #include "../libs/pilight/events/function.h"
-#include "../libs/pilight/events/functions/random.h"
-#include "../libs/pilight/events/functions/date_format.h"
-#include "../libs/pilight/events/functions/date_add.h"
 #include "../libs/pilight/protocols/protocol.h"
 #include "../libs/pilight/protocols/generic/generic_switch.h"
 #include "../libs/pilight/protocols/generic/generic_dimmer.h"
@@ -537,13 +534,16 @@ static void test_events(CuTest *tc) {
 
 		memtrack();
 
-		char settings[1024] = "{\"operators-root\":\"%s../libs/pilight/events/operators/\"}";
+		char settings[1024] = "{"\
+		"\"operators-root\":\"%s../libs/pilight/events/operators/\","\
+		"\"functions-root\":\"%s../libs/pilight/events/functions/\""\
+		"}";
 		char settings1[1024], *p = settings1;
 		char *file = STRDUP(__FILE__);
 		CuAssertPtrNotNull(tc, file);
 		memset(&settings1, '\0', 1024);
 		str_replace("events.c", "", &file);
-		snprintf(p, 1024, settings, file);
+		snprintf(p, 1024, settings, file, file);
 		FREE(file);
 
 		FILE *f = fopen("events.json", "w");
@@ -556,22 +556,20 @@ static void test_events(CuTest *tc) {
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("events.json", CONFIG_SETTINGS));
 		event_operator_init();
+		event_function_init();
 		storage_gc();
 
 		storage_init();
 		actionSwitchInit();
 		actionToggleInit();
 		actionDimInit();
-		functionRandomInit();
-		functionDateFormatInit();
-		functionDateAddInit();
 		arctechSwitchInit();
 		genericSwitchInit();
 		genericDimmerInit();
 		datetimeInit();
 
 		CuAssertIntEquals(tc, 0, storage_read("events.json", CONFIG_DEVICES | CONFIG_RULES));
-		
+
 		eventpool_init(EVENTPOOL_NO_THREADS);
 		eventpool_callback(REASON_CONTROL_DEVICE, control_device);
 		event_init();
