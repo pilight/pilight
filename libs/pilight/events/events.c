@@ -708,7 +708,12 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 
 	event_function_callback(name, args, &output);
 
-	if(strlen(output) > 0) {
+	if(output == NULL) {
+		error = -1;
+		goto close;
+	}
+
+	if(output != NULL && strlen(output) > 0) {
 		if(pilight.debuglevel >= 2) {
 			fprintf(stderr, "replace %s with %s in %s\n", function, output, *rule);
 		}
@@ -716,7 +721,9 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 	}
 
 close:
-	FREE(output);
+	if(output != NULL) {
+		FREE(output);
+	}
 	FREE(name);
 	FREE(function);
 	return error;

@@ -173,6 +173,8 @@ static void datetime2table(struct lua_State *L, char *device) {
 	struct varcont_t val;
 	int i = 0;
 	struct tm tm;
+	memset(&tm, 0, sizeof(struct tm));
+
 	while(devices_select_settings(ORIGIN_RULE, device, i++, &setting, &val) == 0) {
 		if(strcmp(setting, "year") == 0) {
 			tm.tm_year = val.number_-1900;
