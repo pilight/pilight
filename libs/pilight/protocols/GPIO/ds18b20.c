@@ -32,6 +32,7 @@
 	#endif
 #endif
 #include <pthread.h>
+#include <sys/utsname.h>
 
 #include "../../core/threads.h"
 #include "../../core/pilight.h"
@@ -67,6 +68,7 @@ static void *ds18b20Parse(void *param) {
 	int w1valid = 0;
 	double w1temp = 0.0;
 	size_t bytes = 0;
+    struct utsname unameData;
 #endif
 	char **id = NULL, *stmp = NULL, *content = NULL;
 	char *ds18b20_sensor = NULL;
@@ -94,11 +96,13 @@ static void *ds18b20Parse(void *param) {
 		}
 	}
 
-	if(json_find_number(json, "poll-interval", &itmp) == 0)
+	if(json_find_number(json, "poll-interval", &itmp) == 0) {
 		interval = (int)round(itmp);
-	json_find_number(json, "temperature-offset", &temp_offset);
-	if(json_find_number(json, "resolution", &rtmp) == 0)
+    }
+	if(json_find_number(json, "resolution", &rtmp) == 0) {
 		resolution = (int)round(rtmp);
+    }
+    json_find_number(json, "temperature-offset", &temp_offset);
 
 	while(loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
@@ -135,14 +139,21 @@ static void *ds18b20Parse(void *param) {
 								}
 								memset(content, '\0', bytes+1);
 
-								if ((rfd = fopen(ds18b20_w1slave, "w"))) {
-									logprintf(LOG_DEBUG, "setting resolution of %s to: %d", ds18b20_w1slave, resolution);
-									if (fprintf(ffd, "%d", resolution) < 0 )
-										logprintf(LOG_ERR, "cannot set resolution of %s", ds18b20_w1slave);
+								if (uname(&unameData) != -1) {
+									char **varr = NULL;
+									int toks = explode(unameData.release, ".", &varr);
 
-									fclose(ffd);
-								} else {
-									logprintf(LOG_ERR, "opening %s to set resolution failed!", ds18b20_w1slave);
+									if (toks > 2 && strtol(varr[0], NULL, 10) >= 4 && strtol(varr[1], NULL, 10) >= 7) {
+										if ((rfd = fopen(ds18b20_w1slave, "w"))) {
+											logprintf(LOG_DEBUG, "setting resolution of %s to: %d", ds18b20_w1slave, resolution);
+											if (fprintf(rfd, "%d", resolution) < 0 ) {
+												logprintf(LOG_ERR, "cannot set resolution of %s", ds18b20_w1slave);
+											}
+											fclose(rfd);
+										} else {
+											logprintf(LOG_ERR, "opening %s to set resolution failed!", ds18b20_w1slave);
+										}
+									}
 								}
 
 								if(fread(content, sizeof(char), bytes, fp) == -1) {
