@@ -31,7 +31,10 @@ When you contribute to pilight make sure to follow this checklist:
 
 Coding style
 ------------
-The following rules apply to all C code in the pilight repository.
+pilight uses the [Artistic Style](http://astyle.sourceforge.net) tool to
+enforce code style policies to ensure that the code style remains consistent
+throughout our codebase. The following rules apply to all C code in the pilight
+repository. The following rules apply to all C code in the pilight repository.
 
 To make it easier to work with the code style guidelines, there is a 
 [git pre-commit hook](ci/pre-commit) in ci/pre-commit which can be used to run

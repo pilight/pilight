@@ -1,5 +1,18 @@
 #!/bin/bash -e
 
+if [[ "$LINT" == "1" ]]; then
+    # Build up-to-date astyle, takes <10 seconds
+    # Change to different directory to prevent astyle linting itself
+    pushd ..
+    wget https://sourceforge.net/projects/astyle/files/astyle/astyle%203.0.1/astyle_3.0.1_linux.tar.gz -O astyle.tgz
+    tar -xzf astyle.tgz
+    cd astyle/build/gcc
+    make -j2 release
+    sudo make install
+    exit 0
+    popd
+fi
+
 if [[ $PLATFORM == "Unix" ]]; then
     curl https://apt.pilight.org/pilight.key | sudo apt-key add - && echo "deb http://apt.pilight.org/ stable main" | sudo tee -a /etc/apt/sources.list
     sudo apt-get update

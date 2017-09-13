@@ -1,5 +1,10 @@
 #!/bin/bash -e
 
+if [[ "$LINT" == "1" ]]; then
+	. ci/lint.sh
+	exit 0
+fi
+
 if [[ ${PLATFORM} == "Unix" ]]; then
     mkdir -p build
     cd build || exit 1
