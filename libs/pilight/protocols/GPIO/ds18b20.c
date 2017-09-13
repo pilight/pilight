@@ -71,7 +71,7 @@ static void *ds18b20Parse(void *param) {
 	char **id = NULL, *stmp = NULL, *content = NULL;
 	char *ds18b20_sensor = NULL;
 	int nrid = 0, interval = 10, nrloops = 0, y = 0, resolution = 10;
-	double temp_offset = 0.0, itmp = 0.0, rtemp = 0.0;
+	double temp_offset = 0.0, itmp = 0.0, rtmp = 0.0;
 
 	threads++;
 
@@ -96,12 +96,9 @@ static void *ds18b20Parse(void *param) {
 
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
-
 	json_find_number(json, "temperature-offset", &temp_offset);
-
-	if(json_find_number(json, "resolution", &rtemp) == 0)
-		resolution = (int)round(rtemp);
-
+	if(json_find_number(json, "resolution", &rtmp) == 0)
+		resolution = (int)round(rtmp);
 
 	while(loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
@@ -138,16 +135,15 @@ static void *ds18b20Parse(void *param) {
 								}
 								memset(content, '\0', bytes+1);
 
-                                //try to set resolution here - set it temporary to not wear out the EEEPROM
-                                if ((rfd = fopen(ds18b20_w1slave, "w"))) {
-                                    logprintf(LOG_DEBUG, "setting resolution of %s to: %d", ds18b20_w1slave, resolution);
-                                    if (fprintf(ffd, "%d", resolution) < 0 )
-                                        logprintf(LOG_ERR, "cannot set resolution of %s", ds18b20_w1slave);
+								if ((rfd = fopen(ds18b20_w1slave, "w"))) {
+									logprintf(LOG_DEBUG, "setting resolution of %s to: %d", ds18b20_w1slave, resolution);
+									if (fprintf(ffd, "%d", resolution) < 0 )
+										logprintf(LOG_ERR, "cannot set resolution of %s", ds18b20_w1slave);
 
-                                    fclose(ffd);
-                                } else {
-                                    logprintf(LOG_ERR, "opening %s to set resolution failed!", ds18b20_w1slave);
-                                }
+									fclose(ffd);
+								} else {
+									logprintf(LOG_ERR, "opening %s to set resolution failed!", ds18b20_w1slave);
+								}
 
 								if(fread(content, sizeof(char), bytes, fp) == -1) {
 									logprintf(LOG_ERR, "cannot read config file: %s", ds18b20_w1slave);
