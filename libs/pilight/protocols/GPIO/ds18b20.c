@@ -98,11 +98,11 @@ static void *ds18b20Parse(void *param) {
 
 	if(json_find_number(json, "poll-interval", &itmp) == 0) {
 		interval = (int)round(itmp);
-    }
+	}
 	if(json_find_number(json, "resolution", &rtmp) == 0) {
 		resolution = (int)round(rtmp);
-    }
-    json_find_number(json, "temperature-offset", &temp_offset);
+	}
+	json_find_number(json, "temperature-offset", &temp_offset);
 
 	while(loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
@@ -152,6 +152,10 @@ static void *ds18b20Parse(void *param) {
 											fclose(rfd);
 										} else {
 											logprintf(LOG_ERR, "opening %s to set resolution failed!", ds18b20_w1slave);
+										}
+									} else {
+										if (rtmp != 0) {
+											logprintf(LOG_ERR, "kernel version >=4.7 is required for setting resolution on ds18b20 sensors. ");
 										}
 									}
 								}
