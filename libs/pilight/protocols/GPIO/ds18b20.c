@@ -68,7 +68,7 @@ static void *ds18b20Parse(void *param) {
 	int w1valid = 0;
 	double w1temp = 0.0;
 	size_t bytes = 0;
-    struct utsname unameData;
+	struct utsname unameData;
 #endif
 	char **id = NULL, *stmp = NULL, *content = NULL;
 	char *ds18b20_sensor = NULL;
