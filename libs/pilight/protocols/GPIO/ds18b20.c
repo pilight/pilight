@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 #ifndef _WIN32
 	#include <unistd.h>
+	#include <sys/utsname.h>
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
@@ -40,6 +41,8 @@ typedef struct data_t {
 
 	double temp_offset;
 	int interval;
+	int resolution;
+	bool resolution_is_set;
 
 	struct data_t *next;
 } data_t;
@@ -60,11 +63,12 @@ static void *thread(void *param) {
 #ifndef _WIN32
 	uv_timer_t *timer_req = param;
 	struct data_t *settings = timer_req->data;
+	struct utsname unameData;
 
 	char *content = NULL;
 	struct stat st;
 
-	FILE *fp = NULL;
+	FILE *fp = NULL, *rfd = NULL;
 	char crcVar[5];
 	int w1valid = 0;
 	double w1temp = 0.0;
@@ -83,6 +87,28 @@ static void *thread(void *param) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(content, '\0', bytes+1);
+
+	if (uname(&unameData) != -1) {
+		char **varr = NULL;
+		int toks = explode(unameData.release, ".", &varr);
+
+		if (toks > 2 && strtol(varr[0], NULL, 10) >= 4 && strtol(varr[1], NULL, 10) >= 7) {
+			if ((rfd = fopen(settings->w1slave, "w"))) {
+				logprintf(LOG_DEBUG, "setting resolution of %s to: %d", settings->w1slave, settings->resolution);
+				if (fprintf(rfd, "%d", settings->resolution) < 0 ) {
+					logprintf(LOG_ERR, "cannot set resolution of %s", settings->w1slave);
+				}
+				fclose(rfd);
+			} else {
+				logprintf(LOG_ERR, "opening %s to set resolution failed", settings->w1slave);
+			}
+		} else {
+			if (settings->resolution_is_set) {
+				logprintf(LOG_ERR, "kernel version >= 4.7 is required for setting resolution on ds18b20 sensors");
+			}
+		}
+		array_free(&varr, toks);
+	}
 
 	if(fread(content, sizeof(char), bytes, fp) == -1) {
 		logprintf(LOG_NOTICE, "cannot read config file: %s", settings->w1slave);
@@ -134,8 +160,8 @@ static void *addDevice(int reason, void *param) {
 	struct JsonNode *jchild = NULL;
 	struct data_t *node = NULL;
 	char *stmp = NULL;
-	int match = 0, interval = 10;
-	double itmp = 0.0;
+	int match = 0, interval = 10, resolution = 10;
+	double itmp = 0.0, rtmp = 0.0;
 
 #ifndef _WIN32
 	struct dirent *file = NULL;
@@ -190,6 +216,10 @@ static void *addDevice(int reason, void *param) {
 		interval = (int)round(itmp);
 	}
 
+	if(json_find_number(jdevice, "resolution", &rtmp) == 0) {
+		resolution = (int)round(rtmp);
+	}
+
 #ifndef _WIN32
 	if((node->sensor = REALLOC(node->sensor, strlen(source_path)+strlen(node->id)+5)) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -226,7 +256,8 @@ static void *addDevice(int reason, void *param) {
 	json_find_number(jdevice, "temperature-offset", &node->temp_offset);
 
 	node->interval = interval;
-
+	node->resolution = resolution;
+	node->resolution_is_set = (rtmp != 0);
 	node->timer_req = NULL;
 	node->next = data;
 	data = node;
@@ -282,6 +313,7 @@ void ds18b20Init(void) {
 	options_add(&ds18b20->options, 0, "temperature-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
 	options_add(&ds18b20->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&ds18b20->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
+	options_add(&ds18b20->options, 0, "resolution", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[9|10|11|12]");
 
 	memset(source_path, '\0', 21);
 
