@@ -1,0 +1,105 @@
+body,
+h1, h2, h3,
+h4, h5, h6,
+dt, dl, dd,
+blockquote,
+td, th, div,
+ul, li, ol,
+a, p, input,
+div.sphinxsidebar .sidebar-toc a,
+.sidebar-block h2,
+.text-logo,
+.admonition-title {
+	font-family:'Roboto Condensed', sans-serif
+}
+
+div.sphinxsidebar {
+	margin-top: 5px;
+	padding-top: 80px;
+	background: url('pilight.png') no-repeat top center;
+}
+
+.text-logo {
+	display: none;
+}
+
+blockquote {
+	background: transparent;
+	border: 0px;
+}
+
+table.docutils {
+	border: 0px solid transparent;
+	width: 100%;
+	text-align: center;
+}
+
+table.docutils * {
+	border: 0px solid transparent;
+	background: none;
+}
+
+div[class^='highlight'] {
+	overflow-x: auto;
+	margin: 1px 0 24px 0
+}
+
+div[class^='highlight'] div[class^='highlight'] {
+	margin: 0;
+	padding: 0;
+}
+
+table {
+	border-collapse: collapse;
+	margin: 0px;
+	padding: 0px;
+}
+
+.highlighttable pre {
+	margin: 0px;
+	padding: 0px;
+}
+
+.event-success,
+.event-fail {
+	position: relative;
+	float: right;
+	font-size: 16px; 
+	padding: 0px; 
+	margin-top: 2px; 
+	width: 60px;
+	display: block;
+}
+
+.event-success {
+	color: green;
+}
+
+.event-fail {
+	color: red;
+}
+
+.text-logo {
+	background: #fafafa;
+}
+
+.sidebar-toc ul li a:hover {
+  background-color: white;
+  color: red;
+}
+
+.sidebar-toc ul li.current > a,
+.sidebar-toc ul li.current > a:hover {
+  background-color: #ffcc00;
+  color: #444;
+}
+
+h1:hover > a.headerlink,
+h2:hover > a.headerlink,
+h3:hover > a.headerlink,
+h4:hover > a.headerlink,
+h5:hover > a.headerlink,
+h6:hover > a.headerlink,
+dt:hover > a.headerlink {
+  visibility: hidden;
+}
