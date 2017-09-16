@@ -98,7 +98,7 @@ html_theme_path = guzzle_sphinx_theme.html_theme_path()
 # documentation.
 #
 html_theme_options = {
-	"project_nav_name": " ",
+	"project_nav_name": "&nbsp;",
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
