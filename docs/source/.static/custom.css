@@ -20,7 +20,9 @@ div.sphinxsidebar {
 }
 
 .text-logo {
-	display: none;
+	opacity: 0;
+	height: 102px;
+	margin-top: -100px;
 }
 
 blockquote {
