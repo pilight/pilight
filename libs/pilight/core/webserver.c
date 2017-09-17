@@ -547,7 +547,14 @@ static int parse_rest(uv_poll_t *req) {
 #else
 		struct devices_t *dev = NULL;
 #endif
-		char *decoded = MALLOC(strlen(conn->query_string)+1);
+		int len = urldecode(conn->query_string, NULL);
+		if(len == -1) {
+			char *z = "{\"message\":\"failed\",\"error\":\"cannot decode url\"}";
+			send_data(req, "application/json", z, strlen(z));
+			return MG_TRUE;
+		}
+
+		char *decoded = MALLOC(len+1);
 		if(decoded == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
@@ -1288,12 +1295,12 @@ static void send_websocket_handshake(uv_poll_t *req, const char *key) {
 
 	memset(&sha, '\0', 20);
 
-	 snprintf(buf, sizeof(buf), "%s%s", key, magic);
+	snprintf(buf, sizeof(buf), "%s%s", key, magic);
 	mbedtls_sha1_init(&ctx);
 	mbedtls_sha1_starts(&ctx);
 	mbedtls_sha1_update(&ctx, (unsigned char *)buf, strlen(buf));
 	mbedtls_sha1_finish(&ctx, sha);
-	 b64_sha = base64encode(p, 20);
+	b64_sha = base64encode(p, 20);
 	int i = sprintf(buf,
               "HTTP/1.1 101 Web Socket Protocol Handshake\r\n"
               "Connection: Upgrade\r\n"
