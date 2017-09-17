@@ -235,6 +235,7 @@ typedef struct data_t {
 } data_t;
 
 static struct data_t *data = NULL;
+static char UTC[] = "UTC";
 
 #ifdef PILIGHT_REWRITE
 static void *reason_code_received_free(void *param) {
@@ -452,7 +453,6 @@ static struct threadqueue_t *initDev(JsonNode *jdevice) {
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
 	struct data_t *node = NULL;
-	char UTC[] = "UTC";
 	int match = 0;
 
 #ifdef PILIGHT_REWRITE
@@ -508,7 +508,7 @@ static struct threadqueue_t *initDev(JsonNode *jdevice) {
 	}
 
 	if((node->tz = coord2tz(node->longitude, node->latitude)) == NULL) {
-		logprintf(LOG_INFO, "sunriseset %s, could not determine timezone", jdevice->key);
+		logprintf(LOG_INFO, "sunriseset %s, could not determine timezone, defaulting to UTC", jdevice->key);
 		node->tz = UTC;
 	} else {
 		logprintf(LOG_INFO, "sunriseset %s %.6f:%.6f seems to be in timezone: %s", jdevice->key, node->longitude, node->latitude, node->tz);

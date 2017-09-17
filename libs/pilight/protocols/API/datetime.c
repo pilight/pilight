@@ -163,6 +163,7 @@ static void *thread(void *param) {
 }
 #else
 
+static char UTC[] = "UTC";
 static char *format = NULL;
 static int time_override = -1;
 
@@ -299,7 +300,6 @@ static struct threadqueue_t *initDev(JsonNode *jdevice) {
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
 	struct data_t *node = NULL;
-	char UTC[] = "UTC";
 	int match = 0;
 
 #ifdef PILIGHT_REWRITE
@@ -356,7 +356,7 @@ static struct threadqueue_t *initDev(JsonNode *jdevice) {
 	}
 
 	if((node->tz = coord2tz(node->longitude, node->latitude)) == NULL) {
-		logprintf(LOG_INFO, "datetime %s, could not determine timezone", jdevice->key);
+		logprintf(LOG_INFO, "datetime %s, could not determine timezone, defaulting to UTC", jdevice->key);
 		node->tz = UTC;
 	} else {
 		logprintf(LOG_INFO, "datetime %s %.6f:%.6f seems to be in timezone: %s", jdevice->key, node->longitude, node->latitude, node->tz);
