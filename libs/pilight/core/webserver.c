@@ -535,8 +535,15 @@ static int parse_rest(uv_poll_t *req) {
 		conn->query_string = conn->content;
 	}
 	if(conn->query_string != NULL) {
+		int len = urldecode(conn->query_string, NULL);
+		if(len == -1) {
+			char *z = "{\"message\":\"failed\",\"error\":\"cannot decode url\"}";
+			send_data(req, "application/json", z, strlen(z));
+			return MG_TRUE;
+		}
+
 		char *dev = NULL;
-		char *decoded = MALLOC(strlen(conn->query_string)+1);
+		char *decoded = MALLOC(len+1);
 		if(decoded == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
