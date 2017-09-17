@@ -49,6 +49,7 @@
 
 static char *format = NULL;
 static int time_override = -1;
+static char UTC[] = "UTC";
 
 typedef struct data_t {
 	char *name;
@@ -152,7 +153,6 @@ static void *addDevice(int reason, void *param) {
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
 	struct data_t *node = NULL;
-	char UTC[] = "UTC";
 	int match = 0;
 
 	if(param == NULL) {

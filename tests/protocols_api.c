@@ -31,15 +31,17 @@
 
 #define CPU_TEMP 								0
 #define DATETIME								1
-#define SUNRISESET_AMS					2
-#define SUNRISESET_NY						3
-#define SUNRISESET_BEIJING			4
-#define SUNRISESET_RISE					5
-#define SUNRISESET_AT_RISE			6
-#define SUNRISESET_SET					7
-#define SUNRISESET_AT_SET				8
-#define SUNRISESET_MIDNIGHT			9
-#define SUNRISESET_AT_MIDNIGHT	10
+#define DATETIME1								2
+#define SUNRISESET_INV					3
+#define SUNRISESET_AMS					4
+#define SUNRISESET_NY						5
+#define SUNRISESET_BEIJING			6
+#define SUNRISESET_RISE					7
+#define SUNRISESET_AT_RISE			8
+#define SUNRISESET_SET					9
+#define SUNRISESET_AT_SET				10
+#define SUNRISESET_MIDNIGHT			11
+#define SUNRISESET_AT_MIDNIGHT	12
 
 static char add[1024];
 static char adapt[1024];
@@ -81,6 +83,18 @@ static void *received(int reason, void *param) {
 		case DATETIME:
 			CuAssertStrEquals(gtc,
 				"{\"longitude\":4.895168,\"latitude\":52.370216,\"year\":2017,\"month\":1,\"day\":6,\"weekday\":6,\"hour\":13,\"minute\":15,\"second\":5,\"dst\":0}",
+				data->message);
+			if(steps > 0) {
+				CuAssertIntEquals(gtc, 1, duration);
+			}
+			if(steps == 2) {
+				uv_stop(uv_default_loop());
+			}
+			steps++;
+		break;
+		case DATETIME1:
+			CuAssertStrEquals(gtc,
+				"{\"longitude\":1.100000,\"latitude\":1.100000,\"year\":2017,\"month\":1,\"day\":6,\"weekday\":6,\"hour\":12,\"minute\":15,\"second\":5,\"dst\":0}",
 				data->message);
 			if(steps > 0) {
 				CuAssertIntEquals(gtc, 1, duration);
@@ -236,7 +250,7 @@ static void test_protocols_api(CuTest *tc) {
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	timestamp.first = timestamp.second;
-	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;	
+	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
 
@@ -268,14 +282,14 @@ static void test_protocols_api_cpu_temp(CuTest *tc) {
 
 	gtc = tc;
 
-	memtrack();	
+	memtrack();
 
 	cpuTempInit();
 
 	FILE *f = fopen("cpu_temp.txt", "w");
 	CuAssertPtrNotNull(tc, f);
 	fprintf(f, "%d", 46540);
-	fclose(f);	
+	fclose(f);
 
 	memset(&add, '\0', 1024);
 	memset(&adapt, '\0', 1024);
@@ -291,12 +305,12 @@ static void test_protocols_api_cpu_temp(CuTest *tc) {
 static void test_protocols_api_datetime(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
-	
+
 	gtc = tc;
 
 	steps = 0;
 
-	memtrack();	
+	memtrack();
 
 	datetimeInit();
 
@@ -311,13 +325,57 @@ static void test_protocols_api_datetime(CuTest *tc) {
 	test_protocols_api(tc);
 }
 
+static void test_protocols_api_datetime_invalid_coord(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	gtc = tc;
+
+	steps = 0;
+
+	memtrack();
+
+	datetimeInit();
+
+	memset(&add, '\0', 1024);
+	memset(&adapt, '\0', 1024);
+
+	strcpy(add, "{\"test\":{\"protocol\":[\"datetime\"],\"id\":[{\"longitude\":1.1,\"latitude\":1.1}],\"year\":2015,\"month\":1,\"day\":27,\"hour\":14,\"minute\":37,\"second\":8,\"weekday\":3,\"dst\":1}}");
+	strcpy(adapt, "{\"datetime\":{\"time-override\":1483704905}}");
+
+	device = DATETIME1;
+
+	test_protocols_api(tc);
+}
+
+static void test_protocols_api_sunriseset_invalid_coord(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	gtc = tc;
+
+	memtrack();
+
+	sunRiseSetInit();
+
+	memset(&add, '\0', 1024);
+	memset(&adapt, '\0', 1024);
+
+	strcpy(add, "{\"test\":{\"protocol\":[\"sunriseset\"],\"id\":[{\"longitude\":1.1,\"latitude\":1.1}],\"sunrise\":8.16,\"sunset\":16.30,\"sun\":\"set\"}}");
+	strcpy(adapt, "{\"sunriseset\":{\"time-override\":1483795539}}");
+
+	device = SUNRISESET_INV;
+
+	test_protocols_api(tc);
+}
+
 static void test_protocols_api_sunriseset_amsterdam(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
-	
+
 	gtc = tc;
 
-	memtrack();	
+	memtrack();
 
 	sunRiseSetInit();
 
@@ -335,10 +393,10 @@ static void test_protocols_api_sunriseset_amsterdam(CuTest *tc) {
 static void test_protocols_api_sunriseset_new_york(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
-	
+
 	gtc = tc;
 
-	memtrack();	
+	memtrack();
 
 	sunRiseSetInit();
 
@@ -356,10 +414,10 @@ static void test_protocols_api_sunriseset_new_york(CuTest *tc) {
 static void test_protocols_api_sunriseset_beijing(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
-	
+
 	gtc = tc;
 
-	memtrack();	
+	memtrack();
 
 	sunRiseSetInit();
 
@@ -377,10 +435,10 @@ static void test_protocols_api_sunriseset_beijing(CuTest *tc) {
 static void test_protocols_api_sunriseset_rise(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
-	
+
 	gtc = tc;
 
-	memtrack();	
+	memtrack();
 
 	steps = 0;
 
@@ -429,10 +487,10 @@ static void test_protocols_api_sunriseset_at_rise(CuTest *tc) {
 static void test_protocols_api_sunriseset_set(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
-	
+
 	gtc = tc;
 
-	memtrack();	
+	memtrack();
 
 	steps = 0;
 
@@ -530,11 +588,13 @@ static void test_protocols_api_sunriseset_at_midnight(CuTest *tc) {
 	test_protocols_api(tc);
 }
 
-CuSuite *suite_protocols_api(void) {	
+CuSuite *suite_protocols_api(void) {
 	CuSuite *suite = CuSuiteNew();
 
 	SUITE_ADD_TEST(suite, test_protocols_api_cpu_temp);
 	SUITE_ADD_TEST(suite, test_protocols_api_datetime);
+	SUITE_ADD_TEST(suite, test_protocols_api_datetime_invalid_coord);
+	SUITE_ADD_TEST(suite, test_protocols_api_sunriseset_invalid_coord);
 	SUITE_ADD_TEST(suite, test_protocols_api_sunriseset_amsterdam);
 	SUITE_ADD_TEST(suite, test_protocols_api_sunriseset_new_york);
 	SUITE_ADD_TEST(suite, test_protocols_api_sunriseset_beijing);
