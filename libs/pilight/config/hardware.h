@@ -23,6 +23,7 @@ typedef enum {
 	HWINTERNAL = -1,
 	NONE = 0,
 	RF433,
+	RF433_1,
 	RF868,
 	RFIR,
 	ZWAVE,

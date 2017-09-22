@@ -209,6 +209,7 @@ struct socket_callback_t socket_callback;
 	static int oldverbosity = LOG_NOTICE;
 #endif
 
+static uv_pipe_t *pipe_req = NULL;
 
 #ifdef WEBSERVER
 /* Do we enable the webserver */
@@ -2646,6 +2647,51 @@ static void signal_cb(uv_signal_t *handle, int signum) {
 	uv_stop(uv_default_loop());
 }
 
+static void alloc_cb(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
+       if((buf->base = malloc(suggested_size)) == NULL) {
+               OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+       }
+       buf->len = suggested_size;
+       memset(buf->base, '\0', buf->len);
+}
+
+static void read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
+       if(nread > 0) {
+               struct protocol_t *protocol = NULL;
+
+               char **array = NULL;
+               int n = explode(buf->base, " ", &array), x = 0;
+               for(x=0;x<n;x++) {
+                       struct protocols_t *pnode = protocols;
+                       while(pnode != NULL) {
+                               protocol = pnode->listener;
+
+                               if(protocol->hwtype == RF433_1 && protocol->parseCode1 != NULL) {
+                                       protocol->parseCode1(atoi(array[x]));
+                               }
+                               pnode = pnode->next;
+                       }
+               }
+               array_free(&array, n);
+       }
+}
+
+static void connect_cb(uv_stream_t *req, int status) {
+       uv_pipe_t *client_req = MALLOC(sizeof(uv_pipe_t));
+       if(client_req == NULL) {
+               OUT_OF_MEMORY
+       }
+
+       int r = uv_pipe_init(uv_default_loop(), client_req, 0);
+
+       if((r = uv_accept(req, (uv_stream_t *)client_req)) != 0) {
+               logprintf(LOG_ERR, "uv_accept: %s", strerror(r));
+       }
+       uv_read_start((uv_stream_t *)client_req, alloc_cb, read_cb);
+
+       return;
+}
+
 int start_pilight(int argc, char **argv) {
 	const uv_thread_t pth_cur_id = uv_thread_self();
 	memcpy((void *)&pth_main_id, &pth_cur_id, sizeof(uv_thread_t));
@@ -3105,6 +3151,35 @@ int start_pilight(int argc, char **argv) {
 	}
 
 #ifndef _WIN32
+	/*
+	 * Start a pipe for asynchronic communication
+	 */
+	{
+		int r = 0;
+
+		if((pipe_req = MALLOC(sizeof(uv_pipe_t))) == NULL) {
+			OUT_OF_MEMORY  /*LCOV_EXCL_LINE*/
+		}
+
+		if((r = uv_pipe_init(uv_default_loop(), pipe_req, 1)) != 0) {
+			logprintf(LOG_ERR, "uv_pipe_init: %s", uv_strerror(r));
+			goto clear;
+		}
+
+		uv_fs_t file_req;
+
+		uv_fs_unlink(uv_default_loop(), &file_req, "/tmp/pilight", NULL);
+		if((r = uv_pipe_bind(pipe_req, "/tmp/pilight")) != 0) {
+			logprintf(LOG_ERR, "uv_pipe_bind: %s", uv_strerror(r));
+			goto clear;
+		}
+
+		if((r = uv_listen((uv_stream_t *)pipe_req, 128, connect_cb)) != 0) {
+			logprintf(LOG_ERR, "uv_listen: %s", uv_strerror(r));
+			goto clear;
+		}
+	}
+
 	if(nodaemon == 0) {
 		daemonize();
 	} else {

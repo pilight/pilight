@@ -100,6 +100,7 @@ typedef struct protocol_t {
 
 	union {
 		void (*parseCode)(void);
+		void (*parseCode1)(int);
 		void (*parseCommand)(struct JsonNode *code);
 	};
 	int (*validate)(void);
