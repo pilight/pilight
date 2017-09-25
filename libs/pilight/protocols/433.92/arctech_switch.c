@@ -121,7 +121,7 @@ static void clearCode(void) {
 
 static void createStart(void) {
 	arctech_switch->raw[0]=(AVG_PULSE_LENGTH);
-	arctech_switch->raw[1]=(9*AVG_PULSE_LENGTH);
+	arctech_switch->raw[1]=(8*AVG_PULSE_LENGTH);
 }
 
 static void createId(int id) {
