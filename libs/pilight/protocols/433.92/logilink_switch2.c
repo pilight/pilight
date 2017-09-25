@@ -1,17 +1,10 @@
 /*
-	Copyright (C) 2015 CurlyMo, Meloen and Scarala
-	This file is part of pilight.
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
-*/
+	Copyright (C) 2013 - 2017 CurlyMo, Meloen, Scarala, hernae
 
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,7 +28,7 @@
 static int validate(void) {
 	if(logilink_switch2->rawlen == RAW_LENGTH) {
 		if(logilink_switch2->raw[logilink_switch2->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
-		   logilink_switch2->raw[logilink_switch2->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			logilink_switch2->raw[logilink_switch2->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;
 		}
 	}
@@ -114,16 +107,16 @@ static void createUnitCode(int unitcode) {
 			createHigh(40, 45);	// Button 1
 		break;
 		case 3:
-			createLow(40, 41); // Button 2
+			createLow(40, 41);	// Button 2
 			createHigh(42, 45);
 		break;
 		case 5:
-			createHigh(40, 41); // Button 3
+			createHigh(40, 41);	// Button 3
 			createLow(42, 43);
 			createHigh(44, 45);
 		break;
 		case 6:
-			createHigh(40, 43); // Button 4
+			createHigh(40, 43);	// Button 4
 			createLow(44, 45);
 		break;
 		case 0:
