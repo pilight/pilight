@@ -348,3 +348,13 @@ div.media_icon.episode {
 div.media_icon.song {
 	background: url('song.png') 0px 0px no-repeat;
 }
+
+ul.ui-listview li.switch div.name {
+        padding-right: 95px;
+        white-space: normal;
+}
+
+.ui-li-static {
+        height: auto;
+        min-height: 27px;
+}
