@@ -358,3 +358,8 @@ ul.ui-listview li.switch div.name {
 	overflow: auto;
 	float: right;
 }
+
+.ui-li-static {
+        height: auto;
+        min-height: 27px;
+}
