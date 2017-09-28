@@ -231,6 +231,16 @@ if(${PROTOCOL_LOGILINK_SWITCH} MATCHES "OFF")
 	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/logilink_switch.h")
 endif()
 
+if(${PROTOCOL_LOGILINK_SWITCH2} MATCHES "OFF")
+	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/logilink_switch2.c")
+	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/logilink_switch2.h")
+endif()
+
+if(${PROTOCOL_LOGILINK_SWITCH2} MATCHES "OFF")
+	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/logilink_switch2.c")
+	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/logilink_switch2.h")
+endif()
+
 if(${PROTOCOL_HEITECH} MATCHES "OFF")
 	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/heitech.c")
 	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/heitech.h")
@@ -243,7 +253,12 @@ endif()
 
 if(${PROTOCOL_SECUDO_SMOKE} MATCHES "OFF")
 	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/secudo_smoke.c")
-	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/secudo_smoke_h")
+	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/secudo_smoke.h")
+endif()
+
+if(${PROTOCOL_TCM} MATCHES "OFF")
+	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/tcm.c")
+	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/tcm.h")
 endif()
 
 if(${PROTOCOL_LIVOLO_SWITCH} MATCHES "OFF")
