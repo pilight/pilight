@@ -19,12 +19,14 @@ The pilight PCB can be ordered as a do-it-yourself kit or pre-soldered. In case 
 PCB Eights
 ----------
 
-.. _Headers: 
+.. _Headers:
 .. rubric:: Headers
 
 First start by soldering the two headers. This makes it easier to position the rest of the components.
 
 .. |fig1| image:: ../images/soldering/1.jpg
+
+.. rst-class:: alt
 
 +-----------------------+
 | |fig1|                |
@@ -33,6 +35,8 @@ First start by soldering the two headers. This makes it easier to position the r
 +-----------------------+
 
 .. |fig2| image:: ../images/soldering/2.jpg
+
+.. rst-class:: alt
 
 +------------------------+
 | |fig2|                 |
@@ -44,18 +48,22 @@ As you can see, the second header is wider than the number of pins on the PCB. J
 
 .. |fig3| image:: ../images/soldering/3.jpg
 
+.. rst-class:: alt
+
 +---------------------------------+
 | |fig3|                          |
 +---------------------------------+
 | Image 3: Stripped Second Header |
 +---------------------------------+
 
-.. _Voltage Regulator: 
+.. _Voltage Regulator:
 .. rubric:: Voltage Regulator
 
 The voltage regulator consists of a capacitor, resistor, and transistor. First start by soldering the transistor close to the first header. Make sure to match the flat and rounded side of the transistor as shown on the PCB itself. Also make sure to push the transistor far through enough so it stays under the first header.
 
 .. |fig4| image:: ../images/soldering/4.jpg
+
+.. rst-class:: alt
 
 +---------------------------------------+
 | |fig4|                                |
@@ -67,6 +75,8 @@ The capacitor can best be solder with a little more slack so you can bend it in 
 
 .. |fig5| image:: ../images/soldering/5.jpg
 
+.. rst-class:: alt
+
 +--------------------------------------+
 | |fig5|                               |
 +--------------------------------------+
@@ -77,6 +87,8 @@ Finish the voltage regulator by soldering the resistor.
 
 .. |fig6| image:: ../images/soldering/6.jpg
 
+.. rst-class:: alt
+
 +-------------------------------------+
 | |fig6|                              |
 +-------------------------------------+
@@ -86,12 +98,14 @@ Finish the voltage regulator by soldering the resistor.
 PCB Quarter
 -----------
 
-.. _P1 Meter: 
+.. _P1 Meter:
 .. rubric:: P1 Meter
 
 The P1 meter consists of two resistors, a transistor and a wire terminal. Take care in placing the resistors, because they are placed in between the resistors of the pre-filter. Also check if the terminal is not too high for mounting on your final device. For example the System on Module of the Hummingboard together with the P1 terminal make it too high for proper mounting. In this case, leave the terminal and just connect the wires directly to the PCB.
 
 .. |fig7| image:: ../images/soldering/7.jpg
+
+.. rst-class:: alt
 
 +----------------------------------+
 | |fig7|                           |
@@ -100,6 +114,8 @@ The P1 meter consists of two resistors, a transistor and a wire terminal. Take c
 +----------------------------------+
 
 .. |fig8| image:: ../images/soldering/8.jpg
+
+.. rst-class:: alt
 
 +-----------------------------------+
 | |fig8|                            |
@@ -111,6 +127,8 @@ Place the transistor as shown on the PCB, with its flat side to the ATTiny.
 
 .. |fig9| image:: ../images/soldering/9.jpg
 
+.. rst-class:: alt
+
 +------------------------------+
 | |fig9|                       |
 +------------------------------+
@@ -118,6 +136,8 @@ Place the transistor as shown on the PCB, with its flat side to the ATTiny.
 +------------------------------+
 
 .. |fig10| image:: ../images/soldering/10.jpg
+
+.. rst-class:: alt
 
 +-----------------------------+
 | |fig10|                     |
@@ -135,6 +155,8 @@ PCB Half
 
 .. |fig11| image:: ../images/soldering/11.jpg
 
+.. rst-class:: alt
+
 +--------------------------------+
 | |fig11|                        |
 +--------------------------------+
@@ -144,6 +166,8 @@ PCB Half
 When installing the socket, please remember where the dot and notch are placed. In the final ATTiny installation, the dot on the PCB and on the ATTiny should match.
 
 .. |fig12| image:: ../images/soldering/12.jpg
+
+.. rst-class:: alt
 
 +-----------------------------+
 | |fig12|                     |
@@ -156,6 +180,8 @@ PCB Full
 
 .. |fig13| image:: ../images/soldering/13.jpg
 
+.. rst-class:: alt
+
 +------------------------------+
 | |fig13|                      |
 +------------------------------+
@@ -164,6 +190,8 @@ PCB Full
 
 
 .. |fig14| image:: ../images/soldering/14.jpg
+
+.. rst-class:: alt
 
 +---------------------------------+
 | |fig14|                         |

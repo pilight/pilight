@@ -350,7 +350,7 @@ The webserver has some special pages:
    .. code-block:: console
       :linenos:
 
-      send%3F%7B%0A%09%22action%22%3A%20%22control%22%2C%0A%09%22code%22%3A%20%7B%0A%09%09%22device%22%3A%20%22mainlight%22%2C%0A%09%09%22state%22%3A%20%22on%22%2C%0A%09%09%22values%22%3A%20%7B%0A%09%09%09%22dimlevel%22%3A%20%2210%22%0A%09%09%7D%0A%09%7D%0A%7D 
+      send%3F%7B%0A%09%22action%22%3A%20%22control%22%2C%0A%09%22code%22%3A%20%7B%0A%09%09%22device%22%3A%20%22mainlight%22%2C%0A%09%09%22state%22%3A%20%22on%22%2C%0A%09%09%22values%22%3A%20%7B%0A%09%09%09%22dimlevel%22%3A%20%2210%22%0A%09%09%7D%0A%09%7D%0A%7D
 
 This will send the object as described earlier.
 

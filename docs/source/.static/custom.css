@@ -6,11 +6,25 @@ blockquote,
 td, th, div,
 ul, li, ol,
 a, p, input,
+table, table td,
 div.sphinxsidebar .sidebar-toc a,
 .sidebar-block h2,
 .text-logo,
 .admonition-title {
-	font-family:'Roboto Condensed', sans-serif
+	font-family:'Roboto Condensed', sans-serif;
+}
+
+.underline {
+	text-decoration: underline;
+}
+
+h1 {
+	background-color: #fafafa;
+}
+
+img {
+	display: block;
+	width: 100%;
 }
 
 div.sphinxsidebar {
@@ -32,13 +46,41 @@ blockquote {
 
 table.docutils {
 	border: 0px solid transparent;
-	width: 100%;
-	text-align: center;
+	min-width: 100%;
+	margin-bottom: 10px;
+	display: block;
+	overflow: auto;
 }
 
-table.docutils * {
+table.docutils.alt {
+	display: table;
+}
+
+table.docutils img {
+	display: inline-block;
+	width: auto;
+}
+
+table.docutils.alt img {
+	display: block;
+	width: 100%;
+}
+
+table.docutils td {
 	border: 0px solid transparent;
-	background: none;
+	white-space: nowrap;
+	padding: 5px;
+	vertical-align: middle;
+}
+
+table.docutils tr.row-odd td {
+	background: #fbfbfb;
+}
+
+table.docutils tr:first-child td {
+	background: #fafafa;
+	font-weight: 800;
+	border-bottom: 1px solid #aaaaaa;
 }
 
 div[class^='highlight'] {
@@ -93,8 +135,13 @@ table {
 .sidebar-toc ul li.current > a,
 .sidebar-toc ul li.current > a:hover {
   background-color: #ffcc00;
-  color: #444;
+  color: #fff;
 }
+
+/* .sidebar-toc .toctree-l1.current > a, */
+/* .sidebar-toc .toctree-l1.current > a:hover { */
+	/* background-color: #dedede; */
+/* } */
 
 h1:hover > a.headerlink,
 h2:hover > a.headerlink,

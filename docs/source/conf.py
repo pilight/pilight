@@ -23,8 +23,9 @@ import guzzle_sphinx_theme
 # sys.path.insert(0, os.path.abspath('.'))
 
 def setup(app):
-    app.add_stylesheet('font.min.css') 
-    app.add_stylesheet('custom.css') 
+   app.add_stylesheet('font.min.css')
+   app.add_stylesheet('custom.css')
+   app.add_javascript('custom.js')
 
 # -- General configuration ------------------------------------------------
 
@@ -79,7 +80,7 @@ language = None
 exclude_patterns = []
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+pygments_style = 'github'
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False

@@ -14,7 +14,7 @@ Introduction
 
    Make sure pilight is not running before editing your configuration or else all changes will be lost.
 
-Since pilight 3.0 the feature to send and receive from multiple hardware modules has been introduced. This means you can control various different frequencies at the same time. However, only one module per frequency is supported. Each hardware module has its own syntax as listed below. 
+Since pilight 3.0 the feature to send and receive from multiple hardware modules has been introduced. This means you can control various different frequencies at the same time. However, only one module per frequency is supported. Each hardware module has its own syntax as listed below.
 
 Disabled
 --------
@@ -31,7 +31,7 @@ Disabled
 433.92Mhz
 ---------
 
-.. _433lirc: 
+.. _433lirc:
 .. rubric:: Lirc Kernel Module
 
 .. code-block:: json
@@ -45,7 +45,7 @@ Disabled
      }
    }
 
-.. _433gpio: 
+.. _433gpio:
 .. rubric:: Direct GPIO Access
 
 .. code-block:: json
@@ -63,7 +63,7 @@ Disabled
 The default configuration to be used with the pilight PCB. When using custom wiring, refer to http://www.wiringx.org for the pin numbering of the various supported devices. If you want to disable the sender or receiver pin, set it to
 -1.
 
-.. _433nano: 
+.. _433nano:
 .. rubric:: pilight USB Nano
 
 .. code-block:: json

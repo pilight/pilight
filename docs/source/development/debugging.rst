@@ -20,7 +20,7 @@ First, pilight offers code in several stages of stability:
 
 #. Stable apt repository and GitHub master branch
    This code has been tested to work without bugs for various weeks by the developer and a large community. If bugs are found in this version of pilight, the problem has probably already been fixed in the developmental code.
-	 
+
 #. Nightly apt repository and GitHub development branch
    This code always contains the very latest features and fixes. It is updated several times a week. However, this also means that not all bugs are already encountered when a user starts to use it.
 

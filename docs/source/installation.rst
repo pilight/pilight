@@ -100,7 +100,7 @@ Manually compiling pilight is also a possibility. Use this method is you are not
 
       pi@pilight:~# sudo su
       Password:
-     
+
 #. Install all packages needed for manually compiling pilight. The best way to do this depends on your operating system. The packages needed for Debian are:
    #. build-essential
    #. cmake
@@ -115,7 +115,7 @@ Manually compiling pilight is also a possibility. Use this method is you are not
       root@pilight:~# git clone --depth 5 -b [branch] https://www.github.com/pilight/pilight.git
       root@pilight:~# cd pilight
 
-     
+
 #. Replace the [branch] with either *master* for the latest stable version. This version is exactly the same as the stable version available through the apt repository. Or use *development* for the very latest developmental build. A *nightly* pilight version is automatically generated each night and also available through the pilight nightly apt repository.
 #. pilight can be compiled with various built-in features which can be included or excluded. This is done through a menu driven program. This program will also automatically compile and install pilight:
 

@@ -18,8 +18,10 @@ Network of Senders and Receivers
 
 .. only:: html
 
-   .. |fig1h| image:: images/adhoc-network-nodeA+B.svg  
+   .. |fig1h| image:: images/adhoc-network-nodeA+B.svg
    .. |fig2h| image:: images/adhoc-network-nodeA+B.svg
+
+   .. rst-class:: alt
 
    +-----------------+-----------------+
    | |fig1h|         | |fig2h|         |
@@ -29,8 +31,10 @@ Network of Senders and Receivers
 
 .. only:: latex
 
-   .. |fig1l| image:: images/adhoc-network-nodeA+B.pdf  
+   .. |fig1l| image:: images/adhoc-network-nodeA+B.pdf
    .. |fig2l| image:: images/adhoc-network-nodeA+B.pdf
+
+   .. rst-class:: alt
 
    +-----------------+-----------------+
    | |fig1l|         | |fig2l|         |
@@ -83,7 +87,7 @@ Our settings for Node A will look like this:
    }
 
 Now, when we start pilight in debug mode in Node A, we can see this:
-	 
+
 .. code-block:: console
 
    [Jan 24 15:34:18:191682] pilight-daemon: DEBUG: ssdp sent search
@@ -154,8 +158,10 @@ pilight can also control various other devices like relays and read from sensors
 
 .. only:: html
 
-   .. |fig3h| image:: images/adhoc-network-nodeC.svg  
+   .. |fig3h| image:: images/adhoc-network-nodeC.svg
    .. |fig4h| image:: images/adhoc-network-nodeD.svg
+
+   .. rst-class:: alt
 
    +-----------------+-----------------+
    | |fig3h|         | |fig4h|         |
@@ -165,8 +171,10 @@ pilight can also control various other devices like relays and read from sensors
 
 .. only:: latex
 
-   .. |fig3l| image:: images/adhoc-network-nodeC.pdf  
+   .. |fig3l| image:: images/adhoc-network-nodeC.pdf
    .. |fig4l| image:: images/adhoc-network-nodeD.pdf
+
+   .. rst-class:: alt
 
    +-----------------+-----------------+
    | |fig3l|         | |fig4l|         |

@@ -29,7 +29,7 @@ Rule Parsing
 
 There are few things that are useful to know before working with pilight event rules. When you better understand how pilight parses the rules, you can write really efficient and advanced rules.
 
-.. _Basic Structure: 
+.. _Basic Structure:
 .. rubric:: Basic Structure
 
 All rules basically consist of the same structure:
@@ -39,9 +39,9 @@ All rules basically consist of the same structure:
 
    IF ... THEN ...
 
-A rule always start with the IF, followed by the rule logic, and is closed by a THEN. All actions are put after the THEN. 
+A rule always start with the IF, followed by the rule logic, and is closed by a THEN. All actions are put after the THEN.
 
-.. _True or False: 
+.. _True or False:
 .. rubric:: True or False
 
 Let us start with how pilight handles succeeding or failing conditions. pilight converts each logical mathematical and logical step into a true or false. The final condition must be true before triggering an action. If the final result is false, the action is skipped. These two examples will both succeed:
@@ -76,7 +76,7 @@ These two examples will both fail:
 
    IF (1 != 1) IS False THEN
 
-.. _AND and OR: 
+.. _AND and OR:
 .. rubric:: AND and OR
 
 In the first examples we only used one condition but this does not allow us to make very advanced and flexible rules. Therefore we need to be able to combine several conditions in a single rule. This is possible by combining them with AND and OR operators. Let us take a look at some basic examples:
@@ -125,7 +125,7 @@ In the first examples we only used one condition but this does not allow us to m
 
 In the first two examples only a single AND and OR operator is used. In the rest of the examples we see multiple AND and OR operators. It is good to know that pilight evaluates these rules from left to right and only parses as much as necessary. In these examples only the green parts are actually evaluated and the red parts are skipped. In rule one we use an AND operator. This means that both conditions have to succeed for the rule to succeed, therefore, pilight has to evaluate both conditions. In the second rule we use the OR operator. This means that either one of the two conditions has to succeed for the whole rule to succeed. In this case, the first condition already succeeded so pilight knows it does not have to parse anything else and skips right to the action. The same logic as in rule two can be seen in rule four. This rule starts with an OR statement that already succeeds so the subsequent AND conditions do not have to be evaluated. In rule five we see that pilight parses the first condition which fails and because this condition was part of an AND operator we don't have to evaluate the second condition. pilight does evaluate the last condition because it can change the final outcome of rule five. The same happens in rule six. The first two conditions as part of the AND operator succeed so we don't have to evaluate the last condition.
 
-.. _Hooks: 
+.. _Hooks:
 .. rubric:: Hooks
 
 As we saw in our first examples, hooks can be used inside pilight rules. This can be useful to better structure and combine the various conditions of our rules. Let us create even more complex rules and see how hooks can change the outcome of a rule without changing the conditions.
@@ -300,9 +300,9 @@ Although pilight is extremely fast in evaluating event rules, simple steps can b
 
 To optimize this rule, we need to check how many times a specific condition is evaluated. Rules containing datetime values will be evaluated each second. So each part has a certain chance to be true each day based on an evaluation every second:
 
-Hour is 23 3600 times a day (60 minutes * 60 seconds). 
-Minute is 0 1440 times a day (24 hours * 60 seconds). 
-Second is 0 1440 times a day (24 hours * 60 minutes). 
+Hour is 23 3600 times a day (60 minutes * 60 seconds).
+Minute is 0 1440 times a day (24 hours * 60 seconds).
+Second is 0 1440 times a day (24 hours * 60 minutes).
 
 So in the above rule, the first step evaluates true 3600 times, the second step 1 times, and the last step also 1 time. Let us see what happens when we change the rule:
 
@@ -322,11 +322,11 @@ Let's take another example. In this case we trigger an event based on the sunset
 
 Again, the time that each evaluation is true each day based on an evaluation each second:
 
-Sunset is 19:00 60 times a day (60 seconds). 
-Hour is 19 3600 times a day (60 minutes * 60 seconds). 
-Minute is 0 1440 times a day (24 hours * 60 seconds). 
-Second is 0 1440 times a day (24 hours * 60 minutes). 
-State is off for 68400 times a day (19 hours * 60 minutes * 60 seconds). 
+Sunset is 19:00 60 times a day (60 seconds).
+Hour is 19 3600 times a day (60 minutes * 60 seconds).
+Minute is 0 1440 times a day (24 hours * 60 seconds).
+Second is 0 1440 times a day (24 hours * 60 minutes).
+State is off for 68400 times a day (19 hours * 60 minutes * 60 seconds).
 
 So in the above rule, the first step evaluates true 60 times, the second step 60 times, and the last step only 1 time. Although this rule uses not much evaluations for it to trigger, the first evaluation does take several math formulas to solve. Let's again see what happens when we change the rule:
 

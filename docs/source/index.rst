@@ -1,3 +1,5 @@
+:tocdepth: 5
+
 Welcome to pilight's documentation!
 ===================================
 
@@ -24,7 +26,7 @@ The main features of pilight are:
 * `Fully Modular`_
 * `High Quality Code`_
 * `Integrated Webserver and webGUI`_
-* `Light Weight`_
+* `Light-Weight`_
 
 .. _Open Source:
 .. rubric:: Open Source
@@ -56,7 +58,7 @@ Almost everything pilight does is also developed by pilight from the ground up. 
 
 pilight has an integrated webserver and serves an intergrated webGUI. This allows users to immediately start using pilight in all its capacity. The webGUI makes it easy to control devices or to see their states. Those who do not want to install the phone apps can just use their regular browser to access pilight.
 
-.. _Light Weight:
+.. _Light-Weight:
 .. rubric:: Light-Weight
 
 pilight is written in C. This means that it is very fast and does not use much resources. All plug-ins are compiled into pilight so the overhead of the plug-ins is also kept to a minimum. This is also one of the reasons pilight can run on low-power consumer products like OpenWRT routers. All pilight hardware such as the ATTiny filter and the Arduino Nano interface are also written in pure C. This again allows us to have control over every inch of code and to prevent any overhead from tools like the Arduino programming libraries.
@@ -69,10 +71,11 @@ Sitemap
 -------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
 
    installation
    configuration/index
+   protocols/index
    eventing
    adhoc_network
    electronics/index

@@ -52,7 +52,7 @@ The way pilight functions can be altered by changing various settings. All pilig
 Core
 ----
 
-.. _port: 
+.. _port:
 .. rubric:: port
 
 .. note::
@@ -66,7 +66,7 @@ Core
 
 By default, pilight uses a random port for its socket server. Use the port setting if you want to set this to a fixed port.
 
-.. _standalone: 
+.. _standalone:
 .. rubric:: standalone
 
 .. note::
@@ -80,7 +80,7 @@ By default, pilight uses a random port for its socket server. Use the port setti
 
 When pilight starts, it will first check if there are other instances running inside the same network. If it does, it will connect to the other pilight instance and will join or create the AdHoc network. If you want to force pilight into running as a standalone daemon, you can set the standalone setting to 1. When running pilight in standalone mode, the SSDP server will also be disabled. This means that other pilight clients will not be able to discover it using SSDP.
 
-.. _pid-file: 
+.. _pid-file:
 .. rubric:: pid-file
 
 .. note::
@@ -94,7 +94,7 @@ When pilight starts, it will first check if there are other instances running in
 
 The pid-file is used by pilight to save the process id number of the pilight-daemon. pilight itself uses this information as one of the ways to determine if pilight is already running or not. This setting must contain a valid path to store the pid-file.
 
-.. _log-file: 
+.. _log-file:
 .. rubric:: log-file
 
 .. note::
@@ -117,7 +117,7 @@ The pid-file is used by pilight to save the process id number of the pilight-dae
 
 The log-file is used by pilight to various information gathered while pilight is running. This information can be used to debug errors or gather information about triggered actions. This setting must contain a valid path to store the log-file.
 
-.. _log-level: 
+.. _log-level:
 .. rubric:: log-level
 
 .. note::
@@ -134,7 +134,7 @@ The log-level tells pilight what messages it should log into the log-file. The h
 0 = emergency, 1 = alert, 2 = critical, 3 = , 4 = warning,
 5 = notification, 6 = information
 
-.. _whitelist: 
+.. _whitelist:
 .. rubric:: whitelist
 
 .. note::
@@ -148,7 +148,7 @@ The log-level tells pilight what messages it should log into the log-file. The h
 
 All software able to use socket connections can communicate to pilight. Such software can be *pilight-receive*, a user visiting the webGUI, or external pilight plugins such a provided by FHEM. If you want to limit the computers in your network that can connect to pilight, you set up a whitelist. This setting should contain a list of valid IPv4 addresses that are allowed to connect to pilight. All other IPs will be blocked. If you want to allow IPv4 ranges, you can specify them by using wildcards. For example, if we want to allow all IP addresses ranging from 192.168.1.0 to 192.168.1.254 we can add the IP address 192.168.1.* to the list. If we want to allow all IP addresses ranging from 10.0.0.0 to 10.0.254.254 we can add the IP address 10.0.*.* to the list. Each whitelist entry should contain a valid IPv4 address with or without using wildcards.
 
-.. _stats-enable: 
+.. _stats-enable:
 .. rubric:: stats-enable
 
 .. note::
@@ -162,7 +162,7 @@ All software able to use socket connections can communicate to pilight. Such sof
 
 pilight monitors its own CPU and RAM resource usage. This information can be shared with external clients and is shared by default with the websockets connections. If you want to disable the display of the CPU and RAM statistics and/or want to disable the communication of these statistics over the websocket connection you can set this to 0. This setting can be either 0 or 1.
 
-.. _watchdog-enable: 
+.. _watchdog-enable:
 .. rubric:: watchdog-enable
 
 .. note::
@@ -181,7 +181,7 @@ Webserver
 
 The following settings change the way the internal webserver will serve the internal pilight webGUI or it can be disabled altogether.
 
-.. _webgui-websockets: 
+.. _webgui-websockets:
 .. rubric:: webgui-websockets
 
 .. note::
@@ -195,7 +195,7 @@ The following settings change the way the internal webserver will serve the inte
 
 By default the webGUI communicates to pilight by using websockets. This is a relatively new technique that allows us to receive all changes from pilight instead of having to poll pilight for changes. The problem is that  some older devices and browsers do not support websockets, but they do support the polling technique. So to disable the websockets and use polling instead we set webgui-websockets setting to 0. This setting can be either 0 or 1.
 
-.. _webserver-authentication: 
+.. _webserver-authentication:
 .. rubric:: webserver-authentication
 
 .. note::
@@ -221,7 +221,7 @@ So if we want to use a username user and password admin the values should look l
 
    { "webserver-authentication": [ "user", "4f32102debed8dabd87e88cf84c752ccb23a74b29f90b42edde05cbc7be41f80" ] }
 
-.. _webserver-cache: 
+.. _webserver-cache:
 .. rubric:: webserver-cache
 
 .. note::
@@ -235,7 +235,7 @@ So if we want to use a username user and password admin the values should look l
 
 pilight has the ability to cache all files used for the webGUI. This reduces the amount of reads done from the SD card on devices like the Raspberry Pi and Hummingboard, and makes it faster to load the webGUI from devices with a slow internal storage such as routers. This setting can be either 0 or 1.
 
-.. _webserver-enable: 
+.. _webserver-enable:
 .. rubric:: webserver-enable
 
 .. note::
@@ -249,7 +249,7 @@ pilight has the ability to cache all files used for the webGUI. This reduces the
 
 The pilight webserver can be turned off as a whole. This could be useful if you do not want to use the webGUI at all or if you want to use your own webserver implementation. This setting can be either 0 or 1.
 
-.. _webserver-http-port: 
+.. _webserver-http-port:
 .. rubric:: webserver-http-port
 
 .. note::
@@ -263,7 +263,7 @@ The pilight webserver can be turned off as a whole. This could be useful if you 
 
 The pilight webserver runs by default on the non-standard port 5001. This is done to prevent interference with other webservers running on the default HTTP port 80. If you do want to run the webserver on port 80 or any other port, you can change this setting. The port specified must be a valid and unused port.
 
-.. _webserver-https-port: 
+.. _webserver-https-port:
 .. rubric:: webserver-https-port
 
 .. note::
@@ -277,7 +277,7 @@ The pilight webserver runs by default on the non-standard port 5001. This is don
 
 The webserver does not allow secure connections by default. Currently the only way to get HTTPS support is by manually compiling pilight. The pilight secure webserver runs by default on the non-standard port 5002. This is done to prevent interference with other webservers running on the default HTTPS port 443. If you do want to run the secure webserver on port 443 or any other port, you can change this setting. The port specified must be a valid and unused port.
 
-.. _webserver-root: 
+.. _webserver-root:
 .. rubric:: webserver-root
 
 .. note::
@@ -291,7 +291,7 @@ The webserver does not allow secure connections by default. Currently the only w
 
 The webserver root tells pilight where it should look for all files that should be served by the webserver.  This setting must contain a valid path.
 
-.. _webserver-user: 
+.. _webserver-user:
 .. rubric:: webserver-user
 
 .. note::
@@ -328,9 +328,9 @@ pilight has the capability to communicate with several types of mail servers. Th
      "smtp-port": 465,
      "smtp-user": "pilight@gmail.com",
      "smtp-password": "foobar"
-	 }
+   }
 
-.. _smtp-sender: 
+.. _smtp-sender:
 .. rubric:: smtp-sender
 
 .. note::
@@ -344,7 +344,7 @@ pilight has the capability to communicate with several types of mail servers. Th
 
 The smtp-sender requires a valid e-mail address. As soon as a mail is sent by pilight, this e-mail address will be used as the address from with the mail was sent.
 
-.. _smtp-user: 
+.. _smtp-user:
 .. rubric:: smtp-user
 
 .. note::
@@ -358,7 +358,7 @@ The smtp-sender requires a valid e-mail address. As soon as a mail is sent by pi
 
 The smtp-user requires a valid e-mail address. This e-mail address is used to validate the account details at the e-mail provider.
 
-.. _smtp-password: 
+.. _smtp-password:
 .. rubric:: smtp-password
 
 .. note::
@@ -372,7 +372,7 @@ The smtp-user requires a valid e-mail address. This e-mail address is used to va
 
 The smtp-password is used to validate the account details at the e-mail provider together with the smtp-user setting. The password should therefore be a valid password for this e-mail account.
 
-.. _smtp-host: 
+.. _smtp-host:
 .. rubric:: smtp-host
 
 .. note::
@@ -386,7 +386,7 @@ The smtp-password is used to validate the account details at the e-mail provider
 
 The smtp-host setting should contain a valid mail server hostname. Normally, the host name is similar to name of the internet hosting provider.
 
-.. _smtp-port: 
+.. _smtp-port:
 .. rubric:: smtp-port
 
 .. note::
@@ -403,7 +403,7 @@ The smtp-port should contain a valid smtp server port. This can currently be eit
 Miscellaneous
 -------------
 
-.. _ntp-servers: 
+.. _ntp-servers:
 .. rubric:: ntp-servers
 
 .. note::
@@ -425,7 +425,7 @@ pilight provides an easy tool to flash the firmware of several microcontrollers 
 If you are unsure what valid GPIOs are on your platform,
 please refer to the http://www.wiringx.org documentation.
 
-.. _firmware-gpio-miso: 
+.. _firmware-gpio-miso:
 .. rubric:: firmware-gpio-miso
 
 .. note::
@@ -439,7 +439,7 @@ please refer to the http://www.wiringx.org documentation.
 
 This setting defines the GPIO pin to be used as MISO. Any valid GPIO for your platform can be used.
 
-.. _firmware-gpio-mosi: 
+.. _firmware-gpio-mosi:
 .. rubric:: firmware-gpio-mosi
 
 .. note::
@@ -453,7 +453,7 @@ This setting defines the GPIO pin to be used as MISO. Any valid GPIO for your pl
 
 This setting defines the GPIO pin to be used as MOSI. Any valid GPIO for your platform can be used.
 
-.. _firmware-gpio-reset: 
+.. _firmware-gpio-reset:
 .. rubric:: firmware-gpio-reset
 
 .. note::
@@ -467,7 +467,7 @@ This setting defines the GPIO pin to be used as MOSI. Any valid GPIO for your pl
 
 This setting defines the GPIO pin to be used as Reset. Any valid GPIO for your platform can be used.
 
-.. _firmware-gpio-sck: 
+.. _firmware-gpio-sck:
 .. rubric:: firmware-gpio-sck
 
 .. note::
@@ -493,7 +493,7 @@ pilight has the possibility to load various external modules to enhance its func
    protocols, hardware drivers, event operators, functions,
    and actions.
 
-.. _action-root: 
+.. _action-root:
 .. rubric:: action-root
 
 .. note::
@@ -507,7 +507,7 @@ pilight has the possibility to load various external modules to enhance its func
 
 pilight event actions are loaded from the action-root folder. The action-root setting must contain a valid path.
 
-.. _function-root: 
+.. _function-root:
 .. rubric:: function-root
 
 .. note::
@@ -521,7 +521,7 @@ pilight event actions are loaded from the action-root folder. The action-root se
 
 pilight event actions are loaded from the function-root folder. The function-root setting must contain a valid path.
 
-.. _hardware-root: 
+.. _hardware-root:
 .. rubric:: hardware-root
 
 .. note::
@@ -535,7 +535,7 @@ pilight event actions are loaded from the function-root folder. The function-roo
 
 pilight event actions are loaded from the hardware-root folder. The hardware-root setting must contain a valid path.
 
-.. _operator-root: 
+.. _operator-root:
 .. rubric:: operator-root
 
 .. note::
@@ -549,7 +549,7 @@ pilight event actions are loaded from the hardware-root folder. The hardware-roo
 
 pilight event actions are loaded from the operator-root folder. The operator-root setting must contain a valid path.
 
-.. _protocol-root: 
+.. _protocol-root:
 .. rubric:: protocol-root
 
 .. note::
