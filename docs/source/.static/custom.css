@@ -44,7 +44,15 @@ blockquote {
 	border: 0px;
 }
 
-table.docutils {
+table.footnote * {
+	font-size: 12px;
+}
+
+table.footnote .label {
+	color: #428bca;
+}
+
+table.docutils:not(.footnote) {
 	border: 0px solid transparent;
 	min-width: 100%;
 	margin-bottom: 10px;
@@ -52,32 +60,32 @@ table.docutils {
 	overflow: auto;
 }
 
-table.docutils.alt {
+table.docutils:not(.footnote).alt {
 	display: table;
 }
 
-table.docutils img {
+table.docutils:not(.footnote) img {
 	display: inline-block;
 	width: auto;
 }
 
-table.docutils.alt img {
+table.docutils:not(.footnote).alt img {
 	display: block;
 	width: 100%;
 }
 
-table.docutils td {
+table.docutils:not(.footnote) td {
 	border: 0px solid transparent;
 	white-space: nowrap;
 	padding: 5px;
 	vertical-align: middle;
 }
 
-table.docutils tr.row-odd td {
+table.docutils:not(.footnote) tr.row-odd td {
 	background: #fbfbfb;
 }
 
-table.docutils tr:first-child td {
+table.docutils:not(.footnote) tr:first-child td {
 	background: #fafafa;
 	font-weight: 800;
 	border-bottom: 1px solid #aaaaaa;
@@ -151,4 +159,9 @@ h5:hover > a.headerlink,
 h6:hover > a.headerlink,
 dt:hover > a.headerlink {
   visibility: hidden;
+}
+
+.footnote-reference {
+	vertical-align: super;
+	font-size: 10px;
 }

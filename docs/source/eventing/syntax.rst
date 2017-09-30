@@ -1,8 +1,8 @@
 .. role:: event-success
 .. role:: event-fail
 
-Eventing
-========
+Syntax
+======
 
 - `Introduction`_
 - `Rule Parsing`_

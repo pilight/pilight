@@ -76,7 +76,7 @@ Sitemap
    installation
    configuration/index
    protocols/index
-   eventing
+   eventing/index
    adhoc_network
    electronics/index
    faq
