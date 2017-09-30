@@ -6,6 +6,7 @@ Generic
 
    dimmer
    label
+   raw
    screen
    switch
    weather

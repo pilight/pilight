@@ -78,6 +78,7 @@ Sitemap
    protocols/index
    eventing/index
    adhoc_network
+   programs/index
    electronics/index
    faq
    development/index

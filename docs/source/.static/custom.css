@@ -165,3 +165,7 @@ dt:hover > a.headerlink {
 	vertical-align: super;
 	font-size: 10px;
 }
+
+table.field-list {
+  display: none!important;
+}
