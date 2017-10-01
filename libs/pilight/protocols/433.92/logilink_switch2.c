@@ -5,6 +5,7 @@
   License, v. 2.0. If a copy of the MPL was not distributed with this
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,7 +17,7 @@
 #include "../../core/log.h"
 #include "../protocol.h"
 #include "../../core/binary.h"
-#include "logilink_switch.h"
+#include "logilink_switch2.h"
 
 #define PULSE_MULTIPLIER	3
 #define MIN_PULSE_LENGTH	279
@@ -27,7 +28,7 @@
 static int validate(void) {
 	if(logilink_switch2->rawlen == RAW_LENGTH) {
 		if(logilink_switch2->raw[logilink_switch2->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
-			logilink_switch2->raw[logilink_switch2->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+		   logilink_switch2->raw[logilink_switch2->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;
 		}
 	}
@@ -35,19 +36,26 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int systemcode, int unitcode, int state) {
-	logilink_switch2->message = json_mkobject();
-	json_append_member(logilink_switch2->message, "systemcode", json_mknumber(systemcode, 0));
-	json_append_member(logilink_switch2->message, "unitcode", json_mknumber(unitcode, 0));
+static void createMessage(char **message, int systemcode, int unitcode, int state) {
+	int x = snprintf((*message), 255, "{\"systemcode\":%d,", systemcode);
+	x += snprintf(&(*message)[x], 255-x, "\"unitcode\":%d,", unitcode);
+
 	if(state == 0) {
-		json_append_member(logilink_switch2->message, "state", json_mkstring("on"));
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"on\"");
 	} else {
-		json_append_member(logilink_switch2->message, "state", json_mkstring("off"));
+		x += snprintf(&(*message)[x], 255-x, "\"state\":\"off\"");
 	}
-} 
-static void parseCode(void) {
+	x += snprintf(&(*message)[x], 255-x, "}");
+}
+
+static void parseCode(char **message) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
 	int systemcode = 0, state = 0, unitcode = 0;
+
+	if(logilink_switch2->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "logilink_switch2: parsecode - invalid parameter passed %d", logilink_switch2->rawlen);
+		return;
+	}
 
 	for(x=0;x<logilink_switch2->rawlen-1;x+=2) {
 		if(logilink_switch2->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
@@ -60,7 +68,7 @@ static void parseCode(void) {
 	state = binary[23];
 	unitcode = binToDecRev(binary, 20, 22);
 
-	createMessage(systemcode, unitcode, state);
+	createMessage(message, systemcode, unitcode, state);
 }
 
 static void createLow(int s, int e) {
@@ -128,9 +136,9 @@ static void createUnitCode(int unitcode) {
 
 static void createState(int state) {
 	if(state == 1) {
-		createLow(46, 47);
+		createLow(40, 41);
 	} else {
-		createHigh(46, 47);
+		createHigh(40, 41);
 	}
 }
 
@@ -139,10 +147,10 @@ static void createFooter(void) {
 	logilink_switch2->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char **message) {
 	int systemcode = -1;
 	int unitcode = -1;
-	int state = -1; 
+	int state = -1;
 	double itmp = 0;
 
 	if(json_find_number(code, "systemcode", &itmp) == 0)
@@ -153,8 +161,7 @@ static int createCode(struct JsonNode *code) {
 		state=1;
 	else if(json_find_number(code, "on", &itmp) == 0)
 		state=0;
-	if(json_find_number(code, "version", &itmp) == 0)
-		version = (int)round(itmp);
+
 	if(systemcode == -1 || unitcode == -1 || state == -1) {
 		logprintf(LOG_ERR, "logilink_switch2: insufficient number of arguments");
 		return EXIT_FAILURE;
@@ -165,7 +172,7 @@ static int createCode(struct JsonNode *code) {
 		logprintf(LOG_ERR, "logilink_switch2: invalid unitcode range");
 		return EXIT_FAILURE;
 	} else {
-		createMessage(systemcode, unitcode, state); 
+		createMessage(message, systemcode, unitcode, state);
 		clearCode();
 		createSystemCode(systemcode);
 		createUnitCode(unitcode);
@@ -180,7 +187,7 @@ static void printHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
-	printf("\t -f --off\t\t\tsend an off signal\n"); 
+	printf("\t -f --off\t\t\tsend an off signal\n");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -202,7 +209,7 @@ void logilinkSwitch2Init(void) {
 	options_add(&logilink_switch2->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-7]$");
 	options_add(&logilink_switch2->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&logilink_switch2->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
- 
+
 	options_add(&logilink_switch2->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	options_add(&logilink_switch2->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
@@ -215,9 +222,9 @@ void logilinkSwitch2Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "logilink_sitch";
-	module->version = "1.0";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {
