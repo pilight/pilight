@@ -16,8 +16,7 @@
 #include "../../core/log.h"
 #include "../protocol.h"
 #include "../../core/binary.h"
-#include "../../core/gc.h"
-#include "logilink_switch2.h"
+#include "logilink_switch.h"
 
 #define PULSE_MULTIPLIER	3
 #define MIN_PULSE_LENGTH	279
