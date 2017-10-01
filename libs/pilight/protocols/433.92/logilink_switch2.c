@@ -199,7 +199,7 @@ void logilinkSwitch2Init(void) {
 	logilink_switch2->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	logilink_switch2->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
-	options_add(&logilink_switch2->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
+	options_add(&logilink_switch2->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,9}|[1-3][0-9]{9}|4([01][0-9]{8}|2([0-8][0-9]{7}|9([0-3][0-9]{6}|4([0-8][0-9]{5}|9([0-5][0-9]{4}|6([0-6][0-9]{3}|7([01][0-9]{2}|2([0-8][0-9]|9[0-4])))))))))$");
 	options_add(&logilink_switch2->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-7]$");
 	options_add(&logilink_switch2->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&logilink_switch2->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
