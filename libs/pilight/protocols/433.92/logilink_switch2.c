@@ -136,9 +136,9 @@ static void createUnitCode(int unitcode) {
 
 static void createState(int state) {
 	if(state == 1) {
-		createLow(40, 41);
+		createLow(46, 47);
 	} else {
-		createHigh(40, 41);
+		createHigh(46, 47);
 	}
 }
 
