@@ -23,7 +23,7 @@
 #define MIN_PULSE_LENGTH	279
 #define MAX_PULSE_LENGTH	289
 #define AVG_PULSE_LENGTH	284
-#define RAW_LENGTH				50
+#define RAW_LENGTH			50
 
 static int validate(void) {
 	if(logilink_switch2->rawlen == RAW_LENGTH) {
@@ -151,9 +151,9 @@ static int createCode(struct JsonNode *code) {
 	if(json_find_number(code, "unitcode", &itmp) == 0)
 		unitcode = (int)round(itmp);
 	if(json_find_number(code, "off", &itmp) == 0)
-		state=1;
+		state = 1;
 	else if(json_find_number(code, "on", &itmp) == 0)
-		state=0;
+		state = 0;
 	if(json_find_number(code, "version", &itmp) == 0)
 		version = (int)round(itmp);
 	if(systemcode == -1 || unitcode == -1 || state == -1) {
@@ -199,7 +199,7 @@ void logilinkSwitch2Init(void) {
 	logilink_switch2->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	logilink_switch2->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
-	options_add(&logilink_switch2->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
+	options_add(&logilink_switch2->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,9}|[1-3][0-9]{9}|4([01][0-9]{8}|2([0-8][0-9]{7}|9([0-3][0-9]{6}|4([0-8][0-9]{5}|9([0-5][0-9]{4}|6([0-6][0-9]{3}|7([01][0-9]{2}|2([0-8][0-9]|9[0-4])))))))))$");
 	options_add(&logilink_switch2->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-7]$");
 	options_add(&logilink_switch2->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&logilink_switch2->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);

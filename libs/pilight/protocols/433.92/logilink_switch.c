@@ -34,7 +34,7 @@
 #define MIN_PULSE_LENGTH	279
 #define MAX_PULSE_LENGTH	289
 #define AVG_PULSE_LENGTH	284
-#define RAW_LENGTH				50
+#define RAW_LENGTH			50
 
 static int validate(void) {
 	if(logilink_switch->rawlen == RAW_LENGTH) {
@@ -168,9 +168,9 @@ static int createCode(struct JsonNode *code) {
 	if(json_find_number(code, "unitcode", &itmp) == 0)
 		unitcode = (int)round(itmp);
 	if(json_find_number(code, "off", &itmp) == 0)
-		state=1;
+		state = 1;
 	else if(json_find_number(code, "on", &itmp) == 0)
-		state=0;
+		state = 0;
 
 	if(systemcode == -1 || unitcode == -1 || state == -1) {
 		logprintf(LOG_ERR, "logilink_switch: insufficient number of arguments");
