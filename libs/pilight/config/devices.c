@@ -44,6 +44,9 @@
 #include "devices.h"
 #include "gui.h"
 
+static pthread_mutex_t mutex_lock;
+static pthread_mutexattr_t mutex_attr;
+
 struct config_t *config_devices;
 
 /* Struct to store the locations */
@@ -1664,11 +1667,12 @@ clear:
 
 int devices_gc(void) {
 	int i = 0;
-	struct devices_t *dtmp;
-	struct devices_settings_t *stmp;
-	struct devices_values_t *vtmp;
-	struct protocols_t *ptmp;
+	struct devices_t *dtmp = NULL;
+	struct devices_settings_t *stmp = NULL;
+	struct devices_values_t *vtmp = NULL;
+	struct protocols_t *ptmp = NULL;
 
+	pthread_mutex_lock(&mutex_lock);
 	/* Free devices structure */
 	while(devices) {
 		dtmp = devices;
@@ -1707,7 +1711,9 @@ int devices_gc(void) {
 			if(ptmp->name != NULL) {
 				FREE(ptmp->name);
 			}
-			FREE(ptmp->listener);
+			if(ptmp->listener != NULL) {
+				FREE(ptmp->listener);
+			}
 			dtmp->protocols = dtmp->protocols->next;
 			FREE(ptmp);
 		}
@@ -1734,7 +1740,9 @@ int devices_gc(void) {
 	if(devices != NULL) {
 		FREE(devices);
 	}
+	devices = NULL;
 
+	pthread_mutex_unlock(&mutex_lock);
 	logprintf(LOG_DEBUG, "garbage collected config devices library");
 
 	return EXIT_SUCCESS;
@@ -1749,6 +1757,10 @@ static int devices_read(JsonNode *root) {
 }
 
 void devices_init(void) {
+	pthread_mutexattr_init(&mutex_attr);
+	pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&mutex_lock, &mutex_attr);
+
 	/* Request hardware json object in main configuration */
 	config_register(&config_devices, "devices");
 	config_devices->readorder = 1;

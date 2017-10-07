@@ -40,7 +40,9 @@
 #include "../config/hardware.h"
 #include "../config/gui.h"
 
-static struct config_t *config;
+static struct config_t *config = NULL;
+static pthread_mutex_t mutex_lock;
+static pthread_mutexattr_t mutex_attr;
 
 static void sort_list(int r) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
@@ -87,6 +89,7 @@ static char *configfile = NULL;
 int config_gc(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
+	pthread_mutex_lock(&mutex_lock);
 	struct config_t *listeners;
 	while(config) {
 		listeners = config;
@@ -101,6 +104,9 @@ int config_gc(void) {
 	if(configfile != NULL) {
 		FREE(configfile);
 	}
+	configfile = NULL;
+
+	pthread_mutex_unlock(&mutex_lock);
 	logprintf(LOG_DEBUG, "garbage collected config library");
 	return 1;
 }
@@ -260,6 +266,10 @@ char *config_get_file(void) {
 
 void config_init() {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	pthread_mutexattr_init(&mutex_attr);
+	pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&mutex_lock, &mutex_attr);
 
 	hardware_init();
 	settings_init();

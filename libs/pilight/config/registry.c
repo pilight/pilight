@@ -34,6 +34,9 @@
 
 struct JsonNode *registry = NULL;
 
+static pthread_mutex_t mutex_lock;
+static pthread_mutexattr_t mutex_attr;
+
 static int registry_get_value_recursive(struct JsonNode *root, const char *key, void **value, void **decimals, int type) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -244,15 +247,22 @@ static JsonNode *registry_sync(int level, const char *display) {
 }
 
 int registry_gc(void) {
+	pthread_mutex_lock(&mutex_lock);
 	if(registry != NULL) {
 		json_delete(registry);
 	}
 	registry = NULL;
+	pthread_mutex_unlock(&mutex_lock);
+
 	logprintf(LOG_DEBUG, "garbage collected config registry library");
 	return 1;
 }
 
 void registry_init(void) {
+	pthread_mutexattr_init(&mutex_attr);
+	pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&mutex_lock, &mutex_attr);
+
 	/* Request settings json object in main configuration */
 	config_register(&config_registry, "registry");
 	config_registry->readorder = 5;

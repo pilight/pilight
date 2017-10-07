@@ -138,6 +138,9 @@ typedef struct recvqueue_t {
 static struct recvqueue_t *recvqueue;
 static struct recvqueue_t *recvqueue_head;
 
+static pthread_mutex_t config_lock;
+static pthread_mutexattr_t config_attr;
+
 static pthread_mutex_t sendqueue_lock;
 static pthread_cond_t sendqueue_signal;
 static pthread_mutexattr_t sendqueue_attr;
@@ -200,6 +203,7 @@ static int standalone = 0;
 static char *master_server = NULL;
 static unsigned short master_port = 0;
 
+static int adhoc_pending = 0;
 static char *configtmp = NULL;
 static int verbosity = LOG_INFO;
 struct socket_callback_t socket_callback;
@@ -2184,6 +2188,7 @@ static void *receivePulseTrain1(int reason, void *param) {
 void *clientize(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
+	adhoc_pending = 1;
 	struct ssdp_list_t *ssdp_list = NULL;
 	struct JsonNode *json = NULL;
 	struct JsonNode *joptions = NULL;
@@ -2266,12 +2271,15 @@ void *clientize(void *param) {
 					if(strcmp(message, "config") == 0) {
 						struct JsonNode *jconfig = NULL;
 						if((jconfig = json_find_member(json, "config")) != NULL) {
+
+							pthread_mutex_lock(&config_lock);
 							gui_gc();
 							devices_gc();
 #ifdef EVENTS
 							rules_gc();
 #endif
 							registry_gc();
+							pthread_mutex_unlock(&config_lock);
 
 							int match = 1;
 							while(match) {
@@ -2348,6 +2356,7 @@ void *clientize(void *param) {
 		FREE(recvBuff);
 	}
 
+	adhoc_pending = 0;
 	return NULL;
 }
 
@@ -2410,6 +2419,10 @@ int main_gc(void) {
 	running = 0;
 	pilight.running = 0;
 	main_loop = 0;
+
+	while(adhoc_pending == 1) {
+		sleep(1);
+	}
 
 	/* If we are running in node mode, the clientize
 	   thread is waiting for a response from the main
@@ -2493,7 +2506,10 @@ int main_gc(void) {
 	options_gc();
 	socket_gc();
 
+	pthread_mutex_lock(&config_lock);
 	config_gc();
+	pthread_mutex_unlock(&config_lock);
+
 	protocol_gc();
 	ntp_gc();
 	whitelist_free();
@@ -3125,6 +3141,10 @@ int start_pilight(int argc, char **argv) {
 	pthread_mutex_init(&sendqueue_lock, &sendqueue_attr);
 	pthread_cond_init(&sendqueue_signal, NULL);
 	sendqueue_init = 1;
+
+	pthread_mutexattr_init(&config_attr);
+	pthread_mutexattr_settype(&config_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&config_lock, &config_attr);
 
 	pthread_mutexattr_init(&recvqueue_attr);
 	pthread_mutexattr_settype(&recvqueue_attr, PTHREAD_MUTEX_RECURSIVE);

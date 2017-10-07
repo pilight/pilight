@@ -40,6 +40,9 @@
 
 static struct rules_t *rules = NULL;
 
+static pthread_mutex_t mutex_lock;
+static pthread_mutexattr_t mutex_attr;
+
 static int rules_parse(JsonNode *root) {
 	int have_error = 0, match = 0, x = 0;
 	unsigned int i = 0;
@@ -201,6 +204,7 @@ int rules_gc(void) {
 	struct rules_actions_t *tmp_actions = NULL;
 	int i = 0;
 
+	pthread_mutex_lock(&mutex_lock);
 	while(rules) {
 		tmp_rules = rules;
 		FREE(tmp_rules->name);
@@ -247,6 +251,7 @@ int rules_gc(void) {
 		FREE(rules);
 	}
 	rules = NULL;
+	pthread_mutex_unlock(&mutex_lock);
 
 	logprintf(LOG_DEBUG, "garbage collected config rules library");
 	return 1;
@@ -255,6 +260,10 @@ int rules_gc(void) {
 void rules_init(void) {
 	event_action_init();
 	event_function_init();
+
+	pthread_mutexattr_init(&mutex_attr);
+	pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&mutex_lock, &mutex_attr);
 
 	/* Request rules json object in main configuration */
 	config_register(&config_rules, "rules");
