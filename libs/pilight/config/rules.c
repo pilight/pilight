@@ -262,6 +262,10 @@ void rules_init(void) {
 	event_action_init();
 	event_function_init();
 
+	pthread_mutexattr_init(&mutex_attr);
+	pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&mutex_lock, &mutex_attr);
+
 	/* Request rules json object in main configuration */
 	config_register(&config_rules, "rules");
 	config_rules->readorder = 2;
