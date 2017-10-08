@@ -175,7 +175,7 @@ Various mathematical operators can be used to do calculations inside our rules. 
 .. code-block:: guess
    :linenos:
 
-   IF 1 < 10 THEN ...
+   IF 10 / 2 == 4 THEN ...
 
 Devices
 -------
