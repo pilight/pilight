@@ -738,6 +738,7 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 	return NULL;
 
 freeuv:
+	request->callback(404, NULL, 0, 0, request->userdata);
 	FREE(request->uri);
 	FREE(request->host);
 	FREE(request);

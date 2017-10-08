@@ -202,7 +202,11 @@ static struct tests_t {
 				"Connection: close\r\n"
 				"Content-Type: %s\r\n\r\n"
 				"%s"
-	}
+	},
+	{ "invalid url (getaddrinfo error)", GET, "http://WvQTxNJ13BJUBC62R8PM.com/", 10080, 0, 1, 404, 0, NULL, NULL, "",
+			NULL,
+			NULL
+	},
 };
 
 static CuTest *gtc = NULL;
@@ -439,9 +443,10 @@ static void test(void *param) {
 	is_ssl = 0;
 	doquit = 0;
 
-	http_start(tests[testnr].port);
-
-	uv_thread_create(&pth, http_wait, NULL);
+	if(testnr != 10) {
+		http_start(tests[testnr].port);
+		uv_thread_create(&pth, http_wait, NULL);
+	}
 
 	if(tests[testnr].getpost == GET) {
 		http_get_content(tests[testnr].url, callback, NULL);
@@ -489,7 +494,7 @@ static void test_http(CuTest *tc) {
 	storage_gc();
 	eventpool_gc();
 
-	CuAssertIntEquals(tc, 10, testnr);
+	CuAssertIntEquals(tc, 11, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 
 }
@@ -545,7 +550,7 @@ static void test_http_threaded(CuTest *tc) {
 	storage_gc();
 	eventpool_gc();
 
-	CuAssertIntEquals(tc, 10, testnr);
+	CuAssertIntEquals(tc, 11, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
