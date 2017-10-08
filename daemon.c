@@ -2582,6 +2582,13 @@ static void pilight_stats(uv_timer_t *timer_req) {
 
 static void signal_cb(uv_signal_t *handle, int signum) {
 	logprintf(LOG_INFO, "Interrupt signal received. Please wait while pilight is shutting down");
+
+	if(config_get_file() != NULL) {
+		if(pilight.runmode == STANDALONE) {
+			config_write(1, "all");
+		}
+	}
+
 	main_gc();	
 	uv_stop(uv_default_loop());
 }
