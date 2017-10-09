@@ -571,7 +571,7 @@ static int parse_rest(uv_poll_t *req) {
 		memset(state, 0, 16);
 
 		if(a > 1) {
-			int type = 0; //0 = SEND, 1 = CONTROL
+			int type = 0; //0 = SEND, 1 = CONTROL, 2 = REGISTRY
 			json_append_member(jobject, "code", jcode);
 
 			if(strcmp(conn->uri, "/send") == 0) {
@@ -580,6 +580,9 @@ static int parse_rest(uv_poll_t *req) {
 			} else if(strcmp(conn->uri, "/control") == 0) {
 				type = 1;
 				json_append_member(jobject, "action", json_mkstring("control"));
+			} else if(strcmp(conn->uri, "/registry") == 0) {
+				type = 2;
+				json_append_member(jobject, "action", json_mkstring("registry"));
 			}
 
 			for(b=0;b<a;b++) {
@@ -650,6 +653,96 @@ static int parse_rest(uv_poll_t *req) {
 							char *z = "{\"message\":\"success\"}";
 							send_data(req, "application/json", z, strlen(z));
 							goto clear;
+						}
+					}
+				}
+			} else if(type == 2) {
+				struct JsonNode *value = NULL;
+				char *type = NULL;
+				char *key = NULL;
+				char *sval = NULL;
+				double nval = 0.0;
+				int dec = 0;
+				if(json_find_string(jcode, "type", &type) != 0) {
+					char *z = "{\"message\":\"failed\"}";
+					send_data(req, "application/json", z, strlen(z));
+					goto clear;
+				} else {
+					if(strcmp(type, "set") == 0) {
+						if(json_find_string(jcode, "key", &key) != 0) {
+							char *z = "{\"message\":\"failed\"}";
+							send_data(req, "application/json", z, strlen(z));
+							goto clear;
+						} else if((value = json_find_member(jcode, "value")) == NULL) {
+							char *z = "{\"message\":\"failed\"}";
+							send_data(req, "application/json", z, strlen(z));
+							goto clear;
+						} else {
+							if(value->tag == JSON_NUMBER) {
+								if(registry_set_number(key, value->number_, value->decimals_) == 0) {
+									char *z = "{\"message\":\"success\"}";
+									send_data(req, "application/json", z, strlen(z));
+									goto clear;
+								}
+							} else if(value->tag == JSON_STRING) {
+								if(registry_set_string(key, value->string_) == 0) {
+									char *z = "{\"message\":\"success\"}";
+									send_data(req, "application/json", z, strlen(z));
+									goto clear;
+								}
+							} else {
+								char *z = "{\"message\":\"failed\"}";
+								send_data(req, "application/json", z, strlen(z));
+								goto clear;
+							}
+						}
+					} else if(strcmp(type, "remove") == 0) {
+						if(json_find_string(jcode, "key", &key) != 0) {
+							char *z = "{\"message\":\"failed\"}";
+							send_data(req, "application/json", z, strlen(z));
+							goto clear;
+						} else {
+							if(registry_remove_value(key) == 0) {
+								char *z = "{\"message\":\"success\"}";
+								send_data(req, "application/json", z, strlen(z));
+								goto clear;
+							} else {
+								char *z = "{\"message\":\"failed\"}";
+								send_data(req, "application/json", z, strlen(z));
+								goto clear;
+							}
+						}
+					} else if(strcmp(type, "get") == 0) {
+						if(json_find_string(jcode, "key", &key) != 0) {
+							char *z = "{\"message\":\"failed\"}";
+							send_data(req, "application/json", z, strlen(z));
+							goto clear;
+						} else {
+							if(registry_get_number(key, &nval, &dec) == 0) {
+								struct JsonNode *jsend = json_mkobject();
+								json_append_member(jsend, "message", json_mkstring("registry"));
+								json_append_member(jsend, "value", json_mknumber(nval, dec));
+								json_append_member(jsend, "key", json_mkstring(key));
+								char *output = json_stringify(jsend, NULL);
+								send_data(req, "application/json", output, strlen(output));
+								json_free(output);
+								json_delete(jsend);
+								goto clear;
+							} else if(registry_get_string(key, &sval) == 0) {
+								struct JsonNode *jsend = json_mkobject();
+								json_append_member(jsend, "message", json_mkstring("registry"));
+								json_append_member(jsend, "value", json_mkstring(sval));
+								json_append_member(jsend, "key", json_mkstring(key));
+								char *output = json_stringify(jsend, NULL);
+								send_data(req, "application/json", output, strlen(output));
+								json_free(output);
+								json_delete(jsend);
+								goto clear;
+							} else {
+								char *z = "{\"message\":\"failed\"}";
+								send_data(req, "application/json", z, strlen(z));
+								goto clear;
+							}
 						}
 					}
 				}
@@ -756,7 +849,7 @@ static int request_handler(uv_poll_t *req) {
 
 	if(conn->is_websocket == 0) {
 		if(conn->uri != NULL && strlen(conn->uri) > 0) {
-			if(strcmp(conn->uri, "/send") == 0 || strcmp(conn->uri, "/control") == 0) {
+			if(strcmp(conn->uri, "/send") == 0 || strcmp(conn->uri, "/control") == 0 || strcmp(conn->uri, "/registry") == 0) {
 				return parse_rest(req);
 			} else if(strcmp(conn->uri, "/config") == 0) {
 				char media[15];
@@ -944,6 +1037,8 @@ static int request_handler(uv_poll_t *req) {
 		if(input == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
+		memset(input, '\0', conn->content_len+1);
+
 		strncpy(input, conn->content, conn->content_len);
 		input[conn->content_len] = '\0';
 

@@ -1574,158 +1574,176 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 							return -1;
 						}
 					}
-				} 
-				// else if(strcmp(action, "registry") == 0) {
-					// struct JsonNode *value = NULL;
-					// char *type = NULL;
-					// char *key = NULL;
-					// char *sval = NULL;
-					// double nval = 0.0;
-					// int dec = 0;
-					// if(json_find_string(json, "type", &type) != 0) {
-						// logprintf(LOG_ERR, "client did not send a type of action");
-						// json_delete(json);
-						// return -1;
-					// } else {
-						// if(strcmp(type, "set") == 0) {
-							// if(json_find_string(json, "key", &key) != 0) {
-								// logprintf(LOG_ERR, "client did not send a registry key");
-								// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
-									// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-								// }
-								// strcpy(*respons, "{\"status\":\"failed\"}");
-								// json_delete(json);
-								// return 0;
-							// } else if((value = json_find_member(json, "value")) == NULL) {
-								// logprintf(LOG_ERR, "client did not send a registry value");
-								// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
-									// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-								// }
-								// strcpy(*respons, "{\"status\":\"failed\"}");
-								// json_delete(json);
-								// return 0;
-							// } else {
-								// if(value->tag == JSON_NUMBER) {
-									// if(registry_update(ORIGIN_MASTER, key, json_mknumber(value->number_, value->decimals_)) == 0) {
-										// if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
-											// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-										// }
-										// strcpy(*respons, "{\"status\":\"success\"}");
-										// json_delete(json);
-										// return 0;
-									// } else {
-										// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
-											// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-										// }
-										// strcpy(*respons, "{\"status\":\"failed\"}");
-										// json_delete(json);
-										// return 0;
-									// }
-								// } else if(value->tag == JSON_STRING) {
-									// if(registry_update(ORIGIN_MASTER, key, json_mkstring(value->string_)) == 0) {
-										// if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
-											// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-										// }
-										// strcpy(*respons, "{\"status\":\"success\"}");
-										// json_delete(json);
-										// return 0;
-									// } else {
-										// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
-											// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-										// }
-										// strcpy(*respons, "{\"status\":\"failed\"}");
-										// json_delete(json);
-										// return 0;
-									// }
-								// } else {
-									// logprintf(LOG_ERR, "registry value can only be a string or number");
-									// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
-										// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-									// }
-									// strcpy(*respons, "{\"status\":\"failed\"}");
-									// json_delete(json);
-									// return 0;
-								// }
-							// }
-						// } else if(strcmp(type, "remove") == 0) {
-							// if(json_find_string(json, "key", &key) != 0) {
-								// logprintf(LOG_ERR, "client did not send a registry key");
-								// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
-									// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-								// }
-								// strcpy(*respons, "{\"status\":\"failed\"}");
-								// json_delete(json);
-								// return 0;
-							// } else {
-								// if(registry_delete(ORIGIN_MASTER, key) == 0) {
-									// if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
-										// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-									// }
-									// strcpy(*respons, "{\"status\":\"success\"}");
-									// json_delete(json);
-									// return 0;
-								// } else {
-									// logprintf(LOG_ERR, "registry value can only be a string or number");
-									// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
-										// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-									// }
-									// strcpy(*respons, "{\"status\":\"failed\"}");
-									// json_delete(json);
-									// return 0;
-								// }
-							// }
-						// } else if(strcmp(type, "get") == 0) {
-							// if(json_find_string(json, "key", &key) != 0) {
-								// logprintf(LOG_ERR, "client did not send a registry key");
-								// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
-									// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-								// }
-								// strcpy(*respons, "{\"status\":\"failed\"}");
-								// json_delete(json);
-								// return 0;
-							// } else {
-								// if(registry_select_number(ORIGIN_MASTER, key, &nval, &dec) == 0) {
-									// struct JsonNode *jsend = json_mkobject();
-									// json_append_member(jsend, "message", json_mkstring("registry"));
-									// json_append_member(jsend, "value", json_mknumber(nval, dec));
-									// json_append_member(jsend, "key", json_mkstring(key));
-									// char *output = json_stringify(jsend, NULL);
-									// if((*respons = MALLOC(strlen(output)+1)) == NULL) {
-										// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-									// }
-									// strcpy(*respons, output);
-									// json_free(output);
-									// json_delete(jsend);
-									// json_delete(json);
-									// return 0;
-								// } else if(registry_select_string(ORIGIN_MASTER, key, &sval) == 0) {
-									// struct JsonNode *jsend = json_mkobject();
-									// json_append_member(jsend, "message", json_mkstring("registry"));
-									// json_append_member(jsend, "value", json_mkstring(sval));
-									// json_append_member(jsend, "key", json_mkstring(key));
-									// char *output = json_stringify(jsend, NULL);
-									// if((*respons = MALLOC(strlen(output)+1)) == NULL) {
-										// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-									// }
-									// strcpy(*respons, output);
-									// json_free(output);
-									// json_delete(jsend);
-									// json_delete(json);
-									// return 0;
-								// } else {
-									// logprintf(LOG_ERR, "registry key '%s' does not exist", key);
-									// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
-										// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-									// }
-									// strcpy(*respons, "{\"status\":\"failed\"}");
-									// json_delete(json);
-									// return 0;
-								// }
-							// }
-						// }
-					// }
-				// } 
-				else if(strcmp(action, "request config") == 0) {
+				} else if(strcmp(action, "registry") == 0) {
+					struct JsonNode *value = NULL;
+					char *type = NULL;
+					char *key = NULL;
+					char *sval = NULL;
+					double nval = 0.0;
+					int dec = 0;
+					if(json_find_string(json, "type", &type) != 0) {
+						logprintf(LOG_ERR, "client did not send a type of action");
+						json_delete(json);
+						return -1;
+					} else {
+						if(strcmp(type, "set") == 0) {
+							if(json_find_string(json, "key", &key) != 0) {
+								logprintf(LOG_ERR, "client did not send a registry key");
+								if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+									OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+								}
+								strcpy(*respons, "{\"status\":\"failed\"}");
+								json_delete(json);
+								return 0;
+							} else if((value = json_find_member(json, "value")) == NULL) {
+								logprintf(LOG_ERR, "client did not send a registry value");
+								if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+									OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+								}
+								strcpy(*respons, "{\"status\":\"failed\"}");
+								json_delete(json);
+								return 0;
+							} else {
+								if(value->tag == JSON_NUMBER) {
+#ifdef PILIGHT_REWRITE
+									if(registry_update(ORIGIN_MASTER, key, json_mknumber(value->number_, value->decimals_)) == 0) {
+#else
+									if(registry_set_number(key, value->number_, value->decimals_) == 0) {
+#endif
+										if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
+											OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+										}
+										strcpy(*respons, "{\"status\":\"success\"}");
+										json_delete(json);
+										return 0;
+									} else {
+										if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+											OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+										}
+										strcpy(*respons, "{\"status\":\"failed\"}");
+										json_delete(json);
+										return 0;
+									}
+								} else if(value->tag == JSON_STRING) {
+#ifdef PILIGHT_REWRITE
+									if(registry_update(ORIGIN_MASTER, key, json_mkstring(value->string_)) == 0) {
+#else
+									if(registry_set_string(key, value->string_) == 0) {
+#endif
+										if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
+											OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+										}
+										strcpy(*respons, "{\"status\":\"success\"}");
+										json_delete(json);
+										return 0;
+									} else {
+										if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+											OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+										}
+										strcpy(*respons, "{\"status\":\"failed\"}");
+										json_delete(json);
+										return 0;
+									}
+								} else {
+									logprintf(LOG_ERR, "registry value can only be a string or number");
+									if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+										OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+									}
+									strcpy(*respons, "{\"status\":\"failed\"}");
+									json_delete(json);
+									return 0;
+								}
+							}
+						} else if(strcmp(type, "remove") == 0) {
+							if(json_find_string(json, "key", &key) != 0) {
+								logprintf(LOG_ERR, "client did not send a registry key");
+								if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+									OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+								}
+								strcpy(*respons, "{\"status\":\"failed\"}");
+								json_delete(json);
+								return 0;
+							} else {
+#ifdef PILIGHT_REWRITE
+								if(registry_delete(ORIGIN_MASTER, key) == 0) {
+#else
+								if(registry_remove_value(key) == 0) {
+#endif
+									if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
+										OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+									}
+									strcpy(*respons, "{\"status\":\"success\"}");
+									json_delete(json);
+									return 0;
+								} else {
+									logprintf(LOG_ERR, "registry value can only be a string or number");
+									if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+										OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+									}
+									strcpy(*respons, "{\"status\":\"failed\"}");
+									json_delete(json);
+									return 0;
+								}
+							}
+						} else if(strcmp(type, "get") == 0) {
+							if(json_find_string(json, "key", &key) != 0) {
+								logprintf(LOG_ERR, "client did not send a registry key");
+								if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+									OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+								}
+								strcpy(*respons, "{\"status\":\"failed\"}");
+								json_delete(json);
+								return 0;
+							} else {
+#ifdef PILIGHT_REWRITE
+								if(registry_select_number(ORIGIN_MASTER, key, &nval, &dec) == 0) {
+#else
+								if(registry_get_number(key, &nval, &dec) == 0) {
+#endif
+									struct JsonNode *jsend = json_mkobject();
+									json_append_member(jsend, "message", json_mkstring("registry"));
+									json_append_member(jsend, "value", json_mknumber(nval, dec));
+									json_append_member(jsend, "key", json_mkstring(key));
+									char *output = json_stringify(jsend, NULL);
+									if((*respons = MALLOC(strlen(output)+1)) == NULL) {
+										OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+									}
+									strcpy(*respons, output);
+									json_free(output);
+									json_delete(jsend);
+									json_delete(json);
+									return 0;
+#ifdef PILIGHT_REWRITE
+								} else if(registry_select_string(ORIGIN_MASTER, key, &sval) == 0) {
+#else
+								} else if(registry_get_string(key, &sval) == 0) {
+#endif
+									struct JsonNode *jsend = json_mkobject();
+									json_append_member(jsend, "message", json_mkstring("registry"));
+									json_append_member(jsend, "value", json_mkstring(sval));
+									json_append_member(jsend, "key", json_mkstring(key));
+									char *output = json_stringify(jsend, NULL);
+									if((*respons = MALLOC(strlen(output)+1)) == NULL) {
+										OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+									}
+									strcpy(*respons, output);
+									json_free(output);
+									json_delete(jsend);
+									json_delete(json);
+									return 0;
+								} else {
+									logprintf(LOG_ERR, "registry key '%s' does not exist", key);
+									if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+										OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+									}
+									strcpy(*respons, "{\"status\":\"failed\"}");
+									json_delete(json);
+									return 0;
+								}
+							}
+						}
+					}
+				} else if(strcmp(action, "request config") == 0) {
 					struct JsonNode *jsend = json_mkobject();
 					struct JsonNode *jconfig = NULL;
 					jconfig = config_print(CONFIG_INTERNAL, media);
