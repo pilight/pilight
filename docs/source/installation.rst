@@ -98,7 +98,7 @@ Manually Compiled Version
 Manually compiling pilight is also possible. Use this method is you are not using a Debian-based or a \*BSD based operating system.
 
 #. Login to your computer.
-#. Make sure you've configured the pilight stable repository, because some required dependencies are not available elsewhere.
+#. Make sure you've configured the pilight stable apt repository, because some required dependencies are not available elsewhere.
 #. Make sure you are running as root. Run the following command and use your own password.
 
    .. code-block:: console
