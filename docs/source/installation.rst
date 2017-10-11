@@ -69,7 +69,7 @@ Windows 7 and up
 
 #. Go to http://download.pilight.org.
 #. Download the latest Windows executable called pilight-vX.0-win32.exe. Run it to install pilight.
-#. By default pilight will install into to c:\pilight\.
+#. By default pilight will install into to c:\\pilight\\.
 #. A default configuration can also be found in that folder.
 #. If you want to use the pilight USB nano you can use the pilight-usb-nano.hex found in the default folder.
 
@@ -91,7 +91,11 @@ OpenWRT Routers
 Manually Compiled Version
 -------------------------
 
-Manually compiling pilight is also a possibility. Use this method is you are not using a Debian-based or a \*BSD based operating system.
+.. warning::
+
+   We try to provide as many options as possible for you to keep up-to-date with the latest developments. Compiling C software requires some level of expertise, which we cannot and will not provide. This means that **no support is given** if any issues occur with manually compiling pilight.
+
+Manually compiling pilight is also possible. Use this method is you are not using a Debian-based or a \*BSD based operating system.
 
 #. Login to your computer.
 #. Make sure you are running as root. Run the following command and use your own password.
@@ -102,12 +106,22 @@ Manually compiling pilight is also a possibility. Use this method is you are not
       Password:
 
 #. Install all packages needed for manually compiling pilight. The best way to do this depends on your operating system. The packages needed for Debian are:
+
    #. build-essential
    #. cmake
    #. git
    #. dialog
-   #. libunwind-dev
-   #. libpcap-dev
+   #. libwiringx-dev
+   #. libwiringx
+   #. libpcap0.8-dev
+   #. libpcap0.8
+   #. libmbedtls-dev
+   #. libmbedx509-0
+   #. libmbedcrypto0
+   #. libmbedtls10
+   #. liblua5.2
+   #. liblua5.2-dev
+
 #. Then download the pilight source code from the pilight GitHub:
 
    .. code-block:: console
@@ -116,7 +130,7 @@ Manually compiling pilight is also a possibility. Use this method is you are not
       root@pilight:~# cd pilight
 
 
-#. Replace the [branch] with either *master* for the latest stable version. This version is exactly the same as the stable version available through the apt repository. Or use *development* for the very latest developmental build. A *nightly* pilight version is automatically generated each night and also available through the pilight nightly apt repository.
+#. Replace the [branch] with either **master** for the latest stable version. This version is exactly the same as the stable version available through the apt repository. Or use **development** for the very latest developmental build. This development version of pilight is also automatically generated each night. You can download it from the pilight nightly repository.
 #. pilight can be compiled with various built-in features which can be included or excluded. This is done through a menu driven program. This program will also automatically compile and install pilight:
 
    .. code-block:: console
@@ -126,7 +140,7 @@ Manually compiling pilight is also a possibility. Use this method is you are not
 
    .. image:: images/installation.png
 
-#. When you are thrown back into the command prompt without error(s), pilight has been installed  successfully. It will also install a default configuration in /etc/pilight/config.json.
+#. When you are thrown back into the command prompt without error(s), pilight has been installed successfully. It will also install a default configuration in /etc/pilight/config.json.
 #. Make sure to run the following command after installation:
 
    .. code-block:: console
