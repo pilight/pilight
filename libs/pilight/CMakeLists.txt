@@ -21,9 +21,6 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 
 	add_subdirectory(hardware)
 	set(${PROJECT_NAME}_files	${${PROJECT_NAME}_files} ${${PROJECT_NAME}_hardware_files} CACHE INTERNAL "")
-
-	add_subdirectory(lua)
-	set(${PROJECT_NAME}_files	${${PROJECT_NAME}_files} ${${PROJECT_NAME}_lua_files} CACHE INTERNAL "")
 else()
 	if(${EVENTS} MATCHES "ON")
 		add_subdirectory(events)

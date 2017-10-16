@@ -22,9 +22,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <math.h>
-#ifndef _WIN32
 #include <wiringx.h>
-#endif
 
 #include "../../core/pilight.h"
 #include "../../core/common.h"

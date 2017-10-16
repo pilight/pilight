@@ -23,9 +23,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#ifndef _WIN32
 #include <wiringx.h>
-#endif
 
 #include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
@@ -273,7 +271,7 @@ int main(int argc, char **argv) {
 											FREE(values);
 											json_delete(json);
 											goto close;
-										}								
+										}
 									} else {
 										array_free(&array, n);
 										logprintf(LOG_ERR, "\"%s\" requires a name=value format", ptr1);

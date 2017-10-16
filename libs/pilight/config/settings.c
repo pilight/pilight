@@ -22,9 +22,9 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
+#include <wiringx.h>
 
 #ifndef _WIN32
-	#include <wiringx.h>
 	#include <regex.h>
 #endif
 #include <sys/stat.h>
@@ -155,9 +155,6 @@ static int settings_parse(JsonNode *root) {
 
 #ifdef WEBSERVER
 	int web_port = WEBSERVER_HTTP_PORT;
-#ifdef WEBSERVER_HTTPS
-	int web_ssl_port = WEBSERVER_HTTPS_PORT;
-#endif
 	int own_port = -1;
 
 	char *webgui_root = MALLOC(strlen(WEBSERVER_ROOT)+1);
@@ -203,13 +200,10 @@ static int settings_parse(JsonNode *root) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larger than 0", jsettings->key);
 				return -1;
-			}
-#ifndef _WIN32
-			else if(wiringXValidGPIO((int)jsettings->number_) != 0) {
+			} else if(wiringXValidGPIO((int)jsettings->number_) != 0) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid GPIO number", jsettings->key);
 				return -1;
 			}
-#endif
 		} else if(strcmp(jsettings->key, "gpio-platform") == 0) {
 			if(jsettings->tag != JSON_STRING) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a supported gpio platform", jsettings->key);
@@ -219,12 +213,10 @@ static int settings_parse(JsonNode *root) {
 				return -1;
 			} else {
 				if(strcmp(jsettings->string_, "none") != 0) {
-#ifndef _WIN32
 					if(wiringXSetup(jsettings->string_, logprintf1) != 0) {
 						logprintf(LOG_ERR, "config setting \"%s\" must contain a supported gpio platform", jsettings->key);
 						return -1;
 					}
-#endif
 				}
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
@@ -255,10 +247,10 @@ static int settings_parse(JsonNode *root) {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 		} else if(strcmp(jsettings->key, "log-file") == 0
-#ifndef _WIN32		
+#ifndef _WIN32
 			|| strcmp(jsettings->key, "pid-file") == 0
 #endif
-			|| strcmp(jsettings->key, "pem-file") == 0) {
+			) {
 			if(jsettings->tag != JSON_STRING) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain an existing file", jsettings->key);
 				have_error = 1;
@@ -312,22 +304,6 @@ static int settings_parse(JsonNode *root) {
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
 #ifdef WEBSERVER
-
-#ifdef WEBSERVER_HTTPS
-		} else if(strcmp(jsettings->key, "webserver-https-port") == 0) {
-			if(jsettings->tag != JSON_NUMBER) {
-				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larget than 0", jsettings->key);
-				have_error = 1;
-				goto clear;
-			} else if(jsettings->number_ < 0) {
-				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larger than 0", jsettings->key);
-				have_error = 1;
-				goto clear;
-			} else {
-				web_ssl_port = (int)jsettings->number_;
-				settings_add_number(jsettings->key, (int)jsettings->number_);
-			}
-#endif
 		} else if(strcmp(jsettings->key, "webserver-http-port") == 0) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larget than 0", jsettings->key);
@@ -463,18 +439,6 @@ static int settings_parse(JsonNode *root) {
 			} else {
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
-		} else if(strcmp(jsettings->key, "smtp-ssl") == 0) {
-			if(jsettings->tag != JSON_NUMBER) {
-				logprintf(LOG_ERR, "config setting \"%s\" must be either 0 or 1", jsettings->key);
-				have_error = 1;
-				goto clear;
-			} else if(jsettings->number_ < 0 || jsettings->number_ > 1) {
-				logprintf(LOG_ERR, "config setting \"%s\" must be either 0 or 1", jsettings->key);
-				have_error = 1;
-				goto clear;
-			} else {
-				settings_add_number(jsettings->key, (int)jsettings->number_);
-			}
 		} else if(strcmp(jsettings->key, "smtp-user") == 0) {
 			if(jsettings->tag != JSON_STRING) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a user id", jsettings->key);
@@ -555,14 +519,6 @@ static int settings_parse(JsonNode *root) {
 		have_error = 1;
 		goto clear;
 	}
-#ifdef WEBSERVER_HTTPS
-	if(web_ssl_port == own_port) {
-		logprintf(LOG_ERR, "config setting \"port\" and \"webserver-https-port\" cannot be the same");
-		have_error = 1;
-		goto clear;
-	}
-#endif
-
 #endif
 clear:
 #ifdef WEBSERVER

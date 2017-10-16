@@ -27,13 +27,13 @@
 #include <fcntl.h>
 #include <math.h>
 #include <sys/stat.h>
-#ifndef _WIN32
+#ifdef _WIN32
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
-	#include <wiringx.h>
 #endif
 #include <pthread.h>
+#include <wiringx.h>
 
 #include "../../core/pilight.h"
 #include "../../core/common.h"

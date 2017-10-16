@@ -139,7 +139,7 @@ static void parseCode(void) {
 		type = 0x5;
 		return;
 	}
-	
+
 	alecto_wx500->message = json_mkobject();
 	switch(type) {
 		case 1:
@@ -147,7 +147,7 @@ static void parseCode(void) {
 			temperature = (double)(binToSigned(binary, 12, 23)) / 10.0;
 			humidity = (binToDec(binary, 28, 31) * 10) + binToDec(binary, 24,27);
 			battery = !binary[8];
-			
+
 			temperature += temp_offset;
 			humidity += humi_offset;
 

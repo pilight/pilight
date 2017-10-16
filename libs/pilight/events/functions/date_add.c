@@ -40,10 +40,6 @@
 #include "../../core/datetime.h"
 #include "date_add.h"
 
-#ifndef PILIGHT_REWRITE
-#define NRUNITS 6
-#endif
-
 static struct units_t {
 	char name[255];
 	int id;
@@ -88,18 +84,10 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	struct protocols_t *protocol = NULL;
 	struct tm tm;
 	char *p = *ret, *datetime = NULL, *interval = NULL, **array = NULL;
-#ifdef PILIGHT_DEVELOPMENT
 	int nrunits = (sizeof(units)/sizeof(units[0])), values[nrunits], error = 0;
-#else
-	int values[NRUNITS], error = 0;
-#endif
 	int l = 0, i = 0, type = -1, match = 0;
 
-#ifdef PILIGHT_DEVELOPMENT
 	memset(&values, 0, nrunits);
-#else
-	memset(&values, 0, NRUNITS);
-#endif
 
 	if(childs == NULL) {
 		logprintf(LOG_ERR, "DATE_ADD requires two parameters e.g. DATE_ADD(datetime, 1 DAY)");
@@ -171,11 +159,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	l = explode(interval, " ", &array);
 	if(l == 2) {
 		if(isNumeric(array[0]) == 0) {
-#ifdef PILIGHT_DEVELOPMENT
 			for(i=0;i<nrunits;i++) {
-#else
-			for(i=0;i<NRUNITS;i++) {
-#endif
 				if(strcmp(array[1], units[i].name) == 0) {
 					values[i] = atoi(array[0]);
 					type = units[i].id;
@@ -213,15 +197,10 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	int hour = tm.tm_hour;
 	int minute = tm.tm_min;
 	int second = tm.tm_sec;
-	int weekday = 0;
 
-	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
+	datefix(&year, &month, &day, &hour, &minute, &second);
 
-#ifdef PILIGHT_DEVELOPMENT
 	snprintf(p, BUFFER_SIZE, "\"%04d-%02d-%02d %02d:%02d:%02d\"", year, month, day, hour, minute, second);
-#else
-	snprintf(p, BUFFER_SIZE, "%04d-%02d-%02d %02d:%02d:%02d", year, month, day, hour, minute, second);
-#endif
 
 close:
 	array_free(&array, l);

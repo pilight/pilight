@@ -1,28 +1,39 @@
 /*
-	Copyright (C) 2013 - 2016 CurlyMo
+	Copyright (C) 2013 CurlyMo
 
-  This Source Code Form is subject to the terms of the Mozilla Public
-  License, v. 2.0. If a copy of the MPL was not distributed with this
-  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+	This file is part of pilight.
+
+	pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
+	version.
+
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdlib.h>
 #include <stdio.h>
 #define __USE_XOPEN
+#include <sys/time.h>
 #include <math.h>
 #include <time.h>
 #include <sys/stat.h>
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <unistd.h>
 #include <sys/stat.h>
 #include <ctype.h>
-#include <assert.h>
+#include <pthread.h>
 #ifndef _WIN32
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
-	#include <unistd.h>
 #endif
 
 #include "json.h"
@@ -39,100 +50,6 @@
 #ifndef max
 	#define max(a,b) (((a)>(b))?(a):(b))
 #endif
-
-
-#define ERALENGTH ((unsigned long)146097 * 86400)
-
-#define ATOMIC_FLAG_INIT { ATOMIC_VAR_INIT(0) }
-#define ATOMIC_VAR_INIT(value) (value)
-
-#ifdef __clang__
-#define atomic_load_explicit(object, order) __c11_atomic_load(object, order)
-#define atomic_compare_exchange_weak_explicit(object, expected, desired, success, failure) \
-	__c11_atomic_compare_exchange_weak(object, expected, desired, success, failure)
-#define atomic_compare_exchange_weak(object, expected, desired) \
-	atomic_compare_exchange_weak_explicit(object, expected, desired, memory_order_seq_cst, memory_order_seq_cst)
-#else
-#define atomic_load_explicit(object, order) __atomic_load_n(object, order)
-#define atomic_compare_exchange_weak_explicit(object, expected, desired, success, failure) \
-	__atomic_compare_exchange_n(object, expected, desired, 1, success, failure)
-#define atomic_compare_exchange_weak(object, expected, desired) \
-	atomic_compare_exchange_weak_explicit(object, expected, desired, memory_order_seq_cst, memory_order_seq_cst)
-#endif
-
-#ifndef _WIN32
-typedef enum {
-	memory_order_relaxed = __ATOMIC_RELAXED,
-	memory_order_consume = __ATOMIC_CONSUME,
-	memory_order_acquire = __ATOMIC_ACQUIRE,
-	memory_order_release = __ATOMIC_RELEASE,
-	memory_order_acq_rel = __ATOMIC_ACQ_REL,
-	memory_order_seq_cst = __ATOMIC_SEQ_CST,
-
-#if defined(__ATOMIC_HLE_ACQUIRE) && defined(__ATOMIC_HLE_RELEASE)
-	/*
-	 * Compiler supports Hardware Lock Elision.
-	 */
-	__memory_order_hle_acquire = __ATOMIC_HLE_ACQUIRE,
-	__memory_order_hle_release = __ATOMIC_HLE_RELEASE
-#else
-	/*
-	 * Ignore Hardware Lock Elision hints.
-	 */
-	__memory_order_hle_acquire = 0,
-	__memory_order_hle_release = 0
-#endif
-} memory_order;
-#endif
-
-struct cached_abbreviation {
-  struct cached_abbreviation *next;
-  char abbreviation[16];
-};
-
-struct lc_timezone_rule {
-	uint8_t year_from;      // Lowest year to which this rule applies.
-	uint8_t year_to;        // Highest year to which this rule applies.
-	uint32_t month : 4;     // Month at which this rule starts.
-	uint32_t weekday : 3;   // Weekday at which this rule start (7=dontcare).
-	uint32_t monthday : 5;  // Day of the month at which this rule starts.
-	uint32_t minute : 11;   // Minutes since 0:00 at which this rule starts.
-	uint32_t timebase : 2;  // Which time should be compared against.
-#define TIMEBASE_CUR 0    // Rule applies to the current offset.
-#define TIMEBASE_STD 1    // Rule applies to the standard time.
-#define TIMEBASE_UTC 2    // Rule applies to time in UTC.
-	uint32_t save : 4;      // The amount of time in 10 minutes.
-	char abbreviation[6];   // Abbreviation of timezone name (e.g., CEST).
-};
-
-struct lc_timezone_era {
-  const struct lc_timezone_rule *rules;  // Rules associated with this era.
-  uint64_t rules_count : 8;              // Number of rules.
-  int64_t gmtoff : 18;                   // Offset in seconds relative to GMT.
-  int64_t end : 38;                      // Timestamp at which this era ends.
-  uint8_t end_save : 4;                  // Daylight savings at the end time.
-  char abbreviation_std[6];  // Abbreviation of standard time (e.g., CET).
-  char abbreviation_dst[6];  // Abbreviation of DST (e.g., CEST).
-};
-
-struct ruleset {
-  const struct lc_timezone_rule *rules[8];
-  size_t rules_count;
-};
-
-struct lc_timezone {
-  const struct lc_timezone_era *eras;
-  size_t eras_count;
-};
-
-extern const struct lc_timezone __timezone_utc;
-
-#include "tzdata.h"
-
-static void ruleset_remove_stale(struct ruleset *ruleset, int year);
-static void ruleset_get_last(struct ruleset *ruleset, int year,
-														 const struct lc_timezone_rule **last,
-														 const struct lc_timezone_rule **last_dst);
 
 struct tzdata_t {
 	char *timezone;
@@ -548,638 +465,47 @@ struct tzdata_t {
 	{"America/Mazatlan",171,{{-1144,271},{-1121,272},{-1121,273},{-1120,272},{-1120,274},{-1120,275},{-1148,184},{-1147,184},{-1148,183},{-1110,188},{-1109,188},{-1110,187},{-1111,188},{-1121,190},{-1108,193},{-1066,217},{-1065,216},{-1065,215},{-1066,216},{-1067,217},{-1067,218},{-1059,219},{-1063,213},{-1062,213},{-1063,215},{-1065,214},{-1080,248},{-1081,248},{-1080,250},{-1081,250},{-1081,249},{-1080,249},{-1081,251},{-1082,250},{-1083,251},{-1082,251},{-1084,251},{-1084,252},{-1083,252},{-1082,252},{-1152,279},{-1142,277},{-1142,278},{-1142,279},{-1106,248},{-1106,249},{-1104,246},{-1121,249},{-1122,250},{-1121,253},{-1122,248},{-1121,247},{-1121,245},{-1123,248},{-1121,250},{-1107,252},{-1107,250},{-1107,251},{-1105,249},{-1050,230},{-1049,228},{-1050,225},{-1048,227},{-1046,225},{-1043,225},{-1044,221},{-1041,218},{-1042,215},{-1039,214},{-1042,212},{-1043,207},{-1047,210},{-1052,207},{-1054,209},{-1052,211},{-1052,215},{-1057,220},{-1058,226},{-1070,239},{-1080,247},{-1088,254},{-1087,255},{-1088,256},{-1089,255},{-1094,256},{-1094,259},{-1093,263},{-1084,270},{-1080,269},{-1078,262},{-1074,261},{-1071,257},{-1071,252},{-1069,248},{-1065,243},{-1062,244},{-1060,242},{-1057,233},{-1098,241},{-1099,242},{-1099,244},{-1098,242},{-1088,255},{-1117,244},{-1117,243},{-1120,245},{-1119,245},{-1104,245},{-1103,245},{-1103,244},{-1104,244},{-1115,243},{-1116,244},{-1090,254},{-1121,252},{-1107,253},{-1121,255},{-1142,280},{-1128,280},{-1122,272},{-1120,271},{-1120,270},{-1118,266},{-1118,269},{-1114,265},{-1113,258},{-1107,248},{-1107,246},{-1106,243},{-1103,242},{-1102,244},{-1095,236},{-1095,231},{-1100,229},{-1103,236},{-1116,246},{-1118,245},{-1120,248},{-1121,259},{-1132,268},{-1131,269},{-1132,270},{-1133,268},{-1136,267},{-1138,270},{-1144,272},{-1145,274},{-1151,278},{-1143,279},{-1141,276},{-1139,277},{-1141,277},{-1121,256},{-1108,256},{-1108,257},{-1112,258},{-1112,260},{-1111,261},{-1121,257},{-1110,256},{-1111,257},{-1110,257},{-1113,261},{-1131,266},{-1114,266},{-1131,267},{-1133,267},{-1132,267},{-1132,269},{-1119,271},{-1119,270}}}
 };
 
-struct tzoffsets_t {
-	char *name;
-	double time;
-	double dst;
-} tzoffsets[] = {
-	{ "Africa/Abidjan", 0, 0 },
-	{ "Africa/Accra", 0, 0 },
-	{ "Africa/Addis_Ababa", 3, 3 },
-	{ "Africa/Algiers", 1, 1 },
-	{ "Africa/Asmara", 3, 3 },
-	{ "Africa/Asmera", 3, 3 },
-	{ "Africa/Bamako", 0, 0 },
-	{ "Africa/Bangui", 1, 1 },
-	{ "Africa/Banjul", 0, 0 },
-	{ "Africa/Bissau", 0, 0 },
-	{ "Africa/Blantyre", 2, 2 },
-	{ "Africa/Brazzaville", 1, 1 },
-	{ "Africa/Bujumbura", 2, 2 },
-	{ "Africa/Cairo", 2, 2 },
-	{ "Africa/Casablanca", 0, 1 },
-	{ "Africa/Ceuta", 1, 2 },
-	{ "Africa/Conakry", 0, 0 },
-	{ "Africa/Dakar", 0, 0 },
-	{ "Africa/Dar_es_Salaam", 3, 3 },
-	{ "Africa/Djibouti", 3, 3 },
-	{ "Africa/Douala", 1, 1 },
-	{ "Africa/El_Aaiun", 0, 1 },
-	{ "Africa/Freetown", 0, 0 },
-	{ "Africa/Gaborone", 2, 2 },
-	{ "Africa/Harare", 2, 2 },
-	{ "Africa/Johannesburg", 2, 2 },
-	{ "Africa/Juba", 3, 3 },
-	{ "Africa/Kampala", 3, 3 },
-	{ "Africa/Khartoum", 3, 3 },
-	{ "Africa/Kigali", 2, 2 },
-	{ "Africa/Kinshasa", 1, 1 },
-	{ "Africa/Lagos", 1, 1 },
-	{ "Africa/Libreville", 1, 1 },
-	{ "Africa/Lome", 0, 0 },
-	{ "Africa/Luanda", 1, 1 },
-	{ "Africa/Lubumbashi", 2, 2 },
-	{ "Africa/Lusaka", 2, 2 },
-	{ "Africa/Malabo", 1, 1 },
-	{ "Africa/Maputo", 2, 2 },
-	{ "Africa/Maseru", 2, 2 },
-	{ "Africa/Mbabane", 2, 2 },
-	{ "Africa/Mogadishu", 3, 3 },
-	{ "Africa/Monrovia", 0, 0 },
-	{ "Africa/Nairobi", 3, 3 },
-	{ "Africa/Ndjamena", 1, 1 },
-	{ "Africa/Niamey", 1, 1 },
-	{ "Africa/Nouakchott", 0, 0 },
-	{ "Africa/Ouagadougou", 0, 0 },
-	{ "Africa/Porto-Novo", 1, 1 },
-	{ "Africa/Sao_Tome", 0, 0 },
-	{ "Africa/Timbuktu", 0, 0 },
-	{ "Africa/Tripoli", 2, 2 },
-	{ "Africa/Tunis", 1, 1 },
-	{ "Africa/Windhoek", 1, 2 },
-	{ "America/Adak", -10, -9 },
-	{ "America/Anchorage", -9, -8 },
-	{ "America/Anguilla", -4, -4 },
-	{ "America/Antigua", -4, -4 },
-	{ "America/Araguaina", -3, -3 },
-	{ "America/Argentina/Buenos_Aires", -3, -3 },
-	{ "America/Argentina/Catamarca", -3, -3 },
-	{ "America/Argentina/ComodRivadavia", -3, -3 },
-	{ "America/Argentina/Cordoba", -3, -3 },
-	{ "America/Argentina/Jujuy", -3, -3 },
-	{ "America/Argentina/La_Rioja", -3, -3 },
-	{ "America/Argentina/Mendoza", -3, -3 },
-	{ "America/Argentina/Rio_Gallegos", -3, -3 },
-	{ "America/Argentina/Salta", -3, -3 },
-	{ "America/Argentina/San_Juan", -3, -3 },
-	{ "America/Argentina/San_Luis", -3, -3 },
-	{ "America/Argentina/Tucuman", -3, -3 },
-	{ "America/Argentina/Ushuaia", -3, -3 },
-	{ "America/Aruba", -4, -4 },
-	{ "America/Asuncion", -4, -3 },
-	{ "America/Atikokan", -5, -5 },
-	{ "America/Atka", -10, -9 },
-	{ "America/Bahia", -3, -3 },
-	{ "America/Bahia_Banderas", -6, -5 },
-	{ "America/Barbados", -4, -4 },
-	{ "America/Belem", -3, -3 },
-	{ "America/Belize", -6, -6 },
-	{ "America/Blanc-Sablon", -4, -4 },
-	{ "America/Boa_Vista", -4, -4 },
-	{ "America/Bogota", -5, -5 },
-	{ "America/Boise", -7, -6 },
-	{ "America/Buenos_Aires", -3, -3 },
-	{ "America/Cambridge_Bay", -7, -6 },
-	{ "America/Campo_Grande", -4, -3 },
-	{ "America/Cancun", -5, -5 },
-	{ "America/Caracas", -4, -4 },
-	{ "America/Catamarca", -3, -3 },
-	{ "America/Cayenne", -3, -3 },
-	{ "America/Cayman", -5, -5 },
-	{ "America/Chicago", -6, -5 },
-	{ "America/Chihuahua", -7, -6 },
-	{ "America/Coral_Harbour", -5, -5 },
-	{ "America/Cordoba", -3, -3 },
-	{ "America/Costa_Rica", -6, -6 },
-	{ "America/Creston", -7, -7 },
-	{ "America/Cuiaba", -4, -3 },
-	{ "America/Curacao", -4, -4 },
-	{ "America/Danmarkshavn", 0, 0 },
-	{ "America/Dawson", -8, -7 },
-	{ "America/Dawson_Creek", -7, -7 },
-	{ "America/Denver", -7, -6 },
-	{ "America/Detroit", -5, -4 },
-	{ "America/Dominica", -4, -4 },
-	{ "America/Edmonton", -7, -6 },
-	{ "America/Eirunepe", -5, -5 },
-	{ "America/El_Salvador", -6, -6 },
-	{ "America/Ensenada", -8, -7 },
-	{ "America/Fort_Nelson", -7, -7 },
-	{ "America/Fort_Wayne", -5, -4 },
-	{ "America/Fortaleza", -3, -3 },
-	{ "America/Glace_Bay", -4, -3 },
-	{ "America/Godthab", -3, -2 },
-	{ "America/Goose_Bay", -4, -3 },
-	{ "America/Grand_Turk", -4, -4 },
-	{ "America/Grenada", -4, -4 },
-	{ "America/Guadeloupe", -4, -4 },
-	{ "America/Guatemala", -6, -6 },
-	{ "America/Guayaquil", -5, -5 },
-	{ "America/Guyana", -4, -4 },
-	{ "America/Halifax", -4, -3 },
-	{ "America/Havana", -5, -4 },
-	{ "America/Hermosillo", -7, -7 },
-	{ "America/Indiana/Indianapolis", -5, -4 },
-	{ "America/Indiana/Knox", -6, -5 },
-	{ "America/Indiana/Marengo", -5, -4 },
-	{ "America/Indiana/Petersburg", -5, -4 },
-	{ "America/Indiana/Tell_City", -6, -5 },
-	{ "America/Indiana/Vevay", -5, -4 },
-	{ "America/Indiana/Vincennes", -5, -4 },
-	{ "America/Indiana/Winamac", -5, -4 },
-	{ "America/Indianapolis", -5, -4 },
-	{ "America/Inuvik", -7, -6 },
-	{ "America/Iqaluit", -5, -4 },
-	{ "America/Jamaica", -5, -5 },
-	{ "America/Jujuy", -3, -3 },
-	{ "America/Juneau", -9, -8 },
-	{ "America/Kentucky/Louisville", -5, -4 },
-	{ "America/Kentucky/Monticello", -5, -4 },
-	{ "America/Knox_IN", -6, -5 },
-	{ "America/Kralendijk", -4, -4 },
-	{ "America/La_Paz", -4, -4 },
-	{ "America/Lima", -5, -5 },
-	{ "America/Los_Angeles", -8, -7 },
-	{ "America/Louisville", -5, -4 },
-	{ "America/Lower_Princes", -4, -4 },
-	{ "America/Maceio", -3, -3 },
-	{ "America/Managua", -6, -6 },
-	{ "America/Manaus", -4, -4 },
-	{ "America/Marigot", -4, -4 },
-	{ "America/Martinique", -4, -4 },
-	{ "America/Matamoros", -6, -5 },
-	{ "America/Mazatlan", -7, -6 },
-	{ "America/Mendoza", -3, -3 },
-	{ "America/Menominee", -6, -5 },
-	{ "America/Merida", -6, -5 },
-	{ "America/Metlakatla", -9, -8 },
-	{ "America/Mexico_City", -6, -5 },
-	{ "America/Miquelon", -3, -2 },
-	{ "America/Moncton", -4, -3 },
-	{ "America/Monterrey", -6, -5 },
-	{ "America/Montevideo", -3, -3 },
-	{ "America/Montreal", -5, -4 },
-	{ "America/Montserrat", -4, -4 },
-	{ "America/Nassau", -5, -4 },
-	{ "America/New_York", -5, -4 },
-	{ "America/Nipigon", -5, -4 },
-	{ "America/Nome", -9, -8 },
-	{ "America/Noronha", -2, -2 },
-	{ "America/North_Dakota/Beulah", -6, -5 },
-	{ "America/North_Dakota/Center", -6, -5 },
-	{ "America/North_Dakota/New_Salem", -6, -5 },
-	{ "America/Ojinaga", -7, -6 },
-	{ "America/Panama", -5, -5 },
-	{ "America/Pangnirtung", -5, -4 },
-	{ "America/Paramaribo", -3, -3 },
-	{ "America/Phoenix", -7, -7 },
-	{ "America/Port_of_Spain", -4, -4 },
-	{ "America/Port-au-Prince", -5, -5 },
-	{ "America/Porto_Acre", -5, -5 },
-	{ "America/Porto_Velho", -4, -4 },
-	{ "America/Puerto_Rico", -4, -4 },
-	{ "America/Rainy_River", -6, -5 },
-	{ "America/Rankin_Inlet", -6, -5 },
-	{ "America/Recife", -3, -3 },
-	{ "America/Regina", -6, -6 },
-	{ "America/Resolute", -6, -5 },
-	{ "America/Rio_Branco", -5, -5 },
-	{ "America/Rosario", -3, -3 },
-	{ "America/Santa_Isabel", -8, -7 },
-	{ "America/Santarem", -3, -3 },
-	{ "America/Santiago", -4, -3 },
-	{ "America/Santo_Domingo", -4, -4 },
-	{ "America/Sao_Paulo", -3, -2 },
-	{ "America/Scoresbysund", -1, 0 },
-	{ "America/Shiprock", -7, -6 },
-	{ "America/Sitka", -9, -8 },
-	{ "America/St_Barthelemy", -4, -4 },
-	{ "America/St_Johns", -3.5, -2.5 },
-	{ "America/St_Kitts", -4, -4 },
-	{ "America/St_Lucia", -4, -4 },
-	{ "America/St_Thomas", -4, -4 },
-	{ "America/St_Vincent", -4, -4 },
-	{ "America/Swift_Current", -6, -6 },
-	{ "America/Tegucigalpa", -6, -6 },
-	{ "America/Thule", -4, -3 },
-	{ "America/Thunder_Bay", -5, -4 },
-	{ "America/Tijuana", -8, -7 },
-	{ "America/Toronto", -5, -4 },
-	{ "America/Tortola", -4, -4 },
-	{ "America/Vancouver", -8, -7 },
-	{ "America/Virgin", -4, -4 },
-	{ "America/Whitehorse", -8, -7 },
-	{ "America/Winnipeg", -6, -5 },
-	{ "America/Yakutat", -9, -8 },
-	{ "America/Yellowknife", -7, -6 },
-	{ "Antarctica/Casey", 8, 8 },
-	{ "Antarctica/Davis", 7, 7 },
-	{ "Antarctica/DumontDUrville", 10, 10 },
-	{ "Antarctica/Macquarie", 11, 11 },
-	{ "Antarctica/Mawson", 5, 5 },
-	{ "Antarctica/McMurdo", 12, 13 },
-	{ "Antarctica/Palmer", -4, -3 },
-	{ "Antarctica/Rothera", -3, -3 },
-	{ "Antarctica/South_Pole", 12, 13 },
-	{ "Antarctica/Syowa", 3, 3 },
-	{ "Antarctica/Troll", 0, 2 },
-	{ "Antarctica/Vostok", 6, 6 },
-	{ "Arctic/Longyearbyen", 1, 2 },
-	{ "Asia/Aden", 3, 3 },
-	{ "Asia/Almaty", 6, 6 },
-	{ "Asia/Amman", 2, 3 },
-	{ "Asia/Anadyr", 12, 12 },
-	{ "Asia/Aqtau", 5, 5 },
-	{ "Asia/Aqtobe", 5, 5 },
-	{ "Asia/Ashgabat", 5, 5 },
-	{ "Asia/Ashkhabad", 5, 5 },
-	{ "Asia/Baghdad", 3, 3 },
-	{ "Asia/Bahrain", 3, 3 },
-	{ "Asia/Baku", 4, 4 },
-	{ "Asia/Bangkok", 7, 7 },
-	{ "Asia/Barnaul", 7, 7 },
-	{ "Asia/Beirut", 2, 3 },
-	{ "Asia/Bishkek", 6, 6 },
-	{ "Asia/Brunei", 8, 8 },
-	{ "Asia/Calcutta", 5.5, 5.5 },
-	{ "Asia/Chita", 9, 9 },
-	{ "Asia/Choibalsan", 8, 9 },
-	{ "Asia/Chongqing", 8, 8 },
-	{ "Asia/Chungking", 8, 8 },
-	{ "Asia/Colombo", 5.5, 5.5 },
-	{ "Asia/Dacca", 6, 6 },
-	{ "Asia/Damascus", 2, 3 },
-	{ "Asia/Dhaka", 6, 6 },
-	{ "Asia/Dili", 9, 9 },
-	{ "Asia/Dubai", 4, 4 },
-	{ "Asia/Dushanbe", 5, 5 },
-	{ "Asia/Gaza", 2, 3 },
-	{ "Asia/Harbin", 8, 8 },
-	{ "Asia/Hebron", 2, 3 },
-	{ "Asia/Ho_Chi_Minh", 7, 7 },
-	{ "Asia/Hong_Kong", 8, 8 },
-	{ "Asia/Hovd", 7, 8 },
-	{ "Asia/Irkutsk", 8, 8 },
-	{ "Asia/Istanbul", 2, 3 },
-	{ "Asia/Jakarta", 7, 7 },
-	{ "Asia/Jayapura", 9, 9 },
-	{ "Asia/Jerusalem", 2, 3 },
-	{ "Asia/Kabul", 4.5, 4.5 },
-	{ "Asia/Kamchatka", 12, 12 },
-	{ "Asia/Karachi", 5, 5 },
-	{ "Asia/Kashgar", 6, 6 },
-	{ "Asia/Kathmandu", 5.75, 5.75 },
-	{ "Asia/Katmandu", 5.75, 5.75 },
-	{ "Asia/Khandyga", 9, 9 },
-	{ "Asia/Kolkata", 5.5, 5.5 },
-	{ "Asia/Krasnoyarsk", 7, 7 },
-	{ "Asia/Kuala_Lumpur", 8, 8 },
-	{ "Asia/Kuching", 8, 8 },
-	{ "Asia/Kuwait", 3, 3 },
-	{ "Asia/Macao", 8, 8 },
-	{ "Asia/Macau", 8, 8 },
-	{ "Asia/Magadan", 11, 11 },
-	{ "Asia/Makassar", 8, 8 },
-	{ "Asia/Manila", 8, 8 },
-	{ "Asia/Muscat", 4, 4 },
-	{ "Asia/Nicosia", 2, 3 },
-	{ "Asia/Novokuznetsk", 7, 7 },
-	{ "Asia/Novosibirsk", 7, 7 },
-	{ "Asia/Omsk", 6, 6 },
-	{ "Asia/Oral", 5, 5 },
-	{ "Asia/Phnom_Penh", 7, 7 },
-	{ "Asia/Pontianak", 7, 7 },
-	{ "Asia/Pyongyang", 8.5, 8.5 },
-	{ "Asia/Qatar", 3, 3 },
-	{ "Asia/Qyzylorda", 6, 6 },
-	{ "Asia/Rangoon", 6.5, 6.5 },
-	{ "Asia/Riyadh", 3, 3 },
-	{ "Asia/Saigon", 7, 7 },
-	{ "Asia/Sakhalin", 11, 11 },
-	{ "Asia/Samarkand", 5, 5 },
-	{ "Asia/Seoul", 9, 9 },
-	{ "Asia/Shanghai", 8, 8 },
-	{ "Asia/Singapore", 8, 8 },
-	{ "Asia/Srednekolymsk", 11, 11 },
-	{ "Asia/Taipei", 8, 8 },
-	{ "Asia/Tashkent", 5, 5 },
-	{ "Asia/Tbilisi", 4, 4 },
-	{ "Asia/Tehran", 3.5, 4.5 },
-	{ "Asia/Tel_Aviv", 2, 3 },
-	{ "Asia/Thimbu", 6, 6 },
-	{ "Asia/Thimphu", 6, 6 },
-	{ "Asia/Tokyo", 9, 9 },
-	{ "Asia/Tomsk", 7, 7 },
-	{ "Asia/Ujung_Pandang", 8, 8 },
-	{ "Asia/Ulaanbaatar", 8, 9 },
-	{ "Asia/Ulan_Bator", 8, 9 },
-	{ "Asia/Urumqi", 6, 6 },
-	{ "Asia/Ust-Nera", 10, 10 },
-	{ "Asia/Vientiane", 7, 7 },
-	{ "Asia/Vladivostok", 10, 10 },
-	{ "Asia/Yakutsk", 9, 9 },
-	{ "Asia/Yekaterinburg", 5, 5 },
-	{ "Asia/Yerevan", 4, 4 },
-	{ "Atlantic/Azores", -1, 0 },
-	{ "Atlantic/Bermuda", -4, -3 },
-	{ "Atlantic/Canary", 0, 1 },
-	{ "Atlantic/Cape_Verde", -1, -1 },
-	{ "Atlantic/Faeroe", 0, 1 },
-	{ "Atlantic/Faroe", 0, 1 },
-	{ "Atlantic/Jan_Mayen", 1, 2 },
-	{ "Atlantic/Madeira", 0, 1 },
-	{ "Atlantic/Reykjavik", 0, 0 },
-	{ "Atlantic/South_Georgia", -2, -2 },
-	{ "Atlantic/St_Helena", 0, 0 },
-	{ "Atlantic/Stanley", -3, -3 },
-	{ "Australia/ACT", 10, 11 },
-	{ "Australia/Adelaide", 9.5, 10.5 },
-	{ "Australia/Brisbane", 10, 10 },
-	{ "Australia/Broken_Hill", 9.5, 10.5 },
-	{ "Australia/Canberra", 10, 11 },
-	{ "Australia/Currie", 10, 11 },
-	{ "Australia/Darwin", 9.5, 9.5 },
-	{ "Australia/Eucla", 8.75, 8.75 },
-	{ "Australia/Hobart", 10, 11 },
-	{ "Australia/LHI", 10.5, 11 },
-	{ "Australia/Lindeman", 10, 10 },
-	{ "Australia/Lord_Howe", 10.5, 11 },
-	{ "Australia/Melbourne", 10, 11 },
-	{ "Australia/North", 9.5, 9.5 },
-	{ "Australia/NSW", 10, 11 },
-	{ "Australia/Perth", 8, 8 },
-	{ "Australia/Queensland", 10, 10 },
-	{ "Australia/South", 9.5, 10.5 },
-	{ "Australia/Sydney", 10, 11 },
-	{ "Australia/Tasmania", 10, 11 },
-	{ "Australia/Victoria", 10, 11 },
-	{ "Australia/West", 8, 8 },
-	{ "Australia/Yancowinna", 9.5, 10.5 },
-	{ "Brazil/Acre", -5, -5 },
-	{ "Brazil/DeNoronha", -2, -2 },
-	{ "Brazil/East", -3, -2 },
-	{ "Brazil/West", -4, -4 },
-	{ "Canada/Atlantic", -4, -3 },
-	{ "Canada/Central", -6, -5 },
-	{ "Canada/Eastern", -5, -4 },
-	{ "Canada/East-Saskatchewan", -6, -6 },
-	{ "Canada/Mountain", -7, -6 },
-	{ "Canada/Newfoundland", -3.5, -2.5 },
-	{ "Canada/Pacific", -8, -7 },
-	{ "Canada/Saskatchewan", -6, -6 },
-	{ "Canada/Yukon", -8, -7 },
-	{ "CET", 1, 2 },
-	{ "Chile/Continental", -4, -3 },
-	{ "Chile/EasterIsland", -6, -5 },
-	{ "CST6CDT", -6, -5 },
-	{ "Cuba", -5, -4 },
-	{ "EET", 2, 3 },
-	{ "Egypt", 2, 2 },
-	{ "Eire", 0, 1 },
-	{ "EST", -5, -5 },
-	{ "EST5EDT", -5, -4 },
-	{ "Etc/GMT", 0, 0 },
-	{ "Etc/GMT0", 0, 0 },
-	{ "Etc/GMT+0", 0, 0 },
-	{ "Etc/GMT+1", -1, -1 },
-	{ "Etc/GMT+10", -10, -10 },
-	{ "Etc/GMT+11", -11, -11 },
-	{ "Etc/GMT+12", -12, -12 },
-	{ "Etc/GMT+2", -2, -2 },
-	{ "Etc/GMT+3", -3, -3 },
-	{ "Etc/GMT+4", -4, -4 },
-	{ "Etc/GMT+5", -5, -5 },
-	{ "Etc/GMT+6", -6, -6 },
-	{ "Etc/GMT+7", -7, -7 },
-	{ "Etc/GMT+8", -8, -8 },
-	{ "Etc/GMT+9", -9, -9 },
-	{ "Etc/GMT0", 0, 0 },
-	{ "Etc/GMT-0", 0, 0 },
-	{ "Etc/GMT-1", 1, 1 },
-	{ "Etc/GMT-10", 10, 10 },
-	{ "Etc/GMT-11", 11, 11 },
-	{ "Etc/GMT-12", 12, 12 },
-	{ "Etc/GMT-13", 13, 13 },
-	{ "Etc/GMT-14", 14, 14 },
-	{ "Etc/GMT-2", 2, 2 },
-	{ "Etc/GMT-3", 3, 3 },
-	{ "Etc/GMT-4", 4, 4 },
-	{ "Etc/GMT-5", 5, 5 },
-	{ "Etc/GMT-6", 6, 6 },
-	{ "Etc/GMT-7", 7, 7 },
-	{ "Etc/GMT-8", 8, 8 },
-	{ "Etc/GMT-9", 9, 9 },
-	{ "Etc/Greenwich", 0, 0 },
-	{ "Etc/UCT", 0, 0 },
-	{ "Etc/Universal", 0, 0 },
-	{ "Etc/UTC", 0, 0 },
-	{ "Etc/Zulu", 0, 0 },
-	{ "Europe/Amsterdam", 1, 2 },
-	{ "Europe/Andorra", 1, 2 },
-	{ "Europe/Astrakhan", 4, 4 },
-	{ "Europe/Athens", 2, 3 },
-	{ "Europe/Belfast", 0, 1 },
-	{ "Europe/Belgrade", 1, 2 },
-	{ "Europe/Berlin", 1, 2 },
-	{ "Europe/Bratislava", 1, 2 },
-	{ "Europe/Brussels", 1, 2 },
-	{ "Europe/Bucharest", 2, 3 },
-	{ "Europe/Budapest", 1, 2 },
-	{ "Europe/Busingen", 1, 2 },
-	{ "Europe/Chisinau", 2, 3 },
-	{ "Europe/Copenhagen", 1, 2 },
-	{ "Europe/Dublin", 0, 1 },
-	{ "Europe/Gibraltar", 1, 2 },
-	{ "Europe/Guernsey", 0, 1 },
-	{ "Europe/Helsinki", 2, 3 },
-	{ "Europe/Isle_of_Man", 0, 1 },
-	{ "Europe/Istanbul", 2, 3 },
-	{ "Europe/Jersey", 0, 1 },
-	{ "Europe/Kaliningrad", 2, 2 },
-	{ "Europe/Kiev", 2, 3 },
-	{ "Europe/Kirov", 3, 3 },
-	{ "Europe/Lisbon", 0, 1 },
-	{ "Europe/Ljubljana", 1, 2 },
-	{ "Europe/London", 0, 1 },
-	{ "Europe/Luxembourg", 1, 2 },
-	{ "Europe/Madrid", 1, 2 },
-	{ "Europe/Malta", 1, 2 },
-	{ "Europe/Mariehamn", 2, 3 },
-	{ "Europe/Minsk", 3, 3 },
-	{ "Europe/Monaco", 1, 2 },
-	{ "Europe/Moscow", 3, 3 },
-	{ "Europe/Nicosia", 2, 3 },
-	{ "Europe/Oslo", 1, 2 },
-	{ "Europe/Paris", 1, 2 },
-	{ "Europe/Podgorica", 1, 2 },
-	{ "Europe/Prague", 1, 2 },
-	{ "Europe/Riga", 2, 3 },
-	{ "Europe/Rome", 1, 2 },
-	{ "Europe/Samara", 4, 4 },
-	{ "Europe/San_Marino", 1, 2 },
-	{ "Europe/Sarajevo", 1, 2 },
-	{ "Europe/Simferopol", 3, 3 },
-	{ "Europe/Skopje", 1, 2 },
-	{ "Europe/Sofia", 2, 3 },
-	{ "Europe/Stockholm", 1, 2 },
-	{ "Europe/Tallinn", 2, 3 },
-	{ "Europe/Tirane", 1, 2 },
-	{ "Europe/Tiraspol", 2, 3 },
-	{ "Europe/Ulyanovsk", 4, 4 },
-	{ "Europe/Uzhgorod", 2, 3 },
-	{ "Europe/Vaduz", 1, 2 },
-	{ "Europe/Vatican", 1, 2 },
-	{ "Europe/Vienna", 1, 2 },
-	{ "Europe/Vilnius", 2, 3 },
-	{ "Europe/Volgograd", 3, 3 },
-	{ "Europe/Warsaw", 1, 2 },
-	{ "Europe/Zagreb", 1, 2 },
-	{ "Europe/Zaporozhye", 2, 3 },
-	{ "Europe/Zurich", 1, 2 },
-	{ "GB", 0, 1 },
-	{ "GB-Eire", 0, 1 },
-	{ "GMT", 0, 0 },
-	{ "GMT+0", 0, 0 },
-	{ "GMT0", 0, 0 },
-	{ "GMT-0", 0, 0 },
-	{ "Greenwich", 0, 0 },
-	{ "Hongkong", 8, 8 },
-	{ "HST", -10, -10 },
-	{ "Iceland", 0, 0 },
-	{ "Indian/Antananarivo", 3, 3 },
-	{ "Indian/Chagos", 6, 6 },
-	{ "Indian/Christmas", 7, 7 },
-	{ "Indian/Cocos", 6.5, 6.5 },
-	{ "Indian/Comoro", 3, 3 },
-	{ "Indian/Kerguelen", 5, 5 },
-	{ "Indian/Mahe", 4, 4 },
-	{ "Indian/Maldives", 5, 5 },
-	{ "Indian/Mauritius", 4, 4 },
-	{ "Indian/Mayotte", 3, 3 },
-	{ "Indian/Reunion", 4, 4 },
-	{ "Iran", 3.5, 4.5 },
-	{ "Israel", 2, 3 },
-	{ "Jamaica", -5, -5 },
-	{ "Japan", 9, 9 },
-	{ "Kwajalein", 12, 12 },
-	{ "Libya", 2, 2 },
-	{ "MET", 1, 2 },
-	{ "Mexico/BajaNorte", -8, -7 },
-	{ "Mexico/BajaSur", -7, -6 },
-	{ "Mexico/General", -6, -5 },
-	{ "MST", -7, -7 },
-	{ "MST7MDT", -7, -6 },
-	{ "Navajo", -7, -6 },
-	{ "NZ", 12, 13 },
-	{ "NZ-CHAT", 12.75, 13.75 },
-	{ "Pacific/Apia", 13, 14 },
-	{ "Pacific/Auckland", 12, 13 },
-	{ "Pacific/Bougainville", 11, 11 },
-	{ "Pacific/Chatham", 12.75, 13.75 },
-	{ "Pacific/Chuuk", 10, 10 },
-	{ "Pacific/Easter", -6, -5 },
-	{ "Pacific/Efate", 11, 11 },
-	{ "Pacific/Enderbury", 13, 13 },
-	{ "Pacific/Fakaofo", 13, 13 },
-	{ "Pacific/Fiji", 12, 13 },
-	{ "Pacific/Funafuti", 12, 12 },
-	{ "Pacific/Galapagos", -6, -6 },
-	{ "Pacific/Gambier", -9, -9 },
-	{ "Pacific/Guadalcanal", 11, 11 },
-	{ "Pacific/Guam", 10, 10 },
-	{ "Pacific/Honolulu", -10, -10 },
-	{ "Pacific/Johnston", -10, -10 },
-	{ "Pacific/Kiritimati", 14, 14 },
-	{ "Pacific/Kosrae", 11, 11 },
-	{ "Pacific/Kwajalein", 12, 12 },
-	{ "Pacific/Majuro", 12, 12 },
-	{ "Pacific/Marquesas", -9.5, -9.5 },
-	{ "Pacific/Midway", -11, -11 },
-	{ "Pacific/Nauru", 12, 12 },
-	{ "Pacific/Niue", -11, -11 },
-	{ "Pacific/Norfolk", 11, 11 },
-	{ "Pacific/Noumea", 11, 11 },
-	{ "Pacific/Pago_Pago", -11, -11 },
-	{ "Pacific/Palau", 9, 9 },
-	{ "Pacific/Pitcairn", -8, -8 },
-	{ "Pacific/Pohnpei", 11, 11 },
-	{ "Pacific/Ponape", 11, 11 },
-	{ "Pacific/Port_Moresby", 10, 10 },
-	{ "Pacific/Rarotonga", -10, -10 },
-	{ "Pacific/Saipan", 10, 10 },
-	{ "Pacific/Samoa", -11, -11 },
-	{ "Pacific/Tahiti", -10, -10 },
-	{ "Pacific/Tarawa", 12, 12 },
-	{ "Pacific/Tongatapu", 13, 13 },
-	{ "Pacific/Truk", 10, 10 },
-	{ "Pacific/Wake", 12, 12 },
-	{ "Pacific/Wallis", 12, 12 },
-	{ "Pacific/Yap", 10, 10 },
-	{ "Poland", 1, 2 },
-	{ "Portugal", 0, 1 },
-	{ "PRC", 8, 8 },
-	{ "PST8PDT", -8, -7 },
-	{ "ROC", 8, 8 },
-	{ "ROK", 9, 9 },
-	{ "Singapore", 8, 8 },
-	{ "Turkey", 2, 3 },
-	{ "UCT", 0, 0 },
-	{ "Universal", 0, 0 },
-	{ "US/Alaska", -9, -8 },
-	{ "US/Aleutian", -10, -9 },
-	{ "US/Arizona", -7, -7 },
-	{ "US/Central", -6, -5 },
-	{ "US/Eastern", -5, -4 },
-	{ "US/East-Indiana", -5, -4 },
-	{ "US/Hawaii", -10, -10 },
-	{ "US/Indiana-Starke", -6, -5 },
-	{ "US/Michigan", -5, -4 },
-	{ "US/Mountain", -7, -6 },
-	{ "US/Pacific", -8, -7 },
-	{ "US/Pacific-New", -8, -7 },
-	{ "US/Samoa", -11, -11 },
-	{ "UTC", 0, 0 },
-	{ "WET", 0, 1 },
-	{ "W-SU", 3, 3 },
-	{ "Zulu", 0, 0 },
-};
 
 /*
 	Extra checks for gracefull (early)
   stopping of pilight
 */
 static int searchingtz = 0;
-static uv_mutex_t mutex_lock;
-// static pthread_mutexattr_t mutex_attr;
+static pthread_mutex_t mutex_lock;
+static pthread_mutexattr_t mutex_attr;
 static unsigned short mutex_init = 0;
 
 void datetime_init(void) {
-	// pthread_mutexattr_init(&mutex_attr);
-	// pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
-	// pthread_mutex_init(&mutex_lock, &mutex_attr);
-	uv_mutex_init(&mutex_lock);
+	pthread_mutexattr_init(&mutex_attr);
+	pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&mutex_lock, &mutex_attr);
 	mutex_init = 1;
 }
 
 int datetime_gc(void) {
+/*
+	Extra checks for gracefull (early)
+  stopping of pilight
+*/
+	if(mutex_init == 1) {
+		pthread_mutex_unlock(&mutex_lock);
+	}
 	while(searchingtz > 0) {
-#ifdef _WIN32
-  SleepEx(10, TRUE);
-#else
-  usleep(10);
-#endif
+		usleep(10);
 	}
 	logprintf(LOG_DEBUG, "garbage collected datetime library");
 	return EXIT_SUCCESS;
 }
 
 char *coord2tz(double longitude, double latitude) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 /*
-	Extra checks for graceful (early)
+	Extra checks for gracefull (early)
   stopping of pilight
 */
 	if(mutex_init == 1) {
-		uv_mutex_lock(&mutex_lock);
+		pthread_mutex_lock(&mutex_lock);
 	}
 	searchingtz++;
 	int i = 0, a = 0, margin = 1, inside = 0;
@@ -1240,473 +566,157 @@ char *coord2tz(double longitude, double latitude) {
 
 	searchingtz--;
 	if(mutex_init == 1) {
-		uv_mutex_unlock(&mutex_lock);
+		pthread_mutex_unlock(&mutex_lock);
 	}
 	return tz;
 }
 
-static int is_leap(int year) {
-	return ((year % 400 == 0 || year % 100 != 0) && (year % 4 == 0));
-}
+time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seconds, char *tz) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-static const char *get_months(time_t year) {
-  static const char leap[12] = { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-  static const char common[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-  return is_leap(year) ? leap : common;
-}
+	atomiclock();
+ 	time_t t;
+ 	struct tm tm = {0};
+	char oritz[64];
+	memset(oritz, '\0', 64);
 
-static void ruleset_add(struct ruleset *ruleset, const struct lc_timezone_rule *rule) {
-	assert(ruleset->rules_count < (sizeof(ruleset->rules)/sizeof(ruleset->rules[0])));
-
-	size_t newslot = ruleset->rules_count++;
-	while(newslot > 0 &&
-				(rule->month < ruleset->rules[newslot-1]->month ||
-					(rule->month == ruleset->rules[newslot-1]->month &&
-					 rule->monthday < ruleset->rules[newslot-1]->monthday))) {
-
-		assert((rule->month != ruleset->rules[newslot-1]->month ||
-						rule->monthday != ruleset->rules[newslot-1]->monthday));
-
-		ruleset->rules[newslot] = ruleset->rules[newslot-1];
-		--newslot;
-	}
-	ruleset->rules[newslot] = rule;
-}
-
-
-static void ruleset_fill_with_year(struct ruleset *ruleset, const struct lc_timezone_rule **rules,
-																	 size_t *rules_count, int year, const struct lc_timezone_rule **last,
-																	 const struct lc_timezone_rule **last_dst) {
-  /*
-	 * Step 1: Determine the set of rules of the previous year, so we can
-   * obtain the offset at the end of that year.
-	 */
-  int last_year = 0;
-  while(*rules_count > 0 && (*rules)->year_from < year) {
-    const struct lc_timezone_rule *rule = (*rules)++;
-    if(last_year != rule->year_from) {
-      ruleset_remove_stale(ruleset, rule->year_from);
-		}
-    ruleset_add(ruleset, rule);
-    ruleset_get_last(ruleset, year, last, last_dst);
-    --*rules_count;
-  }
-
-  /*
-	 * Step 2: Determine the set of rules that apply to the current year.
-	 */
-  ruleset_remove_stale(ruleset, year);
-  while(*rules_count > 0 && (*rules)->year_from == year) {
-    ruleset_add(ruleset, (*rules)++);
-    --*rules_count;
-  }
-}
-
-static void ruleset_get_last(struct ruleset *ruleset, int year,
-														 const struct lc_timezone_rule **last,
-														 const struct lc_timezone_rule **last_dst) {
-	ssize_t i = 0;
-	assert(ruleset->rules_count > 0);
-
-	*last = ruleset->rules[ruleset->rules_count-1];
-
-	if((*last)->save > 0) {
-		*last_dst = *last;
+	if(getenv("TZ") != NULL) {
+		strcpy(oritz, getenv("TZ"));
 	}
 
-	for(i = ruleset->rules_count-2; (*last)->year_to < year-1 && i >= 0; --i) {
-		const struct lc_timezone_rule *rule = ruleset->rules[i];
-		if((*last)->year_to < rule->year_to) {
-			*last = rule;
-			if((*last)->save > 0) {
-				*last_dst = *last;
-			}
-    }
-  }
-}
+	tm.tm_sec = seconds;
+	tm.tm_min = minutes;
+	tm.tm_hour = hour;
+	tm.tm_mday = day;
+	tm.tm_mon = month-1;
+	tm.tm_year = year-1900;
 
-static int rule_is_greater_than(const struct lc_timezone_rule *rule,
-																const struct tm *tm, int offset) {
-
-	/*
-	 * Apply the offset to the time and obtain the time of day in seconds.
-	 */
-	int seconds = tm->tm_sec + tm->tm_min * 60 + tm->tm_hour * 3600 + offset;
-	int monthday = tm->tm_mday + seconds / 86400;
-	int weekday = tm->tm_wday + seconds / 86400;
-
-	seconds %= 86400;
-	if(seconds < 0) {
-		seconds += 86400;
-		--weekday;
-		--monthday;
+	if(tz != NULL) {
+		setenv("TZ", tz, 1);
 	}
+	tzset();
 
-	/*
-	 * Normalize the month.
-	 */
-	int month = tm->tm_mon;
-	if(monthday < 1) {
-		/*
-		 * Time went back into last year.
-		 */
-		if(month == 0) {
-			return 1;
-		}
-		monthday += get_months(tm->tm_year)[month-1];
-		--month;
+	t = mktime(&tm);
+
+	if(strlen(oritz) > 0) {
+		setenv("TZ", oritz, 1);
 	} else {
-		int monthlen = get_months(tm->tm_year)[month];
-		if(monthday > monthlen) {
-			monthday -= monthlen;
-			++month;
-		}
+		unsetenv("TZ");
 	}
+	tzset();
 
-	/*
-	 * Compare months.
-	 */
-	if(rule->month != month) {
-		return rule->month > month;
-	}
-
-	/*
-	 * When rule->weekday is between 0 and 6, we only want to apply the
-	 * rule on the first occurrence of the weekday on or after the day
-	 * of the month. More concretely, if weekday == 3 and monthday ==
-	 * 15, the rule only takes effect on the first Wednesday on or after
-	 * the 15th of that month.
-	 */
-	int monthdaydelta = 0;
-	if(rule->weekday != 7) {
-		monthdaydelta = ((int)rule->weekday - weekday + monthday - (int)rule->monthday) % 7;
-		if(monthdaydelta < 0) {
-			monthdaydelta += 7;
-		}
-	}
-
-	/*
-	 * Compare day of the month and time.
-	 */
-	return (rule->monthday + monthdaydelta) * 86400 + rule->minute * 60 > monthday * 86400 + seconds;
+	atomicunlock();
+	return t;
 }
 
-static void ruleset_remove_stale(struct ruleset *ruleset, int year) {
-	size_t i = 0;
-	size_t old_rules_count = ruleset->rules_count;
-	ruleset->rules_count = 0;
+int tzoffset(char *tz1, char *tz2) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	for(i=0; i<old_rules_count; ++i) {
-		if(ruleset->rules[i]->year_to == UINT8_MAX || ruleset->rules[i]->year_to >= year) {
-			ruleset->rules[ruleset->rules_count++] = ruleset->rules[i];
-		}
-	}
-}
+	atomiclock();
 
-static const struct lc_timezone_rule *determine_applicable_rule(
-	const struct lc_timezone_rule *rules, size_t rules_count,
-	const struct tm *std, int gmtoff) {
-	/*
-	 * Start out by picking the first standard time rule as a fallback. It
-	 * may be the case that the code below obtains no matching rule, for
-	 * example if the timestamp is lower than any of the starting times of
-	 * the rules.
-	 *
-	 * This rule has no influence on the time computation, but at least
-	 * ensures that we have a proper timezone abbreviation.
-	 */
-	static const struct lc_timezone_rule nomatch = { 0 };
-	// memset(&nomatch, 0, sizeof(nomatch));
-	const struct lc_timezone_rule *match = &nomatch;
-	size_t i = 0;
-	for(i=0; i<rules_count; ++i) {
-		if(rules[i].save == 0) {
-			match = &rules[i];
-			break;
-		}
+	time_t utc, tzsearch, now;
+	struct tm tm;
+	char oritz[64];
+
+	memset(&tm, '\0', sizeof(struct tm));
+	memset(oritz, '\0', 64);
+
+	if(getenv("TZ") != NULL) {
+		strcpy(oritz, getenv("TZ"));
 	}
 
-	/*
-	 * Obtain the rule that applies to the start of the current year, but
-	 * also the set of rules that applies to the current.
-	 */
-	struct ruleset ruleset;
-	memset(&ruleset, 0, sizeof(struct ruleset));
-	const struct lc_timezone_rule *unused;
-	ruleset_fill_with_year(&ruleset, &rules, &rules_count, std->tm_year, &match, &unused);
-
-	/*
-	 * Determine whether there is a rule for the current year that matches
-	 * the time more accurately than the one matching the start of the
-	 * year.
-	 */
-  for(i=0; i<ruleset.rules_count; ++i) {
-		const struct lc_timezone_rule *rule = ruleset.rules[i];
-		int offset = 0;
-		switch(rule->timebase) {
-			case TIMEBASE_CUR:
-				offset = match->save * 600;
-			break;
-			case TIMEBASE_UTC:
-				offset = -gmtoff;
-			break;
-		}
-
-		if(rule_is_greater_than(rule, std, offset)) {
-			break;
-		}
-		match = rule;
-	}
-	return match;
-}
-
-// static const char *compute_combined_zone_abbreviation(const char *era, const char *rule) {
-	// /*
-	 // * Perform expansion.
-	 // */
-	// char abbreviation[sizeof(((struct cached_abbreviation *)0)->abbreviation)];
-	// snprintf(abbreviation, sizeof(abbreviation), era, rule);
-
-	// /*
-	 // * See if there's already a copy of this string in the stringpool.
-	 // */
-	// struct cached_abbreviation *ca = NULL;
-	// static _Atomic(struct cached_abbreviation *) table = ATOMIC_VAR_INIT(NULL);
-	// struct cached_abbreviation *first = atomic_load_explicit(&table, memory_order_relaxed);
-
-	// for(ca = first; ca != NULL; ca = ca->next) {
-		// if(strcmp(abbreviation, ca->abbreviation) == 0) {
-			// return ca->abbreviation;
-		// }
-	// }
-
-	// /*
-	 // * Allocate a copy to be stored in the stringpool.
-	 // */
-	// struct cached_abbreviation *ca_new = MALLOC(sizeof(*ca_new));
-	// if(ca_new == NULL) {
-		// return "";
-	// }
-	// strncpy(ca_new->abbreviation, abbreviation, sizeof(ca_new->abbreviation));
-
-	// for(;;) {
-		// struct cached_abbreviation *ca = NULL;
-		// /*
-		 // * Store the new entry in the global list. The list is lockless, so
-		 // * perform a compare-and-exchange.
-		 // */
-		// ca_new->next = first;
-
-		// if(atomic_compare_exchange_weak(&table, &first, ca_new)) {
-			// char *a = ca_new->abbreviation;
-			// FREE(ca_new);
-      // return a;
-		// }
-
-		// /*
-		 // * Compare-and-exchange failed. See if an entry for the same
-		 // * abbreviation got created in the meantime.
-		 // */
-    // for(ca = first; ca != ca_new->next; ca = ca->next) {
-			// if(strcmp(abbreviation, ca->abbreviation) == 0) {
-				// FREE(ca_new);
-				// return ca->abbreviation;
-			// }
-		// }
-	// }
-// }
-
-static const short *get_months_cumulative(time_t year) {
-	static const short leap[13] = { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366 };
-	static const short common[13] = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365 };
-	return is_leap(year) ? leap : common;
-}
-
-// static const char *compute_zone_abbreviation(const struct lc_timezone_era *era,
-																						 // const struct lc_timezone_rule *rule) {
-
-	// /*
-	 // * If the timezone already provides explicit abbreviations for
-	 // * standard time and daylight saving time, use those directly.
-	 // */
-	// if(*era->abbreviation_dst != '\0') {
-    // return rule->save == 0 ? era->abbreviation_std : era->abbreviation_dst;
-	// }
-
-	// /*
-	 // * If the era abbreviation contains %s, expand it with the
-	 // * abbreviation of the rule. Keep track of the result in a string
-	 // * pool, so we don't leak memory.
-	 // */
-	// if(strchr(era->abbreviation_std, '%') != NULL) {
-		// return compute_combined_zone_abbreviation(era->abbreviation_std, rule->abbreviation);
-	// }
-
-	// /*
-	 // * Era abbreviation does not contain %s. Use the abbreviation of the
-	 // * era or the rule, preferring the latter if three or more characters.
-	 // */
-	// return rule->abbreviation[0] != '\0' && rule->abbreviation[1] != '\0' && rule->abbreviation[2] != '\0'
-             // ? rule->abbreviation
-             // : era->abbreviation_std;
-// }
-
-int __localtime_utc(time_t timer, struct tm *tm) {
-
-	/*
-	 * The calendar repeats every 146097 days (400 years). Normalize the
-	 * timer to lie within this range. This ensures that the timestamp is
-	 * positive, simplifying the arithmetic below.
-	 */
-	time_t era = timer / ERALENGTH;
-
-	timer %= ERALENGTH;
-	if(timer < 0) {
-		timer += ERALENGTH;
-		--era;
-	}
-
-	/*
-	 * Compute time within the day.
-	 */
-	unsigned int seconds = (unsigned int)timer % 86400;
-	*tm = (struct tm){.tm_sec = seconds % 60};
-	uint_fast16_t minutes = seconds / 60;
-	tm->tm_min = minutes % 60;
-	tm->tm_hour = minutes / 60;
-
-	/*
-	 * Compute weekday. Day 0 is a Thursday.
-	 */
-	unsigned int days = (unsigned int)timer / 86400;
-	tm->tm_wday = (days + 4) % 7;
-
-	/*
-	 * Apply leap days, so that every year becomes exactly 366 days long.
-	 * First add the three leap days at the boundaries of the centuries.
-	 * After that we can add up to three leap days per 1461 days.
-	 */
-	days += ((int)days - 11323) / 36524;
-	days += days / 1461 + (days + 731) / 1461 + (days + 1096) / 1461;
-	tm->tm_yday = days % 366;
-
-	/*
-	 * Compute the year.
-	 */
-	uint_fast16_t local_year = days / 366 + 70;
-	time_t year = era * 400 + local_year;
-
-	/*
-	 * Compute month and day within month.
-	 */
-	const short *months = get_months_cumulative(local_year);
-	while(tm->tm_yday >= months[tm->tm_mon + 1]) {
-		++tm->tm_mon;
-	}
-	tm->tm_mday = tm->tm_yday - months[tm->tm_mon] + 1;
-
-	/*
-	 * Determine whether the result fits in "struct tm". If it does not,
-	 * still return a structure, but set the year to INT_MIN or INT_MAX.
-	 */
-	if(year < INT_MIN) {
-		tm->tm_year = INT_MIN;
-		return EOVERFLOW;
-	} else if (year > INT_MAX) {
-		tm->tm_year = INT_MAX;
-		return EOVERFLOW;
-	} else {
-		tm->tm_year = year;
-		return 0;
-	}
-}
-
-int localtime_l(time_t t, struct tm *result, char *timezone) {
-	size_t i = 0;
-	int x = 0;
-	/*
-	 * Require tv_nsec to be in bounds, like other functions that accept
-	 */
-	if(t < 0) {
-		return EINVAL;
-	}
-
-	const char *timezone_name = timezone_names;
-	do {
-		if(strcmp(timezone, timezone_name) == 0) {
-			break;
-		}
-		++x;
-		timezone_name += strlen(timezone_name) + 1;
-	} while(*timezone_name != '\0');
-
-	/*
-	 * Obtain the last era from the timezone that does not end before the
-	 * provided timestamp.
-	 */
-	const struct lc_timezone *tz = &timezones[x];
-	const struct lc_timezone_era *era = &tz->eras[0];
-	time_t era_start = 0;
-  for(i=1; i<tz->eras_count; ++i) {
-		if(era->end > t) {
-			break;
-		}
-		era_start = era->end + era->gmtoff + era->end_save * 600;
-		era = &tz->eras[i];
-	}
-
-	int error = 0;
-  if(era->rules_count > 0) {
-		/*
-		 * Timezone has daylight saving time rules. First compute the
-		 * standard time and use that to compute the actual offset. If the
-		 * timestamp is close to the start of the era and the UTC offset got
-		 * decreased, make sure that the timestamp used for matching is set
-		 * to the start of the era. This ensures that we match the proper
-		 * DST rules.
-		 */
-		time_t timer_std = t + era->gmtoff;
-
-		struct tm std;
-		__localtime_utc(timer_std > era_start ? timer_std : era_start, &std);
-
-		/*
-		 * Obtain applicable daylight saving time rule and recompute.
-		 */
-		const struct lc_timezone_rule *rule = determine_applicable_rule(era->rules, era->rules_count, &std, era->gmtoff);
-		int gmtoff = era->gmtoff + rule->save * 600;
-
-		error = __localtime_utc(t + gmtoff, result);
-
-		result->tm_isdst = rule->save > 0;
-
-#ifndef _WIN32
-		result->tm_gmtoff = gmtoff;
-		// result->tm_zone = compute_zone_abbreviation(era, rule);
+	now = time(NULL);
+#ifdef _WIN32
+	localtime(&now);
+#else
+	localtime_r(&now, &tm);
 #endif
-  } else {
-		/*
-		 * Timezone has no daylight saving time rules. Compute local time
-		 * with timezone offset directly.
-		 */
-		error = __localtime_utc(t + era->gmtoff, result);
-#ifndef _WIN32
-		result->tm_gmtoff = era->gmtoff;
-		// static const struct lc_timezone_rule rule = {};
-		// result->tm_zone = compute_zone_abbreviation(era, &rule);
+
+	setenv("TZ", tz1, 1);
+	tzset();
+	utc = mktime(&tm);
+
+	setenv("TZ", tz2, 1);
+	tzset();
+	tzsearch = mktime(&tm);
+
+	if(strlen(oritz) > 0) {
+		setenv("TZ", oritz, 1);
+	} else {
+		unsetenv("TZ");
+	}
+	tzset();
+
+	atomicunlock();
+
+	return (int)((utc-tzsearch)/3600);
+}
+
+int ctzoffset(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	time_t tm1, tm2;
+	struct tm t2, tmp;
+	memset(&tmp, '\0', sizeof(struct tm));
+
+	tm1 = time(NULL);
+
+	memset(&t2, '\0', sizeof(struct tm));
+#ifdef _WIN32
+	gmtime(&tm1);
+#else
+	gmtime_r(&tm1, &t2);
+#endif
+
+	tm2 = mktime(&t2);
+#ifdef _WIN32
+	localtime(&tm1);
+#else
+	localtime_r(&tm1, &tmp);
+#endif
+	return (int)((tm1 - tm2)/3600);
+}
+
+int isdst(time_t t, char *tz) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	char oritz[64];
+	int dst = 0;
+
+	memset(oritz, '\0', 64);
+	if(getenv("TZ") != NULL) {
+		strcpy(oritz, getenv("TZ"));
+	}
+
+	atomiclock();
+
+	setenv("TZ", tz, 1);
+	tzset();
+
+#ifdef _WIN32
+	struct tm *tm1;
+	if((tm1 = localtime(&t)) != 0) {
+		dst = tm1->tm_isdst;
+#else
+	struct tm tm;
+	if(localtime_r(&t, &tm) != NULL) {
+		dst = tm.tm_isdst;
 #endif
 	}
 
-	return error;
+	if(strlen(oritz) > 0) {
+		setenv("TZ", oritz, 1);
+	} else {
+		unsetenv("TZ");
+	}
+	tzset();
+
+	atomicunlock();
+
+	return dst;
 }
 
-static int dayofweek(int y, int m, int d)	{
-	static int t[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
-  y -= m < 3;
-  return (y + y/4 - y/100 + y/400 + t[m-1] + d) % 7;
-}
-
-void datefix(int *year, int *month, int *day, int *hour, int *minute, int *second, int *weekday) {
+void datefix(int *year, int *month, int *day, int *hour, int *minute, int *second) {
 	int months[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 	int i = 0;
 
@@ -1737,7 +747,7 @@ void datefix(int *year, int *month, int *day, int *hour, int *minute, int *secon
 		*day -= 1;
 		*hour = 24 + *hour;
 	}
-	while(*day <= 0 || *month > 12 || *month <= 0 || *day > months[*month-1]) {
+	while(*day > months[*month-1] || *day <= 0 || *month > 12 || *month <= 0) {
 		if(*month > 0 && *month < 13) {
 			if(*day > months[*month-1]) {
 				i = months[*month-1];
@@ -1770,75 +780,4 @@ void datefix(int *year, int *month, int *day, int *hour, int *minute, int *secon
 			}
 		}
 	}
-
-	*weekday = dayofweek(*year, *month, *day);
-}
-
-time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seconds) {
-	int smin = 60, shour = (smin*60), sday = (shour*24);
-	int i = 0;
-	time_t t = 0;
-	if(year < 1970) {
-		return -1;
-	}
-	if(month < 1 || month > 12) {
-		return -1;
-	}
-	if(day < 1) {
-		return -1;
-	}
-	if((month == 1 || month == 3 || month == 5 || month == 7 || month == 8 || month == 10 || month == 12) &&
-		day > 31) {
-		return -1;
-	}
-	if((month == 4 || month == 6 || month == 9 || month == 11) && day > 30) {
-		return -1;
-	}
-	if(month == 2) {
-		if(day > 28) {
-			if(((year % 400) == 0 || (year % 100) == 0 || (year % 4) == 0) && day > 29) {
-				return -1;
-			} else {
-				return -1;
-			}
-		}
-	}
-	if(hour < 0 || hour > 23) {
-		return -1;
-	}
-	if(minutes < 0 || minutes > 59) {
-		return -1;
-	}
-	if(seconds < 0 || seconds > 59) {
-		return -1;
-	}
-
-	for(i=1970;i<year;i++) {
-		if(is_leap(i) == 0) {
-			t += 31536000;
-		} else {
-			t += 31622400;
-		}
-	}
-
-	t += sday*day;
-	if(month > 11) 	{ t += 30*sday; }
-	if(month > 10) 	{ t += 31*sday; }
-	if(month > 9) 	{ t += 30*sday; }
-	if(month > 8) 	{ t += 31*sday; }
-	if(month > 7) 	{ t += 31*sday; }
-	if(month > 6) 	{ t += 30*sday; }
-	if(month > 5) 	{ t += 31*sday; }
-	if(month > 4) 	{ t += 30*sday; }
-	if(month > 3) 	{ t += 31*sday; }
-	if(month > 2) 	{ if(is_leap(year) == 1) { t += 29*sday; } else { t += 28*sday; } }
-	if(month > 1) 	{ t += 31*sday; }
-
-	t += (hour*shour);
-	t += (minutes*smin);
-	t += (seconds);
-
-	t -= 86400;
-
-	return t;
 }

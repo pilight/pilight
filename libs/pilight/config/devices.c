@@ -122,7 +122,8 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 #else
 	gmtime_r(&timenow, &gmt);
 #endif
-	time_t utct = datetime2ts(gmt.tm_year+1900, gmt.tm_mon+1, gmt.tm_mday, gmt.tm_hour, gmt.tm_min, gmt.tm_sec);
+	char utc[] = "UTC";
+	time_t utct = datetime2ts(gmt.tm_year+1900, gmt.tm_mon+1, gmt.tm_mday, gmt.tm_hour, gmt.tm_min, gmt.tm_sec, utc);
 	json_append_member(rval, "timestamp", json_mknumber((double)utct, 0));
 
 	json_find_string(json, "uuid", &uuid);
@@ -396,30 +397,21 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 									jchild = jchild->next;
 								}
 								if(match == 0) {
-									dptr->prevorigin = dptr->lastorigin;
-									dptr->lastorigin = origin;
 #ifdef EVENTS
-									/*
-									* If the action itself it not triggering a device update, something
-									* else is. We therefor need to abort the running action to let
-									* the new state persist.
-									*/
+								/*
+								 * If the action itself it not triggering a device update, something
+								 * else is. We therefor need to abort the running action to let
+								 * the new state persist.
+								 */
 									if(dptr->action_thread->running == 1 && origin != ACTION) {
-										/*
-										 * In case of Z-Wave, the ACTION is always followed by a RECEIVER origin due to
-										 * its feedback feature. We do not want to abort or action in these cases.
-										 */
-										if(!((dptr->protocols->listener->hwtype == ZWAVE) && dptr->lastorigin == RECEIVER && dptr->prevorigin == ACTION) || 
-										   dptr->protocols->listener->hwtype != ZWAVE) {
-											event_action_thread_stop(dptr);
-										}
+										event_action_thread_stop(dptr);
 									}
 
 									/*
-									* We store the rule number that triggered the device change.
-									* The eventing library can then check if the same rule is
-									* triggered again so infinite loops can be prevented.
-									*/
+									 * We store the rule number that triggered the device change.
+									 * The eventing library can then check if the same rule is
+									 * triggered again so infinite loops can be prevented.
+									 */
 									if(origin == ACTION) {
 										if(dptr->action_thread->obj != NULL) {
 											dptr->prevrule = dptr->lastrule;
@@ -445,9 +437,9 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 	if(update == 1) {
 		json_append_member(rroot, "origin", json_mkstring("update"));
 		json_append_member(rroot, "type",  json_mknumber((int)protocol->devtype, 0));
-		//if(strlen(pilight_uuid) > 0 && (protocol->hwtype == SENSOR || protocol->hwtype == HWRELAY)) {
+		// if(strlen(pilight_uuid) > 0 && (protocol->hwtype == SENSOR || protocol->hwtype == HWRELAY)) {
 			json_append_member(rroot, "uuid",  json_mkstring(pilight_uuid));
-		//}
+		// }
 		json_append_member(rroot, "devices", rdev);
 		json_append_member(rroot, "values", rval);
 

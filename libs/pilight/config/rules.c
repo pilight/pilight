@@ -50,8 +50,6 @@ static int rules_parse(JsonNode *root) {
 	char *rule = NULL;
 	double active = 1.0;
 
-	event_operator_init();
-
 	if(root->tag == JSON_OBJECT) {
 		jrules = json_first_child(root);
 		while(jrules) {
@@ -105,18 +103,15 @@ static int rules_parse(JsonNode *root) {
 						exit(EXIT_FAILURE);
 					}
 					strcpy(node->name, jrules->key);
-#ifndef WIN32
 					clock_gettime(CLOCK_MONOTONIC, &node->timestamp.first);
-#endif
 					if(event_parse_rule(rule, node, 0, 1) == -1) {
 						have_error = 1;
 					}
-#ifndef WIN32
 					clock_gettime(CLOCK_MONOTONIC, &node->timestamp.second);
 					logprintf(LOG_INFO, "rule #%d %s was parsed in %.6f seconds", node->nr, node->name,
 						((double)node->timestamp.second.tv_sec + 1.0e-9*node->timestamp.second.tv_nsec) -
 						((double)node->timestamp.first.tv_sec + 1.0e-9*node->timestamp.first.tv_nsec));
-#endif
+
 					node->status = 0;
 					if((node->rule = MALLOC(strlen(rule)+1)) == NULL) {
 						fprintf(stderr, "out of memory\n");
@@ -258,12 +253,14 @@ int rules_gc(void) {
 }
 
 void rules_init(void) {
-	event_action_init();
-	event_function_init();
 
 	pthread_mutexattr_init(&mutex_attr);
 	pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&mutex_lock, &mutex_attr);
+
+	event_operator_init();
+	event_action_init();
+	event_function_init();
 
 	/* Request rules json object in main configuration */
 	config_register(&config_rules, "rules");

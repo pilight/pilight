@@ -43,8 +43,7 @@ var language_en = {
 	connecting: "Connecting",
 	connection_lost: "Connection lost, touch to reload",
 	connection_failed: "Failed to connect, touch to reload",
-	unexpected_error: "An unexpected error occured",
-	insecure_certificate: "You are using the default pilight.pem certificate. This results in a highly insecure https connection! Please personalize your certificate to remove this message."
+	unexpected_error: "An unexpected error occured"
 }
 
 var language_de = {
@@ -62,8 +61,7 @@ var language_de = {
 	connecting: "Verbindung wird aufgebaut",
 	connection_lost: "Verbindung verloren! Hier berühren, um die Seite neu zu laden.",
 	connection_failed: "Verbindung fehlgeschlagen! Hier berühren, um die Seite neu zu laden.",
-	unexpected_error: "Es ist ein unerwarteter Fehler aufgetreten.",
-	insecure_certificate: "You are using the default {0} certificate. This is a highly insecure way of using https connections! Please personalize your certificate to remove this message."
+	unexpected_error: "Es ist ein unerwarteter Fehler aufgetreten."
 }
 
 var language_nl = {
@@ -80,8 +78,7 @@ var language_nl = {
 	confirm: "Weet u dat zeker?",
 	connection_lost: "Verbinding verloren, klik om te herladen",
 	connection_failed: "Kan niet verbinden, klik om te herhalen",
-	unexpected_error: "Er heeft zich een onverwachte fout voorgedaan",
-	insecure_certificate: "You are using the default {0} certificate. This is a highly insecure way of using https connections! Please personalize your certificate to remove this message."
+	unexpected_error: "An unexpected error occured"
 }
 
 var language_fr = {
@@ -99,8 +96,7 @@ var language_fr = {
 	connecting: "Connexion en cours",
 	connection_lost: "Connexion perdue, appuyez pour recharger",
 	connection_failed: "Connexion impossible, appuyez pour réessayer",
-	unexpected_error: "Une erreur inattendue s'est produite",
-	insecure_certificate: "You are using the default {0} certificate. This is a highly insecure way of using https connections! Please personalize your certificate to remove this message."
+	unexpected_error: "Une erreur inattendue s'est produite"
 }
 
 if(userLang.indexOf('nl') != -1) {
@@ -115,15 +111,6 @@ else if(userLang.indexOf('fr') != -1){
 else {
 	language = language_en;
 }
-
-String.prototype.format = function() {
-    var formatted = this;
-    for (var i = 0; i < arguments.length; i++) {
-        var regexp = new RegExp('\\{'+i+'\\}', 'gi');
-        formatted = formatted.replace(regexp, arguments[i]);
-    }
-    return formatted;
-};
 
 function alphaNum(string) {
 	return string.replace(/\W/g, '');
@@ -152,7 +139,7 @@ function toggleTabs() {
 			'text': '',
 			'textVisible': true,
 			'theme': 'b'
-		});		
+		});
 		window.setTimeout(function() {
 			document.location = document.location;
 		}, 1000);
@@ -310,7 +297,7 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 			$('#'+sDevId+'_pendingsw').button('disable');
 			$('#'+sDevId+'_pendingsw').text(language.toggling);
 			$('#'+sDevId+'_pendingsw').button('refresh');
-			
+
 			if(oWebsocket) {
 				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+((aStates[sDevId] == "off") ? "on" : "off")+'"}}';
 				oWebsocket.send(json);
@@ -1140,21 +1127,23 @@ function parseValues(data) {
 }
 
 function parseData(data) {
-	if(data.hasOwnProperty("config")) {
-		config = data['config'];
-		if(config.hasOwnProperty("gui") && config.hasOwnProperty("devices")) {
-			createGUI(config);
-			if('registry' in config && 'pilight' in config['registry']) {
-				if('version' in config['registry']['pilight']) {
-					if('current' in config['registry']['pilight']['version']) {
-						iPLVersion = config['registry']['pilight']['version']['current'];
-					}
-					if('available' in config['registry']['pilight']['version']) {
-						iNPLVersion = config['registry']['pilight']['version']['available'];
-					}
+	if(data.hasOwnProperty("gui") && data.hasOwnProperty("devices")) {
+		createGUI(data);
+		if('registry' in data && 'pilight' in data['registry']) {
+			if('version' in data['registry']['pilight']) {
+				if('current' in data['registry']['pilight']['version']) {
+					iPLVersion = data['registry']['pilight']['version']['current'];
 				}
-				updateVersions();
+				if('available' in data['registry']['pilight']['version']) {
+					iNPLVersion = data['registry']['pilight']['version']['available'];
+				}
 			}
+			if('firmware' in data['registry']['pilight']) {
+				if('version' in data['registry']['pilight']['firmware']) {
+					iFWVersion = data['registry']['pilight']['firmware']['version'];
+				}
+			}
+			updateVersions();
 		}
 		if(oWebsocket) {
 			oWebsocket.send("{\"action\":\"request values\"}");
@@ -1165,10 +1154,14 @@ function parseData(data) {
 		} else if(data['origin'] == "core") {
 			if(data['type'] == -1) {
 				updateProcStatus(data['values']);
+			} else if(data['type'] == -2) {
+				iFWVersion = data['values']['version'];
+				updateVersions();
 			}
 		}
-	} else if(data.hasOwnProperty("values")) {
-		$.each(data['values'], function(dindex, dvalues) {
+	} else if(data.constructor === Array &&
+			data[0]['devices'].length > 0) {
+		$.each(data, function(dindex, dvalues) {
 			parseValues(dvalues);
 		});
 	}
@@ -1290,27 +1283,10 @@ $(document).ready(function() {
 		/* Use an AJAX request to check if the user want to enforce
 		   an AJAX connection, or if he wants to use websockets */
 		$.get(sHTTPProtocol+'://'+location.host+'/config?internal&'+$.now(), function(txt) {
-			var data = $.parseJSON(JSON.stringify(txt));
-			if('registry' in data) {
-				if('webgui' in data['registry'] &&
-					'tabs' in data['registry']['webgui']) {
-					bShowTabs = data['registry']['webgui']['tabs'];
-				}
-	
-				if(sHTTPProtocol == "https") {
-					if('webserver' in data['registry'] &&
-						 'ssl' in data['registry']['webserver'] &&
-						 'certificate' in data['registry']['webserver']['ssl'] &&
-						 'secure' in data['registry']['webserver']['ssl']['certificate']) {
-					 if(data['registry']['webserver']['ssl']['certificate']['secure'] == 0) {
-						 pemfile = 'pilight.pem';
-						 if('location' in data['registry']['webserver']['ssl']['certificate']) {
-							 pemfile = data['registry']['webserver']['ssl']['certificate']['location'];
-						 }
-						 alert(language['insecure_certificate'].format(pemfile));
-						}
-					}
-				}
+			var data = $.parseJSON(txt);
+			if('registry' in data && 'webgui' in data['registry'] &&
+				 'tabs' in data['registry']['webgui']) {
+				 bShowTabs = data['registry']['webgui']['tabs'];
 			}
 			if('settings' in data && 'webgui-websockets' in data['settings']) {
 				if(data['settings']['webgui-websockets'] == 0) {

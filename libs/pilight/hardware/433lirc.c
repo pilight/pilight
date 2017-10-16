@@ -202,8 +202,8 @@ void lirc433Init(void) {
 	lirc433->minrawlen = 1000;
 	lirc433->maxrawlen = 0;
 	lirc433->mingaplen = 5100;
-	lirc433->maxgaplen = 10000;	
-	
+	lirc433->maxgaplen = 10000;
+
 	lirc433->hwtype=RF433;
 	lirc433->comtype=COMOOK;
 	lirc433->init=&lirc433HwInit;

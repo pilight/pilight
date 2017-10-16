@@ -3,17 +3,13 @@ cmake_minimum_required(VERSION 2.8.8)
 include(CMakeConfig.txt)
 
 project(pilight)
-set(VERSION 7.0)
+set(VERSION 8.0)
 
 set(MODULESPACK OFF)
 set(CMAKE_BUILD_TYPE Debug)
 
 set(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
 set(CPACK_DEB_COMPONENT_INSTALL TRUE)
-
-if(${ZWAVE} MATCHES "ON")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")
-endif()
 
 if(CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")
   # Use the highest warning level for visual studio.
@@ -125,9 +121,6 @@ execute_process(COMMAND git describe --always
 string(REGEX REPLACE "\n" "" git_ver "${git_ver}")
 add_definitions(-DHASH="${git_ver}")
 
-file(MD5 ${PROJECT_SOURCE_DIR}/res/pilight.pem md5sum)
-add_definitions(-DPILIGHT_PEM_MD5="${md5sum}")
-
 if(${MODULESPACK} MATCHES "ON" AND NOT WIN32)
 	add_definitions(-DMODULE="1")
 endif()
@@ -159,7 +152,7 @@ if(NOT WIN32)
 			message(STATUS "Looking for libpcap - found (${CMAKE_PCAP_LIBS_INIT})")
 		endif()
 	endif()
-	
+
 	set(CMAKE_UNWIND_LIBS_INIT)
 
 	if(NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^mips")
@@ -209,114 +202,11 @@ if(NOT WIN32)
 	else()
 		message(STATUS "Looking for libwiringx - found (${CMAKE_WIRINGX_LIBS_INIT})")
 	endif()
-endif()
 
-find_library(CMAKE_MBEDTLS_LIBS_INIT
-	NAME mbedtls
-	PATHS
-		${CROSS_COMPILE_LIBS}
-		/usr/lib
-		/usr/lib32
-		/usr/lib64
-		/usr/lib/i386-linux-gnu
-		/usr/lib/x86_64-linux-gnu
-		/usr/local/lib
-		/usr/local/lib32
-		/usr/local/lib64
-		/usr/lib/arm-linux-gnueabi
-		/usr/lib/arm-linux-gnueabihf
-		/usr/lib/aarch64-linux-gnu
-	NO_DEFAULT_PATH)
-
-if(${CMAKE_MBEDTLS_LIBS_INIT} MATCHES "CMAKE_MBEDTLS_LIBS_INIT-NOTFOUND")
-	message(FATAL_ERROR "Looking for libmbedtls - not found")
-else()
-	message(STATUS "Looking for libmbedtls - found (${CMAKE_MBEDTLS_LIBS_INIT})")
-endif()
-
-find_library(CMAKE_MBEDCRYPTO_LIBS_INIT
-	NAME mbedcrypto
-	PATHS
-		${CROSS_COMPILE_LIBS}
-		/usr/lib
-		/usr/lib32
-		/usr/lib64
-		/usr/lib/i386-linux-gnu
-		/usr/lib/x86_64-linux-gnu
-		/usr/local/lib
-		/usr/local/lib32
-		/usr/local/lib64
-		/usr/lib/arm-linux-gnueabi
-		/usr/lib/arm-linux-gnueabihf
-		/usr/lib/aarch64-linux-gnu
-	NO_DEFAULT_PATH)
-
-if(${CMAKE_MBEDCRYPTO_LIBS_INIT} MATCHES "CMAKE_MBEDCRYPTO_LIBS_INIT-NOTFOUND")
-	message(FATAL_ERROR "Looking for libmbedcrypto - not found")
-else()
-	message(STATUS "Looking for libmbedcrypto - found (${CMAKE_MBEDCRYPTO_LIBS_INIT})")
-endif()
-
-find_library(CMAKE_MBEDX509_LIBS_INIT
-	NAME mbedx509
-	PATHS
-		${CROSS_COMPILE_LIBS}
-		/usr/lib
-		/usr/lib32
-		/usr/lib64
-		/usr/lib/i386-linux-gnu
-		/usr/lib/x86_64-linux-gnu
-		/usr/local/lib
-		/usr/local/lib32
-		/usr/local/lib64
-		/usr/lib/arm-linux-gnueabi
-		/usr/lib/arm-linux-gnueabihf
-		/usr/lib/aarch64-linux-gnu
-	NO_DEFAULT_PATH)
-
-if(${CMAKE_MBEDX509_LIBS_INIT} MATCHES "CMAKE_MBEDX509_LIBS_INIT-NOTFOUND")
-	message(FATAL_ERROR "Looking for libmbedx509 - not found")
-else()
-	message(STATUS "Looking for libmbedx509 - found (${CMAKE_MBEDX509_LIBS_INIT})")
-endif()
-
-find_library(CMAKE_LUA_LIBS_INIT
-	NAME lua lua5 lua5.1 lua5.2 lua5.3
-	PATHS
-		${CROSS_COMPILE_LIBS}
-		/usr/lib
-		/usr/lib32
-		/usr/lib64
-		/usr/lib/i386-linux-gnu
-		/usr/lib/x86_64-linux-gnu
-		/usr/local/lib
-		/usr/local/lib32
-		/usr/local/lib64
-		/usr/lib/arm-linux-gnueabi
-		/usr/lib/arm-linux-gnueabihf
-		/usr/lib/aarch64-linux-gnu
-	NO_DEFAULT_PATH)
-
-if(${CMAKE_LUA_LIBS_INIT} MATCHES "CMAKE_LUA_LIBS_INIT-NOTFOUND")
-	message(FATAL_ERROR "Looking for liblua - not found")
-else()
-	if(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.1.*")
-		set(CMAKE_LUA_LIBS_VERSION "5.1")
-	elseif(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.2.*")
-		set(CMAKE_LUA_LIBS_VERSION "5.2")
-	elseif(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.3.*")
-		set(CMAKE_LUA_LIBS_VERSION "5.3")
-	elseif(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.*")
-		set(CMAKE_LUA_LIBS_VERSION "5")
-	endif()
-	find_path(CMAKE_LUA_INCLUDE_DIR "lua${CMAKE_LUA_LIBS_VERSION}/lua.h")
-	message(STATUS "Looking for liblua - found (${CMAKE_LUA_LIBS_INIT})")
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/inc)
-include_directories(${PROJECT_SOURCE_DIR}/libs/libuv)
 include_directories(/usr/local/include/)
-include_directories("${CMAKE_LUA_INCLUDE_DIR}/lua${CMAKE_LUA_LIBS_VERSION}/")
 
 add_subdirectory(inc)
 add_subdirectory(libs)
@@ -346,24 +236,16 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	add_library(${PROJECT_NAME} OBJECT ${libs_files})
 	set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
-	if(WIN32)
-		add_library(${PROJECT_NAME}_shared STATIC $<TARGET_OBJECTS:${PROJECT_NAME}>)
-	else()
-		add_library(${PROJECT_NAME}_shared SHARED $<TARGET_OBJECTS:${PROJECT_NAME}>)
-	endif()
+	add_library(${PROJECT_NAME}_shared SHARED $<TARGET_OBJECTS:${PROJECT_NAME}>)
 	add_library(${PROJECT_NAME}_static STATIC $<TARGET_OBJECTS:${PROJECT_NAME}>)
 
 	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_THREAD_LIBS_INIT})
 	if(WIN32)
 		target_link_libraries(${PROJECT_NAME}_shared ws2_32)
-		target_link_libraries(${PROJECT_NAME}_shared user32)
-		target_link_libraries(${PROJECT_NAME}_shared userenv)
 		target_link_libraries(${PROJECT_NAME}_shared wsock32)
 		target_link_libraries(${PROJECT_NAME}_shared iphlpapi)
 		target_link_libraries(${PROJECT_NAME}_shared psapi)
 		target_link_libraries(${PROJECT_NAME}_static ws2_32)
-		target_link_libraries(${PROJECT_NAME}_static user32)
-		target_link_libraries(${PROJECT_NAME}_static userenv)
 		target_link_libraries(${PROJECT_NAME}_static wsock32)
 		target_link_libraries(${PROJECT_NAME}_static iphlpapi)
 		target_link_libraries(${PROJECT_NAME}_static psapi)
@@ -382,10 +264,6 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	endif()
 	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_DL_LIBS})
 	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_WIRINGX_LIBS_INIT})
-	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_MBEDTLS_LIBS_INIT})
-	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_MBEDCRYPTO_LIBS_INIT})
-	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_MBEDX509_LIBS_INIT})
-	target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_LUA_LIBS_INIT})
 
 	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_THREAD_LIBS_INIT})
 	target_link_libraries(${PROJECT_NAME}_static m)
@@ -397,16 +275,12 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	endif()
 	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_DL_LIBS})
 	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_WIRINGX_LIBS_INIT})
-	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_MBEDTLS_LIBS_INIT})
-	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_MBEDCRYPTO_LIBS_INIT})
-	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_MBEDX509_LIBS_INIT})
-	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_LUA_LIBS_INIT})
-	
+
 	if(${PROTOCOL_ARPING} MATCHES "ON")
 		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_PCAP_LIBS_INIT})
 		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_PCAP_LIBS_INIT})
 	endif()
-		
+
 	if(NOT WIN32)
 		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_UNWIND_LIBS_INIT})
 		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_UNWIND_LIBS_INIT})
@@ -432,23 +306,15 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		if(EXISTS "/usr/local/lib/${PROJECT_NAME}/operators")
 			install(CODE "execute_process(COMMAND find /usr/local/lib/${PROJECT_NAME}/operators/ -type f -exec rm {} \\;)")
 		endif()
-		if(EXISTS "/usr/local/${PROJECT_NAME}/operators")
-			install(CODE "execute_process(COMMAND find /usr/local/${PROJECT_NAME}/operators/ -type f -exec rm {} \\;)")
-		endif()
 
 		if(EXISTS "/etc/${PROJECT_NAME}/config.json")
 			install(CODE "execute_process(COMMAND mv /etc/${PROJECT_NAME}/config.json /etc/${PROJECT_NAME}/config.json.bak)")
 		endif()
-		
-		if(EXISTS "/etc/${PROJECT_NAME}/pilight.pem")
-			install(CODE "execute_process(COMMAND mv /etc/${PROJECT_NAME}/pilight.pem /etc/${PROJECT_NAME}/pilight.pem.bak)")
-		endif()		
 
 		install(PROGRAMS ${PROJECT_SOURCE_DIR}/res/init/${PROJECT_NAME}.initd DESTINATION /etc/init.d/ RENAME ${PROJECT_NAME})
 		install(FILES ${PROJECT_SOURCE_DIR}/res/config/config.json-default DESTINATION /etc/${PROJECT_NAME}/ RENAME config.json COMPONENT ${PROJECT_NAME})
-		install(FILES ${PROJECT_SOURCE_DIR}/res/pilight.pem DESTINATION /etc/${PROJECT_NAME}/ COMPONENT ${PROJECT_NAME})
 	else()
-		# install(FILES ${CMAKE_BINARY_DIR}/lib${PROJECT_NAME}.dll DESTINATION . RENAME lib${PROJECT_NAME}.dll COMPONENT ${PROJECT_NAME})
+		install(FILES ${CMAKE_BINARY_DIR}/lib${PROJECT_NAME}.dll DESTINATION . RENAME lib${PROJECT_NAME}.dll COMPONENT ${PROJECT_NAME})
 		install(FILES ${PROJECT_SOURCE_DIR}/res/config/config.json-default-w32 DESTINATION . RENAME config.json-default COMPONENT ${PROJECT_NAME})
 	endif()
 
@@ -456,7 +322,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		if(WIN32)
 			install(DIRECTORY ${PROJECT_SOURCE_DIR}/libs/webgui/ DESTINATION web/ COMPONENT webgui)
 		else()
-			install(DIRECTORY ${PROJECT_SOURCE_DIR}/libs/webgui/ DESTINATION /usr/local/${PROJECT_NAME}/webgui COMPONENT webgui)
+			install(DIRECTORY ${PROJECT_SOURCE_DIR}/libs/webgui/ DESTINATION /usr/local/share/${PROJECT_NAME}/webgui COMPONENT webgui)
 		endif()
 	endif()	
 
@@ -646,10 +512,6 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 
 	if(WIN32)
 		install(FILES "${PROJECT_SOURCE_DIR}/LICENSE.txt" DESTINATION . COMPONENT ${PROJECT_NAME})
-		install(FILES "${PROJECT_SOURCE_DIR}/res/win32/libmbedx509.dll" DESTINATION . COMPONENT ${PROJECT_NAME})
-		install(FILES "${PROJECT_SOURCE_DIR}/res/win32/libmbedcrypto.dll" DESTINATION . COMPONENT ${PROJECT_NAME})
-		install(FILES "${PROJECT_SOURCE_DIR}/res/win32/libmbedtls.dll" DESTINATION . COMPONENT ${PROJECT_NAME})
-		install(FILES "${PROJECT_SOURCE_DIR}/res/win32/liblua5.2.dll" DESTINATION . COMPONENT ${PROJECT_NAME})
 		install(FILES "${PROJECT_SOURCE_DIR}/res/win32/libwinpthread-1.dll" DESTINATION . COMPONENT ${PROJECT_NAME})
 		install(FILES "${PROJECT_SOURCE_DIR}/res/win32/Packet.dll" DESTINATION . COMPONENT ${PROJECT_NAME})
 		install(FILES "${PROJECT_SOURCE_DIR}/res/win32/wpcap.dll" DESTINATION . COMPONENT ${PROJECT_NAME})

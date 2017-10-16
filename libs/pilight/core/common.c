@@ -953,14 +953,18 @@ char *uniq_space(char *str){
 }
 
 int str_replace(char *search, char *replace, char **str) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	char *target = *str;
 	unsigned short match = 0;
-	int len = (int)strlen(*str);
+	int len = (int)strlen(target);
 	int nlen = 0;
 	int slen = (int)strlen(search);
 	int rlen = (int)strlen(replace);
 	int x = 0;
+
 	while(x < len) {
-		if(strncmp(&(*str)[x], search, (size_t)slen) == 0) {
+		if(strncmp(&target[x], search, (size_t)slen) == 0) {
 			match = 1;
 			int rpos = (x + (slen - rlen));
 			if(rpos < 0) {
@@ -969,15 +973,17 @@ int str_replace(char *search, char *replace, char **str) {
 			}
 			nlen = len - (slen - rlen);
 			if(len < nlen) {
-				if(((*str) = REALLOC((*str), (size_t)nlen+1)) == NULL) { /*LCOV_EXCL_LINE*/
-					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+				if((target = REALLOC(target, (size_t)nlen+1)) == NULL) {
+					fprintf(stderr, "out of memory\n");
+					exit(EXIT_FAILURE);
 				}
-				memset(&(*str)[len], '\0', (size_t)(nlen-len));
+				memset(&target[len], '\0', (size_t)(nlen-len));
 			}
 			len = nlen;
-			memmove(&(*str)[x], &(*str)[rpos], (size_t)(len-x));
-			strncpy(&(*str)[x], replace, (size_t)rlen);
-			(*str)[len] = '\0';
+
+			memmove(&target[x], &target[rpos], (size_t)(len-x));
+			strncpy(&target[x], replace, (size_t)rlen);
+			target[len] = '\0';
 			x += rlen-1;
 		}
 		x++;

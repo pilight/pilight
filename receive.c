@@ -153,7 +153,7 @@ int main(int argc, char **argv) {
 		struct protocol_t *protocol = NULL;
 		m = explode(filter, ",", &filters);
 		int match = 0, j = 0;
-		
+
 		protocol_init();
 
 		for(j=0;j<m;j++) {
@@ -262,7 +262,7 @@ close:
 	}
 	if(filter != NULL) {
 		FREE(filter);
-		filter = NULL;	
+		filter = NULL;
 	}
 	array_free(&filters, m);
 	protocol_gc();

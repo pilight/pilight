@@ -112,14 +112,6 @@ static int checkArguments(struct rules_actions_t *obj) {
 	return 0;
 }
 
-static void callback(int code, char *data, int size, char *type, void *userdata) {
-	if(code == 200) {
-		logprintf(LOG_DEBUG, "pushbullet action succeeded with message: %s", data);
-	} else {
-		logprintf(LOG_NOTICE, "pushbullet action failed (%d) with message: %s", code, data);
-	}
-}
-
 static void *thread(void *param) {
 	struct rules_actions_t *pth = (struct rules_actions_t *)param;
 	// struct rules_t *obj = pth->obj;
@@ -137,7 +129,9 @@ static void *thread(void *param) {
 	struct JsonNode *jval3 = NULL;
 	struct JsonNode *jval4 = NULL;
 
-	char url[1024];
+	char url[1024], typebuf[70];
+	char *data = NULL, *tp = typebuf;
+	int ret = 0, size = 0;
 
 	action_pushbullet->nrthreads++;
 
@@ -159,6 +153,7 @@ static void *thread(void *param) {
 			if(jval1 != NULL && jval2 != NULL && jval3 != NULL && jval4 != NULL &&
 			 jval1->tag == JSON_STRING && jval2->tag == JSON_STRING &&
 			 jval3->tag == JSON_STRING && jval4->tag == JSON_STRING) {
+				data = NULL;
 				snprintf(url, 1024, "https://%s@api.pushbullet.com/v2/pushes", jval3->string_);
 
 				struct JsonNode *code = json_mkobject();
@@ -169,9 +164,16 @@ static void *thread(void *param) {
 				char *content = json_stringify(code, "\t");
 				json_delete(code);
 
-				http_post_content(url, "application/json", content, callback, NULL);
-
+				data = http_post_content(url, &tp, &ret, &size, "application/json", content);
 				json_free(content);
+				if(ret == 200) {
+					logprintf(LOG_DEBUG, "pushbullet action succeeded with message: %s", data);
+				} else {
+					logprintf(LOG_NOTICE, "pushbullet action failed (%d) with message: %s", ret, data);
+				}
+				if(data != NULL) {
+					FREE(data);
+				}
 			}
 		}
 	}

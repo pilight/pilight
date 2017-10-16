@@ -75,7 +75,7 @@ chip_erase:			chip_erase
 writepage_bits:	memory flash - writepage
 ...
 */
- 
+
 #ifdef _WIN32
 	static int baudrate = 57600;
 #else
@@ -666,7 +666,7 @@ static int firmware_identifymp(struct avrpart **p) {
 	int attempt = 0;
 	int waittime = 10000;       /* 10 ms */
 
-sig_again:	 
+sig_again:
 	usleep(waittime);
 	if(init_ok) {
 		if(avr_signature(pgm, *p) != 0) {
@@ -1160,7 +1160,7 @@ int firmware_getmp(char *port) {
 	if(!match && firmware_identifymp(&p) != 0) {
 		logprintf(LOG_INFO, "Not an ATMega32u4");
 		mptype = FW_MP_ATMEL328P;
-		firmware_atmega328p(&p);	
+		firmware_atmega328p(&p);
 		match = 0;
 	} else {
 		return mptype;
@@ -1186,7 +1186,7 @@ int firmware_getmp(char *port) {
 		firmware_attiny25(&p);
 	} else {
 		return mptype;
-	}	
+	}
 	logprintf(LOG_INFO, "Checking for an ATTiny25 @%d", baudrate);
 	if(!match && firmware_identifymp(&p) != 0) {
 		logprintf(LOG_INFO, "Not an ATTiny45");

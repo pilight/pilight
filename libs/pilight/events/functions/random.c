@@ -31,7 +31,6 @@
 #include "random.h"
 
 static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum origin_t origin) {
-#ifdef PILIGHT_DEVELOPMENT
 	struct timeval t1;
 	char *p = *ret;
 	int r = 0, min = 1, max = 10;
@@ -57,51 +56,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 		logprintf(LOG_ERR, "RANDOM only takes two arguments e.g. RANDOM(1, 10)");
 		return -1;
 	}
-#else
-	struct timeval t1;
-	char *p = *ret;
-	int r = 0, min = 1, max = 10;
 
-	struct JsonNode *childs = json_first_child(arguments);
-	if(childs == NULL) {
-		logprintf(LOG_ERR, "RANDOM requires a minimum and maximum value e.g. RANDOM(1, 10)");
-		return -1;
-	}
-
-	if(childs->tag == JSON_STRING) {
-		if(isNumeric(childs->string_) == 0) {
-			min = atoi(childs->string_);
-		} else {
-			logprintf(LOG_ERR, "RANDOM requires both parameters to be numeric values e.g. RANDOM(1, 10)");
-			return -1;
-		}
-	} else if(childs->tag == JSON_NUMBER) {
-		min = childs->number_;
-	} else {
-		logprintf(LOG_ERR, "RANDOM requires both parameters to be numeric values e.g. RANDOM(1, 10)");
-		return -1;
-	}
-
-	childs = childs->next;
-	if(childs == NULL) {
-		logprintf(LOG_ERR, "RANDOM requires a minimum and maximum value e.g. RANDOM(1, 10)");
-		return -1;
-	}
-
-	if(childs->tag == JSON_STRING) {
-		if(isNumeric(childs->string_) == 0) {
-			max = atoi(childs->string_);
-		} else {
-			logprintf(LOG_ERR, "RANDOM requires both parameters to be numeric values e.g. RANDOM(1, 10)");
-			return -1;
-		}
-	} else if(childs->tag == JSON_NUMBER) {
-		max = childs->number_;
-	} else {
-		logprintf(LOG_ERR, "RANDOM requires both parameters to be numeric values e.g. RANDOM(1, 10)");
-		return -1;
-	}
-#endif
 	gettimeofday(&t1, NULL);
 	srand(t1.tv_usec * t1.tv_sec);
 

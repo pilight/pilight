@@ -25,7 +25,6 @@ typedef enum {
 	RF433,
 	RF868,
 	RFIR,
-	ZWAVE,
 	SENSOR,
 	HWRELAY,
 	API
