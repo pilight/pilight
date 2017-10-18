@@ -5,7 +5,6 @@ Rules
 
    Make sure pilight is not running before editing your configuration or else all changes will be lost.
 
-
 Since pilight version 6, eventing has been introduced. To use events, you need to first define rules inside the pilight configuration.
 
 The basic pilight rule structure for the configuration looks like this:

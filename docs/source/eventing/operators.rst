@@ -37,11 +37,14 @@ Operators
 +--------------+-------------------------------------------------+--------------------------+
 | **Operator** | **Description**                                 | **Example**              |
 +--------------+-------------------------------------------------+--------------------------+
-| ==           | | Checks if the first and second operand are    | | 20 == 10 = false       |
-|              | | equal.                                        | | 10 == 10 = true        |
+| ==           | | Checks if the first and second (nummeric)     | | 20 == 10 = false       |
+|              | | operand are equal.                            | | 10 == 10 = true        |
 +--------------+-------------------------------------------------+--------------------------+
-| !=           | | Checks if the first and second operand are    | | 20 != 10 = true        |
-|              | | unequal.                                      | | 10 != 10 = false       |
+| !=           | | Checks if the first and second (nummeric)     | | 20 != 10 = true        |
+|              | | operand are unequal.                          | | 10 != 10 = false       |
++--------------+-------------------------------------------------+--------------------------+
+| IS           | | Checks if the first and second (character)    | | a IS b = false         |
+|              | | operand are equal.                            | | a IS a = true          |
 +--------------+-------------------------------------------------+--------------------------+
 | >=           | | Checks if the first operand is greater or     | | 20 >= 10 = true        |
 |              | | equal to the second operand.                  | | 10 >= 20 = false       |
@@ -58,6 +61,15 @@ Operators
 | <            | | Checks if the first operand is smaller than   | | 20 < 10 = false        |
 |              | | the second operand.                           | | 10 < 20 = true         |
 |              |                                                 | | 10 < 10 = false        |
++--------------+-------------------------------------------------+--------------------------+
+
+.. versionadded:: 8.0 ISNOT operator added
+
++--------------+-------------------------------------------------+--------------------------+
+| **Operator** | **Description**                                 | **Example**              |
++--------------+-------------------------------------------------+--------------------------+
+| ISNOT        | | Checks if the first and second (character)    | | a ISNOT b = true       |
+|              | | operand are equal.                            | | a ISNOT a = false      |
 +--------------+-------------------------------------------------+--------------------------+
 
 .. rubric:: Logical

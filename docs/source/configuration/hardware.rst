@@ -63,6 +63,10 @@ Disabled
 The default configuration to be used with the pilight PCB. When using custom wiring, refer to http://www.wiringx.org for the pin numbering of the various supported devices. If you want to disable the sender or receiver pin, set it to
 -1.
 
+.. versionchanged:: 8.0
+
+You must now specify which GPIO platform pilight is running on. Refer to the settings page for more information.
+
 .. _433nano:
 .. rubric:: pilight USB Nano
 

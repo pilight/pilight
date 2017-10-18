@@ -1,4 +1,7 @@
 Dostmann TFA 30.3200
 ====================
 
-.. include:: _conrad.rst
+.. versionchanged:: 8.0
+
+
+.. include:: _tfa30.rst

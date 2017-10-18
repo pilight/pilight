@@ -2,10 +2,9 @@ Frequently Asked Questions
 ==========================
 
 - `General`_
-   - `Retrieving running pilight version`_
+   - `Retrieving pilight version`_
    - `Fixing SSDP connection issues`_
    - `Disabling SSDP completely`_
-   - `Using PHP inside the pilight webserver`_
    - `Using other devices besides 433.92 MHz`_
    - `Fixing broken Lirc and 1-wire protocols`_
    - `Fixing the high CPU usage after a Kernel upgrade`_
@@ -13,21 +12,22 @@ Frequently Asked Questions
    - `The GPIO connected receiver does not work`_
    - `I only see sent codes, not received ones`_
    - `Let devices learn new codes sent from pilight`_
-   - `The send-repeat setting does not work anymore`_
 - `Configuration`_
    - `How to use raw codes in the configuration`_
    - `How to fix an empty webGUI`_
-- `Compilation`_
-   - `How to fix errors about missing dependencies`_
-- `Myths`_
-   - `pilight support for Domoticz and pimatic`_
-   - `The Raspberry Pi is not fast enough to handle domotica software`_
+
+.. deprecated:: 8.0
+
+- `General`_
+   - `Using PHP inside the pilight webserver`_
+- `Sending & Receiving`_
+   - `The send-repeat setting does not work anymore`_
 
 General
 -------
 
-.. _Retrieving running pilight version:
-.. rubric:: Retrieving running pilight version
+.. _Retrieving pilight version:
+.. rubric:: Retrieving pilight version
 
 You can use the following command to retrieve the pilight version:
 
@@ -77,10 +77,23 @@ Especially the **iface lo inet loopback** part is essential for SSDP to work. A 
 .. _Disabling SSDP completely:
 .. rubric:: Disabling SSDP completely
 
-Add the standalone setting in the config.json and set it to 1. However, because all pilight clients use SSDP to find the main pilight daemon, you need to pass the server and port arguments when you want to control this standalone running daemon.
+Add the standalone setting in the config.json and set it to 1.
+
+.. code-block:: json
+   :linenos:
+
+   {
+      "settings": {
+         "standalone": 1
+      }
+   }
+
+However, because all pilight clients use SSDP to find the main pilight daemon, you need to pass the server and port arguments when you want to control this standalone running daemon. Check the documentation for the specific pilight client for additonal information.
 
 .. _Using PHP inside the pilight webserver:
 .. rubric:: Using PHP inside the pilight webserver
+
+.. deprecated:: 8.0
 
 You probably encounter this message when running pilight in debug mode:
 
@@ -110,6 +123,8 @@ You probably installed the latest Raspberry Pi kernel. The new kernel works with
 
 The wiringPi GPIO library used in pilight version 5.0 and lower contained a bug. This is fixed in pilight version 6 and up.
 
+Version 8 and up use the wiringX library also written by the pilight developers which also fixes the (old) wiringPi bugs.
+
 Sending & Receiving
 -------------------
 
@@ -130,12 +145,20 @@ The pilight receive output always contains an origin value. This means you can s
 
 Some protocols support learning devices. This learn feature temporarily sends an increased amount of codes to the device. Check the protocol send arguments to see if your protocol supports it. For example, the KlikAanKlikUit protocol does this as follows:
 
+.. code-block:: console
+
+   pi@pilight:~# pilight-send -p kaku_switch -i 1 -u 1 -t -l
+
 .. _The send-repeat setting does not work anymore:
 .. rubric:: The send-repeat setting does not work anymore
 
+.. deprecated:: 6.0
+
 pilight version 6 was the last version supporting the global send-repeat setting. This setting told pilight how often a pulsetrain was repeated. This setting got removed because it interfered with a lot of protocols.
+
 Most remote control devices repeat a pulsetrain two to six times on a single button press. On some devices all pulsetrains are identical, so repeating them does not introduce any issues. However, on some devices the 1st pulsetrain differs from the subsequent pulsetrains. In addition, some devices sent a wakeup pulse sequence before the very 1st pulsetrain to trigger internal wakeup logic. Most devices use footer pulses, while devices transmit header pulses, and some devices transmit both.
 If you keep the button pressed on some remote controls, a series of pulsetrains is sent until the button is released, while others stop sending repetitive pulsetrains after a certain time period, and some set a toggle bit for repetitive pulsetrains each time a button is pressed.
+
 pilight was not differentiating between those various operating scenarios, because the send-repeat parameter specified only how often a single pulsetrain was re-transmitted for all devices. So increasing the global send-repeats actually broke a lot of these protocols. We therefore removed the old global send-repeat parameter and replaced it with a protocol specific repeat parameter, currently not configurable from userspace.
 We also discovered that in almost all cases, the solution was not increasing the send-repeats parameter, but instead using a good antenna.
 
@@ -150,38 +173,4 @@ This is not possible, because pilight cannot know what these codes mean and how 
 .. _How to fix an empty webGUI:
 .. rubric:: How to fix an empty webGUI
 
-You need to add devices to the "GUI" section of config.json as well, not just the "devices" section.Compilation
-
-Compilation
------------
-
-.. _How to fix errors about missing dependencies:
-.. rubric:: How to fix errors about missing dependencies
-
-If you get this or a similar error, it means you are missing some of the required dependencies pilight needs. Currently, these dependencies are:
-
-.. code-block:: console
-
-   -- Looking for libunwind
-   CMake Error at CMakeLists.txt:42 (message):
-   Looking for libunwind - not found
-
-   -- Configuring incomplete, errors occurred!
-
-- libunwind
-- libpcap
-
-It depends on your platform how to install these dependencies.
-
-Myths
------
-
-.. _pilight support for Domoticz and pimatic:
-.. rubric:: pilight support for Domoticz and pimatic
-
-The possibility is there, but it is up to the developer of Domoticz and pimatic to (re-)add support.
-
-.. _The Raspberry Pi is not fast enough to handle domotica software:
-.. rubric:: The Raspberry Pi is not fast enough to handle domotica software
-
-Although almost all available Domotica solutions for the Raspberry Pi use external hardware such as the RFXCom and Tellstick. pilight proves that with even the most simple hardware, the Raspberry Pi can be turned into a full domotica solution. Even without filtering the receiver noise, the Raspberry Pi can easily process all pulses. Without low-pass filter, pilight currently uses around 40% CPU power. That leaves a lot of resources for other applications. However, the RF receivers can drain the GPIO buffers, so if you use pilight without some sort of hardware filtering, no other GPIO intensive applications can be used simultaneously, such as IR receiving with Lirc.
+You need to add devices to the "GUI" section of config.json as well, not just the "devices" section.

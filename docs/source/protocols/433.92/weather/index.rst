@@ -17,6 +17,7 @@ Weather Stations
    meteoscan_w1xxx
    ninja_blocks
    soens
+   tcm
    teknihall
    tfa
    ventus_wsxxx

@@ -90,6 +90,14 @@ Globaltronics Quigg GT-7000
 | state            | on / off        |
 +------------------+-----------------+
 
+.. versionchanged:: 8.0 Allow ID 0
+
++------------------+-----------------+
+| **Option**       | **Value**       |
++------------------+-----------------+
+| id               | 0 - 4095        |
++------------------+-----------------+
+
 .. rubric:: Optional Settings
 
 :underline:`Device Settings`

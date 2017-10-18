@@ -72,7 +72,9 @@ Sitemap
 
 .. toctree::
    :maxdepth: 4
+   :titlesonly:
 
+   changelog
    installation
    configuration/index
    protocols/index

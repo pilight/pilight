@@ -64,6 +64,10 @@ Each device you want to set-up in pilight has its own entry. In this example we 
 
 To know the syntax of the specific protocol you want to use you can refer to the protocols description found in the protocol section of this manual.
 
+.. note:: changed in version 8
+
+   Protocol names cannot be used as device names.
+
 Device Types
 ------------
 

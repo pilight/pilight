@@ -11,6 +11,7 @@ Settings
    - `whitelist`_
    - `stats-enable`_
    - `watchdog-enable`_
+   - `gpio-platform`_
 - `Webserver`_
    - `webgui-websockets`_
    - `webserver-authentication`_
@@ -175,6 +176,64 @@ pilight monitors its own CPU and RAM resource usage. This information can be sha
    { "watchdog-enable": 1 }
 
 pilight monitors its own CPU and RAM resource usage. This information is used to shutdown or terminate pilight when it uses too much CPU or RAM. If want to disable this watchdog feature and therefor the automatic termination of pilight when needed, you can set this setting to 0. This setting can be either 0 or 1.
+
+.. _gpio-platform:
+.. rubric:: gpio-platform
+
+.. versionadded:: 8.0
+
+.. note::
+
+   Linux, \*BSD, and Windows
+
+.. code-block:: json
+   :linenos:
+
+   { "gpio-platform": "raspberrypi2" }
+
+pilight can be ran on various GPIO compatible platforms. However, it is impossible to reliably distinguish them all. Therefor, you must specify on which platform you are running pilight. Under the hood, pilight uses the wiringX library to interface with the GPIO of your platform. Only those platforms that are supported by wiringX are also supported by pilight. A full and recent list of supported platforms retrieved by calling the following command:
+
+.. code-block:: console
+
+   # ./pilight-daemon -H
+   Usage: pilight-daemon [options]
+            -H --help                      display usage summary
+            -V --version                   display version
+            -C --config                    config file
+            -S --server=x.x.x.x            connect to server address
+            -P --port=xxxx                 connect to server port
+            -F --foreground                do not daemonize
+            -D --debug                     do not daemonize and
+                                           show debug information
+               --stacktracer               show internal function calls
+               --threadprofiler            show per thread cpu usage
+               --debuglevel                show additional development info
+
+            The following GPIO platforms are supported:
+              - none
+              - odroidxu4
+              - odroidc2
+              - odroidc1
+              - raspberrypi3
+              - raspberrypi2
+              - raspberrypizero
+              - raspberrypi1b+
+              - raspberrypi1b2
+              - raspberrypi1b1
+              - hummingboard_edge_dq
+              - hummingboard_gate_dq
+              - hummingboard_edge_sdl
+              - hummingboard_gate_sdl
+              - hummingboard_base_dq
+              - hummingboard_pro_dq
+              - hummingboard_base_sdl
+              - hummingboard_pro_sdl
+              - orangepipc+
+              - bananapim2
+              - bananapi1
+              - pcduino1
+
+If you are running on a platform that doesn't support GPIO, you can either use ``none`` as the ``gpio-platform`` or remove the setting altogether.
 
 Webserver
 ---------
@@ -357,6 +416,10 @@ The smtp-sender requires a valid e-mail address. As soon as a mail is sent by pi
    { "smtp-user": "...@....com" }
 
 The smtp-user requires a valid e-mail address. This e-mail address is used to validate the account details at the e-mail provider.
+
+.. versionchanged:: 8.0 Allow any string for smtp-user
+
+The smtp-user can be any string, and doesn't have to be an valid e-mail address anymore.
 
 .. _smtp-password:
 .. rubric:: smtp-password

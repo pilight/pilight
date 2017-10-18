@@ -14,6 +14,10 @@ div.sphinxsidebar .sidebar-toc a,
 	font-family:'Roboto Condensed', sans-serif;
 }
 
+blockquote {
+	padding: 0px;
+}
+
 .underline {
 	text-decoration: underline;
 }
@@ -107,9 +111,16 @@ table {
 	padding: 0px;
 }
 
-.highlighttable pre {
+pre {
 	margin: 0px;
 	padding: 0px;
+	border: 0px;
+}
+
+.highlighttable pre {
+	margin: -5px 0px 0px 0px;
+	padding: 0px;
+	border-left: 1px solid #eeeeee;
 }
 
 .event-success,
@@ -118,7 +129,7 @@ table {
 	float: right;
 	font-size: 16px; 
 	padding: 0px; 
-	margin-top: 2px; 
+	margin-top: -1px;
 	width: 60px;
 	display: block;
 }
@@ -168,4 +179,34 @@ dt:hover > a.headerlink {
 
 table.field-list {
   display: none!important;
+}
+
+.versionchanged {
+	border-bottom: 1px solid #ffcc00;
+}
+
+.deprecated {
+	border-bottom: 1px solid #ff0000;
+}
+
+.versionadded {
+	border-bottom: 1px solid #aaffaa;
+}
+
+.versionchanged,
+.versionmodified,
+.versionadded,
+.deprecated {
+	color: black;
+	margin-bottom: 15px;
+	margin-top: 15px;
+}
+
+.versionmodified *,
+.versionchanged *,
+.versionadded *,
+.deprecated * {
+	font-style: normal;
+	padding: 0px;
+	margin: 0px;
 }

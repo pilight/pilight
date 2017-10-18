@@ -19,8 +19,6 @@
 +-----------------------+----------------+
 | **Brand**             | **Protocol**   |
 +-----------------------+----------------+
-| Dostmann TFA 30.3200  | tfa            |
-+-----------------------+----------------+
 | Soens Weather Station | soens          |
 +-----------------------+----------------+
 | TFA                   | tfa            |
@@ -105,17 +103,6 @@
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. rubric:: Protocol
-
-The soens protocol sends 76 pulses.
-
-Each (group) of numbers has a specific meaning:
-
-- ID: 5 till 12
-- Channel: 15,16
-- Tx Button: 14
-- Temperature: 18 till 28
-- Humidity: 29 till 36
-- Battery: 37 till 37
 
 The tfa protocol sends 86 pulses like
 

@@ -35,7 +35,6 @@ There are few things that are useful to know before working with pilight event r
 All rules basically consist of the same structure:
 
 .. code-block:: guess
-   :linenos:
 
    IF ... THEN ...
 
@@ -49,14 +48,12 @@ Let us start with how pilight handles succeeding or failing conditions. pilight 
 :event-success:`Succeeds`
 
 .. code-block:: guess
-   :linenos:
 
    IF (1 == 1) == True THEN
 
 :event-success:`Succeeds`
 
 .. code-block:: guess
-   :linenos:
 
    IF (1 == 1) != False THEN
 
@@ -65,14 +62,12 @@ These two examples will both fail:
 :event-fail:`Fails`
 
 .. code-block:: guess
-   :linenos:
 
    IF (1 == 0) IS True THEN
 
 :event-fail:`Fails`
 
 .. code-block:: guess
-   :linenos:
 
    IF (1 != 1) IS False THEN
 
@@ -84,42 +79,36 @@ In the first examples we only used one condition but this does not allow us to m
 :event-fail:`Fails`
 
 .. code-block:: guess
-   :linenos:
 
    IF 1 == 1 AND 1 == 2 THEN ...
 
 :event-success:`Succeeds`
 
 .. code-block:: guess
-   :linenos:
 
    IF 1 == 1 OR 1 == 2 THEN ...
 
 :event-fail:`Fails`
 
 .. code-block:: guess
-   :linenos:
 
    IF 1 == 2 OR 1 == 1 AND 2 == 3 THEN ...
 
 :event-success:`Succeeds`
 
 .. code-block:: guess
-   :linenos:
 
    IF 1 == 1 OR 1 == 1 AND 2 == 3 THEN ...
 
 :event-fail:`Fails`
 
 .. code-block:: guess
-   :linenos:
 
    IF 1 == 2 AND 1 == 1 OR 2 == 3 THEN ...
 
 :event-success:`Succeeds`
 
 .. code-block:: guess
-   :linenos:
 
    IF 1 == 1 AND 2 == 2 OR 2 == 3 THEN ...
 
@@ -133,14 +122,12 @@ As we saw in our first examples, hooks can be used inside pilight rules. This ca
 :event-success:`Succeeds`
 
 .. code-block:: guess
-   :linenos:
 
    IF 1 == 2 OR 2 == 3 AND 2 == 3 OR 1 == 1 THEN ...
 
 :event-fail:`Fails`
 
 .. code-block:: guess
-   :linenos:
 
    IF (1 == 2 OR 2 == 3) AND (2 == 3 OR 1 == 1) THEN ...
 
@@ -152,28 +139,24 @@ Various mathematical operators can be used to do calculations inside our rules. 
 :event-success:`Succeeds`
 
 .. code-block:: guess
-   :linenos:
 
    IF 1 + 1 == 2 THEN ...
 
 :event-success:`Succeeds`
 
 .. code-block:: guess
-   :linenos:
 
    IF 2 % 2 == 0 THEN ...
 
 :event-success:`Succeeds`
 
 .. code-block:: guess
-   :linenos:
 
    IF 1 < 10 THEN ...
 
 :event-fail:`Fails`
 
 .. code-block:: guess
-   :linenos:
 
    IF 10 / 2 == 4 THEN ...
 
@@ -183,26 +166,32 @@ Devices
 pilight rules are quite useless if we cannot work with live data. This live data comes from our devices in and around the house. So let us say we have a switch called switch and we use this configured device to create a rule like this:
 
 .. code-block:: guess
-   :linenos:
 
    IF switch.state IS on THEN ...
 
-Depending on the actual state of the switch this rule will succeed or fail. Let us now use a dimmer device called
-*dimmer*.
+Depending on the actual state of the switch this rule will succeed or fail. Let us now use a dimmer device called *dimmer*.
 
 .. code-block:: guess
-   :linenos:
 
    IF dimmer.dimlevel > 10 THEN ...
 
 Again, this rule will succeed or fail depending on the actual dimlevel of the configured dimmer device. These two examples can of course be combined:
 
 .. code-block:: guess
-   :linenos:
 
    IF switch.state IS on AND dimmer.dimlevel > 10 THEN ...
 
 As you can also see, the fields (*state* or *dimlevel*) we can use depends on the device we are using inside our rules. A switch does not have a *dimlevel* field but a dimmer does have a *state* field.
+
+.. versionadded:: 8.0 rules based on received codes
+
+Some devices are only used inside rules. Configuring them as explicit devices might sometimes feel a bit bloated. Therefor, pilight allows you to trigger rules based on received codes instead of device updates:
+
+.. code-block:: guess
+
+   IF archtech_switch.state IS on AND archtech_switch.id == 123456 AND arctech_switch.unit == 0 THEN ...
+
+In this case, an action will be triggered as soon as an ``archtech_switch`` code is received with a specific state, id, and unitcode. The ``arctech_switch`` doesn't have to be configured as an explicit device for this rule to work.
 
 Functions
 ---------
@@ -210,14 +199,12 @@ Functions
 In some cases, standard operators limit us in writing our rules. For example, calculating with time is a hideous task considering that hours do not go above 24, minute and seconds do not go above 60, and there are no negative numbers. Other functionality like randomization are also not possible in the standard event operators. This more advanced functionality is added in the form of function. A simple example:
 
 .. code-block:: guess
-   :linenos:
 
    IF datetime.hour == RANDOM(21, 23) THEN ...
 
 As we can see in this example we use the RANDOM function to check if the hour is either 21, 22, or 23. This allows us to trigger an action on random hours each day. Actions can also be nested for more advanced logic:
 
 .. code-block:: guess
-   :linenos:
 
    IF datetime.hour == RANDOM(RANDOM(21, 22), RANDOM(22, 23)) THEN ...
 
@@ -229,7 +216,6 @@ Actions
 Actions are the final goal of our rules. These actions tell pilight what should happen when certain conditions have been met. A rule can contain unlimited number of actions and each action can trigger an unlimited number of devices. First two examples of basic actions triggering a switch called *lamp* and a dimmer called *ambientLight*:
 
 .. code-block:: guess
-   :linenos:
 
    IF ... THEN switch DEVICE lamp TO on
    IF ... THEN dim DEVICE ambientLight TO 10
@@ -237,21 +223,18 @@ Actions are the final goal of our rules. These actions tell pilight what should 
 Both actions only trigger a single device. However, if we wanted to trigger both device to just on we can combine them in a single action:
 
 .. code-block:: guess
-   :linenos:
 
    IF ... THEN switch DEVICE lamp AND ambientLight TO on
 
 As we can see here, the switch action takes at least the DEVICE and TO parameters. In case of the switch action, several values (as in devices) can be combined by separating them with ANDs. We can also combine dim and switch action would we want to switch the *lamp* to on and dim the *ambientLight* to dimlevel 10 based on the same condition:
 
 .. code-block:: guess
-   :linenos:
 
    IF ... THEN switch DEVICE lamp TO on AND dim DEVICE ambientLight TO 10
 
 We can combine an unlimited number of actions like this. Again we see that we use the AND to combine several actions. We can also switch several devices across several actions in a single rule. Let's say we have a relay connected to our television set called television that we want to turn on as well.
 
 .. code-block:: guess
-   :linenos:
 
    IF ... THEN switch DEVICE lamp AND television TO on AND dim DEVICE ambientLight TO 10
 
@@ -261,14 +244,12 @@ Using Device Parameters
 Device parameters can be used as rule input almost everywhere. Let us look at a few examples to demonstrate this:
 
 .. code-block:: guess
-   :linenos:
 
    IF 1 == 1 THEN dim DEVICE dimmer TO dimmerMax.dimlevel FOR dimmerDuration.dimlevel
 
 In this case we use three dimmer devices. One dimmer called dimmer that we actually want to dim, and two dimmers that changes the way this rule behaves. The dimmerMax device tells pilight to what value the dimmer should dim. The dimmerDuration device tells pilight how long it should take to reach that dimlevel. Another example:
 
 .. code-block:: guess
-   :linenos:
 
    IF 1 == 1 THEN switch DEVICE lamp1 TO lamp2.state
 
@@ -277,14 +258,12 @@ In this case we want to switch the device lamp1 to the same state as the device 
 Device parameters can also be used in function:
 
 .. code-block:: guess
-   :linenos:
 
    IF RANDOM(randomLow.dimlevel, randomHigh.dimlevel) == 10 THEN switch DEVICE lamp1 TO on
 
 In this case we use two dimmers called randomLow and randomHigh to dynamically change the input of the RANDOM function used in this rule. A comprehensive and advanced example:
 
 .. code-block:: guess
-   :linenos:
 
    IF sunriseset.sunset == DATE_FORMAT(DATE_ADD(datetime, +1 HOUR), \"%Y-%m-%d %H:%M:%S\", %H.%M) THEN switch DEVICE lamp1 TO on
 
@@ -294,7 +273,6 @@ Optimizations
 Although pilight is extremely fast in evaluating event rules, simple steps can be made to further improve the performance of your events. A rule is actually nothing more then several evaluations of conditions. Let's see how we can optimize time based events. E.g.
 
 .. code-block:: guess
-   :linenos:
 
    IF datetime.hour == 23 AND datetime.minute == 0 AND datetime.second == 0 THEN ...
 
@@ -307,7 +285,6 @@ Second is 0 1440 times a day (24 hours * 60 minutes).
 So in the above rule, the first step evaluates true 3600 times, the second step 1 times, and the last step also 1 time. Let us see what happens when we change the rule:
 
 .. code-block:: guess
-   :linenos:
 
    IF datetime.second == 0 AND datetime.minute == 0 AND datetime.hour == 23 THEN ...
 
@@ -316,7 +293,6 @@ In this case, the first step is evaluates true 1440 times, the second step 1 tim
 Let's take another example. In this case we trigger an event based on the sunset time. Let's use the sunset time of 19:00 and assume we turn off the Christmas tree at 0:00 each day.
 
 .. code-block:: guess
-   :linenos:
 
    IF ((sunriseset.sunset == (datetime.hour + (datetime.minute / 100)) AND christmasstree.state IS off) AND datetime.second == 0) THEN switch DEVICE christmasstree TO on
 
@@ -331,7 +307,6 @@ State is off for 68400 times a day (19 hours * 60 minutes * 60 seconds).
 So in the above rule, the first step evaluates true 60 times, the second step 60 times, and the last step only 1 time. Although this rule uses not much evaluations for it to trigger, the first evaluation does take several math formulas to solve. Let's again see what happens when we change the rule:
 
 .. code-block:: guess
-   :linenos:
 
    IF ((datetime.second == 0 AND sunriseset.sunset == (datetime.hour + (datetime.minute / 100))) AND christmasstree.state IS off) THEN switch DEVICE christmasstreeTO on
 
