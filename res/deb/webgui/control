@@ -1,0 +1,11 @@
+Package: pilight-webgui
+Version: @webgui@
+Section: devel
+Priority: optional
+Architecture: @arch@
+Depends: pilight (>= @version@) | pilight-dbg (>= @version@)
+Replaces: pilight (<< 4.0)
+Installed-Size: @size@
+Suggests: php5-cgi, pilight-firmware (>= 3.0)
+Maintainer: CurlyMo <info@pilight.org>
+Description: Default pilight webgui

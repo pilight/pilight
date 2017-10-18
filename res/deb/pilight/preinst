@@ -1,0 +1,27 @@
+#!/bin/bash
+
+if [ $1 == "install" -o $1 == "upgrade" ]; then
+
+	find /usr/local/lib -name '*pilight*' -exec rm -r {} \; 1>/dev/null 2>/dev/null;
+	find /usr/local/bin -name '*pilight*' -exec rm -r {} \; 1>/dev/null 2>/dev/null;
+	find /usr/local/sbin -name '*pilight*' -exec rm -r {} \; 1>/dev/null 2>/dev/null;
+
+	test -d /usr/local/pilight && rm -r /usr/local/pilight || true 1>/dev/null 2>/dev/null || true;
+
+	test -d /etc/pilight && true || mkdir -p /etc/pilight 1>/dev/null 2>/dev/null;
+	
+	if [ -f /etc/pilight/config.json ]; then
+		if [ ! -f /etc/pilight/config.json.bak ] || [ "$(md5sum /etc/pilight/config.json | cut -f 1 -d' ')" != "$(md5sum /etc/pilight/config.json.bak | cut -f 1 -d' ' )" ]; then
+			mv --backup=t /etc/pilight/config.json /etc/pilight/config.json.bak
+		fi
+	fi
+
+	if [ -f /etc/pilight/pilight.pem ]; then
+		if [ ! -f /etc/pilight/config.pem.bak ] || [ "$(md5sum /etc/pilight/pilight.pem | cut -f 1 -d' ')" != "$(md5sum /etc/pilight/pilight.pem.bak | cut -f 1 -d' ')" ]; then
+			mv --backup=t /etc/pilight/pilight.pem /etc/pilight/pilight.pem.bak
+		fi
+	fi
+
+	test -f /etc/pilight/tzdata.conf && rm /etc/pilight/tzdata.conf || true 1>/dev/null 2>/dev/null;
+
+fi

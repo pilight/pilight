@@ -1,0 +1,11 @@
+Package: @package@
+Version: @version@
+Section: devel
+Priority: optional
+Architecture: @arch@
+Depends: pilight-webgui (>= @webgui@), libunwind8, libpcap0.8, libmbedcrypto0, libmbedtls10, libmbedx509-0, libwiringx (>= 2.0)
+Conflicts: @conflicts@
+Installed-Size: @size@
+Suggests: php5-cgi, pilight-firmware (>= 3.0)
+Maintainer: CurlyMo <info@pilight.org>
+Description: Control RF devices with the Raspberry Pi
