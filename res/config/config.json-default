@@ -14,10 +14,7 @@
 		"gpio-platform": "none"
 	},
 	"hardware": {
-		"433gpio": {
-			"sender": 0,
-			"receiver": 1
-		}
+		"none": { }
 	},
 	"registry": { }
 }
