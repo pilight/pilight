@@ -516,10 +516,10 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues) {
-			oTab.append($('<li class="weather" id="'+sDevId+'_weather" data-icon="false"><div class="name">'+aValues['name']+'</div></li>'));
+			oTab.append($('<li class="weather" id="'+sDevId+'_weather" data-icon="false"><div class="name">'+aValues['name']+'</div><div class="weather_values" id="'+sDevId+'_weather_values" /></li>'));
 		}
 		if('show-update' in aValues && aValues['show-update']) {
-			oTab.find('#'+sDevId+'_weather').append($('<div class="update_inactive" id="'+sDevId+'_upd" title="'+language.update+'">&nbsp;</div>'));
+			oTab.find('#'+sDevId+'_weather_values').append($('<div class="update_inactive" id="'+sDevId+'_upd" title="'+language.update+'">&nbsp;</div>'));
 			$('#'+sDevId+'_upd').click(function() {
 				if(this.className.indexOf('update_active') == 0) {
 					var json = '{"action":"control","code":{"device":"'+sDevId+'","values":{"update":1}}}';
@@ -534,28 +534,28 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 			});
 		}
 		if('show-battery' in aValues && aValues['show-battery'] && 'battery' in aValues) {
-			oTab.find('#'+sDevId+'_weather').append($('<div id="'+sDevId+'_batt" class="battery green"></div>'));
+			oTab.find('#'+sDevId+'_weather_values').append($('<div id="'+sDevId+'_batt" class="battery green"></div>'));
 		}
 		if('show-rain' in aValues && aValues['show-rain']) {
-			oTab.find('#'+sDevId+'_weather').append($('<div class="rain_icon"></div><div class="rain" id="'+sDevId+'_rain"></div>'));
+			oTab.find('#'+sDevId+'_weather_values').append($('<div class="rain_icon"></div><div class="rain" id="'+sDevId+'_rain"></div>'));
 		}
 		if('show-wind' in aValues && aValues['show-wind']) {
-			oTab.find('#'+sDevId+'_weather').append($('<div class="windavg_icon"></div><div class="windavg" id="'+sDevId+'_windavg"></div>'));
-			oTab.find('#'+sDevId+'_weather').append($('<div class="windgust_icon"></div><div class="winddir_icon" id="'+sDevId+'_winddir"></div><div class="windgust" id="'+sDevId+'_windgust"></div>'));
+			oTab.find('#'+sDevId+'_weather_values').append($('<div class="windavg_icon"></div><div class="windavg" id="'+sDevId+'_windavg"></div>'));
+			oTab.find('#'+sDevId+'_weather_values').append($('<div class="windgust_icon"></div><div class="winddir_icon" id="'+sDevId+'_winddir"></div><div class="windgust" id="'+sDevId+'_windgust"></div>'));
 			$('#'+sDevId+'_weather .winddir_icon').css({transform: 'rotate(' + aValues['winddir'] + 'deg)'});
 		}
 		if('show-humidity' in aValues && aValues['show-humidity']) {
-			oTab.find('#'+sDevId+'_weather').append($('<div class="humidity_icon"></div><div class="humidity" id="'+sDevId+'_humi"></div>'));
+			oTab.find('#'+sDevId+'_weather_values').append($('<div class="humidity_icon"></div><div class="humidity" id="'+sDevId+'_humi"></div>'));
 		}
 		if('show-temperature' in aValues && aValues['show-temperature']) {
-			oTab.find('#'+sDevId+'_weather').append($('<div class="temperature_icon"></div><div class="temperature" id="'+sDevId+'_temp"></div>'));
+			oTab.find('#'+sDevId+'_weather_values').append($('<div class="temperature_icon"></div><div class="temperature" id="'+sDevId+'_temp"></div>'));
 		}
 		if('show-pressure' in aValues && aValues['show-pressure']) {
-			oTab.find('#'+sDevId+'_weather').append($('<div class="pressure_icon"></div><div class="pressure" id="'+sDevId+'_pres"></div>'));
+			oTab.find('#'+sDevId+'_weather_values').append($('<div class="pressure_icon"></div><div class="pressure" id="'+sDevId+'_pres"></div>'));
 		}
 		if('show-sunriseset' in aValues && aValues['show-sunriseset']) {
-			oTab.find('#'+sDevId+'_weather').append($('<div id="'+sDevId+'_sunset_icon" class="sunset_icon"></div><div class="sunset" id="'+sDevId+'_sunset"></div>'));
-			oTab.find('#'+sDevId+'_weather').append($('<div id="'+sDevId+'_sunrise_icon" class="sunrise_icon"></div><div class="sunrise" id="'+sDevId+'_sunrise"></div>'));
+			oTab.find('#'+sDevId+'_weather_values').append($('<div id="'+sDevId+'_sunset_icon" class="sunset_icon"></div><div class="sunset" id="'+sDevId+'_sunset"></div>'));
+			oTab.find('#'+sDevId+'_weather_values').append($('<div id="'+sDevId+'_sunrise_icon" class="sunrise_icon"></div><div class="sunrise" id="'+sDevId+'_sunrise"></div>'));
 			$('#'+sDevId+'_sunrise_icon').addClass('yellow');
 			$('#'+sDevId+'_sunset_icon').addClass('gray');
 		}
