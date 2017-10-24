@@ -62,6 +62,7 @@ static void *thread(void *param) {
 	char *pstate = NULL;
 	double itmp = 0.0;
 	int state = 0, nrloops = 0, interval = 1;
+	int count = 0, tries = 1;
 
 	threads++;
 
@@ -77,6 +78,8 @@ static void *thread(void *param) {
 
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
+	if(json_find_number(json, "try", &itmp) == 0)
+		tries = (int)round(itmp);
 
    if(json_find_string(json, "state", &pstate) == 0) {
       if(strcmp(pstate,"connected") == 0) state = CONNECTED;
@@ -89,6 +92,7 @@ static void *thread(void *param) {
 			if(ping(ip) == 0) {
 				if(state == DISCONNECTED) {
 					state = CONNECTED;
+					count = 0;
 					pping->message = json_mkobject();
 					JsonNode *code = json_mkobject();
 					json_append_member(code, "ip", json_mkstring(ip));
@@ -105,22 +109,25 @@ static void *thread(void *param) {
 					pping->message = NULL;
 				}
 			} else if(state == CONNECTED) {
-				state = DISCONNECTED;
+				count += 1;
+				if (count > tries) {
+					count = 0;
+					state = DISCONNECTED;
+					pping->message = json_mkobject();
+					JsonNode *code = json_mkobject();
+					json_append_member(code, "ip", json_mkstring(ip));
+					json_append_member(code, "state", json_mkstring("disconnected"));
 
-				pping->message = json_mkobject();
-				JsonNode *code = json_mkobject();
-				json_append_member(code, "ip", json_mkstring(ip));
-				json_append_member(code, "state", json_mkstring("disconnected"));
+					json_append_member(pping->message, "message", code);
+					json_append_member(pping->message, "origin", json_mkstring("receiver"));
+					json_append_member(pping->message, "protocol", json_mkstring(pping->id));
 
-				json_append_member(pping->message, "message", code);
-				json_append_member(pping->message, "origin", json_mkstring("receiver"));
-				json_append_member(pping->message, "protocol", json_mkstring(pping->id));
-
-				if(pilight.broadcast != NULL) {
-					pilight.broadcast(pping->id, pping->message, PROTOCOL);
+					if(pilight.broadcast != NULL) {
+						pilight.broadcast(pping->id, pping->message, PROTOCOL);
+					}
+					json_delete(pping->message);
+					pping->message = NULL;
 				}
-				json_delete(pping->message);
-				pping->message = NULL;
 			}
 			pthread_mutex_unlock(&lock);
 		}
@@ -171,6 +178,7 @@ void pingInit(void) {
 	options_add(&pping->options, 'i', "ip", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 
 	options_add(&pping->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
+	options_add(&pping->options, 0, "try", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
 	pping->initDev=&initDev;
 	pping->threadGC=&threadGC;
@@ -179,7 +187,7 @@ void pingInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ping";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
