@@ -325,6 +325,14 @@ The pilight webserver runs by default on the non-standard port 5001. This is don
 .. _webserver-https-port:
 .. rubric:: webserver-https-port
 
+.. deprecated:: 8.0
+
+.. versionadded:: nightly
+
+.. note::
+
+   The secure webserver has never been properly supported in pilight version 7.0. The current pilight nightly does properly support secure webserver functionality, but that code hasn't been included in pilight 8.0.
+
 .. note::
 
    Linux, \*BSD, and Windows
