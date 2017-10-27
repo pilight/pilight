@@ -356,6 +356,13 @@ The webserver does not allow secure connections by default. Currently the only w
 
    { "webserver-root": "/usr/local/share/pilight" }
 
+.. versionchanged:: 8.0
+
+.. code-block:: json
+   :linenos:
+
+   { "webserver-root": "/usr/local/share/pilight/webgui" }
+
 The webserver root tells pilight where it should look for all files that should be served by the webserver.  This setting must contain a valid path.
 
 .. _webserver-user:
