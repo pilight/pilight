@@ -60,6 +60,41 @@ Install pilight by using the apt repository in Debian / Ubuntu based distributio
 
 	    root@pilight:~# service pilight stop
 
+.. note::
+
+   pilight makes it easy to install previous version, because all stable versions and all nightly versions between two stable versions will remain available in the apt repository.
+   To see what versions are available, you can run the following command:
+
+   .. code-block:: console
+
+      root@pilight:~# apt-cache policy pilight
+      pilight:
+        Installed: 7.0.21-ga8b12ea
+        Candidate: 7.0.16-g233c268
+        Version table:
+           7.0.21-ga8b12ea 500
+              500 http://apt.pilight.org nightly/main armhf Packages
+       *** 7.0.16-g233c268 500
+              500 http://apt.pilight.org nightly/main armhf Packages
+           7.0.9-gfbc2643 500
+              500 http://apt.pilight.org nightly/main armhf Packages
+           7.0.8-g953bb85 500
+              500 http://apt.pilight.org nightly/main armhf Packages
+           7.0 500
+              500 http://apt.pilight.org stable/main armhf Packages
+           6.0 500
+              500 http://apt.pilight.org stable/main armhf Packages
+           5.0 500
+              500 http://apt.pilight.org stable/main armhf Packages
+           4.0 500
+              500 http://apt.pilight.org stable/main amd64 Package
+
+   In this case, both the stable and the nightly apt repositories are enabled. If you want to install a specific version run the following command:
+
+   .. code-block:: console
+
+      root@pilight:~# apt-get install pilight=7.0.67-g960219e
+      
 .. raw:: latex
 
    \newpage
