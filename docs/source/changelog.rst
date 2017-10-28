@@ -3,6 +3,10 @@ Changelog
 
 .. versionadded:: 8.0
 
+.. note::
+
+   Not all changes from development where ported to stable. Especially the rules can break when upgraded from the latest development to the latest stable. Porting the new eventing code is in the planning real soon, but until then, just stick with development.
+
 .. rubric:: Breaking changes
 
 - The PHP parsing functionality has been removed.
