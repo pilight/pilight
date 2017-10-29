@@ -23,7 +23,12 @@ dpkg -X pilight-8.0-Linux-pilight.deb source
 dpkg -e pilight-8.0-Linux-pilight.deb control
 
 mkdir -p source/etc/init.d
-cp ../res/init/pilight.initd source/etc/init.d/pilight.sh
+mkdir -p source/etc/systemd/system
+mkdir -p source/etc/init
+cp ../res/init/pilight.sysv source/etc/init.d/pilight
+cp ../res/init/pilight.systemd source/etc/systemd/system/pilight.service
+cp ../res/init/pilight.upstart source/etc/init/pilight.conf
+
 cp ../res/deb/pilight/* control/
 mv source/usr/local/lib/libpilight.so.* source/usr/local/lib/libpilight.so.$VERSION 2>/dev/null
 
