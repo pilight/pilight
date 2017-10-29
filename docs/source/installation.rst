@@ -69,8 +69,8 @@ Install pilight by using the apt repository in Debian / Ubuntu based distributio
 
       root@pilight:~# apt-cache policy pilight
       pilight:
-        Installed: 7.0.21-ga8b12ea
-        Candidate: 7.0.16-g233c268
+        Installed: 7.0.16-g233c268
+        Candidate: 7.0.21-ga8b12ea
         Version table:
            7.0.21-ga8b12ea 500
               500 http://apt.pilight.org nightly/main armhf Packages
