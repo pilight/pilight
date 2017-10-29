@@ -1,6 +1,13 @@
 Changelog
 =========
 
+.. versionadded:: 8.0.1
+
+.. rubric:: Bugfixes
+
+- gpio_switch protocol that stops working after a while
+- pilight not starting at boottime
+
 .. versionadded:: 8.0
 
 .. note::
