@@ -12,6 +12,7 @@ find . -name action_init.h -exec rm {} \;
 git stash
 git stash clear
 git pull origin master
+git fetch --tags
 
 cp CMakeLists.txt CMakeLists.txt.original
 
