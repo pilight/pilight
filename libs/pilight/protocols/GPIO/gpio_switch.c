@@ -74,10 +74,7 @@ static void *thread(void *param) {
 		jchild = json_first_child(jid);
 		if(json_find_number(jchild, "gpio", &itmp) == 0) {
 			id = (int)round(itmp);
-			if(wiringXISR(id, ISR_MODE_BOTH) < 0) {
-				threads--;
-				return NULL;
-			}
+			pinMode(id, PINMODE_INPUT);
 			state = digitalRead(id);
 		}
 	}
@@ -85,13 +82,12 @@ static void *thread(void *param) {
 	createMessage(id, state);
 
 	while(loop) {
-		irq_read(id);
 		nstate = digitalRead(id);
 		if(nstate != state) {
 			state = nstate;
 			createMessage(id, state);
-			usleep(100000);
 		}
+		usleep(100000);
 	}
 
 	threads--;
