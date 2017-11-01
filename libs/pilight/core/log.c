@@ -151,10 +151,31 @@ int log_gc(void) {
  * A compatible logprint for wiringX
  */
 void logprintf1(int prio, char *file, int line, const char *format_str, ...) {
-	va_list args;
-	va_start(args, format_str);
-	logprintf(prio, format_str, args);
-	va_end(args);
+	char *a = MALLOC(128);
+	va_list ap, apcpy;
+	int bytes = 0;
+
+	va_copy(apcpy, ap);
+	va_start(apcpy, format_str);
+#ifdef _WIN32
+	bytes = _vscprintf(format_str, apcpy);
+#else
+	bytes = vsnprintf(NULL, 0, format_str, apcpy);
+#endif
+	if(bytes == -1) {
+		fprintf(stderr, "ERROR: unproperly formatted logprintf message %s\n", format_str);
+	} else {
+		va_end(apcpy);
+		if((a = REALLOC(a, (size_t)bytes+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
+			exit(EXIT_FAILURE);
+		}
+		va_start(ap, format_str);
+		vsprintf(a, format_str, ap);
+		va_end(ap);
+		logprintf(prio, a);
+	}
+	FREE(a);
 }
 
 void logprintf(int prio, const char *format_str, ...) {
