@@ -29,7 +29,8 @@ if [[ $1 == "remove" || $1 == "purge" ]]; then
 
 	test -f /etc/pilight/tzdata.conf && rm /etc/pilight/tzdata.conf || true 1>/dev/null 2>/dev/null;
 
-	update-rc.d pilight remove 1>/dev/null 2>/dev/null;
+	test -f /etc/init.d/pilight && update-rc.d pilight remove 1>/dev/null 2>/dev/null;
+	test -f /etc/init.d/pilight.sh && update-rc.d pilight.sh remove 1>/dev/null 2>/dev/null;
 	systemctl disable pilight.service 1>/dev/null 2>/dev/null;
 
 fi

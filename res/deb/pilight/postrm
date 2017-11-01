@@ -9,3 +9,12 @@ if [[ $1 == "purge" ]]; then
 	test -d /usr/local/pilight && rm -r /usr/local/pilight || true 1>/dev/null 2>/dev/null;
 
 fi
+
+if [[ $1 == "remove" ]]; then
+
+	test -f /etc/init.d/pilight && rm /etc/init.d/pilight;
+	test -f /etc/init.d/pilight.sh && rm /etc/init.d/pilight.sh;
+	test -f /etc/systemd/system/pilight.service && rm /etc/systemd/system/pilight.service;
+	test -f /etc/init/pilight.conf && rm /etc/init/pilight.conf;
+
+fi
