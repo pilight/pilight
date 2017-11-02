@@ -1,6 +1,12 @@
 Changelog
 =========
 
+.. versionadded:: 8.0.2
+
+.. rubric:: Bugfixes
+
+- wiringX log was scrambled
+
 .. versionadded:: 8.0.1
 
 .. rubric:: Bugfixes
