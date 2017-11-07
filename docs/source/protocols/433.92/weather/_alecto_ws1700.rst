@@ -4,6 +4,9 @@
 .. role:: underline
    :class: underline
 
+Alecto WS1700
+=============
+
 +------------------+-------------+
 | **Feature**      | **Support** |
 +------------------+-------------+
@@ -16,11 +19,13 @@
 
 .. rubric:: Supported Brands
 
-+------------------+--------------+
-| **Brand**        | **Protocol** |
-+------------------+--------------+
-| Alecto WSD17     | alecto_wsd17 |
-+------------------+--------------+
++------------------+----------------+
+| **Brand**        | **Protocol**   |
++------------------+----------------+
+| Alecto WS1700    | alecto_ws1700  |
++------------------+----------------+
+| iBoutique        | iboutique      |
++------------------+----------------+
 
 .. rubric:: Sender Arguments
 
@@ -34,11 +39,13 @@
    {
      "devices": {
        "weather": {
-         "protocol": [ "alecto_wsd17" ],
+         "protocol": [ "alecto_ws1700" ],
          "id": [{
-           "id": 100
+           "id": 108
          }],
-         "temperature": 23.00
+         "temperature": 18.90,
+         "humidity": 41.00,
+         "battery": 1
         }
      },
      "gui": {
@@ -53,38 +60,48 @@
 +------------------+-----------------+
 | **Option**       | **Value**       |
 +------------------+-----------------+
-| id               | 0 - 9           |
+| id               | 0 - 256         |
 +------------------+-----------------+
 | temperature      | -50 - 70        |
 +------------------+-----------------+
+| humidity         | 0 - 99          |
++------------------+-----------------+
+| battery          | 0 - 1           |
++------------------+-----------------+
+
+
 
 .. rubric:: Optional Settings
 
 :underline:`Device Settings`
++--------------------+-------------+------------+-----------------------------------------+
+| **Setting**        | **Default** | **Format** | **Description**                         |
++--------------------+-------------+------------+-----------------------------------------+
+| humidity-offset    | 0           | number     | Offset for correcting humidity value    |
++--------------------+-------------+------------+-----------------------------------------+
+| temperature-offset | 0           | number     | Offset for correcting temperature value |
++--------------------+-------------+------------+-----------------------------------------+
 
-+--------------------+-------------+------------+---------------------------+
-| **Setting**        | **Default** | **Format** | **Description**           |
-+--------------------+-------------+------------+---------------------------+
-| temperature-offset | 0           | number     | Correct temperature value |
-+--------------------+-------------+------------+---------------------------+
 
 :underline:`GUI Settings`
 
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| temperature-decimals | 2           | number     | How many decimals the GUIs should display for temperature |
+| temperature-decimals | 2           | number     | Number of decimal places to show for temperature          |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-temperature     | 1           | 1 or 0     | Don't display the temperature value                       |
+| humidity-decimals    | 2           | number     | Number of decimal places to show for humidity             |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-humidity        | 1           | 1 or 0     | Don't display the humidity value                          |
+| show-temperature     | 1           | 0 or 1     | Whether to display the temperature value                  |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-battery         | 1           | 1 or 0     | Don't display the battery value                           |
+| show-humidity        | 1           | 0 or 1     | Whether to display the humidity value                     |
++----------------------+-------------+------------+-----------------------------------------------------------+
+| show-battery         | 1           | 0 or 1     | Whether to display the battery value                      |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. rubric:: Comment
 
-This weather station or just the sensor is available from several (mostly Chinese) suppliers on eBay or Alibaba. Description for device is usually like: “Digital Wireless Indoor/Outdoor Weather Station with 3 Remote Sensors”. The sensor can be identified by the option to choose from 3 different channels.
+This weather station or just the sensor is available from several (mostly Chinese) suppliers on eBay or Alibaba. Description for device is usually like: “Digital Wireless Indoor/Outdoor Weather Station with 3 Remote Sensors". The sensor can be identified by the option to choose from 3 different channels.
 
 Please be aware that the ID of a sensor changes after you replace the batteries.
 

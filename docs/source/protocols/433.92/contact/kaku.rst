@@ -69,7 +69,10 @@ This protocol sends 148 pulses like this
 
    294 2646 294 294 294 1176 294 294 294 1176 294 1176 294 294 294 294 294 1176 294 1176 294 294 294 294 294 1176 294 1176 294 294 294 1176 294 294 294 1176 294 294 294 294 294 1176 294 1176 294 294 294 1176 294 294 294 294 294 1176 294 294 294 1176 294 1176 294 294 294 294 294 1176 294 294 294 1176 294 1176 294 294 294 294 294 1176 294 294 294 1176 294 294 294 1176 294 1176 294 294 294 294 294 1176 294 294 294 1176 294 1176 294 294 294 294 294 1176 294 294 294 1176 294 1176 294 294 294 1176 294 294 294 294 294 1176 294 294 294 1176 294 1176 294 294 294 294 294 1176 294 1176 294 294 294 1176 294 294 294 1176 294 294 294 9996
 
-The first 2 pulses are the ``header`` and the last 2 pulses are the ``footer``. These are meant to identify the pulses as genuine. We don't use them for further processing. The next step is to transform this output into 36 groups of 4 pulses (and thereby dropping the ``header`` and ``footer`` pulses).
+The first 2 pulses are the ``header`` and the last 2 pulses are the ``footer``.
+These are meant to identify the pulses as genuine.
+We don't use them for further processing.
+The next step is to transform this output into 36 groups of 4 pulses (and thereby dropping the ``header`` and ``footer`` pulses).
 
 .. code-block:: guess
 
@@ -115,7 +118,10 @@ If we now look at carefully at these groups you can distinguish two types of gro
 #. 294 1176 294 294
 #. 294 294 294 1176
 
-So the first group is defined by a high 2nd and the second group has a high 4th pulse. So we take either of these two pulses to define a 0 or a 1. In this case we say a high 2nd pulse means a 1 and a low 2nd pulse means a 0. We then get the following output:
+So the first group is defined by a high 2nd and the second group has a high 4th pulse.
+So we take either of these two pulses to define a 0 or a 1.
+In this case we say a high 2nd pulse means a 1 and a low 2nd pulse means a 0.
+We then get the following output:
 
 .. code-block:: guess
 

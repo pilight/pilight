@@ -77,7 +77,7 @@ The Lirc protocol tries to automatically connect to Lirc when pilight starts. Wh
      "protocol": "lirc"
    }
 
-Whenever, a connection to Lirc is lost, pilight will try to automatically reconnect.
+Whenever the connection to Lirc is lost, pilight will try to automatically reconnect.
 
 All signal processing will be done by Lirc, so make sure you have a working Lirc configuration. Tutorials on this can be found all around the internet.
 

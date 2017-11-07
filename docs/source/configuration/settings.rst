@@ -177,7 +177,7 @@ The log-level tells pilight what messages it should log into the log-file. The h
 
    { "whitelist": [ "*.*.*.*" ] }
 
-All software able to use socket connections can communicate to pilight. Such software can be *pilight-receive*, a user visiting the webGUI, or external pilight plugins such a provided by FHEM. If you want to limit the computers in your network that can connect to pilight, you set up a whitelist. This setting should contain a list of valid IPv4 addresses that are allowed to connect to pilight. All other IPs will be blocked. If you want to allow IPv4 ranges, you can specify them by using wildcards. For example, if we want to allow all IP addresses ranging from 192.168.1.0 to 192.168.1.254 we can add the IP address 192.168.1.* to the list. If we want to allow all IP addresses ranging from 10.0.0.0 to 10.0.254.254 we can add the IP address 10.0.*.* to the list. Each whitelist entry should contain a valid IPv4 address with or without using wildcards.
+All software able to use socket connections can communicate with pilight. Such software can be *pilight-receive*, a user visiting the webGUI, or external pilight plugins such a provided by FHEM. If you want to limit the computers in your network that can connect to pilight, you set up a whitelist. This setting should contain a list of valid IPv4 addresses that are allowed to connect to pilight. All other IPs will be blocked. If you want to allow IPv4 ranges, you can specify them by using wildcards. For example, if we want to allow all IP addresses ranging from 192.168.1.0 to 192.168.1.254 we can add the IP address 192.168.1.* to the list. If we want to allow all IP addresses ranging from 10.0.0.0 to 10.0.254.254 we can add the IP address 10.0.*.* to the list. Each whitelist entry should contain a valid IPv4 address with or without using wildcards.
 
 .. _stats-enable:
 .. rubric:: stats-enable
@@ -205,7 +205,7 @@ pilight monitors its own CPU and RAM resource usage. This information can be sha
 
    { "watchdog-enable": 1 }
 
-pilight monitors its own CPU and RAM resource usage. This information is used to shutdown or terminate pilight when it uses too much CPU or RAM. If want to disable this watchdog feature and therefor the automatic termination of pilight when needed, you can set this setting to 0. This setting can be either 0 or 1.
+pilight monitors its own CPU and RAM resource usage. This information is used to shutdown or terminate pilight when it uses too much CPU or RAM. If want to disable this watchdog feature and therefore the automatic termination of pilight when needed, you can set this setting to 0. This setting can be either 0 or 1.
 
 .. _gpio-platform:
 .. rubric:: gpio-platform
@@ -221,7 +221,7 @@ pilight monitors its own CPU and RAM resource usage. This information is used to
 
    { "gpio-platform": "raspberrypi2" }
 
-pilight can be ran on various GPIO compatible platforms. However, it is impossible to reliably distinguish them all. Therefor, you must specify on which platform you are running pilight. Under the hood, pilight uses the wiringX library to interface with the GPIO of your platform. Only those platforms that are supported by wiringX are also supported by pilight. A full and recent list of supported platforms retrieved by calling the following command:
+pilight can be ran on various GPIO capable platforms. However, it is impossible to reliably distinguish them all. Therefore, you must specify the platform you are running pilight on. Under the hood, pilight uses the wiringX library to interface with the GPIO of your platform. Only those platforms that are supported by wiringX are also supported by pilight. A full and recent list of supported platforms retrieved by calling the following command:
 
 .. code-block:: console
 
@@ -282,7 +282,7 @@ The following settings change the way the internal webserver will serve the inte
 
    { "webgui-websockets": 1 }
 
-By default the webGUI communicates to pilight by using websockets. This is a relatively new technique that allows us to receive all changes from pilight instead of having to poll pilight for changes. The problem is that  some older devices and browsers do not support websockets, but they do support the polling technique. So to disable the websockets and use polling instead we set webgui-websockets setting to 0. This setting can be either 0 or 1.
+By default the webGUI communicates to pilight by using websockets. This is a relatively new technique that allows us to receive all changes from pilight instead of having to poll pilight for changes. The problem is that some older devices and browsers do not support websockets, but they do support the polling technique. So to disable the websockets and use polling instead we set webgui-websockets setting to 0. This setting can be either 0 or 1.
 
 .. _webserver-authentication:
 .. rubric:: webserver-authentication
@@ -303,7 +303,7 @@ By default, pilight can be controlled from the webGUI by anyone that can access 
    pi@pilight ~# pilight-sha256 -p admin
    4f32102debed8dabd87e88cf84c752ccb23a74b29f90b42edde05cbc7be41f80
 
-So if we want to use a username user and password admin the values should look like this:
+So if we want to use a username ``user`` and ``password`` admin the values should look like this:
 
 .. code-block:: json
    :linenos:
@@ -542,7 +542,7 @@ Miscellaneous
 
    { "ntp-servers": [ "eu.pool.ntp.org", "uk.pool.ntp.org" ] }
 
-One important feature of any automation setup is the ability to trigger time based actions. However, these events greatly rely on a correct date and time. Problems occur when the system time is not set to the correct time (for our specific timezone). This can happen on systems like the Raspberry Pi which does not have a RTC that allows it to keep track of time when turned off. To overcome this problem pilight has the ability to retrieve the correct time by synchronizing with NTP servers. You can pick any server from http://www.pool.ntp.org/. Any number of servers can be added to the ntp-servers list. pilight will first try to synchronize with the first server. If this fails it will try the second server etc. It will continue this process until an actual response was received.
+One important feature of any automation setup is the ability to trigger time based actions. However, these events greatly rely on a correct date and time. Problems occur when the system time is not set to the correct time (for our specific timezone). This can happen on systems like the Raspberry Pi which does not have a RTC that allows it to keep track of time when turned off. To overcome this problem pilight has the ability to retrieve the correct time by synchronizing with NTP servers. Any number of servers can be added to the ntp-servers list. pilight will first try to synchronize with the first server. If this fails it will try the second server etc. It will continue this process until an actual response was received.
 
 Firmware
 --------

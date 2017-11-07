@@ -33,13 +33,13 @@ Reformat date and time values
 
 .. note:: **Input / output**
 
-   Consider that the flexibility of the function depends on the input. If you input just ``%H:%M:%S``, the DATE_FORMAT can't output a format like this ``%Y-%m-%d``, because the function didn't receive any date information. It only received time information. So, DATE_FORMAT can't be used to exterpolate information that's not present.
+   Consider that the flexibility of the function depends on the input. If you input just ``%H:%M:%S``, the DATE_FORMAT cannot output a format like this ``%Y-%m-%d``, because the function did not receive any date information, only time information. So, DATE_FORMAT cannot be used to extrapolate information that is not present.
 
 .. rubric:: Return value
 
 The function will output the exact format as requested in the last (second or third argument). There are a few things you must consider when working with the DATE_FORMAT function. The types of operators you can use with DATE_FORMAT depends on the output format requested. If you want to compare the output format ``%c`` you can only use the ``IS`` operator, because the final output will be interpreted as a string value. If you want to compare ``%H.%M``, you will need numeric operators like ``==``, ``>``, or ``<``, because the output will be evaluated as a number.
 
-Also consider the usage of quotes. The flexibility in which DATE_FORMAT can format date and time values isn't always accepted by pilight. For example: ``DATE_FORMAT(datetime, %c)`` outputs ``Fri Apr 24 11:35:36 2015`` which pilight subsequently can't handle. If you want to output string like this, use quotes ``DATE_FORMAT(datetime, "%c")``, which will output as ``"Fri Apr 24 11:35:36 2015"``.
+Also consider the usage of quotes. The flexibility in which DATE_FORMAT can format date and time values is not always accepted by pilight. For example: ``DATE_FORMAT(datetime, %c)`` outputs ``Fri Apr 24 11:35:36 2015`` which pilight subsequently can't handle. If you want to output a string like this, use quotes ``DATE_FORMAT(datetime, "%c")``, which will output as ``"Fri Apr 24 11:35:36 2015"``.
 
 .. rubric:: Examples
 
@@ -53,7 +53,7 @@ Also consider the usage of quotes. The flexibility in which DATE_FORMAT can form
 
 .. note:: **DATE_ADD as an argument**
 
-When you use DATE_ADD as the first argument, you should consider the return value of DATE_ADD, because that's what DATE_FORMAT will eventually receive. The output format of DATE_ADD is ``"%Y-%m-%d %H:%M:%S"``, so the input format for DATE_FORMAT should be the same.
+When you use DATE_ADD as the first argument, you should consider the return value of DATE_ADD, because that is what DATE_FORMAT will eventually receive. The output format of DATE_ADD is ``"%Y-%m-%d %H:%M:%S"``, so the input format for DATE_FORMAT should be the same.
 
 .. rubric:: Formatting characters
 
@@ -106,7 +106,7 @@ When you use DATE_ADD as the first argument, you should consider the return valu
 +---------------+------------------------------------------------------------------------+--------------------------+
 | %S            | Second (00-61)                                                         | 02                       |
 +---------------+------------------------------------------------------------------------+--------------------------+
-| %t            | Horizontal-tab character ('\t')                                        |                          |
+| %t            | Horizontal tab character ('\t')                                        |                          |
 +---------------+------------------------------------------------------------------------+--------------------------+
 | %T            | ISO 8601 time format (HH:MM:SS), equivalent to %H:%M:%S                | 14:55:02                 |
 +---------------+------------------------------------------------------------------------+--------------------------+

@@ -32,7 +32,7 @@ Second, this page is made for those users using the developmental GitHub branch.
 #. You have the patience to help finding the problem.
 #. You have some knowledge about programming (and the C language).
 #. You know when to recognize a clear code bug.
-#. You are able to manually compile pilight so debugging is possible. The automatically compiled versions do not support debugging as described here.
+#. You are able to manually compile a Debug build of pilight. The automatically compiled versions do not support debugging as described here.
 
 How to Recognize a Bug?
 -----------------------
@@ -53,12 +53,12 @@ A segmentation fault looks like this:
    [....] Starting : pilightSegmentation fault
    failed!
 
-This message means there has been a general error in which pilight so it cannot be started properly.
+This message means there has been a general error in pilight so it cannot be started properly.
 
 How to Debug?
 -------------
 
-To debug C code, the GNU Debugger is used, also called gdb. This program will run next to pilight without any performance issue, but when pilight crashes, it allows us to track the specific line where the error occurred. So first of all, make sure you have gdb installed. This is how you start gdb together with pilight:
+To debug C code, the GNU Debugger is used, also called gdb. This program will run next to pilight without any performance issue, but when pilight crashes, it allows us to track the specific line where the error occurred. If you haven't done so already, you will need to compile or install a debug build of pilight. Make sure you have gdb installed. This is how you start gdb together with pilight:
 
 .. code-block:: console
 

@@ -43,7 +43,7 @@ Elro HE (300 Series)
 
    {
      "devices": {
-       "dimmer": {
+       "tvlight": {
          "protocol": [ "elro_300_switch" ],
          "id": [{
            "systemcode": 123456,
@@ -53,8 +53,8 @@ Elro HE (300 Series)
        }
      },
      "gui": {
-       "Lamp": {
-         "name": "TV Backlit",
+       "tvlight": {
+         "name": "TV Backlight",
          "group": [ "Living" ],
          "media": [ "all" ]
        }
@@ -78,9 +78,9 @@ Elro HE (300 Series)
 +----------------------+-------------+------------+------------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                            |
 +----------------------+-------------+------------+------------------------------------------------------------+
-| all                  | 1           | 1 or 0     | | If specified this will trigger the **group** function of |
-|                      |             |            | | the advanced remotes and trigger all registered devices  |
-|                      |             |            | | for the given Systemcode                                 |
+| all                  | 0           | 0 or 1     | If specified this will trigger the "group" function of     |
+|                      |             |            | the advanced remotes and trigger all registered devices    |
+|                      |             |            | for the given Systemcode                                   |
 +----------------------+-------------+------------+------------------------------------------------------------+
 
 :underline:`GUI Settings`
@@ -88,9 +88,9 @@ Elro HE (300 Series)
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| readonly             | 1           | 1 or 0     | Disable controlling this device from the GUIs             |
+| readonly             | 0           | 0 or 1     | Disable controlling this device from the GUIs             |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| confirm              | 1           | 1 or 0     | Ask for confirmation when switching device                |
+| confirm              | 0           | 0 or 1     | Ask for confirmation when switching device                |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. Note::
@@ -174,7 +174,7 @@ There are several easily identifiable facts here:
 - ``320 960 960 320``
 
 #. The baseline is at 302
-#. The high Pulse is basline * 4 = 1208
+#. The high Pulse is baseline * 4 = 1208
 #. The last 2-pulse sequence is special, it's the footer of the message
 
 Using a translation pattern of **302 1208** → 1 and **302 302** → 0 we translate this sequence into the following pattern

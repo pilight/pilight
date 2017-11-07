@@ -74,20 +74,14 @@ Ninja Blocks Weather Sensor
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| temperature-decimals | 2           | number     | How many decimals the GUIs should display for temperature |
+| temperature-decimals | 2           | number     | Number of decimal places to show for temperature          |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| humidity-decimals    | 2           | number     | How many decimals the GUIs should display for humidity    |
+| humidity-decimals    | 2           | number     | Number of decimal places to show for humidity             |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-temperature     | 1           | 1 or 0     | Don't display the temperature value                       |
+| show-temperature     | 1           | 0 or 1     | Whether to display the temperature value                  |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-humidity        | 1           | 1 or 0     | Don't display the humidity value                          |
+| show-humidity        | 1           | 0 or 1     | Whether to display the humidity value                     |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-
-.. rubric:: Comments
-
-This weather station was available at the Lidl. Description for device could be: “Auriol IAN 89210 FUNK-WEATHER STATION/RADIO CONTROLLED WEATHER”, Hama EWS-750 (not confirmed) and IAN 55982 (neither confirmed). The sensor can be identified by the option to choose from 3 different channels.
-
-Humidity and battery assumed to be supported by this protocol, but might not be. The battery function is not tested 100% and humidity seems to vary regularly. Please be aware that the ID of a sensor is actually the channel.
 
 .. rubric:: Protocol
 
@@ -97,7 +91,7 @@ The protocol sends 74 pulses like:
 
    1083 860 966 986 1970 1953 2083 1829 1927 1014 938 1978 1943 993 946 1003 953 1983 2056 877 934 1020 931 1070 884 2013 1893 1012 930 2008 923 1019 1995 1930 925 1026 978 985 1891 1052 907 1036 913 2031 901 1034 916 1067 1881 1988 971 1004 890 1060 754 72330
 
-The pulse stream uses the “Bi-Phase Mark Code” (BMC) or Frequencey/Double Frequency (F2F) principle as defined in ISO/IEC7811.
+The pulse stream uses the “Bi-Phase Mark Code" (BMC) or Frequencey/Double Frequency (F2F) principle as defined in ISO/IEC7811.
 
 The first 6 pulses are the SYNC header and the last pulse is the footer. These are meant to identify the pulses as genuine. We check for their presence, an error in the first pulse of the header is tolerated, if the second sync pulse after the Unit code and the parity bit is correct, the length of the footer pulse is used to identify the protocol and as end of data transmission.
 

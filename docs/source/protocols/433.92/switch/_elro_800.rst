@@ -41,7 +41,7 @@
 
    {
      "devices": {
-       "dimmer": {
+       "tvlamp": {
          "protocol": [ "elro_800_switch" ],
          "id": [{
            "systemcode": 31,
@@ -51,8 +51,8 @@
        }
      },
      "gui": {
-       "Lamp": {
-         "name": "TV Backlit",
+       "tvlamp": {
+         "name": "TV Backlight",
          "group": [ "Living" ],
          "media": [ "all" ]
        }
@@ -76,9 +76,9 @@
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| readonly             | 1           | 1 or 0     | Disable controlling this device from the GUIs             |
+| readonly             | 0           | 0 or 1     | Disable controlling this device from the GUIs             |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| confirm              | 1           | 1 or 0     | Ask for confirmation when switching device                |
+| confirm              | 0           | 0 or 1     | Ask for confirmation when switching device                |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. Note:: Workaround for 800 Series
@@ -98,7 +98,10 @@ This protocol sends 50 pulses like this
 
    320 960 320 960 320 960 320 960 320 960 320 960 320 960 320 960 320 960 320 960 320 960 320 960 320 960 960 320 320 960 960 320 320 960 960 320 320 960 960 320 320 960 320 960 320 960 960 320 320 9920
 
-It has no ``header`` and the last 2 pulses are the ``footer``. These are meant to identify the pulses as genuine, and the protocol also has some bit checks to filter false positives. We don't use them for further processing. The next step is to transform this output into 12 groups of 4 pulses (and thereby dropping the ``footer`` pulses).
+It has no ``header`` and the last 2 pulses are the ``footer``.
+These are meant to identify the pulses as genuine, and the protocol also has some bit checks to filter false positives.
+We don't use them for further processing.
+The next step is to transform this output into 12 groups of 4 pulses (and thereby dropping the ``footer`` pulses).
 
 .. code-block:: console
 
@@ -121,7 +124,9 @@ If we now look at carefully at these groups you can distinguish three types of g
 - ``320 960 320 960``
 - ``320 960 960 320``
 
-So the first group is defined by a high 4th pulse and the second group has a low 4th pulse. In this case we say a high 4th pulse means a 1 and a low 4th pulse means a 0. We then get the following output:
+So the first group is defined by a high 4th pulse and the second group has a low 4th pulse.
+In this case we say a high 4th pulse means a 1 and a low 4th pulse means a 0.
+We then get the following output:
 
 .. code-block:: console
 
@@ -175,4 +180,7 @@ The numeric mapping of a button on the remote control is binary counted, as foll
 - D = 8
 - E = 16
 
-All possible combinations of dip switches on the socket can be used with pilight. For instance, if you set the switches that correspond to A and E, the socket will react on unit code “A+E”: 17 (1+16). By pushing A and E simultaneously on the remote, you can also switch the corresponding socket. However, this may also trigger sockets that are listening to A and/or E if you don't push both buttons at exactly the same time.
+All possible combinations of dip switches on the socket can be used with pilight.
+For instance, if you set the switches that correspond to A and E, the socket will react on unit code “A+E": 17 (1+16).
+By pushing A and E simultaneously on the remote, you can also switch the corresponding socket.
+However, this may also trigger sockets that are listening to A and/or E if you don't push both buttons at exactly the same time.

@@ -68,8 +68,6 @@ Arping
 
 The arping protocol doesn't have a GUI representation. You can of course use the arping protocol in your rules.
 
-The ping protocol doesn't have a GUI representation. You can of course use the ping protocol in your rules.
-
 .. rubric:: Note
 
 The MAC address must be written in lowercase.

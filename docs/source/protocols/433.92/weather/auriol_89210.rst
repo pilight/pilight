@@ -42,7 +42,6 @@ Auriol 89210
            "id": 3
          }],
          "temperature": 18.90,
-         "humidity": 41.00,
          "battery": 1
         }
      },
@@ -58,11 +57,9 @@ Auriol 89210
 +------------------+-----------------+
 | **Option**       | **Value**       |
 +------------------+-----------------+
-| id               | 0 - 9           |
+| id               | 0 - 255         |
 +------------------+-----------------+
 | temperature      | 0 - 50          |
-+------------------+-----------------+
-| humidity         | 20 - 99         |
 +------------------+-----------------+
 | battery          | 0 - 1           |
 +------------------+-----------------+
@@ -71,33 +68,27 @@ Auriol 89210
 
 :underline:`Device Settings`
 
-+--------------------+-------------+------------+---------------------------+
-| **Setting**        | **Default** | **Format** | **Description**           |
-+--------------------+-------------+------------+---------------------------+
-| humidity-offset    | 0           | number     | Correct humidity value    |
-+--------------------+-------------+------------+---------------------------+
-| temperature-offset | 0           | number     | Correct temperature value |
-+--------------------+-------------+------------+---------------------------+
++--------------------+-------------+------------+-----------------------------------------+
+| **Setting**        | **Default** | **Format** | **Description**                         |
++--------------------+-------------+------------+-----------------------------------------+
+| temperature-offset | 0           | number     | Offset for correcting temperature value |
++--------------------+-------------+------------+-----------------------------------------+
 
 :underline:`GUI Settings`
 
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| temperature-decimals | 2           | number     | How many decimals the GUIs should display for temperature |
+| temperature-decimals | 2           | number     | Number of decimal places to show for temperature          |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| humidity-decimals    | 2           | number     | How many decimals the GUIs should display for humidity    |
+| show-temperature     | 1           | 0 or 1     | Whether to display the temperature value                  |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-temperature     | 1           | 1 or 0     | Don't display the temperature value                       |
-+----------------------+-------------+------------+-----------------------------------------------------------+
-| show-humidity        | 1           | 1 or 0     | Don't display the humidity value                          |
-+----------------------+-------------+------------+-----------------------------------------------------------+
-| show-battery         | 1           | 1 or 0     | Don't display the battery value                           |
+| show-battery         | 1           | 0 or 1     | Whether to display the battery value                      |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. rubric:: Comments
 
-This weather station was available at the Lidl. Description for device could be: “Auriol IAN 89210 FUNK-WEATHER STATION/RADIO CONTROLLED WEATHER”, Hama EWS-750 (not confirmed) and IAN 55982 (neither confirmed). The sensor can be identified by the option to choose from 3 different channels.
+This weather station was available at the Lidl. Description for device could be: “Auriol IAN 89210 FUNK-WEATHER STATION/RADIO CONTROLLED WEATHER", Hama EWS-750 (not confirmed) and IAN 55982 (not confirmed). The sensor can be identified by the option to choose from 3 different channels.
 
 Humidity and battery assumed to be supported by this protocol, but might not be. The battery function is not tested 100% and humidity seems to vary regularly. Please be aware that the ID of a sensor is actually the channel.
 
@@ -107,12 +98,12 @@ This protocol has similarities with the protocols alecto and threechan.
 
 Each (group of 2) numbers have the following specific meaning:
 
-  - Battery ID 0 untill 7 (assumed)
+  - Battery ID 0 until 7 (assumed)
   - Battery: 8
   - TX mode: 9
-  - Channel: 10 untill 11 (3 = 10, 2 = 01, 1 = 11)
-  - Temperature: 12 untill 23
-  - Humidity: 24 untill 31 (assumed, alternatively this might be a checksum)
+  - Channel: 10 until 11 (3 = 10, 2 = 01, 1 = 11)
+  - Temperature: 12 until 23
+  - Humidity: 24 until 31 (assumed, alternatively this might be a checksum)
   - Footer: 32
   - The Battery ID is not used
   - The Battery identifies the state of the battery

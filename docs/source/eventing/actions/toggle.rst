@@ -9,7 +9,7 @@ Toggle
 
 .. rubric:: Description
 
-Toggles a device between state X and state Y. This action is especially made for ``one-shot`` devices such as a remote control button where a normal separate 'switch-on' and separate 'switch-off' rule doesn't apply. This action will check what the current state of a device is, and will change it to the non-current state.
+Toggles a device between state X and state Y. This action is especially made for ``one-shot`` devices such as a remote control button where a normal separate 'switch-on' and separate 'switch-off' rule does not apply. This action will check what the current state of a device is, and will change it to the inverse state.
 
 .. rubric:: Options
 

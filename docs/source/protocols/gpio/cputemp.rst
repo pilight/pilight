@@ -75,7 +75,7 @@ CPU Temperature
 +--------------------+-------------+------------+-------------------------------------------------+
 | poll-interval      | 5           | seconds    | What should be the poll interval of the sensors |
 +--------------------+-------------+------------+-------------------------------------------------+
-| temperature-offset | 0           | number     | Correct temperature value                       |
+| temperature-offset | 0           | number     | Offset for correcting temperature value         |
 +--------------------+-------------+------------+-------------------------------------------------+
 
 :underline:`GUI Settings`
@@ -83,9 +83,9 @@ CPU Temperature
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| temperature-decimals | 1           | number     | How many decimals the GUIs should display for temperature |
+| temperature-decimals | 1           | number     | Number of decimal places to show for temperature          |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-temperature     | 1           | 1 or 0     | Don't display the temperature value                       |
+| show-temperature     | 1           | 1 or 0     | Whether to display the temperature value                  |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. rubric:: Comments

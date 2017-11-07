@@ -107,7 +107,7 @@ We then get the following output:
 The first 10 bits correspond to the setting of the ten dip switches inside the smoke sensor.
 If a dip switch is ON, this corresponds to 1 and 0 otherwise.
 The meaning of the two last bits is unknown.
-When reversing the first 10 bits because the first bits are least signifant we get the smoke sensors ID as binary number
+When reversing the first 10 bits because the first bits are least significant we get the smoke sensors ID as binary number
 
 .. code-block:: guess
 

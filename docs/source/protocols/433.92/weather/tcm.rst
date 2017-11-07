@@ -73,28 +73,28 @@ TCM 218943
 
 :underline:`Device Settings`
 
-+--------------------+-------------+------------+---------------------------+
-| **Setting**        | **Default** | **Format** | **Description**           |
-+--------------------+-------------+------------+---------------------------+
-| temperature-offset | 0           | number     | Correct temperature value |
-+--------------------+-------------+------------+---------------------------+
-| humidity-offset    | 0           | number     | Correct humidity value    |
-+--------------------+-------------+------------+---------------------------+
++--------------------+-------------+------------+-----------------------------------------+
+| **Setting**        | **Default** | **Format** | **Description**                         |
++--------------------+-------------+------------+-----------------------------------------+
+| temperature-offset | 0           | number     | Offset for correcting temperature value |
++--------------------+-------------+------------+-----------------------------------------+
+| humidity-offset    | 0           | number     | Offset for correcting humidity value    |
++--------------------+-------------+------------+-----------------------------------------+
 
 :underline:`GUI Settings`
 
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| temperature-decimals | 2           | number     | How many decimals the GUIs should display for temperature |
+| temperature-decimals | 2           | number     | Number of decimal places to show for temperature          |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| humidity-decimals    | 2           | number     | How many decimals the GUIs should display for humidity    |
+| humidity-decimals    | 2           | number     | Number of decimal places to show for humidity             |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-temperature     | 1           | 1 or 0     | Don't display the temperature value                       |
+| show-temperature     | 1           | 0 or 1     | Whether to display the temperature value                  |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-humidity        | 1           | 1 or 0     | Don't display the humidity value                          |
+| show-humidity        | 1           | 0 or 1     | Whether to display the humidity value                     |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-battery         | 1           | 1 or 0     | Don't display the battery value                           |
+| show-battery         | 1           | 0 or 1     | Whether to display the battery value                      |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. rubric:: Protocol

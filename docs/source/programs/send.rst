@@ -7,9 +7,9 @@ Send data to a pilight daemon
 
 :Date:           2017
 :Copyright:      MPLv2
-:Version:        7.0
+:Version:        8.0
 :Manual section: 1
-:Manual group:   pilight 7.0 man pages
+:Manual group:   pilight 8.0 man pages
 
 SYNOPSIS
 ========
@@ -20,7 +20,7 @@ SYNOPSIS
 DESCRIPTION
 ===========
 
-``pilight-send`` is a tool to send data to a pilight daemon instance. It is a more versatile tool than ``pilight-control``, because it does not require the device to be previously configured.
+``pilight-send`` is a tool to send data to a pilight daemon instance. It is a more versatile tool than ``pilight-control``, because it does not require the device to be configured in pilight.
 
 It can be used to send signals for any pilight protocol that supports sending.
 

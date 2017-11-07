@@ -82,11 +82,11 @@ OpenWeatherMap
 +--------------------+-------------+------------+---------------------------------------------+
 | **Setting**        | **Default** | **Format** | **Description**                             |
 +--------------------+-------------+------------+---------------------------------------------+
-| humidity-offset    | 0           | number     | Correct humidity value                      |
+| humidity-offset    | 0           | number     | Offset for correcting humidity value        |
 +--------------------+-------------+------------+---------------------------------------------+
-| temperature-offset | 0           | number     | Correct temperature value                   |
+| temperature-offset | 0           | number     | Offset for correcting temperature value     |
 +--------------------+-------------+------------+---------------------------------------------+
-| poll-interval      | 86400       | seconds    | What should be the poll interval of the API |
+| poll-interval      | 86400       | seconds    | The poll interval of the API                |
 +--------------------+-------------+------------+---------------------------------------------+
 
 :underline:`GUI Settings`
@@ -94,20 +94,22 @@ OpenWeatherMap
 +----------------------+-------------+------------+----------------------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                                      |
 +----------------------+-------------+------------+----------------------------------------------------------------------+
-| temperature-decimals | 2           | number     | How many decimals the GUIs should display for temperature            |
+| temperature-decimals | 2           | number     | Number of decimal places to show for temperature                     |
 +----------------------+-------------+------------+----------------------------------------------------------------------+
-| humidity-decimals    | 2           | number     | How many decimals the GUIs should display for humidity               |
+| humidity-decimals    | 2           | number     | Number of decimal places to show for humidity                        |
 +----------------------+-------------+------------+----------------------------------------------------------------------+
-| sunriseset-decimals  | 2           | number     | How many decimals the GUIs should display for sunrise/sunset time    |
+| sunriseset-decimals  | 2           | number     | Number of decimal places to show for sunrise/sunset time             |
 +----------------------+-------------+------------+----------------------------------------------------------------------+
-| show-humidity        | 1           | 1 or 0     | Don't display the humidity value                                     |
+| show-humidity        | 1           | 0 or 1     | Whether to display the humidity value                                |
 +----------------------+-------------+------------+----------------------------------------------------------------------+
-| show-temperature     | 1           | 1 or 0     | Don't display the temperature value                                  |
+| show-temperature     | 1           | 0 or 1     | Whether to display the temperature value                             |
 +----------------------+-------------+------------+----------------------------------------------------------------------+
-| show-battery         | 0           | 1 or 0     | Don't display the battery value                                      |
+| show-sunriseset      | 1           | 0 or 1     | Whether to display the sunrise/sunset time                           |
++----------------------+-------------+------------+----------------------------------------------------------------------+
+| show-update          | 1           | 0 or 1     | Whether to display the update button                                 |
 +----------------------+-------------+------------+----------------------------------------------------------------------+
 
 
 .. rubric:: Comment
 
-#.  Please notice that the open weather map interval cannot be less than 10 minutes (600 seconds) to respect open weather map traffic and policy
+#.  Please note that the openweathermap poll-interval cannot be less than 10 minutes (600 seconds) to respect open weather map traffic and policy

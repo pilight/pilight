@@ -22,7 +22,7 @@ Introduction
 
 pilight can be ran with or without a fixed devices set-up. The advantage of a fixed device set-up is that pilight can use them in events and for external clients such as the built-in webGUI. Status updates will automatically be updated just like information from weather information.
 
-The protocol names outputted by *pilight-receive* are not (always) the same as the protocols used in the device setup. The reason for this, is that various brands use the same underlying protocol. The arctech_switch protocol is used by at least five different brands. So there is the same underlying protocol for each of these brands.
+The protocol names outputted by *pilight-receive* are not (always) the same as the protocols used in the device setup. The reason for this is that various brands use the same underlying protocol. The arctech_switch protocol is used by at least five different brands. So there is the same underlying protocol for each of these brands.
 
 #. Check the brand of the device you want to define in the device set-up.
 #. Check if your device is recognize in *pilight-receive*.
@@ -45,7 +45,7 @@ Structure
          }],
          "state": "off"
        },
-        "bookShelfLight": {
+       "bookShelfLight": {
          "protocol": [ "kaku_switch" ],
          "id": [{
            "id": 123456,
@@ -87,7 +87,7 @@ pilight can work with various device types. Each device type has different funct
 	}
 	{
 		"origin": "sender",
-		"protocol": "arctech_dimmers",
+		"protocol": "arctech_dimmer",
 		"code": {
 			"id": 100,
 			"unit": 15,
@@ -97,7 +97,7 @@ pilight can work with various device types. Each device type has different funct
 	}
 	{
 		"origin": "sender",
-		"protocol": "arctech_screens",
+		"protocol": "arctech_screen",
 		"code": {
 			"id": 100,
 			"unit": 15,
@@ -174,7 +174,7 @@ Overriding Protocol Settings
 
 Each protocol has some specific settings you can override in your device set-up. What these settings are, can be found in the protocols section of this manual. These settings can change the internal functioning of a protocol or the values a protocol can take. These settings are device specific.
 
-For example, we do not want to have our dimmer to go to a full dimlevel, because then it is to bright. But we also do not want it to go to its minimum dimlevel, because then it is to dim. In that case, you can override the minimum and maximum values of the dimmer:
+For example, we might not want to have our dimmer to go to a full dimlevel, because then it is too bright. But we also do not want it to go to its minimum dimlevel, because then it is too dim. In that case, you can override the minimum and maximum values of the dimmer:
 
 .. code-block:: json
    :linenos:

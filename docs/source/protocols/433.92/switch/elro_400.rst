@@ -4,7 +4,7 @@
 .. role:: underline
    :class: underline
 
-Elro HE (300 Series)
+Elro HE (400 Series)
 ====================
 
 +------------------+-------------+
@@ -42,7 +42,7 @@ Elro HE (300 Series)
 
    {
      "devices": {
-       "dimmer": {
+       "tvlight": {
          "protocol": [ "elro_400_switch" ],
          "id": [{
            "systemcode": 31,
@@ -52,8 +52,8 @@ Elro HE (300 Series)
        }
      },
      "gui": {
-       "Lamp": {
-         "name": "TV Backlit",
+       "tvlight": {
+         "name": "TV Backlight",
          "group": [ "Living" ],
          "media": [ "all" ]
        }
@@ -77,9 +77,9 @@ Elro HE (300 Series)
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| readonly             | 1           | 1 or 0     | Disable controlling this device from the GUIs             |
+| readonly             | 0           | 0 or 1     | Disable controlling this device from the GUIs             |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| confirm              | 1           | 1 or 0     | Ask for confirmation when switching device                |
+| confirm              | 0           | 0 or 1     | Ask for confirmation when switching device                |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. rubric:: Protocol
@@ -90,7 +90,10 @@ This protocol sends 50 pulses like this
 
    320 960 320 960 320 960 320 960 320 960 320 960 320 960 320 960 320 960 320 960 320 960 320 960 320 960 960 320 320 960 960 320 320 960 960 320 320 960 960 320 320 960 320 960 320 960 960 320 320 9920
 
-It has no ``header`` and the last 2 pulses are the ``footer``. These are meant to identify the pulses as genuine, and the protocol also has some bit checks to filter false positives. We don't use them for further processing. The next step is to transform this output into 12 groups of 4 pulses (and thereby dropping the ``footer`` pulses).
+It has no ``header`` and the last 2 pulses are the ``footer``.
+These are meant to identify the pulses as genuine, and the protocol also has some bit checks to filter false positives.
+We don't use them for further processing.
+The next step is to transform this output into 12 groups of 4 pulses (and thereby dropping the ``footer`` pulses).
 
 .. code-block:: console
 
@@ -113,7 +116,8 @@ If we now look at carefully at these groups you can distinguish two types of gro
 - ``320 960 320 960``
 - ``320 960 960 320``
 
-So the first group is defined by a high 4th pulse and the second group has a low 4th pulse. In this case we say a high 4th pulse means a 0 and a low 4th pulse means a 1. We then get the following output:
+So the first group is defined by a high 4th pulse and the second group has a low 4th pulse.
+In this case we say a high 4th pulse means a 0 and a low 4th pulse means a 1. We then get the following output:
 
 .. code-block::console
 
@@ -137,15 +141,15 @@ Each (group) of numbers has a specific meaning:
 
 So this code represents:
 
-- SystemCode: 31 (inversed)
-- UnitCode: 1 (inversed)
+- SystemCode: 31 (inverted)
+- UnitCode: 1 (inverted)
 - State: On (inverse state)
 - Check: On
 
 Another example:
 
-- SystemCode: 0 (inversed)
-- UnitCode: 4 (inversed)
+- SystemCode: 0 (inverted)
+- UnitCode: 4 (inverted)
 - State: Off (inverse state)
 - Check: Off
 

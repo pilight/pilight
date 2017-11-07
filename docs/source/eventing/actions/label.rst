@@ -24,10 +24,10 @@ Changes the text and color of a generic label device.
 +----------+------------------+---------------------+---------------------------------------------------+
 | **Name** | **Required**     | **Multiple Values** | **Description**                                   |
 +----------+------------------+---------------------+---------------------------------------------------+
-| FOR      | |no|             | |no|                | | Determine how long this new label lasts         |
-|          |                  |                     | | before we change back to the previous label     |
+| FOR      | |no|             | |no|                | Determine how long the new label lasts            |
+|          |                  |                     | before changing back to the previous label        |
 +----------+------------------+---------------------+---------------------------------------------------+
-| AFTER    | |no|             | |no|                | After how long do we want the new label to be set |
+| AFTER    | |no|             | |no|                | Time to wait before setting the new label         |
 +----------+------------------+---------------------+---------------------------------------------------+
 
 .. note:: Units for ``FOR`` and ``AFTER``

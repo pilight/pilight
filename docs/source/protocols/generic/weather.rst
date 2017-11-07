@@ -72,26 +72,26 @@ Weather
 
 :underline:`Device Settings`
 
-+--------------------+-------------+------------+---------------------------+
-| **Setting**        | **Default** | **Format** | **Description**           |
-+--------------------+-------------+------------+---------------------------+
-| humidity-offset    | 0           | number     | Correct humidity value    |
-+--------------------+-------------+------------+---------------------------+
-| temperature-offset | 0           | number     | Correct temperature value |
-+--------------------+-------------+------------+---------------------------+
++--------------------+-------------+------------+---------------------------------------------+
+| **Setting**        | **Default** | **Format** | **Description**                             |
++--------------------+-------------+------------+---------------------------------------------+
+| humidity-offset    | 0           | number     | Offset for correcting humidity value        |
++--------------------+-------------+------------+---------------------------------------------+
+| temperature-offset | 0           | number     | Offset for correcting temperature value     |
++--------------------+-------------+------------+---------------------------------------------+
 
 :underline:`GUI Settings`
 
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| temperature-decimals | 2           | number     | How many decimals the GUIs should display for temperature |
+| temperature-decimals | 2           | number     | Number of decimal places to show for temperature          |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| humidity-decimals    | 2           | number     | How many decimals the GUIs should display for humidity    |
+| humidity-decimals    | 2           | number     | Number of decimal places to show for humidity             |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-humidity        | 1           | 1 or 0     | Don't display the humidity value                          |
+| show-humidity        | 1           | 0 or 1     | Whether to display the humidity value                     |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-temperature     | 1           | 1 or 0     | Don't display the temperature value                       |
+| show-temperature     | 1           | 0 or 1     | Whether to display the temperature value                  |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-battery         | 0           | 1 or 0     | Don't display the battery value                           |
+| show-battery         | 0           | 0 or 1     | Whether to display the battery value                      |
 +----------------------+-------------+------------+-----------------------------------------------------------+

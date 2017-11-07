@@ -7,9 +7,9 @@ Show datagrams received and transmitted by pilight
 
 :Date:           2017
 :Copyright:      MPLv2
-:Version:        7.0
+:Version:        8.0
 :Manual section: 1
-:Manual group:   pilight 7.0 man pages
+:Manual group:   pilight 8.0 man pages
 
 SYNOPSIS
 ========
@@ -46,13 +46,10 @@ Mandatory arguments to long options are mandatory for short options too.
 |
 | ``-F``, ``--filter=PROTOCOL(S)``
 |  Specify protocols that should not be printed in the
-|  output stream. This is useful when trying to find
-|  IDs of devices such as weather stations or remote
-|  controls, but certain protocols are spamming the
-|  output. For example, datetime protocol data is
+|  output stream. For example, datetime protocol data is
 |  transmitted every second, and is likely to displace
 |  useful information in the output stream. It can
-|  then be hidden with --filter=datetime
+|  then be hidden with ``--filter=datetime``
 
 BUGS
 ====

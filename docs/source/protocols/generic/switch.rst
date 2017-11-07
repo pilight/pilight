@@ -68,7 +68,7 @@ Switch
 +------------------+-------------+------------+-----------------------------------------------+
 | **Setting**      | **Default** | **Format** | **Description**                               |
 +------------------+-------------+------------+-----------------------------------------------+
-| readonly         | 0           | 1 or 0     | Disable controlling this device from the GUIs |
+| readonly         | 0           | 0 or 1     | Disable controlling this device from the GUIs |
 +------------------+-------------+------------+-----------------------------------------------+
-| confirm          | 0           | 1 or 0     | Ask for confirmation when switching device    |
+| confirm          | 0           | 0 or 1     | Ask for confirmation when switching device    |
 +------------------+-------------+------------+-----------------------------------------------+

@@ -61,11 +61,11 @@
 +------------------+-----------------+
 | **Option**       | **Value**       |
 +------------------+-----------------+
-| id               | 0 - 9           |
+| id               | 0 - 255         |
 +------------------+-----------------+
 | temperature      | -39.9 - 59.9    |
 +------------------+-----------------+
-| humidity         | 10 - 99         |
+| humidity         | 0 - 99          |
 +------------------+-----------------+
 | battery          | 0 - 1           |
 +------------------+-----------------+
@@ -78,28 +78,28 @@
 
 :underline:`Device Settings`
 
-+--------------------+-------------+------------+---------------------------+
-| **Setting**        | **Default** | **Format** | **Description**           |
-+--------------------+-------------+------------+---------------------------+
-| temperature-offset | 0           | number     | Correct temperature value |
-+--------------------+-------------+------------+---------------------------+
-| humidity-offset    | 0           | number     | Correct humidity value    |
-+--------------------+-------------+------------+---------------------------+
++--------------------+-------------+------------+-----------------------------------------+
+| **Setting**        | **Default** | **Format** | **Description**                         |
++--------------------+-------------+------------+-----------------------------------------+
+| temperature-offset | 0           | number     | Offset for correcting temperature value |
++--------------------+-------------+------------+-----------------------------------------+
+| humidity-offset    | 0           | number     | Offset for correcting humidity value    |
++--------------------+-------------+------------+-----------------------------------------+
 
 :underline:`GUI Settings`
 
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| temperature-decimals | 2           | number     | How many decimals the GUIs should display for temperature |
+| temperature-decimals | 2           | number     | Number of decimal places to show for temperature          |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| humidity-decimals    | 2           | number     | How many decimals the GUIs should display for humidity    |
+| humidity-decimals    | 2           | number     | Number of decimal places to show for humidity             |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-temperature     | 1           | 1 or 0     | Don't display the temperature value                       |
+| show-temperature     | 1           | 0 or 1     | Whether to display the temperature value                  |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-humidity        | 1           | 1 or 0     | Don't display the humidity value                          |
+| show-humidity        | 1           | 0 or 1     | Whether to display the humidity value                     |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-battery         | 1           | 1 or 0     | Don't display the battery value                           |
+| show-battery         | 1           | 0 or 1     | Whether to display the battery value                      |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. rubric:: Protocol
@@ -200,6 +200,6 @@ This protocol was created for pilight with the help of this thread: http://forum
 
 .. rubric:: Comments
 
-This weather station or just the sensor is available from several (mostly Chinese) suppliers on eBay or Alibaba. Description for device is usually like: “Digital Wireless Indoor/Outdoor Weather Station with 3 Remote Sensors”. The sensor can be identified by the option to choose from 3 different channels.
+This weather station or just the sensor is available from several (mostly Chinese) suppliers on eBay or Alibaba. Description for device is usually like: “Digital Wireless Indoor/Outdoor Weather Station with 3 Remote Sensors". The sensor can be identified by the option to choose from 3 different channels.
 
-Humidity and battery are supported by this protocol. The battery function is not tested 100%. Please be aware that the ID of a sensor changes after you replace the batteries. Conrad sensor only provide temperature (no humidity).
+Humidity and battery are supported by this protocol. The battery function is not tested 100%. Please be aware that the ID of a sensor changes after you replace the batteries. Conrad sensors only provide temperature data (no humidity).

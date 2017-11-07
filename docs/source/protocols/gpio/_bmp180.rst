@@ -75,9 +75,9 @@
 +--------------------+-------------+------------+-------------------------------------------------+
 | poll-interval      | 10          | seconds    | What should be the poll interval of the sensors |
 +--------------------+-------------+------------+-------------------------------------------------+
-| humidity-offset    | 0           | number     | Correct humidity value                          |
+| humidity-offset    | 0           | number     | Offset for correcting humidity value            |
 +--------------------+-------------+------------+-------------------------------------------------+
-| temperature-offset | 0           | number     | Correct temperature value                       |
+| temperature-offset | 0           | number     | Offset for correcting temperature value         |
 +--------------------+-------------+------------+-------------------------------------------------+
 
 :underline:`GUI Settings`
@@ -85,13 +85,13 @@
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| temperature-decimals | 2           | number     | How many decimals the GUIs should display for temperature |
+| temperature-decimals | 2           | number     | Number of decimal places to show for temperature          |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| pressure-decimals    | 2           | number     | How many decimals the GUIs should display for pressure    |
+| pressure-decimals    | 2           | number     | Number of decimal places to show for pressure             |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-temperature     | 1           | 1 or 0     | Don't display the temperature value                       |
+| show-temperature     | 1           | 1 or 0     | Whether to display the temperature value                  |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-pressure        | 1           | 1 or 0     | Don't display the pressure value                          |
+| show-pressure        | 1           | 1 or 0     | Whether to display the pressure value                     |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. rubric:: Comments

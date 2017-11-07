@@ -9,7 +9,7 @@ Mail on computer disconnection
 
 .. rubric:: Description
 
-Send a mail when one of the computer goes offline.
+Send a mail when a computer goes offline.
 
 .. rubric:: Devices
 

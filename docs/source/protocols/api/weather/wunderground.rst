@@ -35,7 +35,7 @@ Weather Underground
        "outside": {
          "protocol": [ "wunderground" ],
          "id": [{
-           "api": "1ihn472a6ea384jd",
+           "api": "xxxxxxxxxxxxxxxx",
            "location": "amsterdam",
            "country": "nl"
          }],
@@ -56,27 +56,27 @@ Weather Underground
      }
    }
 
-+------------------+-------------------------------------+
-| **Option**       | **Value**                           |
-+------------------+-------------------------------------+
-| api              | *valid weahter underground api key* |
-+------------------+-------------------------------------+
-| location         | *valid openweathermap location*     |
-+------------------+-------------------------------------+
-| country          | *valid country abbreviation*        |
-+------------------+-------------------------------------+
-| temperature      | -100.00 - 100.00                    |
-+------------------+-------------------------------------+
-| humitidy         | 0.00 - 100.00                       |
-+------------------+-------------------------------------+
-| sunrise          | 00.00 - 23.59                       |
-+------------------+-------------------------------------+
-| sunset           | 00.00 - 23.59                       |
-+------------------+-------------------------------------+
-| sun              | rise / set                          |
-+------------------+-------------------------------------+
-| update           | 0 - 1                               |
-+------------------+-------------------------------------+
++------------------+--------------------------------------+
+| **Option**       | **Value**                            |
++------------------+--------------------------------------+
+| api              | *valid weather underground api key*  |
++------------------+------------------------------- ------+
+| location         | *valid weather underground location* |
++------------------+--------------------------------------+
+| country          | *valid country abbreviation*         |
++------------------+--------------------------------------+
+| temperature      | -100.00 - 100.00                     |
++------------------+--------------------------------------+
+| humitidy         | 0.00 - 100.00                        |
++------------------+--------------------------------------+
+| sunrise          | 00.00 - 23.59                        |
++------------------+--------------------------------------+
+| sunset           | 00.00 - 23.59                        |
++------------------+--------------------------------------+
+| sun              | rise / set                           |
++------------------+--------------------------------------+
+| update           | 0 - 1                                |
++------------------+--------------------------------------+
 
 .. rubric:: Optional Settings
 
@@ -85,11 +85,11 @@ Weather Underground
 +--------------------+-------------+------------+---------------------------------------------+
 | **Setting**        | **Default** | **Format** | **Description**                             |
 +--------------------+-------------+------------+---------------------------------------------+
-| humidity-offset    | 0           | number     | Correct humidity value                      |
+| humidity-offset    | 0           | number     | Offset for correcting humidity value        |
 +--------------------+-------------+------------+---------------------------------------------+
-| temperature-offset | 0           | number     | Correct temperature value                   |
+| temperature-offset | 0           | number     | Offset for correcting temperature value     |
 +--------------------+-------------+------------+---------------------------------------------+
-| poll-interval      | 86400       | seconds    | What should be the poll interval of the API |
+| poll-interval      | 86400       | seconds    | The poll interval of the API                |
 +--------------------+-------------+------------+---------------------------------------------+
 
 :underline:`GUI Settings`
@@ -97,23 +97,25 @@ Weather Underground
 +----------------------+-------------+------------+----------------------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                                      |
 +----------------------+-------------+------------+----------------------------------------------------------------------+
-| temperature-decimals | 2           | number     | How many decimals the GUIs should display for temperature            |
+| temperature-decimals | 2           | number     | Number of decimal places to show for temperature                     |
 +----------------------+-------------+------------+----------------------------------------------------------------------+
-| humidity-decimals    | 2           | number     | How many decimals the GUIs should display for humidity               |
+| humidity-decimals    | 2           | number     | Number of decimal places to show for humidity                        |
 +----------------------+-------------+------------+----------------------------------------------------------------------+
-| sunriseset-decimals  | 2           | number     | How many decimals the GUIs should display for sunrise/sunset time    |
+| sunriseset-decimals  | 2           | number     | Number of decimal places to show for sunrise/sunset time             |
 +----------------------+-------------+------------+----------------------------------------------------------------------+
-| show-humidity        | 1           | 1 or 0     | Don't display the humidity value                                     |
+| show-humidity        | 1           | 0 or 1     | Whether to display the humidity value                                |
 +----------------------+-------------+------------+----------------------------------------------------------------------+
-| show-temperature     | 1           | 1 or 0     | Don't display the temperature value                                  |
+| show-temperature     | 1           | 0 or 1     | Whether to display the temperature value                             |
 +----------------------+-------------+------------+----------------------------------------------------------------------+
-| show-battery         | 0           | 1 or 0     | Don't display the battery value                                      |
+| show-sunriseset      | 1           | 0 or 1     | Whether to display the sunrise/sunset time                           |
++----------------------+-------------+------------+----------------------------------------------------------------------+
+| show-update          | 1           | 0 or 1     | Whether to display the update button                                 |
 +----------------------+-------------+------------+----------------------------------------------------------------------+
 
 
 .. rubric:: Comment
 
 
-#. Please notice that the weather underground interval cannot be less than 15 minutes due to daily polling restrictions.
+#. Please note that the weather underground poll-interval cannot be less than 15 minutes due to daily polling restrictions.
 #. This restriction also counts for the update button in the webgui. You won't receive updates within the 15 minutes between two updates.
 #. This wiki page shows a random API key. Please register yourself at wunderground.com to get your own.

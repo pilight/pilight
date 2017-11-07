@@ -87,9 +87,9 @@ XBMC / Kodi
 +------------------+-------------+------------+-----------------------------------------------+
 | **Setting**      | **Default** | **Format** | **Description**                               |
 +------------------+-------------+------------+-----------------------------------------------+
-| show-media       | 1           | 1 or 0     | Don't display the media icon                  |
+| show-media       | 1           | 0 or 1     | Whether to display the media icon             |
 +------------------+-------------+------------+-----------------------------------------------+
-| show-action      | 1           | 1 or 0     | Don't display the action icon                 |
+| show-action      | 1           | 0 or 1     | Whether to display the action icon            |
 +------------------+-------------+------------+-----------------------------------------------+
 
 .. rubric:: Comment

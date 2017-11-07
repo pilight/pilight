@@ -73,17 +73,17 @@ Sunriseset
 +----------------------+-------------+------------+----------------------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                                      |
 +----------------------+-------------+------------+----------------------------------------------------------------------+
-| sunriseset-decimals  | 2           | number     | How many decimals the GUIs should display for sunrise/sunset time    |
+| sunriseset-decimals  | 2           | number     | Number of decimal places to show for sunrise/sunset time             |
 +----------------------+-------------+------------+----------------------------------------------------------------------+
-| show-sunriseset      | 0           | 1 or 0     | Don't display the sunrise /sunset                                    |
+| show-sunriseset      | 1           | 0 or 1     | Whether to display the sunrise/sunset                                |
 +----------------------+-------------+------------+----------------------------------------------------------------------+
 
 .. rubric:: Comment
 
 The sunriseset will send three messages:
 
-#. When the sunset time has been arrived.
-#. When the sunrise time has been arrived.
+#. When the sunset time has been reached.
+#. When the sunrise time has been reached.
 #. After midnight so all values can be updated for a new day.
 
 When using sunriseset in eventing, keep in mind of the following; The output of sunriseset.sunset and sunriseset.sunrise is just a number, so the time 17:00 equals 17.00. When using it in eventing make sure you get usable numbers. For example the time for sunriseset.sunset is 16:30

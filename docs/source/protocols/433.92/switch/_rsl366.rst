@@ -41,7 +41,7 @@
 
    {
      "devices": {
-       "dimmer": {
+       "tvlamp": {
          "protocol": [ "promax" ],
          "id": [{
            "systemcode": 4,
@@ -51,8 +51,8 @@
        }
      },
      "gui": {
-       "Lamp": {
-         "name": "TV Backlit",
+       "tvlamp": {
+         "name": "TV Backlight",
          "group": [ "Living" ],
          "media": [ "all" ]
        }
@@ -76,14 +76,20 @@
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| readonly             | 1           | 1 or 0     | Disable controlling this device from the GUIs             |
+| readonly             | 0           | 0 or 1     | Disable controlling this device from the GUIs             |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| confirm              | 1           | 1 or 0     | Ask for confirmation when switching device                |
+| confirm              | 0           | 0 or 1     | Ask for confirmation when switching device                |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. note:: **RSL366**
 
-   The RSL366 switches come with two dials, one selecting the Systemcode (1 to 4) and the Programcode (1 to 4). The systemcode allows one remote to control up to 16 switches. The systemcode parameter designates the dial on top of the back side of the switch, and the small lever on the back of the remote. The programcode parameter designates the lower dial on the back of the switch, and the individual buttons on the face of the remote. So if your switch has the higher dial set to 4, and the lower one set to 1, you should use:
+   The RSL366 switches come with two dials, one selecting the Systemcode (1 to 4) and the Programcode (1 to 4).
+   The systemcode allows one remote to control up to 16 switches.
+   The systemcode parameter designates the dial on top of the back side of the switch,
+   and the small lever on the back of the remote.
+   The programcode parameter designates the lower dial on the back of the switch,
+   and the individual buttons on the face of the remote.
+   So if your switch has the higher dial set to 4, and the lower one set to 1, you should use:
 
    .. code-block:: console
 
@@ -98,7 +104,10 @@ This protocol sends 50 pulses like this
 
    390 1170 1170 390 390 1170 1170 390 390 1170 1170 390 390 1170 390 1170 390 1170 390 1170 390 1170 1170 390 390 1170 1170 390 390 1170 1170 390 390 1170 1170 390 390 1170 1170 390 390 1170 1170 390 390 1170 1170 390 390 13260
 
-It has no ``header`` and the last 2 pulses are the ``footer``. These are meant to identify the pulses as genuine, and the protocol also has some bit checks to filter false positives. We don't use them for further processing. The next step is to transform this output into 12 groups of 4 pulses (and thereby dropping the ``footer`` pulses).
+It has no ``header`` and the last 2 pulses are the ``footer``.
+These are meant to identify the pulses as genuine, and the protocol also has some bit checks to filter false positives.
+We don't use them for further processing.
+The next step is to transform this output into 12 groups of 4 pulses (and thereby dropping the ``footer`` pulses).
 
 .. code-block:: console
 

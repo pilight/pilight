@@ -9,7 +9,7 @@ XBMC / Kodi
 
 .. rubric:: Description
 
-Execute rules based on XBMC / KODI based events
+Execute rules based on XBMC / Kodi based events
 
 .. rubric:: Devices
 

@@ -43,7 +43,7 @@ Beamish
 
    {
      "devices": {
-       "dimmer": {
+       "tvlight": {
          "protocol": [ "beamish_switch" ],
          "id": [{
            "id": 8,
@@ -53,8 +53,8 @@ Beamish
        }
      },
      "gui": {
-       "Lamp": {
-         "name": "TV Backlit",
+       "tvlight": {
+         "name": "TV Backlight",
          "group": [ "Living" ],
          "media": [ "all" ]
        }
@@ -78,9 +78,9 @@ Beamish
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| readonly             | 1           | 1 or 0     | Disable controlling this device from the GUIs             |
+| readonly             | 0           | 0 or 1     | Disable controlling this device from the GUIs             |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| confirm              | 1           | 1 or 0     | Ask for confirmation when switching device                |
+| confirm              | 0           | 0 or 1     | Ask for confirmation when switching device                |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. rubric:: Protocol
@@ -91,7 +91,10 @@ This protocol sends 50 pulses like this
 
    323 1292 323 1292 323 1292 323 1292 323 1292 323 1292 323 1292 323 1292 323 1292 323 1292 323 1292 323 1292 1292 323 323 1292 323 1292 323 1292 323 1292 323 1292 1292 323 1292 323 323 1292 323 1292 323 1292 323 1292 323 10982
 
-It has no ``header`` and the last 2 pulses are the ``footer``. These are meant to identify the pulses as genuine, and the protocol also has some bit checks to filter false positives. We don't use them for further processing. The next step is to transform this output into 12 groups of 4 pulses (and thereby dropping the ``footer`` pulses).
+It has no ``header`` and the last 2 pulses are the ``footer``.
+These are meant to identify the pulses as genuine, and the protocol also has some bit checks to filter false positives.
+We don't use them for further processing.
+The next step is to transform this output into 12 groups of 4 pulses (and thereby dropping the ``footer`` pulses).
 
 .. code-block:: console
 
@@ -170,14 +173,14 @@ So this code represents:
 .. code-block:: console
 
    {
-      "code": {
-        "id": 8,
-        "unit": 2
-      },
-      "origin": "receiver",
-      "protocol": "beamish_switch",
-      "uuid": "0000-00-00-00-000000",
-      "repeats": 2
+     "code": {
+       "id": 8,
+       "unit": 2
+     },
+     "origin": "receiver",
+     "protocol": "beamish_switch",
+     "uuid": "0000-00-00-00-000000",
+     "repeats": 2
    }
 
 .. rubric:: Examples

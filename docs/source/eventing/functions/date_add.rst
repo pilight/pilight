@@ -16,12 +16,12 @@ Calculations with date and time values.
 +----------+------------------+------------------------------------------+
 | **#**    | **Required**     | **Description**                          |
 +----------+------------------+------------------------------------------+
-| 1        | |yes|            | | A datetime device or a datetime string |
-|          |                  | | The datetime string must be in the     |
-|          |                  | | format YYYY-MM-DD HH:MM:SS.            |
+| 1        | |yes|            | A datetime device or a datetime string   |
+|          |                  | The datetime string must be in the       |
+|          |                  | format YYYY-MM-DD HH:MM:SS.              |
 +----------+------------------+------------------------------------------+
-| 2        | |yes|            | | A number and unit. The number can be   |
-|          |                  | | either positive or negative.           |
+| 2        | |yes|            | A number and unit. The number can be     |
+|          |                  | either positive or negative.             |
 |          |                  | | The unit can be                        |
 |          |                  | | - SECOND                               |
 |          |                  | | - MINUTE                               |

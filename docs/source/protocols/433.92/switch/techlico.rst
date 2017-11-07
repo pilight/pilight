@@ -42,7 +42,7 @@ TechLiCo
 
    {
      "devices": {
-       "dimmer": {
+       "tvlight": {
          "protocol": [ "techlico_switch" ],
          "id": [{
            "id": 4935,
@@ -52,8 +52,8 @@ TechLiCo
        }
      },
      "gui": {
-       "Lamp": {
-         "name": "TV Backlit",
+       "tvlight": {
+         "name": "TV Backlight",
          "group": [ "Living" ],
          "media": [ "all" ]
        }
@@ -77,9 +77,9 @@ TechLiCo
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| readonly             | 1           | 1 or 0     | Disable controlling this device from the GUIs             |
+| readonly             | 0           | 0 or 1     | Disable controlling this device from the GUIs             |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| confirm              | 1           | 1 or 0     | Ask for confirmation when switching device                |
+| confirm              | 0           | 0 or 1     | Ask for confirmation when switching device                |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. rubric:: Protocol
@@ -90,7 +90,9 @@ The techlico_switch protocol sends 50 pulses like this
 
    208 624 208 832 208 624 624 208 208 624 208 624 624 208 624 208 208 832 624 208 208 832 208 624 208 832 624 208 624 208 624 208 208 832 208 624 208 832 208 832 208 624 208 624 624 208 624 208 208 7072
 
-The last two pulses are the ``footer``. These are meant to identify the pulses as genuine. We don't use them for further processing. The next step is to transform this output into 24 groups of 2 pulses (and thereby dropping the ``footer`` pulse).
+The last two pulses are the ``footer``.
+These are meant to identify the pulses as genuine. We don't use them for further processing.
+The next step is to transform this output into 24 groups of 2 pulses (and thereby dropping the ``footer`` pulse).
 
 .. code-block:: console
 
@@ -125,7 +127,8 @@ If we now analyse these groups we can distinguish two types of groups:
 - ``208 624``
 - ``624 208``
 
-The 1st group is defined by a short-long sequence (logical 0) The 2nd group is defined by a long-short sequence (logical 1):
+The 1st group is defined by a short-long sequence (logical 0).
+The 2nd group is defined by a long-short sequence (logical 1).
 
 Binary representation:
 
@@ -187,4 +190,5 @@ CLI command:
 
 .. rubric:: Known Limitations
 
-As the device will not report its state, and the same Button on the original remote control toggles the state of the device, the GUI may show the wrong status of the device.
+As the device will not report its state, and the same button on the original remote control toggles the state of the device,
+the GUI may not always show the current state of the device.

@@ -26,10 +26,10 @@ Changes the state of a switch, relay or dimmer.
 +----------+------------------+---------------------+---------------------------------------------------+
 | **Name** | **Required**     | **Multiple Values** | **Description**                                   |
 +----------+------------------+---------------------+---------------------------------------------------+
-| FOR      | |no|             | |no|                | | Determine how long this new state lasts         |
-|          |                  |                     | | before we change back to the previous state     |
+| FOR      | |no|             | |no|                | Determine how long this new state lasts before    |
+|          |                  |                     | changing back to the previous state               |
 +----------+------------------+---------------------+---------------------------------------------------+
-| AFTER    | |no|             | |no|                | After how long do we want the new state to be set |
+| AFTER    | |no|             | |no|                | Time to wait before setting the new state         |
 +----------+------------------+---------------------+---------------------------------------------------+
 
 .. note:: Units for ``FOR`` and ``AFTER``
@@ -45,7 +45,7 @@ Changes the state of a switch, relay or dimmer.
 .. code-block:: console
 
    IF 1 == 1 THEN switch DEVICE light TO on
-   IF 1 == 1 THEN switch DEVICE mainlight AND bookshelve AND hall TO on
+   IF 1 == 1 THEN switch DEVICE mainlight AND bookshelf AND hall TO on
 
 .. versionadded:: 7.0
 

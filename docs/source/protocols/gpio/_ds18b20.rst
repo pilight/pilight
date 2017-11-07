@@ -72,13 +72,13 @@
 
 :underline:`Device Settings`
 
-+--------------------+-------------+------------+-------------------------------------------------+
-| **Setting**        | **Default** | **Format** | **Description**                                 |
-+--------------------+-------------+------------+-------------------------------------------------+
-| poll-interval      | 5           | seconds    | What should be the poll interval of the sensors |
-+--------------------+-------------+------------+-------------------------------------------------+
-| temperature-offset | 0           | number     | Correct temperature value                       |
-+--------------------+-------------+------------+-------------------------------------------------+
++--------------------+-------------+------------+---------------------------------------+
+| **Setting**        | **Default** | **Format** | **Description**                       |
++--------------------+-------------+------------+---------------------------------------+
+| poll-interval      | 5           | seconds    | The poll interval of the sensor       |
++--------------------+-------------+------------+---------------------------------------+
+| temperature-offset | 0           | number     | Offset to correct temperature values  |
++--------------------+-------------+------------+---------------------------------------+
 
 :underline:`GUI Settings`
 
@@ -87,9 +87,9 @@
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| temperature-decimals | 2           | number     | How many decimals the GUIs should display for temperature |
+| temperature-decimals | 3           | number     | Number of decimal places to show for temperature          |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-temperature     | 1           | 1 or 0     | Don't display the temperature value                       |
+| show-temperature     | 1           | 0 or 1     | Whether to display the temperature value                  |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. note:: DS18S20
@@ -97,9 +97,9 @@
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| temperature-decimals | 3           | number     | How many decimals the GUIs should display for temperature |
+| temperature-decimals | 3           | number     | Number of decimal places to show for temperature          |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-temperature     | 1           | 1 or 0     | Don't display the temperature value                       |
+| show-temperature     | 1           | 0 or 1     | Whether to display the temperature value                  |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 

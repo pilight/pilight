@@ -2,10 +2,7 @@
 .. |no| image:: ../../../images/no.png
 
 .. role:: underline
-   :class: underline
-
-Alecto WSD17
-============
+:class: underline
 
 +------------------+-------------+
 | **Feature**      | **Support** |
@@ -19,13 +16,11 @@ Alecto WSD17
 
 .. rubric:: Supported Brands
 
-+------------------+----------------+
-| **Brand**        | **Protocol**   |
-+------------------+----------------+
-| Alecto WSD1700   | alecto_wsd1700 |
-+------------------+----------------+
-| iBoutique        | iboutique      |
-+------------------+----------------+
++------------------+--------------+
+| **Brand**        | **Protocol** |
++------------------+--------------+
+| Alecto WSD17     | alecto_wsd17 |
++------------------+--------------+
 
 .. rubric:: Sender Arguments
 
@@ -36,49 +31,51 @@ Alecto WSD17
 .. code-block:: json
    :linenos:
 
-   {
-     "devices": {
-       "weather": {
-         "protocol": [ "alecto_ws1700" ],
-         "id": [{
-           "id": 108
-         }],
-         "temperature": 18.90,
-         "humidity": 41.00,
-         "battery": 1
-        }
-     },
-     "gui": {
-       "weather": {
-         "name": "Weather Station",
-         "group": [ "Outside" ],
-         "media": [ "all" ]
+       {
+         "devices": {
+           "weather": {
+             "protocol": [ "alecto_wsd17" ],
+             "id": [{
+               "id": 100
+             }],
+             "temperature": 23.00
+            }
+         },
+         "gui": {
+           "weather": {
+             "name": "Weather Station",
+             "group": [ "Outside" ],
+             "media": [ "all" ]
+           }
+         }
        }
-     }
-   }
+
+    +------------------+-----------------+
+    | **Option**       | **Value**       |
++------------------+-----------------+
+| id               | 0 - 4095        |
++------------------+-----------------+
+| temperature      | -50 - 70        |
++------------------+-----------------+
 
 .. rubric:: Optional Settings
 
 :underline:`Device Settings`
 
-+--------------------+-------------+------------+---------------------------+
-| **Setting**        | **Default** | **Format** | **Description**           |
-+--------------------+-------------+------------+---------------------------+
-| humidity-offset    | 0           | number     | Correct humidity value    |
-+--------------------+-------------+------------+---------------------------+
-| temperature-offset | 0           | number     | Correct temperature value |
-+--------------------+-------------+------------+---------------------------+
++--------------------+-------------+------------+-----------------------------------------+
+| **Setting**        | **Default** | **Format** | **Description**                         |
++--------------------+-------------+------------+-----------------------------------------+
+| temperature-offset | 0           | number     | Offset for correcting temperature value |
++--------------------+-------------+------------+-----------------------------------------+
 
 :underline:`GUI Settings`
 
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| temperature-decimals | 2           | number     | How many decimals the GUIs should display for temperature |
+| temperature-decimals | 2           | number     | Number of decimal places to show for temperature          |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| humidity-decimals    | 2           | number     | How many decimals the GUIs should display for humidity    |
-+----------------------+-------------+------------+-----------------------------------------------------------+
-| show-temperature     | 1           | 1 or 0     | Don't display the temperature value                       |
+| show-temperature     | 1           | 0 or 1     | Whether to display the temperature value                  |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. rubric:: Comment

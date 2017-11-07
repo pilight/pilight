@@ -61,38 +61,38 @@
 +------------------+-----------------+
 | temperature      | -39.9 - 59.9    |
 +------------------+-----------------+
-| humidity         | 10 - 99         |
+| humidity         | 0 - 99          |
 +------------------+-----------------+
 
 .. rubric:: Optional Settings
 
 :underline:`Device Settings`
 
-+--------------------+-------------+------------+---------------------------+
-| **Setting**        | **Default** | **Format** | **Description**           |
-+--------------------+-------------+------------+---------------------------+
-| temperature-offset | 0           | number     | Correct temperature value |
-+--------------------+-------------+------------+---------------------------+
-| humidity-offset    | 0           | number     | Correct humidity value    |
-+--------------------+-------------+------------+---------------------------+
++--------------------+-------------+------------+-----------------------------------------+
+| **Setting**        | **Default** | **Format** | **Description**                         |
++--------------------+-------------+------------+-----------------------------------------+
+| temperature-offset | 0           | number     | Offset for correcting temperature value |
++--------------------+-------------+------------+-----------------------------------------+
+| humidity-offset    | 0           | number     | Offset for correcting humidity value    |
++--------------------+-------------+------------+-----------------------------------------+
 
 :underline:`GUI Settings`
 
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| temperature-decimals | 2           | number     | How many decimals the GUIs should display for temperature |
+| temperature-decimals | 2           | number     | Number of decimal places to show for temperature          |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| humidity-decimals    | 2           | number     | How many decimals the GUIs should display for humidity    |
+| humidity-decimals    | 2           | number     | Number of decimal places to show for humidity             |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-temperature     | 1           | 1 or 0     | Don't display the temperature value                       |
+| show-temperature     | 1           | 0 or 1     | Whether to display the temperature value                  |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-humidity        | 1           | 1 or 0     | Don't display the humidity value                          |
+| show-humidity        | 1           | 0 or 1     | Whether to display the humidity value                     |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. rubric:: Protocol
 
-*After extensive testing it was detected that the Dostman TFA 30.3200 shares most parameters with the tfa and conrad weather station sensors, however due to the differences detected those are described in this document.*
+*After extensive testing it was detected that the Dostmann TFA 30.3200 shares most parameters with the tfa and conrad weather station sensors, however due to the differences detected those are described in this document.*
 
 The protocol sends 88 pulses like:
 
@@ -173,7 +173,7 @@ Length of pulsetrain is 88.
 
 Length of pulsetrain is 80 or 86.
 
-It is currently unknown wether the ``tfa`` and the ``conrad weather pro`` are using identical protocols or not, due to discrepencies in the documentation. The current version of the tfa protocol module can handle both variants using the tfa30 protocol. The differentiation is analysing the header information and the length of the pulsetrain automatically.
+It is currently unknown whether the ``tfa`` and the ``conrad weather pro`` are using identical protocols or not, due to discrepancies in the documentation. The current version of the tfa protocol module can handle both variants using the tfa30 protocol. The differentiation is analysing the header information and the length of the pulsetrain automatically.
 
 We take either of the two other pulse groups to define a logical 0 or a 1. A long 2nd pulse means a 1 and a short 2nd pulse means a 0.
 

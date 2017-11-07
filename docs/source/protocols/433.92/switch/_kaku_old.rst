@@ -49,7 +49,7 @@
 
    {
      "devices": {
-       "dimmer": {
+       "tvlamp": {
          "protocol": [ "kaku_switch_old" ],
          "id": [{
            "id": 10,
@@ -59,8 +59,8 @@
        }
      },
      "gui": {
-       "Lamp": {
-         "name": "TV Backlit",
+       "tvlamp": {
+         "name": "TV Backlight",
          "group": [ "Living" ],
          "media": [ "all" ]
        }
@@ -84,14 +84,15 @@
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| readonly             | 1           | 1 or 0     | Disable controlling this device from the GUIs             |
+| readonly             | 0           | 0 or 1     | Disable controlling this device from the GUIs             |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| confirm              | 1           | 1 or 0     | Ask for confirmation when switching device                |
+| confirm              | 0           | 0 or 1     | Ask for confirmation when switching device                |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. rubric:: Notes
 
-The old KlikAanKlikUit devices work setting two wheels: group (0-H) and device number (0-16). To control a device from pilight you need to send the correct group and unit id, these do not correspond 1:1.
+The old KlikAanKlikUit devices work setting two wheels: group (0-H) and device number (0-16).
+To control a device from pilight you need to send the correct group and unit id, these do not correspond 1:1.
 
 A-1 on the unit corresponds with unit 0 id 0 in pilight A-2 on the unit corresponds with unit 0 id 1 in pilight etc.
 
@@ -103,7 +104,10 @@ This protocol sends 50 pulses like this
 
    295 1180 295 1180 295 1180 1180 295 295 1180 295 1180 295 1180 1180 295 295 1180 1180 295 295 1180 1180 295 295 1180 1180 295 295 1180 1180 295 295 1180 295 1180 295 1180 1180 295 295 1180 1180 295 295 1180 1180 295 295 11210
 
-It has no ``header`` and the last 2 pulses are the ``footer``. These are meant to identify the pulses as genuine, and the protocol also has some bit checks to filter false positives. We don't use them for further processing. The next step is to transform this output into 12 groups of 4 pulses (and thereby dropping the ``footer`` pulses).
+It has no ``header`` and the last 2 pulses are the ``footer``.
+These are meant to identify the pulses as genuine, and the protocol also has some bit checks to filter false positives.
+We don't use them for further processing.
+The next step is to transform this output into 12 groups of 4 pulses (and thereby dropping the ``footer`` pulses).
 
 .. code-block:: console
 
@@ -129,7 +133,8 @@ If we now look at carefully at these groups you can distinguish two types of gro
 - ``295 1180 1180 295``
 - ``295 1180 295 1180``
 
-So the first group is defined by a high 3th pulse and the second group has a low 3rd pulse. In this case we say a high 3rd pulse means a 0 and a low 3rd pulse means a 1. We then get the following output:
+So the first group is defined by a high 3th pulse and the second group has a low 3rd pulse.
+In this case we say a high 3rd pulse means a 0 and a low 3rd pulse means a 1. We then get the following output:
 
 .. code-block:: console
 
@@ -137,10 +142,10 @@ So the first group is defined by a high 3th pulse and the second group has a low
 
 Each (group) of numbers has a specific meaning:
 
-- Unit: 0 till 5 (inversed)
-- ID: 6 till 10 (inversed)
+- Unit: 0 till 5 (inverted)
+- ID: 6 till 10 (inverted)
 - Fixed: 11 (always 0)
-- State: 12 (inversed)
+- State: 12 (inverted)
 
 .. code-block:: console
 
@@ -180,14 +185,17 @@ This makes the protocol more accurate because it will respond rarely now when sa
 
 .. note:: **Eurodomest**
 
-   The Eurodomest (Intertechno) switches listens to the kaku_switch_old protocol, but the remote doesn't send using the kaku_switch_old protocol. When using pilight-receive, the following protocols are received using the remote:
+   The Eurodomest (Intertechno) switches listens to the kaku_switch_old protocol,
+   but the remote doesn't send using the kaku_switch_old protocol.
+   When using pilight-receive, the following protocols are received using the remote:
 
      - elro_800_contact
      - elro_800_switch
      - ehome
      - cleverwatts
 
-   To use the Eurodomest switches with the kaku_switch_old protocol on pilight, the following steps have to be performed:
+   To use the Eurodomest switches with the kaku_switch_old protocol on pilight,
+   the following steps have to be performed:
 
      - Hold the On/Off button until the LED flashes.
      - In a terminal window do:
@@ -197,5 +205,4 @@ This makes the protocol more accurate because it will respond rarely now when sa
           pilight-send -p kaku_switch_old -i <choose your own ID between 1~30> -u 0 -t
 
      - If everything is Ok the switch is programmed.
-     - For wall-plug 2 & 3 change the value -u
-
+     - For wall-plug 2 & 3 change the value after the ``-u`` flag

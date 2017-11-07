@@ -42,7 +42,7 @@
    {
      "devices": {
        "weather": {
-         "protocol": [ "alecto_wsd17" ],
+         "protocol": [ "alecto_wx500" ],
          "id": [{
            "id": 100
          }],
@@ -66,11 +66,11 @@
 +------------------+-----------------+
 | **Option**       | **Value**       |
 +------------------+-----------------+
-| id               | 0 - 9           |
+| id               | 0 - 255         |
 +------------------+-----------------+
 | temperature      | -40 - 60        |
 +------------------+-----------------+
-| humidity         | 10 - 99         |
+| humidity         | 0 - 99          |
 +------------------+-----------------+
 | windavg          | 0 - 50          |
 +------------------+-----------------+
@@ -83,30 +83,30 @@
 
 :underline:`Device Settings`
 
-+--------------------+-------------+------------+---------------------------+
-| **Setting**        | **Default** | **Format** | **Description**           |
-+--------------------+-------------+------------+---------------------------+
-| humidity-offset    | 0           | number     | Correct humidity value    |
-+--------------------+-------------+------------+---------------------------+
-| temperature-offset | 0           | number     | Correct temperature value |
-+--------------------+-------------+------------+---------------------------+
++--------------------+-------------+------------+-----------------------------------------+
+| **Setting**        | **Default** | **Format** | **Description**                         |
++--------------------+-------------+------------+-----------------------------------------+
+| humidity-offset    | 0           | number     | Offset for correcting humidity value    |
++--------------------+-------------+------------+-----------------------------------------+
+| temperature-offset | 0           | number     | Offset for correcting temperature value |
++--------------------+-------------+------------+-----------------------------------------+
 
 :underline:`GUI Settings`
 
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| temperature-decimals | 2           | number     | How many decimals the GUIs should display for temperature |
+| temperature-decimals | 2           | number     | Number of decimal places to show for temperature          |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| humidity-decimals    | 2           | number     | How many decimals the GUIs should display for humidity    |
+| humidity-decimals    | 2           | number     | Number of decimal places to show for humidity             |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-temperature     | 1           | 1 or 0     | Don't display the temperature value                       |
+| show-temperature     | 1           | 0 or 1     | Whether to display the temperature value                  |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-humidity        | 1           | 1 or 0     | Don't display the humidity value                          |
+| show-humidity        | 1           | 0 or 1     | Whether to display the humidity value                     |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-wind            | 1           | 1 or 0     | Don't display the wind value                              |
+| show-wind            | 1           | 0 or 1     | Whether to display the wind value                         |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| show-battery         | 1           | 1 or 0     | Don't display the battery value                           |
+| show-battery         | 1           | 0 or 1     | Whether to display the battery value                      |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. rubric:: Protocol

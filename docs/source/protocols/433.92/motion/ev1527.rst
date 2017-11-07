@@ -66,9 +66,13 @@ This protocol sends 50 pulses like this
 
    253 759 759 253 759 253 253 759 253 759 253 759 253 759 253 759 253 759 759 253 253 759 253 759 759 253 759 253 759 253 253 759 253 759 759 253 253 759 759 253 253 759 253 759 759 253 253 8602
 
-It has no ``header`` and the last 2 pulses are the ``footer``. These are meant to identify the pulses as genuine, and the protocol also has some bit checks to filter false positives. We don't use them for further processing. The next step is to transform this output into 12 groups of 4 pulses (and thereby dropping the ``footer`` pulses).
+It has no ``header`` and the last 2 pulses are the ``footer``.
+These are meant to identify the pulses as genuine, and the protocol also has some bit checks to filter false positives.
+We don't use them for further processing.
+The next step is to transform this output into 12 groups of 4 pulses (and thereby dropping the ``footer`` pulses).
 
-The first six pulses are the address bits, followed by upto another 6 Address/Data Bits. Address Bits can have three states: 0, 1, F (tri-state). Data Bits have only two states: 0 or 1.
+The first six pulses are the address bits, followed by up to another 6 Address/Data Bits.
+Address Bits can have three states: 0, 1, F (tri-state). Data Bits have only two states: 0 or 1.
 
 .. code-block:: guess
 

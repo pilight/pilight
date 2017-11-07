@@ -91,9 +91,9 @@ Program
 +------------------+-------------+------------+-----------------------------------------------+
 | **Setting**      | **Default** | **Format** | **Description**                               |
 +------------------+-------------+------------+-----------------------------------------------+
-| readonly         | 0           | 1 or 0     | Disable controlling this device from the GUIs |
+| readonly         | 0           | 0 or 1     | Disable controlling this device from the GUIs |
 +------------------+-------------+------------+-----------------------------------------------+
-| confirm          | 0           | 1 or 0     | Ask for confirmation when switching device    |
+| confirm          | 0           | 0 or 1     | Ask for confirmation when switching device    |
 +------------------+-------------+------------+-----------------------------------------------+
 
 .. rubric:: Comment
@@ -119,6 +119,6 @@ You can run ``ps aux`` to find out what these are. An example:
    root     13166  0.0  0.0      0     0 ?        S    21:10   0:00 [kworker/u2:1]
    root     13186  0.0  0.2   4424  1116 pts/2    R+   21:11   0:00 ps aux
 
-In thise case, i want to control XBMC. The xbian entry with the PID 11642 is what i want to use. The first word is the program name. In this case ``/usr/local/lib/xbmc/xbmc.bin``. Everything that comes after are the arguments ``–standalone -fs –lircdev /run/lirc/lircd``. pilight will now check for a program that matches these exact parameters. So the protocol looks for processes matching those lines and when a process is found, it updates the pid value accordingly. (The pid is just informative.)
+In thise case, I want to control XBMC. The xbian entry with the PID 11642 is what I want to use. The first word is the program name. In this case ``/usr/local/lib/xbmc/xbmc.bin``. Everything that comes after are the arguments ``–standalone -fs –lircdev /run/lirc/lircd``. pilight will now check for a program that matches these exact parameters. So the protocol looks for processes matching those lines and when a process is found, it updates the pid value accordingly. (The pid is just informative.)
 
-If you omit the arguments value, all matching programs will be processes with or without matching arguments. If there are more than once matches, pilight will use the first.
+If you omit the arguments value, all matching programs will be processes with or without matching arguments. If there are several matches, pilight will use the first.

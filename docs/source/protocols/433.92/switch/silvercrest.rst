@@ -42,7 +42,7 @@ SilverCrest
 
    {
      "devices": {
-       "dimmer": {
+       "tvlight": {
          "protocol": [ "silvercrest" ],
          "id": [{
            "systemcode": 22,
@@ -52,8 +52,8 @@ SilverCrest
        }
      },
      "gui": {
-       "Lamp": {
-         "name": "TV Backlit",
+       "tvlight": {
+         "name": "TV Backlight",
          "group": [ "Living" ],
          "media": [ "all" ]
        }
@@ -77,9 +77,9 @@ SilverCrest
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| readonly             | 1           | 1 or 0     | Disable controlling this device from the GUIs             |
+| readonly             | 0           | 0 or 1     | Disable controlling this device from the GUIs             |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| confirm              | 1           | 1 or 0     | Ask for confirmation when switching device                |
+| confirm              | 0           | 0 or 1     | Ask for confirmation when switching device                |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. rubric:: Protocol
@@ -90,7 +90,10 @@ This protocol sends 50 pulses like this
 
    312 936 936 312 312 936 312 936 312 936 312 936 312 936 936 312 312 936 312 936 312 936 936 312 312 936 312 936 312 936 936 312 312 936 936 312 312 936 936 312 312 936 936 312 312 936 312 936 312 10608
 
-It has no ``header`` and the last 2 pulses are the ``footer``. These are meant to identify the pulses as genuine, and the protocol also has some bit checks to filter false positives. We don't use them for further processing. The next step is to transform this output into 12 groups of 4 pulses (and thereby dropping the ``footer`` pulses).
+It has no ``header`` and the last 2 pulses are the ``footer``.
+These are meant to identify the pulses as genuine, and the protocol also has some bit checks to filter false positives.
+We don't use them for further processing.
+The next step is to transform this output into 12 groups of 4 pulses (and thereby dropping the ``footer`` pulses).
 
 .. code-block:: console
 
@@ -116,7 +119,8 @@ If we now look at carefully at these groups you can distinguish three types of g
 - ``312 936 936 312``
 - ``312 936 312 936``
 
-So the first group is defined by a high 3th pulse and the second group has a low 3rd pulse. In this case we say a high 3rd pulse means a 0 and a high 3rd pulse means a 1. We then get the following output:
+So the first group is defined by a high 3th pulse and the second group has a low 3rd pulse.
+In this case we say a high 3rd pulse means a 0 and a high 3rd pulse means a 1. We then get the following output:
 
 .. code-block:: console
 
@@ -124,10 +128,10 @@ So the first group is defined by a high 3th pulse and the second group has a low
 
 Each (group) of numbers has a specific meaning:
 
-- Unit: 0 till 5 (inversed)
-- ID: 6 till 10 (inversed)
+- Unit: 0 till 5 (inverted)
+- ID: 6 till 10 (inverted)
 - Check: 11 (inverse of state)
-- State: 12 (inversed)
+- State: 12 (inverted)
 
 .. code-block:: console
 

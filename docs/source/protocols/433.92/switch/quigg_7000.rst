@@ -62,7 +62,7 @@ Globaltronics Quigg GT-7000
 
    {
      "devices": {
-       "dimmer": {
+       "tvlight": {
          "protocol": [ "quigg_gt7000" ],
          "id": [{
            "id": 15,
@@ -72,8 +72,8 @@ Globaltronics Quigg GT-7000
        }
      },
      "gui": {
-       "Lamp": {
-         "name": "TV Backlit",
+       "tvlight": {
+         "name": "TV Backlight",
          "group": [ "Living" ],
          "media": [ "all" ]
        }
@@ -105,7 +105,7 @@ Globaltronics Quigg GT-7000
 +--------------------+-------------+------------+-------------------------------------------------+
 | **Setting**        | **Default** | **Format** | **Description**                                 |
 +--------------------+-------------+------------+-------------------------------------------------+
-| all                | 0           | 1 or 0     | | If specified this will trigger the "group"    |
+| all                | 0           | 0 or 1     | | If specified this will trigger the "group"    |
 |                    |             |            | | function of the advanced remotes and trigger  |
 |                    |             |            | | all registered devices for the given unitcode |
 +--------------------+-------------+------------+-------------------------------------------------+
@@ -115,9 +115,9 @@ Globaltronics Quigg GT-7000
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| readonly             | 1           | 1 or 0     | Disable controlling this device from the GUIs             |
+| readonly             | 0           | 0 or 1     | Disable controlling this device from the GUIs             |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| confirm              | 1           | 1 or 0     | Ask for confirmation when switching device                |
+| confirm              | 0           | 0 or 1     | Ask for confirmation when switching device                |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. rubric:: Protocol
@@ -128,7 +128,10 @@ The quigg_switch protocol sends 42 pulses like this
 
    700 1400 700 700 1400 1400 700 1400 700 700 1400 700 1400 700 1400 700 1400 700 1400 700 1400 700 1400 700 1400 700 1400 700 1400 700 1400 1400 700 700 1400 700 1400 700 1400 1400 700 81000
 
-The first pulse is the ``header`` and the last pulse is the ``footer``. These are meant to identify the pulses as genuine. We don't use them for further processing. The next step is to transform this output into 20 groups of 2 pulses (and thereby dropping the ``header`` and ``footer`` pulse).
+The first pulse is the ``header`` and the last pulse is the ``footer``.
+These are meant to identify the pulses as genuine.
+We don't use them for further processing.
+The next step is to transform this output into 20 groups of 2 pulses (and thereby dropping the ``header`` and ``footer`` pulse).
 
 .. code-block:: console
 
@@ -158,7 +161,9 @@ If we now analyse these groups we can distinguish two types of groups:
 #. ``700 1400``
 #. ``1400 700``
 
-So the first group is defined by a short 1st and 2nd long and the second group by a long 1st and 2nd short pulse. So we take either of these two pulses to define a logical 0 or 1. In our case a long 1st pulse means a 1 and a short 1st pulse means a 0. We then get the following output:
+So the first group is defined by a short 1st and 2nd long and the second group by a long 1st and 2nd short pulse.
+So we take either of these two pulses to define a logical 0 or 1.
+In our case a long 1st pulse means a 1 and a short 1st pulse means a 0. We then get the following output:
 
 .. code-block:: console
 
@@ -186,7 +191,7 @@ Each of the groups of bits (A to H) has a specific meaning:
 +           +           +                 +            + Dimmer DOWN or UP           +
 |           |           |                 |            |                             |
 +-----------+-----------+-----------------+------------+-----------------------------+
-| E         | 17        | dimm            | 0,1        | switch, dimmer mode         |
+| E         | 17        | dim             | 0,1        | switch, dimmer mode         |
 +-----------+-----------+-----------------+------------+-----------------------------+
 | F         | 18        |                 | 0          | always zero                 |
 +-----------+-----------+-----------------+------------+-----------------------------+
@@ -213,20 +218,27 @@ CLI command:
 
 .. rubric:: Comment
 
-Extracting the system code id from an existing Globaltronics GT-7000 remote control device either requires a special version of the BPF, or you need to bypass the BPF.
+Subsequently the switch unit #1 with system code id #2816 is turned off.
 
-After insertion of batteries the GT-7000 defaults to system code id #2816. Pressing the button "Neuer Code" located in the battery compartment, will trigger the generation of a new system code id. These are generated in sequential order, for the current quigg_switch protocol driver the id's are:
+Extracting the system code ID from an existing Globaltronics GT-7000 remote control device
+either requires a special version of the BPF, or you need to bypass the BPF.
+
+After insertion of batteries the GT-7000 defaults to system code id #2816.
+Pressing the button "Neuer Code" located in the battery compartment will trigger the generation of a new system code id.
+These are generated in sequential order, for the current quigg_switch protocol driver the IDs are:
 
 .. code-block:: console
 
    2816, 1792, 3840, 128, 2176, 1152, 3200, 640, 2688, 1664, 3712, 384, 2432, 1408, 3456, 896, 2944, 1920, 3968, ....
 
-To let the device learn a new value, press the learning mode button on the switch and send the appropriate CLI command with pilight-send (configure a switch to be unit #2 and system code id #29):
+To let the device learn a new value, press the learning mode button on the switch
+and send the appropriate CLI command with pilight-send (to configure a switch to be unit #2 and system code id #29 use):
 
 .. code-block:: console
 
    pilight-send -p quigg_gt7000 -i 29 -u 2 -l -t
 
-The device learns that it has now system code id #29 and that it is unit #2 and enters ON mode (e.q. the switch is turned on). If the switch is not connected to power for an extended period of time, it will loose its configuration and reset to the default id #2816 unit #0. QUIGG_GT7000 compatible switches with integrated dimmer require that you configure the quigg_screen protocol in addition to the quigg_gt7000 protocol. On the webgui you will get a separate button to dimm the device up and down.
-
-Subsequently the switch unit #1 with system code id #2816 is turned off.
+The device learns that it has now system code id #29 and that it is unit #2 and enters ON mode (e.q. the switch is turned on).
+If the switch is not connected to power for an extended period of time, it will lose its configuration and reset to the default id #2816 unit #0.
+QUIGG_GT7000 compatible switches with integrated dimmer require that you configure the quigg_screen protocol in addition to the quigg_gt7000 protocol.
+In the webgui you will get a separate button to dim the device up and down.

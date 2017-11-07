@@ -7,9 +7,9 @@ Flash hardware with pilight firmware
 
 :Date:           2017
 :Copyright:      MPLv2
-:Version:        7.0
+:Version:        8.0
 :Manual section: 1
-:Manual group:   pilight 7.0 man pages
+:Manual group:   pilight 8.0 man pages
 
 SYNOPSIS
 ========

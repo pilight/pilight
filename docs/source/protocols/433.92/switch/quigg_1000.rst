@@ -56,7 +56,7 @@ Globaltronics Quigg GT-1000
 
    {
      "devices": {
-       "dimmer": {
+       "tvlight": {
          "protocol": [ "quigg_gt1000" ],
          "id": [{
            "id": 15,
@@ -66,8 +66,8 @@ Globaltronics Quigg GT-1000
        }
      },
      "gui": {
-       "Lamp": {
-         "name": "TV Backlit",
+       "tvlight": {
+         "name": "TV Backlight",
          "group": [ "Living" ],
          "media": [ "all" ]
        }
@@ -91,9 +91,9 @@ Globaltronics Quigg GT-1000
 +----------------------+-------------+------------+-----------------------------------------------------------+
 | **Setting**          | **Default** | **Format** | **Description**                                           |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| readonly             | 1           | 1 or 0     | Disable controlling this device from the GUIs             |
+| readonly             | 0           | 0 or 1     | Disable controlling this device from the GUIs             |
 +----------------------+-------------+------------+-----------------------------------------------------------+
-| confirm              | 1           | 1 or 0     | Ask for confirmation when switching device                |
+| confirm              | 0           | 0 or 1     | Ask for confirmation when switching device                |
 +----------------------+-------------+------------+-----------------------------------------------------------+
 
 .. rubric:: Examples
@@ -116,4 +116,5 @@ Switch on or off all switches belonging to group (-i) optionally using specified
 
 Switch on or off all compatible switches optionally using specified codeseq (-n)
 
-When using the Web-GUI use "unit": 4 in the config.json file for the master switch ("all": 1) and "id”: 16 with "unit”: 5 for the super code switch ("super”: 1).
+When using the webgui use "unit": 4 in the config.json file for the master switch ("all": 1).
+Use "id": 16 with "unit": 5 for the super code switch ("super": 1).
