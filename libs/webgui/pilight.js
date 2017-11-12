@@ -12,6 +12,7 @@ var aMarqueueInterval = new Array();
 var aReadOnly = new Array();
 var aStates = new Array();
 var bShowTabs = true;
+var bStatsEnabled = true;
 var iPLVersion = 0;
 var iPLNVersion = 0;
 var iFWVersion = 0;
@@ -798,7 +799,7 @@ function createGUI(data) {
 	$('#tabs').append($("<ul></ul>"));
 	$.each(data['gui'], function(dindex, dvalues) {
 		var lindex = dvalues['group'][0];
-		if(oWebsocket) {
+		if(oWebsocket && bStatsEnabled) {
 			$('#proc').text("CPU: ...% / RAM: ...%");
 		}
 		if($('#'+alphaNum(lindex)).length == 0) {
@@ -1296,6 +1297,9 @@ $(document).ready(function() {
 				}
 			} else {
 				startWebsockets();
+			}
+			if('settings' in data && 'stats-enable' in data['settings']) {
+				bStatsEnabled = data['settings']['stats-enable'];
 			}
 		});
 
