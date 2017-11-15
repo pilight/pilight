@@ -40,7 +40,7 @@
 }
 
 .ui-li-static {
-	height: 27px;
+	min-height: 27px;
 	padding: 5px 0px 5px 0px;
 }
 
@@ -348,11 +348,6 @@ div.media_icon.song {
 ul.ui-listview li.switch div.name {
         padding-right: 95px;
         white-space: normal;
-}
-
-.ui-li-static {
-        height: auto;
-        min-height: 27px;
 }
 
 .weather_values {
