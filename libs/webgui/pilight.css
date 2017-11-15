@@ -363,8 +363,3 @@ ul.ui-listview li.switch div.name {
         height: auto;
         min-height: 27px;
 }
-
-.weather_values {
-	overflow: auto;
-	float: right;
-}
