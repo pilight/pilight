@@ -353,3 +353,8 @@ ul.ui-listview li.switch div.name {
         padding-right: 95px;
         white-space: normal;
 }
+
+.weather_values {
+	overflow: auto;
+	float: right;
+}
