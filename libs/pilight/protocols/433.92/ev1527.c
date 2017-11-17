@@ -60,6 +60,11 @@ static void createMessage(int unitcode, int state) {
 static void parseCode(void) {
 	int binary[RAW_LENGTH/2], x = 0, i = 0;
 
+	if(ev1527->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "ev1527: parsecode - invalid parameter passed %d", ev1527->rawlen);
+		return;
+	}
+
 	for(x=0;x<ev1527->rawlen-2;x+=2) {
 		if(ev1527->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
@@ -88,7 +93,7 @@ void ev1527Init(void) {
 	ev1527->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	ev1527->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
-	options_add(&ev1527->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&ev1527->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(104857[0-5]|10485[0-6][0-9]|1048[0-4][0-9][0-9]|104[0-7][0-9]{3}|10[0-3][0-9]{4}|0?[0-9]{1,6})$");
 	options_add(&ev1527->options, 't', "opened", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&ev1527->options, 'f', "closed", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
@@ -96,10 +101,10 @@ void ev1527Init(void) {
 	ev1527->validate=&validate;
 }
 
-#if !defined(MODULE) && !defined(_WIN32)
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ev1527";
-	module->version = "1.0";
+	module->version = "1.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <unistd.h>
 #ifndef _WIN32
+	#include <wiringx.h>
 	#include <regex.h>
 	#include <sys/ioctl.h>
 	#include <dlfcn.h>
@@ -40,16 +41,12 @@
 #include "../core/threads.h"
 #include "../core/pilight.h"
 #include "../core/common.h"
-#include "../core/irq.h"
 #include "../core/log.h"
 #include "../core/json.h"
 #include "../core/dso.h"
 #include "settings.h"
 #include "hardware.h"
 
-#ifndef _WIN32
-	#include "../../wiringx/wiringX.h"
-#endif
 
 static char *hwfile = NULL;
 struct hardware_t *hardware;
@@ -92,12 +89,18 @@ void hardware_register(struct hardware_t **hw) {
 	(*hw)->wait = 0;
 	(*hw)->stop = 0;
 	(*hw)->running = 0;
+	(*hw)->minrawlen = 0;
+	(*hw)->maxrawlen = 0;
+	(*hw)->mingaplen = 0;
+	(*hw)->maxgaplen = 0;
 
 	(*hw)->init = NULL;
 	(*hw)->deinit = NULL;
 	(*hw)->receiveOOK = NULL;
 	(*hw)->receivePulseTrain = NULL;
-	(*hw)->send = NULL;
+	(*hw)->receiveAPI = NULL;
+	(*hw)->sendOOK = NULL;
+	(*hw)->sendAPI = NULL;
 	(*hw)->gc = NULL;
 	(*hw)->settings = NULL;
 
@@ -287,9 +290,9 @@ static int hardware_parse(JsonNode *root) {
 							regfree(&regex);
 							goto clear;
 						}
-						FREE(stmp);
 						regfree(&regex);
 					}
+					FREE(stmp);
 #endif
 				}
 				hw_options = hw_options->next;

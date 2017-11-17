@@ -33,9 +33,9 @@
 #define LEARN_REPEATS			40
 #define NORMAL_REPEATS		10
 #define PULSE_MULTIPLIER	4
-#define MIN_PULSE_LENGTH	274
+#define MIN_PULSE_LENGTH	250
 #define MAX_PULSE_LENGTH	320
-#define AVG_PULSE_LENGTH	300
+#define AVG_PULSE_LENGTH	315
 #define RAW_LENGTH				132
 
 static int validate(void) {
@@ -76,6 +76,11 @@ static void createMessage(int id, int unit, int state, int all, int learn) {
 
 static void parseCode(void) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
+
+	if(arctech_switch->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "arctech_switch: parsecode - invalid parameter passed %d", arctech_switch->rawlen);
+		return;
+	}
 
 	for(x=0;x<arctech_switch->rawlen;x+=4) {
 		if(arctech_switch->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
@@ -265,7 +270,7 @@ void arctechSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_switch";
-	module->version = "3.2";
+	module->version = "3.4";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

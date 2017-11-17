@@ -48,73 +48,129 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	struct tm tm;
 	char *p = *ret, *datetime = NULL, *format = NULL;
 
+#ifndef PILIGHT_DEVELOPMENT
+	int do_free = 0;
+	memset(&tm, 0, sizeof(struct tm));
+#endif
+
 	if(childs == NULL) {
 		logprintf(LOG_ERR, "DATE_FORMAT requires at least two parameters e.g. DATE_FORMAT(datetime, %Y-%m-%d)");
 		return -1;
 	}
 
-	if(devices_get(childs->string_, &dev) == 0) {
-		if(origin == RULE) {
-			event_cache_device(obj, childs->string_);
-		}
-		protocol = dev->protocols;
-		if(protocol->listener->devtype == DATETIME) {
-			opt = dev->settings;
-			while(opt) {
-				if(strcmp(opt->name, "year") == 0) {
-					tm.tm_year = opt->values->number_-1900;
+#ifndef PILIGHT_DEVELOPMENT
+	if(childs->tag == JSON_STRING) {
+#endif
+		if(devices_get(childs->string_, &dev) == 0) {
+			if(origin == RULE) {
+				event_cache_device(obj, childs->string_);
+			}
+			protocol = dev->protocols;
+			if(protocol->listener->devtype == DATETIME) {
+				opt = dev->settings;
+				while(opt) {
+					if(strcmp(opt->name, "year") == 0) {
+						tm.tm_year = opt->values->number_-1900;
+					}
+					if(strcmp(opt->name, "month") == 0) {
+						tm.tm_mon = opt->values->number_-1;
+					}
+					if(strcmp(opt->name, "day") == 0) {
+						tm.tm_mday = opt->values->number_;
+					}
+					if(strcmp(opt->name, "hour") == 0) {
+						tm.tm_hour = opt->values->number_;
+					}
+					if(strcmp(opt->name, "minute") == 0) {
+						tm.tm_min = opt->values->number_;
+					}
+					if(strcmp(opt->name, "second") == 0) {
+						tm.tm_sec = opt->values->number_;
+					}
+					if(strcmp(opt->name, "weekday") == 0) {
+						tm.tm_wday = opt->values->number_-1;
+					}
+					if(strcmp(opt->name, "dst") == 0) {
+						tm.tm_isdst = opt->values->number_;
+					}
+					opt = opt->next;
 				}
-				if(strcmp(opt->name, "month") == 0) {
-					tm.tm_mon = opt->values->number_-1;
-				}
-				if(strcmp(opt->name, "day") == 0) {
-					tm.tm_mday = opt->values->number_;
-				}
-				if(strcmp(opt->name, "hour") == 0) {
-					tm.tm_hour = opt->values->number_;
-				}
-				if(strcmp(opt->name, "minute") == 0) {
-					tm.tm_min = opt->values->number_;
-				}
-				if(strcmp(opt->name, "second") == 0) {
-					tm.tm_sec = opt->values->number_;
-				}
-				if(strcmp(opt->name, "weekday") == 0) {
-					tm.tm_wday = opt->values->number_-1;
-				}
-				if(strcmp(opt->name, "dst") == 0) {
-					tm.tm_isdst = opt->values->number_;
-				}
-				opt = opt->next;
+			} else {
+				logprintf(LOG_ERR, "device \"%s\" is not a datetime protocol", childs->string_);
+				return -1;
 			}
 		} else {
-			logprintf(LOG_ERR, "device \"%s\" is not a datetime protocol", childs->string_);
-			return -1;
+			datetime = childs->string_;
 		}
+	} else if(childs->tag == JSON_NUMBER) {
+		size_t len = snprintf(NULL, 0, "%.*f", childs->decimals_, childs->number_);
+		if((datetime = MALLOC(len+1)) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		snprintf(datetime, len+1, "%.*f", childs->decimals_, childs->number_);
+		do_free = 1;
 	} else {
-		datetime = childs->string_;
+		/* Internal error */
+		return -1;
 	}
 
 	childs = childs->next;
+#ifdef PILIGHT_DEVELOPMENT
 	if(childs == NULL) {
+#else
+	if(childs == NULL || childs->tag != JSON_STRING) {
+#endif
 		logprintf(LOG_ERR, "DATE_FORMAT requires at least two parameters e.g. DATE_FORMAT(datetime, %%Y-%%m-%%d)");
+#ifndef PILIGHT_DEVELOPMENT
+		if(do_free == 1) {
+			FREE(datetime);
+		}
+#endif
 		return -1;
 	}
 	format = childs->string_;
 
+#ifdef PILIGHT_DEVELOPMENT
 	if(childs->next == NULL && dev == NULL) {
+#else
+	if(dev == NULL && childs->next->tag != JSON_STRING) {
+#endif
 		logprintf(LOG_ERR, "DATE_FORMAT requires at least three parameters when passing a datetime string e.g. DATE_FORMAT(01-01-2015, %%d-%%m-%%Y, %%Y-%%m-%%d)");
+#ifndef PILIGHT_DEVELOPMENT
+		if(do_free == 1) {
+			FREE(datetime);
+		}
+#endif
 		return -1;
 	}
 	if(childs->next != NULL && dev != NULL) {
 		logprintf(LOG_ERR, "DATE_FORMAT requires at least two parameters e.g. DATE_FORMAT(datetime, %%Y-%%m-%%d)");
+#ifndef PILIGHT_DEVELOPMENT
+		if(do_free == 1) {
+			FREE(datetime);
+		}
+#endif
 		return -1;
 	}
 
 	if(dev == NULL) {
 		childs = childs->next;
+#ifndef PILIGHT_DEVELOPMENT
+		if(childs != NULL && childs->tag != JSON_STRING) {
+			logprintf(LOG_ERR, "DATE_FORMAT requires at least two parameters e.g. DATE_FORMAT(datetime, %%Y-%%m-%%d)");
+			if(do_free == 1) {
+				FREE(datetime);
+			}
+			return -1;
+		}
+#endif
 		if(strptime(datetime, format, &tm) == NULL) {
 			logprintf(LOG_ERR, "DATE_FORMAT is unable to parse \"%s\" as \"%s\" ", datetime, format);
+#ifndef PILIGHT_DEVELOPMENT
+			if(do_free == 1) {
+				FREE(datetime);
+			}
+#endif
 			return -1;
 		}
 	}
@@ -126,7 +182,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	int second = tm.tm_sec;
 	int weekday = tm.tm_wday;
 
-	datefix(&year, &month, &day, &hour, &minute, &second);
+	datefix(&year, &month, &day, &hour, &minute, &second, &weekday);
 
 	tm.tm_year = year-1900;
 	tm.tm_mon = month-1;
@@ -136,7 +192,31 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	tm.tm_sec = second;
 	tm.tm_wday = weekday;
 
+#ifdef PILIGHT_DEVELOPMENT
+	if(mktime(&tm) < 0) {
+		logprintf(LOG_ERR, "DATE_FORMAT error on mktime()");
+		return -1;
+	}
+
 	strftime(p, BUFFER_SIZE, childs->string_, &tm);
+#else
+	struct tm tmcpy;
+	memcpy(&tmcpy, &tm, sizeof(struct tm));
+
+	if(mktime(&tmcpy) < 0) {
+		logprintf(LOG_ERR, "mktime: %s", strerror(errno));
+		if(do_free == 1) {
+			FREE(datetime);
+		}
+		return -1;
+	}
+
+	strftime(p, BUFFER_SIZE, childs->string_, &tm);
+
+	if(do_free == 1) {
+		FREE(datetime);
+	}
+#endif
 
 	return 0;
 }

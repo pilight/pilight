@@ -34,7 +34,7 @@
 	#ifdef _WIN32
 		#define WEBSERVER_ROOT				"c:/pilight/web/"
 	#else
-		#define WEBSERVER_ROOT				"/usr/local/share/pilight/"
+		#define WEBSERVER_ROOT				"/usr/local/pilight/webgui/"
 	#endif
 	#define WEBSERVER_ENABLE			1
 	#define WEBSERVER_CACHE				1
@@ -42,13 +42,8 @@
 	#define MAX_CACHE_FILESIZE 		1048576
 	#define WEBSERVER_WORKERS			1
 	#define WEBSERVER_CHUNK_SIZE 	4096
-	#ifdef __FreeBSD__
-		#define WEBSERVER_USER 				"www-data"
-	#else
-		#define WEBSERVER_USER 				"www"
-	#endif
 	#define WEBGUI_WEBSOCKETS			1
-	#cmakedefine WEBSERVER_HTTPS			
+	#cmakedefine WEBSERVER_HTTPS	1	
 #endif
 
 #define MAX_CLIENTS							30
@@ -60,23 +55,23 @@
 	#define PROTOCOL_ROOT						"c:/pilight/protocols/"
 	#define HARDWARE_ROOT						"c:/pilight/hardware/"
 	#define OPERATOR_ROOT						"c:/pilight/operators/"
-	#define FUNCTION_ROOT						"c:/pilight/functions/"	
-	#define ACTION_ROOT							"c:/pilight/actions/"	
+	#define FUNCTION_ROOT						"c:/pilight/functions/"
+	#define ACTION_ROOT							"c:/pilight/actions/"
 
 	#define CONFIG_FILE							"c:/pilight/config.json"
 	#define LOG_FILE								"c:/pilight/pilight.log"
-	#define TZDATA_FILE							"c:/pilight/tzdata.json"
+	#define PEM_FILE								"c:/pilight/pilight.pem"
 #else
-	#define PROTOCOL_ROOT						"/usr/local/lib/pilight/protocols/"
-	#define HARDWARE_ROOT						"/usr/local/lib/pilight/hardware/"
-	#define OPERATOR_ROOT						"/usr/local/lib/pilight/operators/"
-	#define FUNCTION_ROOT						"/usr/local/lib/pilight/functions/"	
-	#define ACTION_ROOT							"/usr/local/lib/pilight/actions/"	
+	#define PROTOCOL_ROOT						"/usr/local/pilight/protocols/"
+	#define HARDWARE_ROOT						"/usr/local/pilight/hardware/"
+	#define OPERATOR_ROOT						"/usr/local/pilight/operators/"
+	#define FUNCTION_ROOT						"/usr/local/pilight/functions/"
+	#define ACTION_ROOT							"/usr/local/pilight/actions/"
 
 	#define PID_FILE								"/var/run/pilight.pid"
 	#define CONFIG_FILE							"/etc/pilight/config.json"
 	#define LOG_FILE								"/var/log/pilight.log"
-	#define TZDATA_FILE							"/etc/pilight/tzdata.json"
+	#define PEM_FILE								"/etc/pilight/pilight.pem"
 #endif	
 #define LOG_MAX_SIZE 						1048576 // 1024*1024
 
@@ -89,6 +84,8 @@
 #define FIRMWARE_GPIO_MISO	13
 
 #define PILIGHT_V						7
+
+#define GPIO_PLATFORM				"none"
 
 #if !defined(PATH_MAX)
 	#if defined(_POSIX_PATH_MAX)

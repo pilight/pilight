@@ -322,7 +322,7 @@ void event_action_thread_free(struct devices_t *dev) {
 
 	struct event_action_thread_t *thread = NULL;
 
-	if(dev != NULL) {
+	if(dev != NULL && dev->action_thread != NULL) {
 		thread = dev->action_thread;
 		if(thread->running == 1) {
 			logprintf(LOG_DEBUG, "aborting running \"%s\" action for device \"%s\"", thread->action, dev->id);

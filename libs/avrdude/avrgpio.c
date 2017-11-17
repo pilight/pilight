@@ -25,14 +25,16 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <wiringx.h>
 
 #include "avrdude.h"
 #include "avr.h"
 #include "pindefs.h"
 #include "pgm.h"
 #include "avrbitbang.h"
-#include "../wiringx/wiringX.h"
+#include "defines.h"
 #include "../pilight/core/log.h"
+#include "../pilight/config/settings.h"
 
 /*
  * GPIO user space helpers
@@ -53,7 +55,7 @@
 static int gpio_fds[N_GPIO];
 
 static int gpio_setpin(PROGRAMMER * pgm, int pin, int value) {
-	if(gpio_fds[pin] != OUTPUT) {
+	if(gpio_fds[pin] != PINMODE_OUTPUT) {
 		return -1;
 	}
 
@@ -74,7 +76,7 @@ static int gpio_setpin(PROGRAMMER * pgm, int pin, int value) {
 }
 
 static int gpio_getpin(PROGRAMMER * pgm, int pin) {
-	if(gpio_fds[pin] == INPUT) {
+	if(gpio_fds[pin] == PINMODE_INPUT) {
 		return digitalRead(pin);
 	} else {
 		return -1;
@@ -83,7 +85,7 @@ static int gpio_getpin(PROGRAMMER * pgm, int pin) {
 
 static int gpio_highpulsepin(PROGRAMMER * pgm, int pin) {
 
-	if(gpio_fds[pin] == OUTPUT) {
+	if(gpio_fds[pin] == PINMODE_OUTPUT) {
 		digitalWrite(pin, HIGH);
 		digitalWrite(pin, LOW);
 		return 0;
@@ -120,11 +122,11 @@ static int gpio_open(PROGRAMMER *pgm, char *port) {
 	for(i=0;i<N_PINS;i++) {
 		if(pgm->pinno[i] != 0) {
 			if(i == PIN_AVR_MISO) {
-				gpio_fds[pgm->pinno[i]] = INPUT;
-				pinMode(pgm->pinno[i], INPUT);
+				gpio_fds[pgm->pinno[i]] = PINMODE_INPUT;
+				pinMode(pgm->pinno[i], PINMODE_INPUT);
 			} else {
-				gpio_fds[pgm->pinno[i]] = OUTPUT;;
-				pinMode(pgm->pinno[i], OUTPUT);
+				gpio_fds[pgm->pinno[i]] = PINMODE_OUTPUT;;
+				pinMode(pgm->pinno[i], PINMODE_OUTPUT);
 			}
 		}
 	}
@@ -133,7 +135,7 @@ static int gpio_open(PROGRAMMER *pgm, char *port) {
 }
 
 static void gpio_close(PROGRAMMER *pgm) {
-	if(gpio_fds[pgm->pinno[PIN_AVR_RESET]] == OUTPUT) {
+	if(gpio_fds[pgm->pinno[PIN_AVR_RESET]] == PINMODE_OUTPUT) {
 		digitalWrite(pgm->pinno[PIN_AVR_RESET], HIGH);
 		// digitalWrite(pgm->pinno[PIN_AVR_RESET], LOW);
 	}
@@ -144,12 +146,12 @@ static void gpio_close(PROGRAMMER *pgm) {
 void gpio_initpgm(PROGRAMMER *pgm)
 {
   strcpy(pgm->type, "GPIO");
-	if(wiringXSupported() == 0) {
-		if(wiringXSetup() != 0) {
-			exit(EXIT_FAILURE);
-		}
-	} else {
-		logprintf(LOG_WARNING, "gpio firmware flashing is not supported on this hardware");
+	char *platform = GPIO_PLATFORM;
+	if(settings_find_string("gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
+		exit(EXIT_FAILURE);
+	}
+	if(wiringXSetup(platform, logprintf1) < 0) {
 		exit(EXIT_FAILURE);
 	}
   pgm->rdy_led        = bitbang_rdy_led;

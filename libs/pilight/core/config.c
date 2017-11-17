@@ -40,7 +40,9 @@
 #include "../config/hardware.h"
 #include "../config/gui.h"
 
-static struct config_t *config;
+static struct config_t *config = NULL;
+static pthread_mutex_t mutex_lock;
+static pthread_mutexattr_t mutex_attr;
 
 static void sort_list(int r) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
@@ -87,6 +89,7 @@ static char *configfile = NULL;
 int config_gc(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
+	pthread_mutex_lock(&mutex_lock);
 	struct config_t *listeners;
 	while(config) {
 		listeners = config;
@@ -101,6 +104,9 @@ int config_gc(void) {
 	if(configfile != NULL) {
 		FREE(configfile);
 	}
+	configfile = NULL;
+
+	pthread_mutex_unlock(&mutex_lock);
 	logprintf(LOG_DEBUG, "garbage collected config library");
 	return 1;
 }
@@ -190,48 +196,28 @@ int config_write(int level, const char *media) {
 int config_read(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	FILE *fp = NULL;
 	char *content = NULL;
-	size_t bytes = 0;
 	struct JsonNode *root = NULL;
-	struct stat st;
 
 	/* Read JSON config file */
-	if((fp = fopen(configfile, "rb")) == NULL) {
-		logprintf(LOG_ERR, "cannot read config file: %s", configfile);
-		return EXIT_FAILURE;
-	}
+	if(file_get_contents(configfile, &content) == 0) {
+		/* Validate JSON and turn into JSON object */
+		if(json_validate(content) == false) {
+			logprintf(LOG_ERR, "config is not in a valid json format");
+			FREE(content);
+			return EXIT_FAILURE;
+		}
+		root = json_decode(content);
 
-	fstat(fileno(fp), &st);
-	bytes = (size_t)st.st_size;
-
-	if((content = CALLOC(bytes+1, sizeof(char))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		fclose(fp);
-		exit(EXIT_FAILURE);
-	}
-
-	if(fread(content, sizeof(char), bytes, fp) == -1) {
-		logprintf(LOG_ERR, "cannot read config file: %s", configfile);
-	}
-	fclose(fp);
-
-	/* Validate JSON and turn into JSON object */
-	if(json_validate(content) == false) {
-		logprintf(LOG_ERR, "config is not in a valid json format");
-		FREE(content);
-		return EXIT_FAILURE;
-	}
-	root = json_decode(content);
-
-	if(config_parse(root) != EXIT_SUCCESS) {
-		FREE(content);
+		if(config_parse(root) != EXIT_SUCCESS) {
+			FREE(content);
+			json_delete(root);
+			return EXIT_FAILURE;
+		}
 		json_delete(root);
-		return EXIT_FAILURE;
+		config_write(1, "all");
+		FREE(content);
 	}
-	json_delete(root);
-	config_write(1, "all");
-	FREE(content);
 	return EXIT_SUCCESS;
 }
 
@@ -265,7 +251,7 @@ int config_set_file(char *settfile) {
 		}
 		strcpy(configfile, settfile);
 	} else {
-		logprintf(LOG_ERR, "the config file %s does not exists", settfile);
+		logprintf(LOG_ERR, "the config file %s does not exist", settfile);
 		return EXIT_FAILURE;
 	}
 
@@ -280,6 +266,10 @@ char *config_get_file(void) {
 
 void config_init() {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	pthread_mutexattr_init(&mutex_attr);
+	pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&mutex_lock, &mutex_attr);
 
 	hardware_init();
 	settings_init();

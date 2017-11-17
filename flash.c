@@ -26,6 +26,9 @@
 #include <time.h>
 #include <math.h>
 #include <string.h>
+#ifndef _WIN32
+#include <wiringx.h>
+#endif
 
 #include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
@@ -37,20 +40,12 @@
 
 #include "libs/pilight/events/events.h"
 
-#ifndef _WIN32
-	#include "libs/wiringx/wiringX.h"
-#endif
-
 int main(int argc, char **argv) {
 	// memtrack();
 
 	atomicinit();
 	log_shell_enable();
 	log_file_disable();
-
-#ifndef _WIN32
-	wiringXLog = logprintf;
-#endif
 
 	struct options_t *options = NULL;
 	char *configtmp = MALLOC(strlen(CONFIG_FILE)+1);
@@ -107,7 +102,7 @@ int main(int argc, char **argv) {
 					fwfile = REALLOC(fwfile, strlen(args)+1);
 					strcpy(fwfile, args);
 				} else {
-					fprintf(stderr, "%s: the firmware file %s does not exists\n", progname, args);
+					fprintf(stderr, "%s: the firmware file %s does not exist\n", progname, args);
 					goto close;
 				}
 			break;

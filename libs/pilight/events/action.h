@@ -21,6 +21,7 @@
 
 typedef struct event_action_thread_t event_action_thread_t;
 typedef struct event_actions_t event_actions_t;
+typedef struct rules_actions_t rules_actions_t;
 
 #include "../core/json.h"
 #include "../core/common.h"

@@ -167,10 +167,10 @@ div.name {
 	float: left;
 }
 
-div.humidity, div.temperature, div.pressure,
+div.humidity, div.temperature, div.pressure, div.illuminance,
 div.rain, div.windavg, div.windgust, div.winddir,
 div.temperature_icon, div.humidity_icon, div.pressure_icon,
-div.rain_icon, div.windavg_icon,
+div.rain_icon, div.windavg_icon, div.illuminance_icon,
 div.windgust_icon, div.winddir_icon,
 div.update_active, div.update_inactive,
 div.sunrise, div.sunset, div.sunset_icon.gray,
@@ -196,7 +196,7 @@ div.sunset_icon.blue, div.sunrise_icon.yellow  {
 }
 
 div.temperature_icon, div.humidity_icon, div.pressure_icon,
-div.rain_icon, div.windavg_icon,
+div.rain_icon, div.windavg_icon, div.illuminance_icon,
 div.windgust_icon {
 	width: 16px;
 	height: 16px;
@@ -295,6 +295,10 @@ div.winddir_icon {
 
 div.windgust_icon {
 	background: url('windgust.png') 0px 0px no-repeat;
+}
+
+div.illuminance_icon {
+	background: url('illuminance.png') 0px 0px no-repeat;
 }
 
 div.update_active {

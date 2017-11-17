@@ -43,7 +43,7 @@
 #include "serial.h"
 
 #define STK500_XTAL 7372800U
-#define MAX_SYNC_ATTEMPTS 10
+#define MAX_SYNC_ATTEMPTS 1
 
 struct pdata {
 	unsigned char ext_addr_byte; /* Record ext-addr byte set in the target device (if used) */

@@ -44,6 +44,9 @@
 #include "devices.h"
 #include "gui.h"
 
+static pthread_mutex_t mutex_lock;
+static pthread_mutexattr_t mutex_attr;
+
 struct config_t *config_devices;
 
 /* Struct to store the locations */
@@ -119,8 +122,7 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 #else
 	gmtime_r(&timenow, &gmt);
 #endif
-	char utc[] = "UTC";
-	time_t utct = datetime2ts(gmt.tm_year+1900, gmt.tm_mon+1, gmt.tm_mday, gmt.tm_hour, gmt.tm_min, gmt.tm_sec, utc);
+	time_t utct = datetime2ts(gmt.tm_year+1900, gmt.tm_mon+1, gmt.tm_mday, gmt.tm_hour, gmt.tm_min, gmt.tm_sec);
 	json_append_member(rval, "timestamp", json_mknumber((double)utct, 0));
 
 	json_find_string(json, "uuid", &uuid);
@@ -251,7 +253,7 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 								while(opt) {
 									/* Check if there are values that can be updated */
 									if(strcmp(sptr->name, opt->name) == 0
-									   && (opt->conftype == DEVICES_VALUE)
+									   && (opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_OPTIONAL)
 									   && opt->argtype == OPTION_HAS_VALUE) {
 										memset(vstring_, '\0', sizeof(vstring_));
 										vnumber_ = -1;
@@ -303,7 +305,7 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 							while(opt) {
 								/* Check if there are values that can be updated */
 								if(strcmp(sptr->name, opt->name) == 0
-								   && (opt->conftype == DEVICES_VALUE)
+								   && (opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_OPTIONAL)
 								   && opt->argtype == OPTION_HAS_VALUE) {
 									int upd_value = 1;
 									memset(vstring_, '\0', sizeof(vstring_));
@@ -394,21 +396,30 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 									jchild = jchild->next;
 								}
 								if(match == 0) {
+									dptr->prevorigin = dptr->lastorigin;
+									dptr->lastorigin = origin;
 #ifdef EVENTS
-								/*
-								 * If the action itself it not triggering a device update, something
-								 * else is. We therefor need to abort the running action to let
-								 * the new state persist.
-								 */
+									/*
+									* If the action itself it not triggering a device update, something
+									* else is. We therefor need to abort the running action to let
+									* the new state persist.
+									*/
 									if(dptr->action_thread->running == 1 && origin != ACTION) {
-										event_action_thread_stop(dptr);
+										/*
+										 * In case of Z-Wave, the ACTION is always followed by a RECEIVER origin due to
+										 * its feedback feature. We do not want to abort or action in these cases.
+										 */
+										if(!((dptr->protocols->listener->hwtype == ZWAVE) && dptr->lastorigin == RECEIVER && dptr->prevorigin == ACTION) || 
+										   dptr->protocols->listener->hwtype != ZWAVE) {
+											event_action_thread_stop(dptr);
+										}
 									}
 
 									/*
-									 * We store the rule number that triggered the device change.
-									 * The eventing library can then check if the same rule is
-									 * triggered again so infinite loops can be prevented.
-									 */
+									* We store the rule number that triggered the device change.
+									* The eventing library can then check if the same rule is
+									* triggered again so infinite loops can be prevented.
+									*/
 									if(origin == ACTION) {
 										if(dptr->action_thread->obj != NULL) {
 											dptr->prevrule = dptr->lastrule;
@@ -434,9 +445,9 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 	if(update == 1) {
 		json_append_member(rroot, "origin", json_mkstring("update"));
 		json_append_member(rroot, "type",  json_mknumber((int)protocol->devtype, 0));
-		if(strlen(pilight_uuid) > 0 && (protocol->hwtype == SENSOR || protocol->hwtype == HWRELAY)) {
+		//if(strlen(pilight_uuid) > 0 && (protocol->hwtype == SENSOR || protocol->hwtype == HWRELAY)) {
 			json_append_member(rroot, "uuid",  json_mkstring(pilight_uuid));
-		}
+		//}
 		json_append_member(rroot, "devices", rdev);
 		json_append_member(rroot, "values", rval);
 
@@ -514,7 +525,7 @@ int devices_valid_value(char *sid, char *name, char *value) {
 		while(tmp_protocol) {
 			opt = tmp_protocol->listener->options;
 			while(opt) {
-				if(opt->conftype == DEVICES_VALUE && strcmp(name, opt->name) == 0) {
+				if((opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_OPTIONAL) && strcmp(name, opt->name) == 0) {
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 					if(opt->mask != NULL) {
 						reti = regcomp(&regex, opt->mask, REG_EXTENDED);
@@ -1518,6 +1529,16 @@ static int devices_parse(JsonNode *root) {
 						have_error = 1;
 						goto clear;
 					}
+					struct protocols_t *tmp_protocols = protocols;
+					while(tmp_protocols) {
+						struct protocol_t *protocol = tmp_protocols->listener;
+						if(strcmp(protocol->id, jdevices->key) == 0) {
+							logprintf(LOG_ERR, "config device #%d \"%s\", protocol names are reserved words", i, jdevices->key);
+							have_error = 1;
+							goto clear;
+						}
+						tmp_protocols = tmp_protocols->next;
+					}
 				}
 				/* Check for duplicate fields */
 				tmp_devices = devices;
@@ -1646,11 +1667,12 @@ clear:
 
 int devices_gc(void) {
 	int i = 0;
-	struct devices_t *dtmp;
-	struct devices_settings_t *stmp;
-	struct devices_values_t *vtmp;
-	struct protocols_t *ptmp;
+	struct devices_t *dtmp = NULL;
+	struct devices_settings_t *stmp = NULL;
+	struct devices_values_t *vtmp = NULL;
+	struct protocols_t *ptmp = NULL;
 
+	pthread_mutex_lock(&mutex_lock);
 	/* Free devices structure */
 	while(devices) {
 		dtmp = devices;
@@ -1689,7 +1711,9 @@ int devices_gc(void) {
 			if(ptmp->name != NULL) {
 				FREE(ptmp->name);
 			}
-			FREE(ptmp->listener);
+			if(ptmp->listener != NULL) {
+				FREE(ptmp->listener);
+			}
 			dtmp->protocols = dtmp->protocols->next;
 			FREE(ptmp);
 		}
@@ -1716,7 +1740,9 @@ int devices_gc(void) {
 	if(devices != NULL) {
 		FREE(devices);
 	}
+	devices = NULL;
 
+	pthread_mutex_unlock(&mutex_lock);
 	logprintf(LOG_DEBUG, "garbage collected config devices library");
 
 	return EXIT_SUCCESS;
@@ -1731,6 +1757,10 @@ static int devices_read(JsonNode *root) {
 }
 
 void devices_init(void) {
+	pthread_mutexattr_init(&mutex_attr);
+	pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&mutex_lock, &mutex_attr);
+
 	/* Request hardware json object in main configuration */
 	config_register(&config_devices, "devices");
 	config_devices->readorder = 1;

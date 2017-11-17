@@ -12,6 +12,7 @@ var aMarqueueInterval = new Array();
 var aReadOnly = new Array();
 var aStates = new Array();
 var bShowTabs = true;
+var bStatsEnabled = true;
 var iPLVersion = 0;
 var iPLNVersion = 0;
 var iFWVersion = 0;
@@ -19,7 +20,7 @@ var aTimers = new Array();
 var sDateTimeFormat = "HH:mm:ss YYYY-MM-DD";
 var aDateTimeFormats = new Array();
 var aWebcamUrl = new Array();
-var aDecimalTypes = ["temperature", "humidity", "wind", "pressure", "sunriseset"];
+var aDecimalTypes = ["temperature", "humidity", "wind", "pressure", "sunriseset", "illuminance"];
 var userLang = navigator.language || navigator.userLanguage;
 var language;
 
@@ -43,7 +44,8 @@ var language_en = {
 	connecting: "Connecting",
 	connection_lost: "Connection lost, touch to reload",
 	connection_failed: "Failed to connect, touch to reload",
-	unexpected_error: "An unexpected error occured"
+	unexpected_error: "An unexpected error occured",
+	insecure_certificate: "You are using the default pilight.pem certificate. This results in a highly insecure https connection! Please personalize your certificate to remove this message."
 }
 
 var language_de = {
@@ -61,7 +63,8 @@ var language_de = {
 	connecting: "Verbindung wird aufgebaut",
 	connection_lost: "Verbindung verloren! Hier berühren, um die Seite neu zu laden.",
 	connection_failed: "Verbindung fehlgeschlagen! Hier berühren, um die Seite neu zu laden.",
-	unexpected_error: "Es ist ein unerwarteter Fehler aufgetreten."
+	unexpected_error: "Es ist ein unerwarteter Fehler aufgetreten.",
+	insecure_certificate: "You are using the default {0} certificate. This is a highly insecure way of using https connections! Please personalize your certificate to remove this message."
 }
 
 var language_nl = {
@@ -78,7 +81,8 @@ var language_nl = {
 	confirm: "Weet u dat zeker?",
 	connection_lost: "Verbinding verloren, klik om te herladen",
 	connection_failed: "Kan niet verbinden, klik om te herhalen",
-	unexpected_error: "An unexpected error occured"
+	unexpected_error: "Er heeft zich een onverwachte fout voorgedaan",
+	insecure_certificate: "You are using the default {0} certificate. This is a highly insecure way of using https connections! Please personalize your certificate to remove this message."
 }
 
 var language_fr = {
@@ -96,7 +100,8 @@ var language_fr = {
 	connecting: "Connexion en cours",
 	connection_lost: "Connexion perdue, appuyez pour recharger",
 	connection_failed: "Connexion impossible, appuyez pour réessayer",
-	unexpected_error: "Une erreur inattendue s'est produite"
+	unexpected_error: "Une erreur inattendue s'est produite",
+	insecure_certificate: "You are using the default {0} certificate. This is a highly insecure way of using https connections! Please personalize your certificate to remove this message."
 }
 
 if(userLang.indexOf('nl') != -1) {
@@ -112,6 +117,15 @@ else {
 	language = language_en;
 }
 
+String.prototype.format = function() {
+    var formatted = this;
+    for (var i = 0; i < arguments.length; i++) {
+        var regexp = new RegExp('\\{'+i+'\\}', 'gi');
+        formatted = formatted.replace(regexp, arguments[i]);
+    }
+    return formatted;
+};
+
 function alphaNum(string) {
 	return string.replace(/\W/g, '');
 }
@@ -120,19 +134,30 @@ var iLatestTap1 = 0;
 var iLatestTap2 = 0;
 
 function toggleTabs() {
-	if(bShowTabs) {
-		var json = '{"action":"registry","type":"set","key":"webgui.tabs","value":0}';
-	} else {
-		var json = '{"action":"registry","type":"set","key":"webgui.tabs","value":1}';
-	}
 	if(oWebsocket) {
+		if(bShowTabs) {
+			var json = '{"action":"registry","type":"set","key":"webgui.tabs","value":0}';
+		} else {
+			var json = '{"action":"registry","type":"set","key":"webgui.tabs","value":1}';
+		}
 		oWebsocket.send(json);
+		document.location = document.location;
 	} else {
 		bSending = true;
-		$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
-		window.setTimeout(function() { bSending = false; }, 1000);
+		if(bShowTabs) {
+			$.get(sHTTPProtocol+'://'+location.host+'/registry?type=set&key=webgui.tabs&value=0');
+		} else {
+			$.get(sHTTPProtocol+'://'+location.host+'/registry?type=set&key=webgui.tabs&value=1');
+		}
+		$.mobile.loading('show', {
+			'text': '',
+			'textVisible': true,
+			'theme': 'b'
+		});		
+		window.setTimeout(function() {
+			document.location = document.location;
+		}, 1000);
 	}
-	document.location = document.location;
 }
 
 $(document).click(function(e) {
@@ -234,16 +259,21 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 					return false;
 				}
 			}
-			if('all' in aValues && aValues['all'] == 1) {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
-			} else {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}';
-			}
+
 			if(oWebsocket) {
+				if('all' in aValues && aValues['all'] == 1) {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+				} else {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}';
+				}
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				if('all' in aValues && aValues['all'] == 1) {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value+'&values[all]=1');
+				} else {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value);
+				}
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -281,12 +311,13 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 			$('#'+sDevId+'_pendingsw').button('disable');
 			$('#'+sDevId+'_pendingsw').text(language.toggling);
 			$('#'+sDevId+'_pendingsw').button('refresh');
-			var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+((aStates[sDevId] == "off") ? "on" : "off")+'"}}';
+			
 			if(oWebsocket) {
+				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+((aStates[sDevId] == "off") ? "on" : "off")+'"}}';
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+((aStates[sDevId] == "off") ? "on" : "off"));
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -302,12 +333,12 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 				$('#'+sDevId+'_pendingsw').button('disable');
 				$('#'+sDevId+'_pendingsw').text(language.toggling);
 				$('#'+sDevId+'_pendingsw').button('refresh');
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+((aStates[sDevId] == "off") ? "on" : "off")+'"}}';
 				if(oWebsocket) {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+((aStates[sDevId] == "off") ? "on" : "off")+'"}}';
 					oWebsocket.send(json);
 				} else {
 					bSending = true;
-					$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+((aStates[sDevId] == "off") ? "on" : "off"));
 					window.setTimeout(function() { bSending = false; }, 1000);
 				}
 			}
@@ -355,16 +386,21 @@ function createScreenElement(sTabId, sDevId, aValues) {
 				if(i==2)
 					window.clearInterval(x);
 			}, 100);
-			if('all' in aValues && aValues['all'] == 1) {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
-			} else {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}'
-			}
+
 			if(oWebsocket) {
+				if('all' in aValues && aValues['all'] == 1) {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+				} else {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}'
+				}
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				if('all' in aValues && aValues['all'] == 1) {
+					$.get(sHTTPProtocol+'://'+location.host+'/control/control?device='+sDevId+'&state='+this.value+'&values[all]=1');
+				} else {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value);
+				}
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -387,16 +423,21 @@ function createScreenElement(sTabId, sDevId, aValues) {
 				if(i==2)
 					window.clearInterval(x);
 			}, 100);
-			if('all' in aValues && aValues['all'] == 1) {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
-			} else {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}'
-			}
+
 			if(oWebsocket) {
+				if('all' in aValues && aValues['all'] == 1) {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+				} else {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}'
+				}
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				if('all' in aValues && aValues['all'] == 1) {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value+'&values[all]=1');
+				} else {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value);
+				}
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -421,7 +462,7 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues && 'dimlevel-minimum' in aValues && 'dimlevel-maximum' in aValues) {
-			oTab.append($('<li id="'+sDevId+'" class="dimmer" data-icon="false"><div class="name">'+aValues['name']+'</div><select id="'+sDevId+'_switch" data-role="slider"><option value="off">'+language.off+'</option><option value="on">'+language.on+'</option></select><div id="'+sDevId+'_dimmer" min="'+aValues['dimlevel-minimum']+'" max="'+aValues['dimlevel-maximum']+'" data-highlight="true" ><input type="value" id="'+sDevId+'_value" class="slider-value dimmer-slider ui-slider-input ui-input-text ui-body-c ui-corner-all ui-shadow-inset" /></div></li>'));
+			oTab.append($('<li id="'+sDevId+'" class="dimmer" data-icon="false"><div class="name">'+aValues['name']+'</div><select id="'+sDevId+'_switch" data-role="slider"><option value="off">'+language.off+'</option><option value="on">'+language.on+'</option></select><div id="'+sDevId+'_dimmer" min="'+aValues['dimlevel-minimum']+'" max="'+aValues['dimlevel-maximum']+'" data-highlight="true" ><input type="value" id="'+sDevId+'_value" class="slider-value dimmer-slider ui-slider-input ui-input-text ui-body-c ui-corner-all ui-shadow-inset" disabled="true"/></div></li>'));
 		}
 		$('#'+sDevId+'_switch').slider();
 		$('#'+sDevId+'_switch').bind("change", function(event, ui) {
@@ -437,16 +478,25 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 					return false;
 				}
 			}
-			if('all' in aValues && aValues['all'] == 1) {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
-			} else {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}';
-			}
+
 			if(oWebsocket) {
+				if('all' in aValues && aValues['all'] == 1) {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all":1,"dimlevel":'+$('#'+sDevId+'_dimmer').val()+'}}}';
+				} else {
+					if(this.value == "on") {
+						var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"dimlevel":'+$('#'+sDevId+'_dimmer').val()+'}}}';
+					} else {
+						var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}';
+					}
+				}
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				if('all' in aValues && aValues['all'] == 1) {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value+'&values[all]=1&values[dimlevel]='+$('#'+sDevId+'_dimmer').val());
+				} else {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value+'&values[dimlevel]='+$('#'+sDevId+'_dimmer').val());
+				}
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -465,12 +515,12 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 					aDimLevel[sDevId] = this.value;
 					$('#'+sDevId+'_switch')[0].selectedIndex = 1;
 					$('#'+sDevId+'_switch').slider('refresh');
-					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"on","values":{"dimlevel":'+this.value+'}}}';
 					if(oWebsocket) {
+						var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"on","values":{"dimlevel":'+this.value+'}}}';
 						oWebsocket.send(json);
 					} else {
 						bSending = true;
-						$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+						$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state=on&values[dimlevel]='+this.value);
 						window.setTimeout(function() { bSending = false; }, 1000);
 					}
 				}
@@ -522,12 +572,12 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 			oTab.find('#'+sDevId+'_weather_values').append($('<div class="update_inactive" id="'+sDevId+'_upd" title="'+language.update+'">&nbsp;</div>'));
 			$('#'+sDevId+'_upd').click(function() {
 				if(this.className.indexOf('update_active') == 0) {
-					var json = '{"action":"control","code":{"device":"'+sDevId+'","values":{"update":1}}}';
 					if(oWebsocket) {
+						var json = '{"action":"control","code":{"device":"'+sDevId+'","values":{"update":1}}}';
 						oWebsocket.send(json);
 					} else {
 						bSending = true;
-						$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+						$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&values[update]=1');
 						window.setTimeout(function() { bSending = false; }, 1000);
 					}
 				}
@@ -558,6 +608,9 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 			oTab.find('#'+sDevId+'_weather_values').append($('<div id="'+sDevId+'_sunrise_icon" class="sunrise_icon"></div><div class="sunrise" id="'+sDevId+'_sunrise"></div>'));
 			$('#'+sDevId+'_sunrise_icon').addClass('yellow');
 			$('#'+sDevId+'_sunset_icon').addClass('gray');
+		}
+		if('show-illuminance' in aValues && aValues['show-illuminance']) {
+			oTab.find('#'+sDevId+'_weather').append($('<div class="illuminance_icon"></div><div class="illuminance" id="'+sDevId+'_illu"></div>'));
 		}
 	}
 	oTab.listview();
@@ -759,7 +812,7 @@ function createGUI(data) {
 	$('#tabs').append($("<ul></ul>"));
 	$.each(data['gui'], function(dindex, dvalues) {
 		var lindex = dvalues['group'][0];
-		if(oWebsocket) {
+		if(oWebsocket && bStatsEnabled) {
 			$('#proc').text("CPU: ...% / RAM: ...%");
 		}
 		if($('#'+alphaNum(lindex)).length == 0) {
@@ -876,6 +929,7 @@ function parseValues(data) {
 					}
 					if(vindex == 'dimlevel') {
 						aDimLevel[dvalues] = vvalues;
+						$('#'+dvalues+'_value').val(vvalues);
 						$('#'+dvalues+'_dimmer').val(vvalues);
 						$('#'+dvalues+'_dimmer').slider('refresh');
 					}
@@ -971,6 +1025,10 @@ function parseValues(data) {
 					} else if(vindex == 'sunset' && $('#'+dvalues+'_sunset').length > 0) {
 						if(dvalues in aDecimals) {
 							$('#'+dvalues+'_sunset').text(vvalues.toFixed(aDecimals[dvalues]['sunriseset']));
+						}
+					} else if(vindex == 'illuminance' && $('#'+dvalues+'_illu').length > 0) {
+						if(dvalues in aDecimals) {
+							$('#'+dvalues+'_illu').text(vvalues.toFixed(aDecimals[dvalues]['illuminance']));
 						}
 					} else if(vindex == 'battery' && $('#'+dvalues+'_batt').length > 0) {
 						if(vvalues == 1) {
@@ -1083,39 +1141,35 @@ function parseValues(data) {
 }
 
 function parseData(data) {
-	if(data.hasOwnProperty("gui") && data.hasOwnProperty("devices")) {
-		createGUI(data);
-		if('registry' in data && 'pilight' in data['registry']) {
-			if('version' in data['registry']['pilight']) {
-				if('current' in data['registry']['pilight']['version']) {
-					iPLVersion = data['registry']['pilight']['version']['current'];
+	if(data.hasOwnProperty("config")) {
+		config = data['config'];
+		if(config.hasOwnProperty("gui") && config.hasOwnProperty("devices")) {
+			createGUI(config);
+			if('registry' in config && 'pilight' in config['registry']) {
+				if('version' in config['registry']['pilight']) {
+					if('current' in config['registry']['pilight']['version']) {
+						iPLVersion = config['registry']['pilight']['version']['current'];
+					}
+					if('available' in config['registry']['pilight']['version']) {
+						iNPLVersion = config['registry']['pilight']['version']['available'];
+					}
 				}
-				if('available' in data['registry']['pilight']['version']) {
-					iNPLVersion = data['registry']['pilight']['version']['available'];
-				}
+				updateVersions();
 			}
-			if('firmware' in data['registry']['pilight']) {
-				if('version' in data['registry']['pilight']['firmware']) {
-					iFWVersion = data['registry']['pilight']['firmware']['version'];
-				}
-			}
-			updateVersions();
 		}
-		oWebsocket.send("{\"action\":\"request values\"}");
+		if(oWebsocket) {
+			oWebsocket.send("{\"action\":\"request values\"}");
+		}
 	} else if(data.hasOwnProperty("origin")) {
 		if(data['origin'] == "update") {
 			parseValues(data);
 		} else if(data['origin'] == "core") {
 			if(data['type'] == -1) {
 				updateProcStatus(data['values']);
-			} else if(data['type'] == -2) {
-				iFWVersion = data['values']['version'];
-				updateVersions();
 			}
 		}
-	} else if(data.constructor === Array &&
-			data[0]['devices'].length > 0) {
-		$.each(data, function(dindex, dvalues) {
+	} else if(data.hasOwnProperty("values")) {
+		$.each(data['values'], function(dindex, dvalues) {
 			parseValues(dvalues);
 		});
 	}
@@ -1237,10 +1291,27 @@ $(document).ready(function() {
 		/* Use an AJAX request to check if the user want to enforce
 		   an AJAX connection, or if he wants to use websockets */
 		$.get(sHTTPProtocol+'://'+location.host+'/config?internal&'+$.now(), function(txt) {
-			var data = $.parseJSON(txt);
-			if('registry' in data && 'webgui' in data['registry'] &&
-				 'tabs' in data['registry']['webgui']) {
-				 bShowTabs = data['registry']['webgui']['tabs'];
+			var data = $.parseJSON(JSON.stringify(txt));
+			if('registry' in data) {
+				if('webgui' in data['registry'] &&
+					'tabs' in data['registry']['webgui']) {
+					bShowTabs = data['registry']['webgui']['tabs'];
+				}
+	
+				if(sHTTPProtocol == "https") {
+					if('webserver' in data['registry'] &&
+						 'ssl' in data['registry']['webserver'] &&
+						 'certificate' in data['registry']['webserver']['ssl'] &&
+						 'secure' in data['registry']['webserver']['ssl']['certificate']) {
+					 if(data['registry']['webserver']['ssl']['certificate']['secure'] == 0) {
+						 pemfile = 'pilight.pem';
+						 if('location' in data['registry']['webserver']['ssl']['certificate']) {
+							 pemfile = data['registry']['webserver']['ssl']['certificate']['location'];
+						 }
+						 alert(language['insecure_certificate'].format(pemfile));
+						}
+					}
+				}
 			}
 			if('settings' in data && 'webgui-websockets' in data['settings']) {
 				if(data['settings']['webgui-websockets'] == 0) {
@@ -1250,6 +1321,9 @@ $(document).ready(function() {
 				}
 			} else {
 				startWebsockets();
+			}
+			if('settings' in data && 'stats-enable' in data['settings']) {
+				bStatsEnabled = data['settings']['stats-enable'];
 			}
 		});
 

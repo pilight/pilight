@@ -22,7 +22,6 @@
 #include <dirent.h>
 #include <sys/time.h>
 #include <sys/stat.h>
-#include <sys/stat.h>
 #ifndef _WIN32
 	#ifdef __mips__
 		#define __USE_UNIX98
@@ -39,12 +38,7 @@
 #include "../config/settings.h"
 
 #include "protocol.h"
-#include "433.92/protocol_header.h"
-#include "API/protocol_header.h"
-#include "generic/protocol_header.h"
-#include "GPIO/protocol_header.h"
-#include "network/protocol_header.h"
-#include "core/protocol_header.h"
+#include "protocol_header.h"
 
 struct protocols_t *protocols;
 
@@ -99,12 +93,7 @@ void protocol_remove(char *name) {
 void protocol_init(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	#include "433.92/protocol_init.h"
-	#include "API/protocol_init.h"
-	#include "generic/protocol_init.h"
-	#include "GPIO/protocol_init.h"
-	#include "network/protocol_init.h"
-	#include "core/protocol_init.h"
+	#include "protocol_init.h"
 
 #ifndef _WIN32
 	void *handle = NULL;
@@ -224,6 +213,7 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->config = 1;
 	(*proto)->masterOnly = 0;
 	(*proto)->parseCode = NULL;
+	(*proto)->parseCommand = NULL;
 	(*proto)->createCode = NULL;
 	(*proto)->checkValues = NULL;
 	(*proto)->initDev = NULL;

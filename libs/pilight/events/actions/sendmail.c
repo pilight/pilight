@@ -34,10 +34,6 @@
 #include "../../core/mail.h"
 #include "sendmail.h"
 
-#ifndef _WIN32
-	#include <regex.h>
-#endif
-
 //check arguments and settings
 static int checkArguments(struct rules_actions_t *obj) {
 	struct JsonNode *jsubject = NULL;
@@ -48,10 +44,6 @@ static int checkArguments(struct rules_actions_t *obj) {
 	struct JsonNode *jchild = NULL;
 	char *stmp = NULL;
 	int nrvalues = 0, itmp = 0;
-#if !defined(__FreeBSD__) && !defined(_WIN32)
-	regex_t regex;
-	int reti;
-#endif
 	jsubject = json_find_member(obj->parsedargs, "SUBJECT");
 	jmessage = json_find_member(obj->parsedargs, "MESSAGE");
 	jto = json_find_member(obj->parsedargs, "TO");
@@ -108,22 +100,9 @@ static int checkArguments(struct rules_actions_t *obj) {
 	if(jval->tag != JSON_STRING || jval->string_ == NULL) {
 		logprintf(LOG_ERR, "sendmail action \"TO\" must contain an e-mail address");
 		return -1;
-	} else if(strlen(jval->string_) > 0) {
-#if !defined(__FreeBSD__) && !defined(_WIN32)
-		char validate[] = "^[a-zA-Z0-9_.]+@[a-zA-Z0-9]+\\.+[a-zA-Z0-9]{2,3}$";
-		reti = regcomp(&regex, validate, REG_EXTENDED);
-		if(reti) {
-			logprintf(LOG_ERR, "could not compile regex for \"TO\"");
-			return -1;
-		}
-		reti = regexec(&regex, jval->string_, 0, NULL, 0);
-		if(reti == REG_NOMATCH || reti != 0) {
-			logprintf(LOG_ERR, "sendmail action \"TO\" must contain an e-mail address");
-			regfree(&regex);
-			return -1;
-		}
-		regfree(&regex);
-#endif
+	} else if(strlen(jval->string_) > 0 && check_email_addr(jval->string_, 0, 0) < 0) {
+		logprintf(LOG_ERR, "sendmail action \"TO\" must contain an e-mail address");
+		return -1;
 	}
 	// Check if mandatory settings are present in config
 	if(settings_find_string("smtp-host", &stmp) != EXIT_SUCCESS) {
@@ -149,6 +128,19 @@ static int checkArguments(struct rules_actions_t *obj) {
 	return 0;
 }
 
+static void callback(int status, struct mail_t *mail) {
+	if(status == 0) {
+		logprintf(LOG_INFO, "successfully sent sendmail action message");
+	} else {
+		logprintf(LOG_INFO, "failed to send sendmail action message");
+	}
+	FREE(mail->from);
+	FREE(mail->to);
+	FREE(mail->message);
+	FREE(mail->subject);
+	FREE(mail);
+}
+
 static void *thread(void *param) {
 	struct rules_actions_t *pth = (struct rules_actions_t *)param;
 	struct JsonNode *arguments = pth->parsedargs;
@@ -166,7 +158,7 @@ static void *thread(void *param) {
 
 	struct mail_t mail;
 	char *shost = NULL, *suser = NULL, *spassword = NULL;
-	int sport = 0;
+	int sport = 0, ssl = 0;
 
 	jmessage = json_find_member(arguments, "MESSAGE");
 	jsubject = json_find_member(arguments, "SUBJECT");
@@ -189,12 +181,13 @@ static void *thread(void *param) {
 				settings_find_number("smtp-port", &sport);
 				settings_find_string("smtp-user", &suser);
 				settings_find_string("smtp-password", &spassword);
+				settings_find_number("smtp-ssl", &ssl);
 
 				mail.subject = jval1->string_;
 				mail.message = jval2->string_;
 				mail.to = jval3->string_;
 
-				if(sendmail(shost, suser, spassword, sport, &mail) != 0) {
+				if(sendmail(shost, suser, spassword, sport, ssl, &mail, callback) != 0) {
 					logprintf(LOG_ERR, "Sendmail failed to send message \"%s\"", jval2->string_);
 				}
 			}

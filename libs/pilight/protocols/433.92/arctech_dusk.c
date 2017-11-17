@@ -30,7 +30,7 @@
 #include "arctech_dusk.h"
 
 #define PULSE_MULTIPLIER	3
-#define MIN_PULSE_LENGTH	272
+#define MIN_PULSE_LENGTH	250
 #define MAX_PULSE_LENGTH	282
 #define AVG_PULSE_LENGTH	277
 #define RAW_LENGTH				132
@@ -57,14 +57,19 @@ static void createMessage(int id, int unit, int state, int all) {
 	}
 
 	if(state == 1) {
-		json_append_member(arctech_dusk->message, "state", json_mkstring("dawn"));
-	} else {
 		json_append_member(arctech_dusk->message, "state", json_mkstring("dusk"));
+	} else {
+		json_append_member(arctech_dusk->message, "state", json_mkstring("dawn"));
 	}
 }
 
 static void parseCode(void) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
+
+	if(arctech_dusk->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "arctech_dusk: parsecode - invalid parameter passed %d", arctech_dusk->rawlen);
+		return;
+	}
 
 	for(x=0;x<arctech_dusk->rawlen;x+=4) {
 		if(arctech_dusk->raw[x+3] > AVG_PULSE_LENGTH*PULSE_MULTIPLIER) {
@@ -109,7 +114,7 @@ void arctechDuskInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_dusk";
-	module->version = "2.0";
+	module->version = "2.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

@@ -23,6 +23,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#ifndef _WIN32
+#include <wiringx.h>
+#endif
 
 #include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
@@ -42,10 +45,6 @@
 
 #include "libs/pilight/events/events.h"
 
-#ifndef _WIN32
-	#include "libs/wiringx/wiringX.h"
-#endif
-
 int main(int argc, char **argv) {
 	// memtrack();
 
@@ -64,10 +63,6 @@ int main(int argc, char **argv) {
 	log_file_disable();
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
-
-#ifndef _WIN32
-	wiringXLog = logprintf;
-#endif
 
 	if((progname = MALLOC(16)) == NULL) {
 		fprintf(stderr, "out of memory\n");
@@ -243,27 +238,24 @@ int main(int argc, char **argv) {
 							json_append_member(jcode, "device", json_mkstring(device));
 
 							if(values != NULL) {
-								char **array = NULL;
-								unsigned int n = explode(values, ",=", &array), q = 0;
-								for(q=0;q<n;q+=2) {
-									char *name = MALLOC(strlen(array[q])+1);
-									if(name == NULL) {
-										logprintf(LOG_ERR, "out of memory\n");
-										exit(EXIT_FAILURE);
-									}
-									strcpy(name, array[q]);
-									if(q+1 == n) {
-										array_free(&array, n);
-										logprintf(LOG_ERR, "\"%s\" is missing a value for device \"%s\"", name, device);
-										FREE(name);
-										break;
-									} else {
+								char *sptr = NULL;
+								char *ptr1 = strtok_r(values, ",", &sptr);
+								while(ptr1) {
+									char **array = NULL;
+									int n = explode(ptr1, "=", &array), q = 0;
+									if(n == 2) {
+										char *name = MALLOC(strlen(array[0])+1);
+										if(name == NULL) {
+											logprintf(LOG_ERR, "out of memory\n");
+											exit(EXIT_FAILURE);
+										}
+										strcpy(name, array[q]);
 										char *val = MALLOC(strlen(array[q+1])+1);
 										if(val == NULL) {
 											logprintf(LOG_ERR, "out of memory\n");
 											exit(EXIT_FAILURE);
 										}
-										strcpy(val, array[q+1]);
+										strcpy(val, array[1]);
 										if(devices_valid_value(device, name, val) == 0) {
 											if(isNumeric(val) == EXIT_SUCCESS) {
 												json_append_member(jvalues, name, json_mknumber(atof(val), nrDecimals(val)));
@@ -271,17 +263,24 @@ int main(int argc, char **argv) {
 												json_append_member(jvalues, name, json_mkstring(val));
 											}
 											has_values = 1;
+											FREE(name);
+											FREE(values);
+											array_free(&array, n);
 										} else {
 											logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
 											array_free(&array, n);
 											FREE(name);
+											FREE(values);
 											json_delete(json);
 											goto close;
-										}
+										}								
+									} else {
+										array_free(&array, n);
+										logprintf(LOG_ERR, "\"%s\" requires a name=value format", ptr1);
+										break;
 									}
-									FREE(name);
+									ptr1 = strtok_r(NULL, ",", &sptr);
 								}
-								array_free(&array, n);
 							}
 
 							if(devices_valid_state(device, state) == 0) {

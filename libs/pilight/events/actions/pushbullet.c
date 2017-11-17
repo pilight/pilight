@@ -40,10 +40,10 @@ static int checkArguments(struct rules_actions_t *obj) {
 	struct JsonNode *jchild = NULL;
 	int nrvalues = 0;
 
-	jtitle = json_find_member(obj->arguments, "TITLE");
-	jbody = json_find_member(obj->arguments, "BODY");
-	jtoken = json_find_member(obj->arguments, "TOKEN");
-	jtype = json_find_member(obj->arguments, "TYPE");
+	jtitle = json_find_member(obj->parsedargs, "TITLE");
+	jbody = json_find_member(obj->parsedargs, "BODY");
+	jtoken = json_find_member(obj->parsedargs, "TOKEN");
+	jtype = json_find_member(obj->parsedargs, "TYPE");
 
 	if(jtitle == NULL) {
 		logprintf(LOG_ERR, "pushbullet action is missing a \"TITLE\"");
@@ -112,10 +112,18 @@ static int checkArguments(struct rules_actions_t *obj) {
 	return 0;
 }
 
+static void callback(int code, char *data, int size, char *type, void *userdata) {
+	if(code == 200) {
+		logprintf(LOG_DEBUG, "pushbullet action succeeded with message: %s", data);
+	} else {
+		logprintf(LOG_NOTICE, "pushbullet action failed (%d) with message: %s", code, data);
+	}
+}
+
 static void *thread(void *param) {
 	struct rules_actions_t *pth = (struct rules_actions_t *)param;
 	// struct rules_t *obj = pth->obj;
-	struct JsonNode *arguments = pth->arguments;
+	struct JsonNode *arguments = pth->parsedargs;
 	struct JsonNode *jtitle = NULL;
 	struct JsonNode *jbody = NULL;
 	struct JsonNode *jtype = NULL;
@@ -129,9 +137,7 @@ static void *thread(void *param) {
 	struct JsonNode *jval3 = NULL;
 	struct JsonNode *jval4 = NULL;
 
-	char url[1024], typebuf[70];
-	char *data = NULL, *tp = typebuf;
-	int ret = 0, size = 0;
+	char url[1024];
 
 	action_pushbullet->nrthreads++;
 
@@ -153,7 +159,6 @@ static void *thread(void *param) {
 			if(jval1 != NULL && jval2 != NULL && jval3 != NULL && jval4 != NULL &&
 			 jval1->tag == JSON_STRING && jval2->tag == JSON_STRING &&
 			 jval3->tag == JSON_STRING && jval4->tag == JSON_STRING) {
-				data = NULL;
 				snprintf(url, 1024, "https://%s@api.pushbullet.com/v2/pushes", jval3->string_);
 
 				struct JsonNode *code = json_mkobject();
@@ -164,16 +169,9 @@ static void *thread(void *param) {
 				char *content = json_stringify(code, "\t");
 				json_delete(code);
 
-				data = http_post_content(url, &tp, &ret, &size, "application/json", content);
+				http_post_content(url, "application/json", content, callback, NULL);
+
 				json_free(content);
-				if(ret == 200) {
-					logprintf(LOG_DEBUG, "pushbullet action succeeded with message: %s", data);
-				} else {
-					logprintf(LOG_NOTICE, "pushbullet action failed (%d) with message: %s", ret, data);
-				}
-				if(data != NULL) {
-					FREE(data);
-				}
 			}
 		}
 	}

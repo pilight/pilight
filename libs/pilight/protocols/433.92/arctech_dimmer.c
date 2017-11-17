@@ -33,7 +33,7 @@
 #define LEARN_REPEATS			40
 #define NORMAL_REPEATS		10
 #define PULSE_MULTIPLIER	4
-#define MIN_PULSE_LENGTH	275
+#define MIN_PULSE_LENGTH	250
 #define MAX_PULSE_LENGTH	320
 #define AVG_PULSE_LENGTH	300
 #define RAW_LENGTH				148
@@ -60,7 +60,9 @@ static void createMessage(int id, int unit, int state, int all, int dimlevel, in
 		json_append_member(arctech_dimmer->message, "unit", json_mknumber(unit, 0));
 	}
 
-	if(dimlevel >= 0) {
+	if(dimlevel == 0) {
+		state = 0;
+	} else if(dimlevel > 0) {
 		state = 1;
 		json_append_member(arctech_dimmer->message, "dimlevel", json_mknumber(dimlevel, 0));
 	}
@@ -80,6 +82,11 @@ static void createMessage(int id, int unit, int state, int all, int dimlevel, in
 
 static void parseCode(void) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
+
+	if(arctech_dimmer->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "arctech_dimmer: parsecode - invalid parameter passed %d", arctech_dimmer->rawlen);
+		return;
+	}
 
 	for(x=0;x<arctech_dimmer->rawlen;x+=4) {
 		if(arctech_dimmer->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
@@ -339,7 +346,7 @@ void arctechDimmerInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_dimmer";
-	module->version = "3.2";
+	module->version = "3.4";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

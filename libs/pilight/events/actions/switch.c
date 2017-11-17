@@ -133,14 +133,16 @@ static int checkArguments(struct rules_actions_t *obj) {
 								break;
 							}
 						}
-						array_free(&array, l);
 						if(match == 0) {
 							logprintf(LOG_ERR, "switch action \"%s\" is not a valid unit", array[1]);
+							array_free(&array, l);
 							return -1;
 						}
 					} else {
 						logprintf(LOG_ERR, "switch action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
-						array_free(&array, l);
+						if(l > 0) {
+							array_free(&array, l);
+						}
 						return -1;
 					}
 				}
@@ -174,9 +176,9 @@ static int checkArguments(struct rules_actions_t *obj) {
 								break;
 							}
 						}
-						array_free(&array, l);
 						if(match == 0) {
 							logprintf(LOG_ERR, "switch action \"%s\" is not a valid unit", array[1]);
+							array_free(&array, l);
 							return -1;
 						}
 					} else {
@@ -186,6 +188,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 						}
 						return -1;
 					}
+					array_free(&array, l);
 				}
 				jdchild = jdchild->next;
 			}
@@ -280,7 +283,9 @@ static void *thread(void *param) {
 							}
 						}
 					}
-					array_free(&array, l);
+					if(l > 0) {
+						array_free(&array, l);
+					}
 				}
 			}
 		}
@@ -301,7 +306,9 @@ static void *thread(void *param) {
 							}
 						}
 					}
-					array_free(&array, l);
+					if(l > 0) {
+						array_free(&array, l);
+					}
 				}
 			}
 		}
@@ -470,7 +477,7 @@ void actionSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "switch";
-	module->version = "3.1";
+	module->version = "3.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "152";
 }

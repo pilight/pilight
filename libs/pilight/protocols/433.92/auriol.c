@@ -31,8 +31,8 @@
 #include "auriol.h"
 
 #define PULSE_MULTIPLIER	13
-#define MIN_PULSE_LENGTH	274
-#define MAX_PULSE_LENGTH	265
+#define MIN_PULSE_LENGTH	264
+#define MAX_PULSE_LENGTH	274
 #define AVG_PULSE_LENGTH	269
 #define RAW_LENGTH				66
 
@@ -60,6 +60,11 @@ static void parseCode(void) {
 	int channel = 0, id = 0, battery = 0;
 	double temp_offset = 0.0, temperature = 0.0;
 
+	if(auriol->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "auriol: parsecode - invalid parameter passed %d", auriol->rawlen);
+		return;
+	}
+
 	for(x=1;x<auriol->rawlen-2;x+=2) {
 		if(auriol->raw[x] > AVG_PULSE_LENGTH*PULSE_MULTIPLIER) {
 			binary[i++] = 1;
@@ -68,10 +73,10 @@ static void parseCode(void) {
 		}
 	}
 
-	// id = binToDecRev(binary, 0, 7); using channel instead of battery id as id
+	id = binToDecRev(binary, 0, 7);
 	battery = binary[8];
 	channel = 1 + binToDecRev(binary, 10, 11); // channel as id
-	temperature = (double)binToDecRev(binary, 12, 23)/10;
+	temperature = (double)binToSignedRev(binary, 12, 23)/10;
 	// checksum = (double)binToDecRev(binary, 24, 31); been unable to deciper it
 	struct settings_t *tmp = settings;
 	while(tmp) {
@@ -86,9 +91,10 @@ static void parseCode(void) {
 
 	if(channel != 4) {
 		auriol->message = json_mkobject();
-		json_append_member(auriol->message, "id", json_mknumber(channel, 0));
+		json_append_member(auriol->message, "id", json_mknumber(id, 0));
 		json_append_member(auriol->message, "temperature", json_mknumber(temperature, 1));
 		json_append_member(auriol->message, "battery", json_mknumber(battery, 0));
+		json_append_member(auriol->message, "channel", json_mknumber(channel, 0));
 	}
 }
 
@@ -167,7 +173,8 @@ void auriolInit(void) {
 	auriol->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	auriol->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
-	options_add(&auriol->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[1-3]");
+	options_add(&auriol->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
+	options_add(&auriol->options, 'c', "channel", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[1-3]");
 	options_add(&auriol->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&auriol->options, 'b', "battery", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[01]$");
 
@@ -186,7 +193,7 @@ void auriolInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "auriol";
-	module->version = "2.0";
+	module->version = "2.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

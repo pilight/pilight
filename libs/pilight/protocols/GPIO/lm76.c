@@ -31,6 +31,7 @@
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
+	#include <wiringx.h>
 #endif
 #include <pthread.h>
 
@@ -42,15 +43,14 @@
 #include "../../core/binary.h"
 #include "../../core/gc.h"
 #include "../../core/json.h"
-#ifndef _WIN32
-	#include "../../../wiringx/wiringX.h"
-#endif
+#include "../../config/settings.h"
 #include "../protocol.h"
 #include "lm76.h"
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 typedef struct settings_t {
 	char **id;
+	char path[PATH_MAX];
 	int nrid;
 	int *fd;
 } settings_t;
@@ -97,6 +97,9 @@ static void *thread(void *param) {
 				strcpy(lm76data->id[lm76data->nrid], stmp);
 				lm76data->nrid++;
 			}
+			if(json_find_string(jchild, "i2c-path", &stmp) == 0) {
+				strcpy(lm76data->path, stmp);
+			}
 			jchild = jchild->next;
 		}
 	}
@@ -110,7 +113,7 @@ static void *thread(void *param) {
 		exit(EXIT_FAILURE);
 	}
 	for(y=0;y<lm76data->nrid;y++) {
-		lm76data->fd[y] = wiringXI2CSetup((int)strtol(lm76data->id[y], NULL, 16));
+		lm76data->fd[y] = wiringXI2CSetup(lm76data->path, (int)strtol(lm76data->id[y], NULL, 16));
 	}
 
 	while(loop) {
@@ -168,7 +171,12 @@ static void *thread(void *param) {
 }
 
 static struct threadqueue_t *initDev(JsonNode *jdevice) {
-	if(wiringXSupported() == 0 && wiringXSetup() == 0) {
+	char *platform = GPIO_PLATFORM;
+	if(settings_find_string("gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+		logprintf(LOG_ERR, "lm75: no gpio-platform configured");
+		exit(EXIT_FAILURE);
+	}
+	if(wiringXSetup(platform, logprintf1) == 0) {
 		loop = 1;
 
 		char *output = json_stringify(jdevice, NULL);
@@ -210,6 +218,7 @@ void lm76Init(void) {
 
 	options_add(&lm76->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&lm76->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "0x[0-9a-f]{2}");
+	options_add(&lm76->options, 'd', "i2c-path", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^/dev/i2c-[0-9]{1,2}$");
 
 	// options_add(&lm76->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
 	options_add(&lm76->options, 0, "temperature-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
@@ -224,9 +233,9 @@ void lm76Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "lm76";
-	module->version = "2.0";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.1";
+	module->reqversion = "7.0";
+	module->reqcommit = "186";
 }
 
 void init(void) {

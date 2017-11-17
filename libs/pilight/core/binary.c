@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -21,137 +11,108 @@
 
 #include "binary.h"
 
-int binToDecRev(int *binary, int s, int e) {
-	int dec = 0, i = 0;
-	unsigned int x = 1;
-	for(i=s;i<=e;i++) {
-		x*=2;
-	}
-	for(i=s;i<=e;i++) {
-		x/=2;
-		if(binary[i] == 1)
-			dec += (int)x;
-	}
-	return dec;
+/*
+ * Macros to help convertion of a value from and to bits.
+ * The value-variable passed to VALUE_TO_BITS_MSB_FIRST()
+ * and VALUE_TO_BITS_LSB_FIRST() MUST be an unsigned type!
+ * Macros have side effects to almost all variables passed!
+ */
+
+#define BITS_LSB_FIRST_TO_VALUE(bits, s, e, result)	\
+	unsigned long long mask = 1;			\
+	result = 0;					\
+	for(; s<=e; mask <<= 1)				\
+		if(bits[s++] != 0)			\
+			result |= mask
+
+#define BITS_MSB_FIRST_TO_VALUE(bits, s, e, result)	\
+	unsigned long long mask = 1;			\
+	result = 0;					\
+	for(; e > 0 && s<=e; mask <<= 1)				\
+		if(bits[e--] != 0)			\
+			result |= mask
+
+#define VALUE_TO_BITS_MSB_FIRST(value, bits, length)	\
+	unsigned long long mask = value;			\
+	do bits++; while (mask >>= 1);			\
+	int *start = bits;				\
+	do *--start = value & 1; while (value >>= 1);	\
+	length = bits - start
+
+
+#define VALUE_TO_BITS_LSB_FIRST(value, bits, length)	\
+	int *start = bits;				\
+	do *bits++ = value & 1; while (value >>= 1);	\
+	length = bits - start
+
+/*
+ * Invocation of above macros for various types:
+ * Again:
+ * The value-variable passed to VALUE_TO_BITS_MSB_FIRST()
+ * and VALUE_TO_BITS_LSB_FIRST() MUST be an unsigned type!
+ */
+int binToDecRev(const int *binary, int s, int e) { //  0<=s<=e, binary[s(msb) .. e(lsb)]
+	int result;
+	BITS_MSB_FIRST_TO_VALUE(binary, s, e, result);
+	return result;
 }
 
-int binToDec(int *binary, int s, int e) {
-	int dec = 0, i = 0;
-	unsigned int x = 1;
-	for(i=s;i<=e;i++) {
-		if(binary[i] == 1)
-			dec += (int)x;
-		x*=2;
-	}
-	return dec;
+int binToDec(const int *binary, int s, int e) { //  0<=s<=e, binary[s(lsb) .. e(msb)]
+	int result;
+	BITS_LSB_FIRST_TO_VALUE(binary, s, e, result);
+	return result;
 }
 
-int decToBin(int n, int binary[]) {
-	unsigned int i=1;
-	unsigned int x=0;
-	int y=0;
-	while(i<=n) {
-		i*=2;
-		x++;
-	}
-	i/=2;
-	x--;
-	for(y=(int)x;y>=0;y--) {
-		if((n-(int)i)>=0) {
-			n-=(int)i;
-			binary[(int)x-y]=1;
-		} else {
-			binary[(int)x-y]=0;
-		}
-		i/=2;
-	}
-	return (int)x;
+int decToBin(int dec, int *binary) {  // stores dec as binary[msb .. lsb] and return index of lsb
+	unsigned int n = (unsigned int) dec;
+	int len;
+	VALUE_TO_BITS_MSB_FIRST(n, binary, len);
+	return len - 1; // return index, not count.
 }
 
-int decToBinRev(int n, int binary[]) {
-	unsigned int i=1;
-	unsigned int x=0;
-	int y=0;
-	while(i<=n) {
-		i*=2;
-		x++;
-	}
-	i/=2;
-	x--;
-	for(y=(int)x;y>=0;y--) {
-		if((n-(int)i)>=0) {
-			n-=(int)i;
-			binary[y]=1;
-		} else {
-			binary[y]=0;
-		}
-		i/=2;
-	}
-	return (int)x;
+int decToBinRev(int dec, int *binary) { // stores dec as binary[lsb .. msb] and return index of msb
+	unsigned int n = (unsigned int) dec;
+	int len;
+	VALUE_TO_BITS_LSB_FIRST(n, binary, len);
+	return len - 1; // return index, not count.
 }
 
-unsigned long long binToDecRevUl(int *binary, unsigned int s, unsigned int e) {
-	unsigned long long dec = 0, i = 0, x = 1;
-	for(i=s;i<e;i++) {
-		x*=2;
-	}
-	for(i=s;i<=e;i++) {
-		if(binary[i] == 1) {
-			dec += x;
-		}
-		x/=2;
-	}
-	return dec;
+unsigned long long binToDecRevUl(const int *binary, unsigned int s, unsigned int e) {
+	unsigned long long result = 0;
+	BITS_MSB_FIRST_TO_VALUE(binary, s, e, result);
+	return result;
 }
 
-unsigned long long binToDecUl(int *binary, unsigned int s, unsigned int e) {
-	unsigned long long dec = 0, i = 0, x = 1;
-	for(i=s;i<=e;i++) {
-		if(binary[i] == 1)
-			dec += x;
-		x*=2;
-	}
-	return dec;
+unsigned long long binToDecUl(const int *binary, unsigned int s, unsigned int e) {
+	unsigned long long result;
+	BITS_LSB_FIRST_TO_VALUE(binary, s, e, result);
+	return result;
 }
 
-int decToBinUl(unsigned long long n, int binary[]) {
-	unsigned long long i=1;
-	int y = 0, x = 0;
-	while(i<=n) {
-		i*=2;
-		x++;
-	}
-	i/=2;
-	x--;
-	for(y=x;y>=0;y--) {
-		if((long)(n-i)>=0) {
-			n-=i;
-			binary[x-y]=1;
-		} else {
-			binary[x-y]=0;
-		}
-		i/=2;
-	}
-	return (int)x;
+int decToBinUl(unsigned long long n, int *binary) {
+	int len;
+	VALUE_TO_BITS_MSB_FIRST(n, binary, len);
+	return len - 1; // return index, not count.
 }
 
-int decToBinRevUl(unsigned long long n, int binary[]) {
-	unsigned long long i=1;
-	int y=0, x=0;
-	while(i<=n) {
-		i*=2;
-		x++;
+int decToBinRevUl(unsigned long long n, int *binary) {
+	int len;
+	VALUE_TO_BITS_LSB_FIRST(n, binary, len);
+	return len - 1; // return index, not count.
+}
+
+int binToSignedRev(const int *binary, int s, int e) { //  0<=s<=e, binary[s(msb) .. e(lsb)]
+	int result = binToDecRev(binary, s, e);
+	if (binary[s]) {
+		result -= 1<<(e-s+1);
 	}
-	i/=2;
-	x--;
-	for(y=x;y>=0;y--) {
-		if((long)(n-i)>=0) {
-			n-=i;
-			binary[y]=1;
-		} else {
-			binary[y]=0;
-		}
-		i/=2;
+	return result;
+}
+
+int binToSigned(const int *binary, int s, int e) { //  0<=s<=e, binary[s(lsb) .. e(msb)]
+	int result = binToDec(binary, s, e);
+	if (binary[e]) {
+		result -= 1<<(e-s+1);
 	}
-	return (int)x;
+	return result;
 }

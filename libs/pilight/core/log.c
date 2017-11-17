@@ -147,6 +147,16 @@ int log_gc(void) {
 	return 1;
 }
 
+/*
+ * A compatible logprint for wiringX
+ */
+void logprintf1(int prio, char *file, int line, const char *format_str, ...) {
+	va_list args;
+	va_start(args, format_str);
+	logprintf(prio, format_str, args);
+	va_end(args);
+}
+
 void logprintf(int prio, const char *format_str, ...) {
 	struct timeval tv;
 	struct tm tm;
@@ -349,7 +359,10 @@ int log_file_set(char *log) {
 	atomicunlock();
 
 	size_t i = (strlen(log)-strlen(filename));
-	logpath = REALLOC(logpath, i+1);
+	if((logpath = REALLOC(logpath, i+1)) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
 	memset(logpath, '\0', i+1);
 	strncpy(logpath, log, i);
 
@@ -376,7 +389,10 @@ int log_file_set(char *log) {
 			}
 		} else {
 			if(S_ISDIR(s.st_mode)) {
-				logfile = REALLOC(logfile, strlen(log)+1);
+				if((logfile = REALLOC(logfile, strlen(log)+1)) == NULL) {
+					fprintf(stderr, "out of memory\n");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(logfile, log);
 			} else {
 				logprintf(LOG_ERR, "the log folder %s does not exist", logpath);
@@ -385,7 +401,10 @@ int log_file_set(char *log) {
 			}
 		}
 	} else {
-		logfile = REALLOC(logfile, strlen(log)+1);
+		if((logfile = REALLOC(logfile, strlen(log)+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(logfile, log);
 	}
 

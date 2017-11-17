@@ -30,7 +30,7 @@
 #include "arctech_motion.h"
 
 #define PULSE_MULTIPLIER	3
-#define MIN_PULSE_LENGTH	274
+#define MIN_PULSE_LENGTH	250
 #define MAX_PULSE_LENGTH	284
 #define AVG_PULSE_LENGTH	279
 #define RAW_LENGTH				132
@@ -65,6 +65,11 @@ static void createMessage(int id, int unit, int state, int all) {
 
 static void parseCode(void) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
+
+	if(arctech_motion->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "arctech_motion: parsecode - invalid parameter passed %d", arctech_motion->rawlen);
+		return;
+	}
 
 	for(x=0;x<arctech_motion->rawlen;x+=4) {
 		if(arctech_motion->raw[x+3] > AVG_PULSE_LENGTH*PULSE_MULTIPLIER) {
@@ -109,7 +114,7 @@ void arctechMotionInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_motion";
-	module->version = "2.0";
+	module->version = "2.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

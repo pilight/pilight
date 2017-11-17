@@ -31,6 +31,7 @@
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
+	#include <wiringx.h>
 #endif
 #include <pthread.h>
 
@@ -42,15 +43,16 @@
 #include "../../core/binary.h"
 #include "../../core/gc.h"
 #include "../../core/json.h"
+#include "../../config/settings.h"
 #include "../protocol.h"
 #include "bmp180.h"
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-#include "../../../wiringx/wiringX.h"
 
 typedef struct settings_t {
 	char **id;
 	int nrid;
+	char path[PATH_MAX];
 	int *fd;
 	// calibration values (stored in each BMP180/085)
 	short *ac1;
@@ -127,6 +129,9 @@ static void *thread(void *param) {
 				strcpy(bmp180data->id[bmp180data->nrid], stmp);
 				bmp180data->nrid++;
 			}
+			if(json_find_string(jchild, "i2c-path", &stmp) == 0) {
+				strcpy(bmp180data->path, stmp);
+			}
 			jchild = jchild->next;
 		}
 	}
@@ -164,7 +169,7 @@ static void *thread(void *param) {
 
 	for(y = 0; y < bmp180data->nrid; y++) {
 		// setup i2c
-		bmp180data->fd[y] = wiringXI2CSetup((int)strtol(bmp180data->id[y], NULL, 16));
+		bmp180data->fd[y] = wiringXI2CSetup(bmp180data->path, (int)strtol(bmp180data->id[y], NULL, 16));
 		if(bmp180data->fd[y] > 0) {
 			// read 0xD0 to check chip id: must equal 0x55 for BMP085/180
 			int id = wiringXI2CReadReg8(bmp180data->fd[y], 0xD0);
@@ -363,7 +368,12 @@ static void *thread(void *param) {
 }
 
 static struct threadqueue_t *initDev(JsonNode *jdevice) {
-	if(wiringXSupported() == 0 && wiringXSetup() == 0) {
+	char *platform = GPIO_PLATFORM;
+	if(settings_find_string("gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
+		exit(EXIT_FAILURE);
+	}
+	if(wiringXSetup(platform, logprintf1) == 0) {
 		loop = 1;
 		char *output = json_stringify(jdevice, NULL);
 		JsonNode *json = json_decode(output);
@@ -407,6 +417,7 @@ void bmp180Init(void) {
 	options_add(&bmp180->options, 'o', "oversampling", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *) 1, "^[0123]$");
 	options_add(&bmp180->options, 'p', "pressure", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *) 0, "^[0-9]{1,3}$");
 	options_add(&bmp180->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *) 0, "^[0-9]{1,3}$");
+	options_add(&bmp180->options, 'd', "i2c-path", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^/dev/i2c-[0-9]{1,2}$");
 
 	options_add(&bmp180->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *) 10, "[0-9]");
 	options_add(&bmp180->options, 0, "pressure-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *) 0, "[0-9]");
@@ -426,9 +437,9 @@ void bmp180Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "bmp180";
-	module->version = "2.1";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.2";
+	module->reqversion = "7.0";
+	module->reqcommit = "186";
 }
 
 void init(void) {

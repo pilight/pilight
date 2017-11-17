@@ -51,6 +51,7 @@ typedef struct rules_t {
 		struct timespec second;
 	}	timestamp;
 	unsigned short active;
+	struct JsonNode *jtrigger;
 	/* Arguments to be send to the action */
 	struct rules_actions_t *actions;
 	struct rules_values_t *values;
