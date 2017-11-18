@@ -1,6 +1,31 @@
 Changelog
 =========
 
+.. versionadded:: 8.0.3
+
+.. rubric:: Bugfixes
+
+- webgui labels are word-wrapped into multiple lines on small screens
+- webgui takes ``stats-enable`` into account by hiding CPU stats
+- memory usage statistics has been removed because they were unreliable
+- arctech_dimmer signals sent by pilight are now correctly received by pilight as well
+
+.. rubric:: webserver, mail and http library
+
+At this moment the https, mail, and webserver module and the full ``pilight-sha256`` program has been backported from rewrite. The asynchronous I/O library libuv has been added as well as the new SSL and eventpool module. The openweathermap and weather underground protocols have been adapted to use this new code as well as the pushbullet and pushover event actions.
+
+- pilight now supports a HTTPS webserver which can be configured in the settings:
+
+   .. code-block:: json
+
+      { "webserver-https-port": 5002 }
+
+- pilight also stopped detecting if the mailserver you have configures requires an SSL connection. To tell pilight about the SSL requirement of a mail server a new setting has been added. Servers that switch from a plain connection to SSL require a 0 value here:
+
+   .. code-block:: json
+
+      { "smtp-ssl": 1 }
+
 .. versionadded:: 8.0.2
 
 .. rubric:: Bugfixes

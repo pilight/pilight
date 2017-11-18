@@ -6,6 +6,7 @@ Settings
    - `port`_
    - `standalone`_
    - `pid-file`_
+   - `pem-file`_
    - `log-file`_
    - `log-level`_
    - `whitelist`_
@@ -27,6 +28,7 @@ Settings
    - `smtp-password`_
    - `smtp-host`_
    - `smtp-port`_
+   - `smtp-ssl`_
 - `Miscellaneous`_
    - `ntp-servers`_
 - `Firmware`_
@@ -94,6 +96,34 @@ When pilight starts, it will first check if there are other instances running in
    { "pid-file": "/var/run/pilight.pid" }
 
 The pid-file is used by pilight to save the process id number of the pilight-daemon. pilight itself uses this information as one of the ways to determine if pilight is already running or not. This setting must contain a valid path to store the pid-file.
+
+.. _pem-file:
+.. rubric:: pem-file
+
+.. note::
+
+   Linux and \*BSD
+
+.. code-block:: json
+   :linenos:
+
+   { "pem-file": "/etc/pilight/pilight.pem" }
+
+.. note::
+
+   Windows
+
+.. code-block:: json
+   :linenos:
+
+   { "pem-file": "c:/pilight/pilight.pem" }
+
+The pem-file is used by pilight for the secure https webserver. Using the default pilight pemfile makes the secure webserver still insecure, so users are adviced to generate a custom pem file.
+
+.. code-block:: console
+
+   pi@pilight ~# openssl req -x509 -newkey rsa:4096 -sha256 -nodes -keyout pilight.key -out pilight.crt -subj "/CN=pilight.org" -days 3650
+   pi@pilight ~# cat pilight.key pilight.crt > /etc/pilight/pilight.pem
 
 .. _log-file:
 .. rubric:: log-file
@@ -327,11 +357,7 @@ The pilight webserver runs by default on the non-standard port 5001. This is don
 
 .. deprecated:: 8.0
 
-.. versionadded:: nightly
-
-.. note::
-
-   The secure webserver has never been properly supported in pilight version 7.0. The current pilight nightly does properly support secure webserver functionality, but that code hasn't been included in pilight 8.0.
+.. versionadded:: 8.0.3
 
 .. note::
 
@@ -401,7 +427,8 @@ pilight has the capability to communicate with several types of mail servers. Th
      "smtp-host": "smtp.gmail.com",
      "smtp-port": 465,
      "smtp-user": "pilight@gmail.com",
-     "smtp-password": "foobar"
+     "smtp-password": "foobar",
+     "smtp-ssl": 1
    }
 
 .. _smtp-sender:
@@ -476,7 +503,29 @@ The smtp-host setting should contain a valid mail server hostname. Normally, the
 
    { "smtp-port": 25 }
 
+.. deprecated:: 8.0.3
+
 The smtp-port should contain a valid smtp server port. This can currently be either 25, 465, or 587. pilight will communicate over a secure connection when using port 465, when using port 25 or 587 it will depend on the server how pilight will set-up the connection.
+
+.. versionchanged:: 8.0.3
+
+The smtp-port should contain a valid smtp server port. This can be any port. SSL connections should be explicitly defined in the smtp-ssl setting.
+
+.. versionadded:: 8.0.3
+
+.. _smtp-ssl:
+.. rubric:: smtp-ssl
+
+.. note::
+
+   Linux, \*BSD, and Windows
+
+.. code-block:: json
+   :linenos:
+
+   { "smtp-ssl": 0 }
+
+The smtp-ssl tells pilight if the mailserver uses a secure SSL communication from the start. If server change to SSL while initializing a connection, pilight will do so automatically as well. In those cases, this setting can be set to zero.
 
 Miscellaneous
 -------------

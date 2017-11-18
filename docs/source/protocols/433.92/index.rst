@@ -4,6 +4,7 @@
 .. toctree::
    :maxdepth: 3
 
+   alarm/index
    contact/index
    dimmer/index
    motion/index
