@@ -9,6 +9,7 @@ find . -name operator_init.h -exec rm {} \;
 find . -name action_header.h -exec rm {} \;
 find . -name action_init.h -exec rm {} \;
 
+git checkout master
 git stash
 git stash clear
 git pull origin master

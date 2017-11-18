@@ -19,8 +19,8 @@ DEBVER=$(git describe --always | sed -e 's/^v//g');
 VERSION=$(echo $DEBVER | sed -e 's/-g.*//g');
 WEBGUI=$(cat ../libs/webgui/version.txt)
 
-dpkg -X pilight-8.0.2-Linux-pilight.deb source
-dpkg -e pilight-8.0.2-Linux-pilight.deb control
+dpkg -X pilight-8.0.3-Linux-pilight.deb source
+dpkg -e pilight-8.0.3-Linux-pilight.deb control
 
 mkdir -p source/etc/init.d
 mkdir -p source/etc/systemd/system
@@ -28,6 +28,7 @@ mkdir -p source/etc/init
 cp ../res/init/pilight.sysv source/etc/init.d/pilight
 cp ../res/init/pilight.systemd source/etc/systemd/system/pilight.service
 cp ../res/init/pilight.upstart source/etc/init/pilight.conf
+cp ../res/pilight.pem source/etc/pilight/pilight.pem
 
 cp ../res/deb/pilight/* control/
 mv source/usr/local/lib/libpilight.so.* source/usr/local/lib/libpilight.so.$VERSION 2>/dev/null
@@ -83,8 +84,8 @@ rm -r control source debian-binary control.tar.gz data.tar.gz 1>/dev/null 2>/dev
 # pilight webgui
 #
 
-dpkg -X pilight-8.0.2-Linux-webgui.deb source
-dpkg -e pilight-8.0.2-Linux-webgui.deb control
+dpkg -X pilight-8.0.3-Linux-webgui.deb source
+dpkg -e pilight-8.0.3-Linux-webgui.deb control
 
 cp ../res/deb/webgui/* control/
 
