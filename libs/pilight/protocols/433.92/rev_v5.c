@@ -10,7 +10,7 @@
 REV v5 protocol structure
 FIRSTBIT
 	1		ID (LSB)
-	2		ID 
+	2		ID
 	3		ID
 	4		ID
 	5		UNIT (LSB)
@@ -92,11 +92,8 @@ static void createMessage(int id, int unit, int state, int all) {
 
 static void parseCode(void) {
 	int x = 0, i = 0, binary[RAW_LENGTH/4];
-	int binaryUnit[2];
-	int id = 0; int unit = 0;
-	int areabit = 0;
-	int rawState = 0; int state = 0;
-	int all = 0;
+	int id = 0, unit = 0, areabit = 0, binaryUnit[2];
+	int rawState = 0, state = 0, all = 0;
 
 	if(rev5_switch->rawlen>RAW_LENGTH) {
 		logprintf(LOG_ERR, "rev5_switch: parsecode - invalid parameter passed %d", rev5_switch->rawlen);
@@ -118,56 +115,64 @@ static void parseCode(void) {
 
 	id = binToDec(binary, 0, 3);
 	unit = binToDec(binaryUnit, 0, 1);
-	if (areabit > 0) {
-		//areabit does group units in 0-3 / 4-7
+	if(areabit > 0) {
+		/*
+		 * areabit does group units in 0-3 / 4-7
+		 */
 		unit += 4;
 	}
 
 	rawState = binToDec(binary, 8, 9);
 
-	//see createState()
-	if (rawState == 1) {
-		state = 1; //on
+	/*
+	 * see createState() too
+	 */
+	if(rawState == 1) {
+		state = 1; // on
 		all = 0;
 	}
-	else if (rawState == 2) {
-		state = 0; //off
+	else if(rawState == 2) {
+		state = 0; // off
 		all = 0;
 	}
-	else if (rawState == 3) {
-		state = 0; //off
+	else if(rawState == 3) {
+		state = 0; // off
 		all = 1;
 	}
-	else if (rawState == 0) {
-		state = 1; //on
+	else if(rawState == 0) {
+		state = 1; // on
 		all = 1;
 	}
 
-	if (all > 0) {
-        //switch all units in group 1
-
-		if (areabit > 0) {
-			//switch all units in group 2
+	if(all > 0) {
+		/*
+		* switching a group is requested
+		* areabit=0 means group 1
+        * areabit=1 means group 2
+		*/
+		if(areabit > 0) {
 			all++;
 		}
+		// all-variable contains the group-number now
 	}
-	
+
 	createMessage(id, unit, state, all);
 }
 
 static void createLow(int s, int e) {
-    //method based on rev_v3.c
+	// method based on rev_v3.c
 	int i;
 
 	for(i=s;i<=e;i+=4) {
 		rev5_switch->raw[i]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH); //long pulse for rev_v5
-		rev5_switch->raw[i+1]=(AVG_PULSE_LENGTH);                    //short pause for rev_v5
+		rev5_switch->raw[i+1]=(AVG_PULSE_LENGTH);                //short pause for rev_v5
 		rev5_switch->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 		rev5_switch->raw[i+3]=(AVG_PULSE_LENGTH);
 	}
 }
+
 static void createHigh(int s, int e) {
-	//copied from rev_v3.c
+	// copied from rev_v3.c
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -179,29 +184,27 @@ static void createHigh(int s, int e) {
 }
 
 static void clearCode(void) {
-	//based on rev_v3
-	createLow(0,3); //make low by default
+	// based on rev_v3
+	createLow(0,3); // make low by default
 	createLow(4,47);
 }
 
 static int createIdFromLetter(int l) {
-	int i=0;
+	int i = 0;
 
 	for(i=0;i<(ID_COUNT-1);i++) {
-		if((int)idLetters[i] == l) { //lookup the position of the char
-            return i;
+		if((int)idLetters[i] == l) { // lookup the position of the char
+			return i;
 		}
 	}
 
-	//Char not found
-    return -1;
+	// char not found
+	return -1;
 }
 
 static void createId(int id) {
-	//copied from rev_v3.c
-	int binary[255];
-	int length = 0;
-	int i=0, x=0;
+	// copied from rev_v3.c
+	int length = 0, i = 0, x = 0, binary[255];
 
 	length = decToBinRev(id, binary);
 	for(i=0;i<=length;i++) {
@@ -219,64 +222,55 @@ static int generateUnitValue(int unit, int areabit) {
 	int unitMsb = (unit & UNITMSBMASK) << 2;
 
 	areabit = areabit << 2;
-              /*1st*/          /*2nd*/             /*3rd*/        /*4th*/
+			  /*1st*/          /*2nd*/             /*3rd*/        /*4th*/
 	result =  unitMsb | /*2nd bit is always 0 |*/ areabit | (unit & UNITLSBMASK);
 
 	return result;
 }
 
 static void createUnit(int unit) {
-	//based on rev_v3.c
-	int binary[255];
-	int length = 0;
-	int i=0, x=0;
-
-	//logprintf(LOG_INFO, "rev_v5:sending unit value '%d'", unit);
+	// based on rev_v3.c
+	int length = 0, i= 0, x = 0, binary[255];
 
 	length = decToBinRev(unit, binary);
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			createHigh(16+x, 16+x+3); //first unit pulse is 16
+			createHigh(16+x, 16+x+3); // first unit pulse is 16
 		}
 	}
 }
 
-
 static void createState(bool on, bool all) {
-	//based on rev_v3.c
-	int binary[255];
-	int length = 0;
-	int i=0, x=0;
-    int rawState;
+	// based on rev_v3.c
+	int i = 0, x = 0,length = 0, binary[255];
+	int rawState = 0;
 
 	if(all) {
-		rawState = on ? 0 : 3; //ALL-ON -> 0 //ALL-OFF -> 3
+		rawState = on ? 0 : 3; // ALL-ON -> 0 //ALL-OFF -> 3
 	}
 	else {
-		rawState = on ? 1 : 2; //ON -> 1 //OFF -> 2
+		rawState = on ? 1 : 2; // ON -> 1 //OFF -> 2
 	}
-	
-	length = decToBinRev(rawState, binary);
 
-	//logprintf(LOG_INFO, "rev_v5:sending state value '%d', bit-length:%d", rawState, length);
+	length = decToBinRev(rawState, binary);
 
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			createHigh(32+x, 32+x+3); //first unit pulse is 32
+			createHigh(32+x, 32+x+3); // first unit pulse is 32
 		}
 	}
 }
 
 static void createPostfix(void) {
-	//the last 2 bits are always set
-	createHigh(40, 40+3); 
-	createHigh(44, 44+3); 
+	// the last 2 bits are always set
+	createHigh(40, 40+3);
+	createHigh(44, 44+3);
 }
 
 static void createFooter(void) {
-	//copied from rev_v3.c
+	// copied from rev_v3.c
 	rev5_switch->raw[48]=(AVG_PULSE_LENGTH);
 	rev5_switch->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
@@ -285,40 +279,48 @@ static int createCode(struct JsonNode *code) {
 	char sId[4] = {'\0'};
 	char *stmp = NULL;
 	double itmp = -1;
-	int id = -1;
-	int unit = -1;
-	int state = -1;
-	int all = 0;
+	int id = -1, unit = -1, state = -1, all = 0;
 	int areabit = 0;
 
-	strcpy(sId, "-1");
+	strcpy(sId, "-"); // default value when no id value was provided by the JsonNode
 
 	if(json_find_string(code, "id", &stmp) == 0)
 		strcpy(sId, stmp);
 
 	if((int)(sId[0]) >= 48 /*0*/ && (int)(sId[0]) <= 57 /*9*/) {
-		//Id is already a number
+		/*
+		 * Id is already a number
+		 */
 		id = atoi(sId);
 	}
-    else if((int)(sId[0]) >= 65 /*A*/ && (int)(sId[0]) <= 80 /*P*/) {
-		//Id is defined by char
+	else if((int)(sId[0]) >= 65 /*A*/ && (int)(sId[0]) <= 80 /*P*/) {
+		/*
+		 * Id is defined by char
+		 */
 		id = createIdFromLetter((int)sId[0]);
 	}
 	else {
 		logprintf(LOG_ERR, "rev5_switch: invalid id number specified");
 	}
-	
 
-	if(json_find_number(code, "unit", &itmp) == 0)
+
+	if(json_find_number(code, "unit", &itmp) == 0) {
 		unit = (int)round(itmp);
-	if(json_find_number(code, "all", &itmp) == 0)
+	}
+	
+	if(json_find_number(code, "all", &itmp) == 0) {
 		all = (int)round(itmp);
-	if(json_find_number(code, "off", &itmp) == 0)
+	}
+	
+	if(json_find_number(code, "off", &itmp) == 0) {
 		state=0;
-	if(json_find_number(code, "on", &itmp) == 0)
-		state=1;
+	}
 
-	if((id == -1) || (state == -1) || (unit == -1 && all == 0)) { //id is not set, state is not set, neither unit nor all is set
+	if(json_find_number(code, "on", &itmp) == 0) {
+		state=1;
+	}
+
+	if((id == -1) || (state == -1) || (unit == -1 && all == 0)) { // id is not set, state is not set, neither unit nor all is set
 		logprintf(LOG_ERR, "rev5_switch: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else if(id > (ID_COUNT-1) || id < 0) {
@@ -335,11 +337,12 @@ static int createCode(struct JsonNode *code) {
 		return EXIT_FAILURE;
 	}
 	else {
-		if (unit >= 0)
-			areabit = (unit > 3) ? 1 : 0; 
-			
+		if(unit >= 0) {
+			areabit = (unit > 3) ? 1 : 0;
+		}
+
 		if(all > 0) {
-			unit = 0; //broadcast uses first device per group
+			unit = 0; // broadcast uses first device per group
 			areabit = all-1;
 		}
 
@@ -351,13 +354,9 @@ static int createCode(struct JsonNode *code) {
 		createPostfix();
 		createFooter();
 		rev5_switch->rawlen = RAW_LENGTH;
-
-		//for protocol DEBUGGING
-		//logprintf(LOG_INFO, "rev5_switch: send raw %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",rev5_switch->raw[0], rev5_switch->raw[1], rev5_switch->raw[2], rev5_switch->raw[3], rev5_switch->raw[4], rev5_switch->raw[5], rev5_switch->raw[6], rev5_switch->raw[7], rev5_switch->raw[8], rev5_switch->raw[9], rev5_switch->raw[10], rev5_switch->raw[11], rev5_switch->raw[12], rev5_switch->raw[13], rev5_switch->raw[14], rev5_switch->raw[15], rev5_switch->raw[16], rev5_switch->raw[17], rev5_switch->raw[18], rev5_switch->raw[19], rev5_switch->raw[20], rev5_switch->raw[21], rev5_switch->raw[22], rev5_switch->raw[23], rev5_switch->raw[24], rev5_switch->raw[25], rev5_switch->raw[26], rev5_switch->raw[27], rev5_switch->raw[28], rev5_switch->raw[29], rev5_switch->raw[30], rev5_switch->raw[31], rev5_switch->raw[32], rev5_switch->raw[33], rev5_switch->raw[34], rev5_switch->raw[35], rev5_switch->raw[36], rev5_switch->raw[37], rev5_switch->raw[38], rev5_switch->raw[39], rev5_switch->raw[40], rev5_switch->raw[41], rev5_switch->raw[42], rev5_switch->raw[43], rev5_switch->raw[44], rev5_switch->raw[45], rev5_switch->raw[46], rev5_switch->raw[47], rev5_switch->raw[48], rev5_switch->raw[49]);
 	}
 	return EXIT_SUCCESS;
 }
-
 
 static void printHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
@@ -396,7 +395,6 @@ void rev5Init(void) {
 	rev5_switch->printHelp=&printHelp;
 	rev5_switch->validate=&validate;
 }
-
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
