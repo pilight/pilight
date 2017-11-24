@@ -222,7 +222,7 @@ static int generateUnitValue(int unit, int areabit) {
 	int unitMsb = (unit & UNITMSBMASK) << 2;
 
 	areabit = areabit << 2;
-			  /*1st*/          /*2nd*/             /*3rd*/        /*4th*/
+	          /*1st*/          /*2nd*/             /*3rd*/        /*4th*/
 	result =  unitMsb | /*2nd bit is always 0 |*/ areabit | (unit & UNITLSBMASK);
 
 	return result;
@@ -313,11 +313,11 @@ static int createCode(struct JsonNode *code) {
 	}
 	
 	if(json_find_number(code, "off", &itmp) == 0) {
-		state=0;
+		state = 0;
 	}
 
 	if(json_find_number(code, "on", &itmp) == 0) {
-		state=1;
+		state = 1;
 	}
 
 	if((id == -1) || (state == -1) || (unit == -1 && all == 0)) { // id is not set, state is not set, neither unit nor all is set
