@@ -1,6 +1,22 @@
 Changelog
 =========
 
+.. versionadded:: 8.0.4
+
+.. rubric:: New functionality
+
+- webGUI long labels are wrapped 
+
+.. rubric:: Internal core changed
+
+- Olsen timezone database is now used for timezone parsing
+- 433.92Mhz now respect the UUID setting
+- improved datetime, openweathermap, weatherunderground, and sunriseset library
+
+.. rubric:: Bugfixes
+
+- config not being saved at shutdown
+
 .. versionadded:: 8.0.3
 
 .. rubric:: Bugfixes
