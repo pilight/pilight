@@ -22,7 +22,7 @@
 #cmakedefine WEBSERVER
 #cmakedefine EVENTS
 
-#define PILIGHT_VERSION					"8.0.3"
+#define PILIGHT_VERSION					"8.0.4"
 #define PULSE_DIV								34
 #define MAXPULSESTREAMLENGTH		512
 #define EPSILON									0.00001
