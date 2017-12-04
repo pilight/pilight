@@ -4,42 +4,16 @@ sudo: true
 
 cache: ccache
 
-env:
-  matrix:
-    - CONFIG=DEFAULT
-#    - CONFIG=ALL_ON
-#    - CONFIG=ALL_OFF
+matrix:
+  fast_finish: true
+  include:
 
-addons:
-  apt:
-    packages:
-      - libpcap-dev
-      - libunwind8-dev
-      - lcov
-      - liblua5.2-0
-      - liblua5.2-dev
+    - env: PLATFORM=Unix COMPILER=gcc COVERAGE=1
+      compiler: gcc
+      os: linux
 
-install:
-  - curl https://apt.pilight.org/pilight.key | sudo apt-key add - && echo "deb http://apt.pilight.org/ stable main" | sudo tee -a /etc/apt/sources.list
-  - sudo apt-get update -qq && sudo apt-get install libwiringx-dev libwiringx -y
-  - mkdir depends && pushd depends
-  - wget http://security.ubuntu.com/ubuntu/pool/universe/m/mbedtls/libmbedcrypto0_2.5.1-1ubuntu1_amd64.deb
-  - wget http://security.ubuntu.com/ubuntu/pool/universe/m/mbedtls/libmbedtls10_2.5.1-1ubuntu1_amd64.deb
-  - wget http://security.ubuntu.com/ubuntu/pool/universe/m/mbedtls/libmbedx509-0_2.5.1-1ubuntu1_amd64.deb
-  - wget http://security.ubuntu.com/ubuntu/pool/universe/m/mbedtls/libmbedtls-dev_2.5.1-1ubuntu1_amd64.deb
-  - sudo dpkg -i *.deb
-  - popd
+before_install: ./ci/travis-before-install.sh
 
-before_script:
-  - if [[ $CONFIG == "ALL_OFF" ]]; then sed "s/\(set(.*\) ON/\1 OFF/" -i CMakeConfig.txt; fi
-  - if [[ $CONFIG == "ALL_ON" ]]; then sed "s/\(set(.*\) OFF/\1 ON/" -i CMakeConfig.txt; fi
+script: ./ci/travis-script.sh
 
-script:
-  - mkdir build && pushd build && cmake .. -DPILIGHT_UNITTEST=1 -DCOVERALLS=ON -DCMAKE_BUILD_TYPE=Debug && make && sudo LD_PRELOAD=libgpio.so ./pilight-unittest && sudo make install
-
-after_success:
-  - gem install coveralls-lcov
-  - lcov -c -d CMakeFiles/pilight.dir/libs/pilight/lua -d CMakeFiles/pilight.dir/libs/pilight/hardware/ -d CMakeFiles/pilight.dir/libs/pilight/events/ -d CMakeFiles/pilight.dir/libs/pilight/core/ -d CMakeFiles/pilight.dir/libs/pilight/psutil/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/API/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/core/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/generic/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/network/ -d CMakeFiles/pilight.dir/libs/pilight/protocols/GPIO -o coverage.info
-  - lcov -r coverage.info '*433nano.c' '*IRgpio.c' '*none.c' '*zwave.cpp' '*adhoc.c' '*firmware.c' '*relay.c' '*pushover.c' '*pushbullet.c' '*dht11.c' '*dht22.c' -o coverage-filtered.info
-  - lcov --list coverage-filtered.info
-  - if [[ "$TRAVIS_EVENT_TYPE" != "pull_request" ]]; then coveralls-lcov --repo-token ${COVERALLS_TOKEN} coverage-filtered.info; fi
+after_success: ./ci/travis-after-success.sh
