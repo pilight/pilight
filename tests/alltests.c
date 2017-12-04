@@ -61,6 +61,7 @@ CuSuite *suite_protocols_generic(void);
 CuSuite *suite_protocols_i2c(void);
 CuSuite *suite_protocols_gpio_ds18x20(void);
 CuSuite *suite_protocols_gpio_switch(void);
+CuSuite *suite_protocols_relay(void);
 CuSuite *suite_hardware_433gpio(void);
 CuSuite *suite_event_operators(void);
 CuSuite *suite_event_functions(void);
@@ -130,13 +131,16 @@ int RunAllTests(void) {
 	 */
 	suites[nr++] = suite_common();
 	suites[nr++] = suite_network();
-	suites[nr++] = suite_binary();
-	suites[nr++] = suite_proc();
+	suites[nr++] = suite_binary(); // Ported (Missing signed tests)
+	const char *s = getenv("CI");
+	if(s == NULL || strcmp(s, "true") != 0) {
+		suites[nr++] = suite_proc();
+	}
 	suites[nr++] = suite_datetime(); // Ported
 	suites[nr++] = suite_json(); // Ported
 	suites[nr++] = suite_cast(); // Ported
 	suites[nr++] = suite_sha256cache();
-	suites[nr++] = suite_strptime();
+	suites[nr++] = suite_strptime(); // Ported
 	suites[nr++] = suite_options();
 	suites[nr++] = suite_dso(); // Fix the dll creation
 	suites[nr++] = suite_eventpool(); // Ported
@@ -152,13 +156,13 @@ int RunAllTests(void) {
 #endif
 	suites[nr++] = suite_socket();
 	suites[nr++] = suite_protocols_433();
-	suites[nr++] = suite_protocols_api();
+	suites[nr++] = suite_protocols_api(); // Ported
 #ifndef _WIN32
 	suites[nr++] = suite_protocols_api_lirc();
 #endif
 	suites[nr++] = suite_protocols_api_xbmc();
-	suites[nr++] = suite_protocols_api_openweathermap();
-	suites[nr++] = suite_protocols_api_wunderground();
+	suites[nr++] = suite_protocols_api_openweathermap(); // Ported
+	suites[nr++] = suite_protocols_api_wunderground(); // Ported
 	suites[nr++] = suite_protocols_network_ping();
 	suites[nr++] = suite_protocols_network_arping();
 	suites[nr++] = suite_protocols_core();
@@ -167,7 +171,8 @@ int RunAllTests(void) {
 	suites[nr++] = suite_protocols_i2c();
 	suites[nr++] = suite_protocols_gpio_ds18x20();
 	suites[nr++] = suite_protocols_gpio_switch();
-	suites[nr++] = suite_hardware_433gpio();
+	suites[nr++] = suite_protocols_relay();
+	suites[nr++] = suite_hardware_433gpio(); // Ported
 #endif
 	suites[nr++] = suite_event_operators(); // Ported
 	suites[nr++] = suite_event_functions(); // Ported
@@ -218,5 +223,6 @@ int main(int argc, char **argv) {
 		fflush(stdout);
 		assert(0 == test_memory());
 	}
+
 	return RunAllTests();
 }
