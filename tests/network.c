@@ -103,7 +103,7 @@ static void test_host2ip(CuTest *tc) {
 	r = host2ip("www.pilight.org", p);
 	CuAssertIntEquals(tc, 0, r);
 
-	CuAssertTrue(tc, strcmp(p, "94.124.143.207") == 0);
+	CuAssertTrue(tc, strcmp(p, "45.32.148.129") == 0);
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
