@@ -23,11 +23,13 @@
 #include "../libs/pilight/events/action.h"
 #include "../libs/pilight/events/actions/switch.h"
 #include "../libs/pilight/events/actions/dim.h"
+#include "../libs/pilight/events/actions/label.h"
 #include "../libs/pilight/events/actions/toggle.h"
 #include "../libs/pilight/events/function.h"
 #include "../libs/pilight/protocols/protocol.h"
 #include "../libs/pilight/protocols/generic/generic_switch.h"
 #include "../libs/pilight/protocols/generic/generic_dimmer.h"
+#include "../libs/pilight/protocols/generic/generic_label.h"
 #include "../libs/pilight/protocols/433.92/arctech_switch.h"
 #include "../libs/pilight/protocols/API/datetime.h"
 
@@ -96,13 +98,16 @@ static struct reason_config_update_t updates1[] = {
 
 static char *values[] = {
 	NULL,
-	"{\"dimlevel\":2}"
+	"{\"dimlevel\":2}",
+	NULL,
+	"{\"label\":\"21:01 21:00\"}"
 };
 
 static struct reason_control_device_t receives[] = {
 	{ "switch", "on", NULL },
 	{ "dimmer", "on", NULL },
-	{ "switch1", "on", NULL }
+	{ "switch1", "on", NULL },
+	{ "label", NULL, NULL } // Initialize struct JsonNode;
 };
 
 struct tests_t {
@@ -470,6 +475,20 @@ static struct tests_t get_tests[] = {
 		0, &updates1[0],
 		{ &receives[2] },
 		{ 1, 0 }
+	},
+	{
+		"nested_function_in_action",
+		"{\"devices\":{"\
+			"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":1}],\"label\":\"foo\",\"color\":\"black\"}"\
+		"},"\
+		"\"gui\":{},"\
+		"\"rules\":{"\
+			"\"switch\":{\"rule\":\"IF 1 == 1 THEN label DEVICE label TO DATE_FORMAT(DATE_ADD(2015-01-01 21:00:00, +1 MINUTE), %%Y-%%m-%%d %%H:%%M:%%S, %%H:%%M) DATE_FORMAT(DATE_ADD(2015-01-01 21:00:00, +1 DAY), %%Y-%%m-%%d %%H:%%M:%%S, %%H:%%M)\",\"active\":1}"\
+		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
+		UV_RUN_NOWAIT,
+		0, &updates1[0],
+		{ &receives[3] },
+		{ 1, 0 }
 	}
 };
 
@@ -563,9 +582,11 @@ static void test_events(CuTest *tc) {
 		actionSwitchInit();
 		actionToggleInit();
 		actionDimInit();
+		actionLabelInit();
 		arctechSwitchInit();
 		genericSwitchInit();
 		genericDimmerInit();
+		genericLabelInit();
 		datetimeInit();
 
 		CuAssertIntEquals(tc, 0, storage_read("events.json", CONFIG_DEVICES | CONFIG_RULES));

@@ -497,7 +497,7 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 		buflen = BUFFER_SIZE;
 		len = 0;
 
-		while(tmp[i] != '\0') {
+		while(tmp[i] != '\0' && hooks >= 0) {
 			if(tmp[i] == '(') {
 				hooks++;
 			}
@@ -506,6 +506,7 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 			}
 			if(hooks > 0) {
 				subfunction[len++] = tmp[i+1];
+
 				if(buflen <= len) {
 					buflen *= 2;
 					if((subfunction = REALLOC(subfunction, buflen)) == NULL) {
@@ -521,7 +522,9 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 					}
 					unsigned long z = 1;
 					char *replace = MALLOC(len+1);
-
+					if(replace == NULL) {
+						OUT_OF_MEMORY
+					}
 					subfunction[len-1] = '\0';
 					strcpy(replace, subfunction);
 
