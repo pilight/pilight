@@ -171,7 +171,6 @@ int RunAllTests(void) {
 	suites[nr++] = suite_protocols_i2c();
 	suites[nr++] = suite_protocols_gpio_ds18x20();
 	suites[nr++] = suite_protocols_gpio_switch();
-	suites[nr++] = suite_protocols_relay();
 	suites[nr++] = suite_hardware_433gpio(); // Ported
 #endif
 	suites[nr++] = suite_event_operators(); // Ported
