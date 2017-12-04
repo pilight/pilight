@@ -487,7 +487,7 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 		exit(EXIT_FAILURE);
 	}
 
-	while(tmp[i] != '\0') {
+	while(tmp[i] != '\0' && hooks >= 0) {
 		if(tmp[i] == '(') {
 			hooks++;
 		}
@@ -497,6 +497,7 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 
 		if(hooks > 0) {
 			subrule[len++] = tmp[i+1];
+
 			if(buflen <= len) {
 				buflen *= 2;
 				if((subrule = REALLOC(subrule, buflen)) == NULL) {
@@ -509,6 +510,10 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 			if(len > 0) {
 				unsigned long z = 1;
 				char *replace = MALLOC(len+3);
+
+				if(replace == NULL) {
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+				}
 
 				subrule[len-1] = '\0';
 
