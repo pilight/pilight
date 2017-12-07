@@ -1,6 +1,6 @@
 [Unit]
 Description=pilight
-After=network-online.target
+Requires=network-online.target
 
 [Service]
 ExecStart=/usr/local/sbin/pilight-daemon
@@ -8,4 +8,3 @@ Type=forking
 
 [Install]
 WantedBy=multi-user.target
-
