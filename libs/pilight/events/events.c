@@ -449,7 +449,7 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
-	while(tmp[i] != '\0' && hooks >= 0) {
+	while(tmp[i] != '\0') {
 		if(tmp[i] == '(') {
 			hooks++;
 		}
@@ -592,7 +592,7 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 		buflen = BUFFER_SIZE;
 		len = 0;
 
-		while(tmp[i] != '\0') {
+		while(tmp[i] != '\0' && hooks >= 0) {
 			if(tmp[i] == '(') {
 				hooks++;
 			}
