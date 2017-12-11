@@ -45,6 +45,7 @@ CuSuite *suite_ping(void);
 CuSuite *suite_mail(void);
 #ifdef WEBSERVER
 CuSuite *suite_webserver(void);
+CuSuite *suite_webserver_rest(void);
 #endif
 CuSuite *suite_socket(void);
 CuSuite *suite_log(void);
@@ -153,6 +154,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_mail(); // Ported
 #ifdef WEBSERVER
 	suites[nr++] = suite_webserver(); // Ported
+	suites[nr++] = suite_webserver_rest();
 #endif
 	suites[nr++] = suite_socket();
 	suites[nr++] = suite_protocols_433();
