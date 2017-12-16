@@ -105,9 +105,9 @@ Globaltronics Quigg GT-7000
 +--------------------+-------------+------------+-------------------------------------------------+
 | **Setting**        | **Default** | **Format** | **Description**                                 |
 +--------------------+-------------+------------+-------------------------------------------------+
-| all                | 0           | 0 or 1     | | If specified this will trigger the "group"    |
-|                    |             |            | | function of the advanced remotes and trigger  |
-|                    |             |            | | all registered devices for the given unitcode |
+| all                | 0           | 0 or 1     | If specified this will trigger the "group"      |
+|                    |             |            | function of the advanced remotes and trigger    |
+|                    |             |            | all registered devices for the given unitcode   |
 +--------------------+-------------+------------+-------------------------------------------------+
 
 :underline:`GUI Settings`

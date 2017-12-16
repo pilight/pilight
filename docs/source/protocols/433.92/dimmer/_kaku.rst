@@ -94,7 +94,7 @@
 +--------------------+-------------+------------+-------------------------------------------------+
 | dimlevel-maximum   | 15          | number     | Maximum dimlevel                                |
 +--------------------+-------------+------------+-------------------------------------------------+
-| all                | 0           | 0 or 1     | If specified. this will trigger the "group"     |
+| all                | 0           | 0 or 1     | If specified this will trigger the "group"      |
 |                    |             |            | function of the advanced remotes and trigger    |
 |                    |             |            | all registered devices for the given unitcode   |
 +--------------------+-------------+------------+-------------------------------------------------+
