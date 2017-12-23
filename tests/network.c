@@ -90,20 +90,26 @@ static void test_host2ip(CuTest *tc) {
 
 	memtrack();
 
-	char ip[255], *p = ip;
+	char *ip = NULL;
 	int r = 0;
 
-	r = host2ip("localhost", p);
-	CuAssertIntEquals(tc, 0, r);
+	r = host2ip("localhost", &ip);
+	if(r == AF_INET && ip != NULL) {
+		CuAssertTrue(tc, (strcmp(ip, "127.0.1.1") == 0 ||
+					strcmp(ip, "127.0.0.1") == 0 ||
+					strcmp(ip, "0.0.0.0") == 0));
+	} else if(r == AF_INET6) {
+		CuAssertTrue(tc, strcmp(ip, "::1") == 0);
+	} else {
+		CuAssertTrue(tc, 0);
+	}
+	FREE(ip);
 
-	CuAssertTrue(tc, (strcmp(p, "127.0.1.1") == 0 || 
-				 strcmp(p, "127.0.0.1") == 0 ||
-				 strcmp(p, "0.0.0.0") == 0));
-
-	r = host2ip("www.pilight.org", p);
-	CuAssertIntEquals(tc, 0, r);
-
-	CuAssertTrue(tc, strcmp(p, "45.32.148.129") == 0);
+	r = host2ip("www.pilight.org", &ip);
+	CuAssertPtrNotNull(tc, ip);
+	CuAssertIntEquals(tc, AF_INET, r);
+	CuAssertTrue(tc, strcmp(ip, "45.32.148.129") == 0);
+	FREE(ip);
 
 	CuAssertIntEquals(tc, 0, xfree());
 }

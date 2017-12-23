@@ -66,6 +66,22 @@ static struct tests_t {
 				"Content-Type: %s\r\n\r\n"
 				"%s"
 	},
+	{ "plain get (ipv6)", GET, "http://[::1]:10080/", 10080, 0, 1, 200, 12, "text/html", "Hello World!", "",
+			"GET / HTTP/1.1\r\n"
+				"Host: ::1\r\n"
+				"User-Agent: pilight\r\n"
+				"Connection: close\r\n\r\n",
+			"HTTP/1.1 200 OK\r\n"
+				"Date: Sun, 30 Oct 2016 15:07:58 GMT\r\n"
+				"Server: Apache/2.4.23 (FreeBSD) PHP/5.6.26\r\n"
+				"Last-Modified: Tue, 22 Oct 2013 15:02:41 GMT\r\n"
+				"ETag: \"d5-4e955b12f4640\"\r\n"
+				"Accept-Ranges: bytes\r\n"
+				"Content-Length: %d\r\n"
+				"Connection: close\r\n"
+				"Content-Type: %s\r\n\r\n"
+				"%s"
+	},
 	{ "plain get ssl", GET, "https://127.0.0.1:10443/", 10443, 1, 1, 200, 12, "text/html", "Hello World!", "",
 			"GET / HTTP/1.1\r\n"
 				"Host: 127.0.0.1\r\n"
@@ -402,10 +418,14 @@ clear:
 	return;
 }
 
-static void http_start(int port) {
-	struct sockaddr_in addr;
-	int opt = 1;
+static void http_start(char *url, int port) {
+	struct sockaddr_in addr4;
+	struct sockaddr_in6 addr6;
 	int r = 0;
+	int opt = 1;
+	int type = 0;
+	int len = 0;
+	char *ip = NULL;
 
 #ifdef _WIN32
 	WSADATA wsa;
@@ -416,20 +436,88 @@ static void http_start(int port) {
 	}
 #endif
 
-	http_server = socket(AF_INET, SOCK_STREAM, 0);
+	/*
+	 * Remove http:// or https://
+	 */
+	char *cpy = STRDUP(url);
+	CuAssertPtrNotNull(gtc, cpy);
+	str_replace("https://", "", &cpy);
+	str_replace("http://", "", &cpy);
+
+	/*
+	 * Remove backslash after host and port
+	 */
+	int pos = rstrstr(cpy, "/")-cpy;
+	cpy[pos] = '\0';
+
+	/*
+	 * Remove port
+	 */
+	if(rstrstr(cpy, ":") != NULL) {
+		pos = rstrstr(cpy, ":")-cpy;
+		cpy[pos] = '\0';
+	}
+
+	/*
+	 * Remove auth
+	 */
+	if(rstrstr(cpy, "@") != NULL) {
+		pos = (strstr(cpy, "@")-cpy)+1;
+		len = strlen(cpy)-pos;
+		memmove(&cpy[0], &cpy[pos], len);
+		cpy[len] = '\0';
+	}
+
+	/*
+	 * Remove hooks
+	 */
+	len = strlen(cpy)-1;
+	if(cpy[0] == '[') {
+		memmove(&cpy[0], &cpy[1], len);
+		cpy[len] = '\0';
+	}
+	if(cpy[len-1] == ']') {
+		cpy[len-1] = '\0';
+	}
+
+	type = host2ip(cpy, &ip);
+	CuAssertTrue(gtc, type == AF_INET || type == AF_INET6);
+	FREE(cpy);
+
+	http_server = socket(type, SOCK_STREAM, 0);
 	CuAssertTrue(gtc, http_server >= 0);
 
-	memset((char *)&addr, '\0', sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	addr.sin_port = htons(port);
+	switch(type) {
+		case AF_INET: {
+			memset((char *)&addr4, '\0', sizeof(addr4));
+			addr4.sin_family = type;
+			addr4.sin_addr.s_addr = htonl(INADDR_ANY);
+			addr4.sin_port = htons(port);
+		} break;
+		case AF_INET6: {
+			memset((char *)&addr6, '\0', sizeof(addr6));
+			addr6.sin6_family = type;
+			addr6.sin6_flowinfo = 0;
+			addr6.sin6_port = htons(port);
+			addr6.sin6_addr = in6addr_loopback;
+		} break;
+		default: {
+		} break;
+	}
+	FREE(ip);
 
 	r = setsockopt(http_server, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(int));
 	CuAssertTrue(gtc, r >= 0);
 
-	r = bind(http_server, (struct sockaddr *)&addr, sizeof(addr));
+	switch(type) {
+		case AF_INET: {
+			r = bind(http_server, (struct sockaddr *)&addr4, sizeof(addr4));
+		} break;
+		case AF_INET6: {
+			r = bind(http_server, (struct sockaddr *)&addr6, sizeof(addr6));
+		} break;
+	}
 	CuAssertTrue(gtc, r >= 0);
-
 	r = listen(http_server, 0);
 	CuAssertTrue(gtc, r >= 0);
 }
@@ -443,8 +531,8 @@ static void test(void *param) {
 	is_ssl = 0;
 	doquit = 0;
 
-	if(testnr != 10) {
-		http_start(tests[testnr].port);
+	if(testnr != 11) {
+		http_start(tests[testnr].url, tests[testnr].port);
 		uv_thread_create(&pth, http_wait, NULL);
 	}
 
@@ -494,7 +582,7 @@ static void test_http(CuTest *tc) {
 	storage_gc();
 	eventpool_gc();
 
-	CuAssertIntEquals(tc, 11, testnr);
+	CuAssertIntEquals(tc, 12, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 
 }
@@ -550,7 +638,7 @@ static void test_http_threaded(CuTest *tc) {
 	storage_gc();
 	eventpool_gc();
 
-	CuAssertIntEquals(tc, 11, testnr);
+	CuAssertIntEquals(tc, 12, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 

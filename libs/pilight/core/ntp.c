@@ -211,14 +211,15 @@ static void loop(uv_timer_t *req) {
 		init = 1;
 	}
 	
-	struct sockaddr_in addr;
+	struct sockaddr_in addr4;
+	struct sockaddr_in6 addr6;
 	struct data_t *data = NULL;
 	uv_udp_t *client_req = NULL;
 	uv_udp_send_t *send_req = NULL;
 	uv_timer_t *timeout_req = NULL;
-	char ip[INET_ADDRSTRLEN+1], *p = ip;
+	char *ip = NULL;
 	char buffer[BUFFER_SIZE];
-	int r = 0;
+	int r = 0, type = 0;
 
 #ifdef _WIN32
 	WSADATA wsa;
@@ -229,21 +230,39 @@ static void loop(uv_timer_t *req) {
 	}
 #endif
 
-	r = host2ip(ntp_servers.server[nr].host, p);
-	if(r != 0) {
-		/*LCOV_EXCL_START*/
-		logprintf(LOG_ERR, "host2ip");
-		return;
-		/*LCOV_EXCL_STOP*/
+	type = host2ip(ntp_servers.server[nr].host, &ip);
+	switch(type) {
+		case AF_INET: {
+			memset(&addr4, '\0', sizeof(struct sockaddr_in));
+			r = uv_ip4_addr(ip, ntp_servers.server[nr].port, &addr4);
+			if(r != 0) {
+				/*LCOV_EXCL_START*/
+				logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
+				FREE(ip);
+				return;
+				/*LCOV_EXCL_END*/
+			}
+		} break;
+		case AF_INET6: {
+			memset(&addr6, '\0', sizeof(struct sockaddr_in6));
+			r = uv_ip6_addr(ip, ntp_servers.server[nr].port, &addr6);
+			if(r != 0) {
+				/*LCOV_EXCL_START*/
+				logprintf(LOG_ERR, "uv_ip6_addr: %s", uv_strerror(r));
+				FREE(ip);
+				return;
+				/*LCOV_EXCL_END*/
+			}
+		} break;
+		default: {
+			/*LCOV_EXCL_START*/
+			logprintf(LOG_ERR, "host2ip");
+			FREE(ip);
+			/*LCOV_EXCL_END*/
+		} break;
 	}
+	FREE(ip);
 
-	r = uv_ip4_addr(ip, ntp_servers.server[nr].port, &addr);
-	if(r != 0) {
-		/*LCOV_EXCL_START*/
-		logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
-		return;
-		/*LCOV_EXCL_STOP*/
-	}
 	if((client_req = MALLOC(sizeof(uv_udp_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
@@ -283,7 +302,16 @@ static void loop(uv_timer_t *req) {
 
 	client_req->data = data;
 
-	r = uv_udp_send(send_req, client_req, &buf, 1, (const struct sockaddr *)&addr, on_send);
+	switch(type) {
+		case AF_INET: {
+			r = uv_udp_send(send_req, client_req, &buf, 1, (const struct sockaddr *)&addr4, on_send);
+		} break;
+		case AF_INET6: {
+			r = uv_udp_send(send_req, client_req, &buf, 1, (const struct sockaddr *)&addr6, on_send);
+		} break;
+		default: {
+		} break;
+	}
 	if(r != 0) {
 		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_udp_send: %s", uv_strerror(r));
@@ -326,6 +354,14 @@ void ntpsync(void) {
 	}
 	started = 1;
 	loop(NULL);
+}
+
+void ntp_gc(void) {
+	nr = 0;
+	started = 0;
+	synced = 1;
+	init = 0;
+	diff = 0;
 }
 	
 int getntpdiff(void) {

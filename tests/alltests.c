@@ -148,10 +148,10 @@ int RunAllTests(void) {
 	suites[nr++] = suite_log();
 	suites[nr++] = suite_ssdp();
 	suites[nr++] = suite_ping();
-	suites[nr++] = suite_ntp();
+	suites[nr++] = suite_ntp(); // ipv4 ported / ipv6 not ported
 	suites[nr++] = suite_arp();
-	suites[nr++] = suite_http(); // Ported
-	suites[nr++] = suite_mail(); // Ported
+	suites[nr++] = suite_http(); // ipv4 ported / ipv6 not ported
+	suites[nr++] = suite_mail(); // ipv4 ported / ipv6 not ported
 #ifdef WEBSERVER
 	suites[nr++] = suite_webserver(); // Ported
 	suites[nr++] = suite_webserver_rest();

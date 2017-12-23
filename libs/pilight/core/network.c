@@ -313,10 +313,9 @@ int dev2ip(char *dev, char **ip, sa_family_t type) {
 	return 0;
 }
 
-int host2ip(char *host, char *ip) {
+int host2ip(char *host, char **ip) {
 	int rv = 0;
 	struct addrinfo hints, *servinfo, *p;
-	struct sockaddr_in *h = NULL;
 
 #ifdef _WIN32
 	WSADATA wsa;
@@ -328,7 +327,7 @@ int host2ip(char *host, char *ip) {
 #endif	
 	
 	memset(&hints, 0, sizeof hints);
-	hints.ai_family = AF_INET;
+	hints.ai_family = AF_INET6;
 	hints.ai_socktype = SOCK_STREAM;
 
 	if((rv = getaddrinfo(host, NULL , NULL, &servinfo)) != 0) {
@@ -339,12 +338,27 @@ int host2ip(char *host, char *ip) {
 	}
 
 	for(p = servinfo; p != NULL; p = p->ai_next) {
-		memcpy(&h, &p->ai_addr, sizeof(struct sockaddr_in *));
-		memset(ip, '\0', INET_ADDRSTRLEN+1);
-		uv_inet_ntop(AF_INET, (void *)&(h->sin_addr), ip, INET_ADDRSTRLEN+1);
-		if(strlen(ip) > 0) {
+		if(p->ai_family == AF_INET6) {
+			if((*ip = MALLOC(INET6_ADDRSTRLEN+1)) == NULL) {
+				OUT_OF_MEMORY
+			}
+			struct sockaddr_in6 *h = NULL;
+			memcpy(&h, &p->ai_addr, sizeof(struct sockaddr_in6 *));
+			memset(*ip, '\0', INET6_ADDRSTRLEN+1);
+			uv_inet_ntop(p->ai_family, (void *)&(h->sin6_addr), *ip, INET6_ADDRSTRLEN+1);
+		} else if(p->ai_family == AF_INET) {
+			if((*ip = MALLOC(INET_ADDRSTRLEN+1)) == NULL) {
+				OUT_OF_MEMORY
+			}
+			struct sockaddr_in *h = NULL;
+			memcpy(&h, &p->ai_addr, sizeof(struct sockaddr_in *));
+			memset(*ip, '\0', INET_ADDRSTRLEN+1);
+			uv_inet_ntop(p->ai_family, (void *)&(h->sin_addr), *ip, INET_ADDRSTRLEN+1);
+		}
+		if(*ip != NULL && strlen(*ip) > 0) {
+			int r = p->ai_family;
 			freeaddrinfo(servinfo);
-			return 0;
+			return r;
 		}
 	}
 

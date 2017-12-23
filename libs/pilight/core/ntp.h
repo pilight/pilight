@@ -23,6 +23,7 @@ typedef struct ntp_servers_t {
 struct ntp_servers_t ntp_servers;
 
 void ntpsync(void);
+void ntp_gc(void);
 int getntpdiff(void);
 int isntpsynced(void);
 

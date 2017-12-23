@@ -58,6 +58,7 @@ static char response[48] = {
 
 static CuTest *gtc = NULL;
 static int steps = 0;
+static int inet = AF_INET;
 
 static void callback(int status, time_t ntptime) {
 	steps++;
@@ -67,6 +68,7 @@ static void callback(int status, time_t ntptime) {
 	if(steps == 2) {
 		CuAssertULongEquals(gtc, 1481748729, (unsigned long)ntptime);
 		ntp_loop = 0;
+		ntp_gc();
 		uv_stop(uv_default_loop());
 	}
 }
@@ -85,10 +87,14 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 
 static void ntp_wait(void *param) {
 	struct timeval tv;
-	struct sockaddr_in addr;
+	struct sockaddr_in addr4;
+	struct sockaddr_in6 addr6;
+	struct sockaddr u;
 	char *message = NULL;
 	int n = 0, r = 0;
-	socklen_t addrlen = sizeof(addr);
+	socklen_t addr4len = sizeof(addr4);
+	socklen_t addr6len = sizeof(addr6);
+	socklen_t ulen = sizeof(u);
 	fd_set fdsread;
 
 	if((message = MALLOC(BUFFER_SIZE)) == NULL) {
@@ -125,14 +131,30 @@ static void ntp_wait(void *param) {
 		if(n == -1) {
 			goto clear;
 		} else if(n > 0) {
+			CuAssertIntEquals(gtc, getsockname(ntp_socket, &u, (socklen_t *)&ulen), 0);
+
 			if(FD_ISSET(ntp_socket, &fdsread)) {
 				memset(message, '\0', BUFFER_SIZE);
-				r = recvfrom(ntp_socket, message, BUFFER_SIZE, 0, (struct sockaddr *)&addr, &addrlen);
-				CuAssertTrue(gtc, (r >= 0));
+				switch(u.sa_family) {
+					case AF_INET: {
+						r = recvfrom(ntp_socket, message, BUFFER_SIZE, 0, (struct sockaddr *)&addr4, &addr4len);
+						CuAssertTrue(gtc, (r >= 0));
 
-				CuAssertStrEquals(gtc, request, message);
-				r = sendto(ntp_socket, response, 48, 0, (struct sockaddr *)&addr, addrlen);
-				CuAssertIntEquals(gtc, 48, r);
+						CuAssertStrEquals(gtc, request, message);
+						r = sendto(ntp_socket, response, 48, 0, (struct sockaddr *)&addr4, addr4len);
+						CuAssertIntEquals(gtc, 48, r);
+					} break;
+					case AF_INET6: {
+						r = recvfrom(ntp_socket, message, BUFFER_SIZE, 0, (struct sockaddr *)&addr6, &addr6len);
+						CuAssertTrue(gtc, (r >= 0));
+
+						CuAssertStrEquals(gtc, request, message);
+						r = sendto(ntp_socket, response, 48, 0, (struct sockaddr *)&addr6, addr6len);
+						CuAssertIntEquals(gtc, 48, r);
+					} break;
+					default: {
+					} break;
+				}
 				break;
 			}
 		}
@@ -144,7 +166,8 @@ clear:
 }
 
 static void ntp_custom_server(void) {
-	struct sockaddr_in addr;
+	struct sockaddr_in addr4;
+	struct sockaddr_in6 addr6;
 	int opt = 1;
 	int r = 0;
 
@@ -157,36 +180,42 @@ static void ntp_custom_server(void) {
 	}
 #endif
 
-	ntp_socket = socket(AF_INET, SOCK_DGRAM, 0);
+	ntp_socket = socket(inet, SOCK_DGRAM, 0);
 	CuAssertTrue(gtc, (ntp_socket > 0));
 
-	memset((char *)&addr, '\0', sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	addr.sin_port = htons(10123);
+	switch(inet) {
+		case AF_INET: {
+			memset((char *)&addr4, '\0', sizeof(addr4));
+			addr4.sin_family = inet;
+			addr4.sin_addr.s_addr = htonl(INADDR_ANY);
+			addr4.sin_port = htons(10123);
+		} break;
+		case AF_INET6: {
+			memset((char *)&addr6, '\0', sizeof(addr6));
+			addr6.sin6_family = inet;
+			addr6.sin6_flowinfo = 0;
+			addr6.sin6_port = htons(10123);
+			addr6.sin6_addr = in6addr_loopback;
+		} break;
+		default: {
+		} break;
+	}
 
 	r = setsockopt(ntp_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(int));
 	CuAssertTrue(gtc, (r >= 0));
 
-	r = bind(ntp_socket, (struct sockaddr *)&addr, sizeof(addr));
+	switch(inet) {
+		case AF_INET: {
+			r = bind(ntp_socket, (struct sockaddr *)&addr4, sizeof(addr4));
+		} break;
+		case AF_INET6: {
+			r = bind(ntp_socket, (struct sockaddr *)&addr6, sizeof(addr6));
+		} break;
+	}
 	CuAssertTrue(gtc, (r >= 0));
 }
 
 static void test_ntp(CuTest *tc) {
-	if(geteuid() != 0) {
-		printf("[ %-33s (requires root)]\n", __FUNCTION__);
-		fflush(stdout);
-		return;
-	}
-	printf("[ %-48s ]\n", __FUNCTION__);
-	fflush(stdout);
-
-	gtc = tc;
-	
-	memtrack();
-
-	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
-
 	steps = 0;
 	ntp_loop = 1;
 
@@ -198,8 +227,13 @@ static void test_ntp(CuTest *tc) {
 	ntp_servers.server[0].port = 10124;
 	ntp_servers.callback = callback;
 
-	strcpy(ntp_servers.server[1].host, "127.0.0.1");
-	ntp_servers.server[1].port = 10123;
+	if(inet == AF_INET) {
+		strcpy(ntp_servers.server[1].host, "127.0.0.1");
+		ntp_servers.server[1].port = 10123;
+	} else if(inet == AF_INET6) {
+		strcpy(ntp_servers.server[1].host, "::1");
+		ntp_servers.server[1].port = 10123;
+	}
 
 	ntp_servers.nrservers = 2;
 
@@ -226,10 +260,51 @@ static void test_ntp(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
+static void test_ntp_ipv4(CuTest *tc) {
+	if(geteuid() != 0) {
+		printf("[ %-33s (requires root)]\n", __FUNCTION__);
+		fflush(stdout);
+		return;
+	}
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	gtc = tc;
+
+	memtrack();
+
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
+
+	inet = AF_INET;
+
+	test_ntp(tc);
+}
+
+static void test_ntp_ipv6(CuTest *tc) {
+	if(geteuid() != 0) {
+		printf("[ %-33s (requires root)]\n", __FUNCTION__);
+		fflush(stdout);
+		return;
+	}
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	gtc = tc;
+
+	memtrack();
+
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
+
+	inet = AF_INET6;
+
+	test_ntp(tc);
+}
+
 CuSuite *suite_ntp(void) {	
 	CuSuite *suite = CuSuiteNew();
 
-	SUITE_ADD_TEST(suite, test_ntp);
+	SUITE_ADD_TEST(suite, test_ntp_ipv4);
+	SUITE_ADD_TEST(suite, test_ntp_ipv6);
 
 	return suite;
 }

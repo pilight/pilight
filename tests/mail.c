@@ -31,6 +31,8 @@
 
 static struct tests_t {
 	char *desc;
+	char *host;
+	int success;
 	int port;
 	int ssl;
 	int status;
@@ -39,7 +41,7 @@ static struct tests_t {
 	char sendmsg[12][1024];
 	char recvmsg[12][1024];
 } tests[] = {
-	{ "gmail plain", 10025, 0, 0, 0, 0, {
+	{ "gmail plain", "127.0.0.1", 0, 10025, 0, 0, 0, 0, {
 			"220 smtp.gmail.com ESMTP im3sm19207876wjb.13 - gsmtp\r\n",
 			"250-smtp.gmail.com at your service, [108.177.96.109]\r\n"
 				"250-SIZE 35882577\r\n"
@@ -77,7 +79,7 @@ static struct tests_t {
 			"QUIT\r\n"
 		}
 	},
-	{ "gmail switch to ssl", 10587, 0, 0, 0, 0, {
+	{ "gmail switch to ssl", "127.0.0.1", 0, 10587, 0, 0, 0, 0, {
 			"220 smtp.gmail.com ESMTP o143sm14034035wmd.7 - gsmtp\r\n",
 			"250-smtp.gmail.com at your service, [108.177.96.109]\r\n"
 				"250-SIZE 35882577\r\n"
@@ -126,7 +128,7 @@ static struct tests_t {
 			"QUIT\r\n"
 		}
 	},
-	{ "gmail full ssl", 10465, 1, 0, 0, 0, {
+	{ "gmail full ssl", "127.0.0.1", 0, 10465, 1, 0, 0, 0, {
 			"220 smtp.gmail.com ESMTP im3sm19207876wjb.13 - gsmtp\r\n",
 			"250-smtp.gmail.com at your service, [108.177.96.109]\r\n"
 				"250-SIZE 35882577\r\n"
@@ -164,7 +166,7 @@ static struct tests_t {
 			"QUIT\r\n"
 		}
 	},
-	{ "tele2 plain", 10587, 0, 0, 0, 0, {
+	{ "tele2 plain", "127.0.0.1", 0, 10587, 0, 0, 0, 0, {
 			"220 smtp04.tele2.isp-net.nl ESMTP Postfix (Linux)\r\n",
 			"250-smtp04.tele2.isp-net.nl\r\n"
 				"250-PIPELINING\r\n"
@@ -204,7 +206,7 @@ static struct tests_t {
 			"QUIT\r\n"
 		}
 	},
-	{ "gmail ehlo error", 10587, 0, -1, 0, 0,
+	{ "gmail ehlo error", "127.0.0.1", 0, 10587, 0, -1, 0, 0,
 		{
 			"220 smtp.gmail.com ESMTP im3sm19207876wjb.13 - gsmtp\r\n",
 			"501-5.5.4 Empty HELO/EHLO argument not allowed, closing connection.\r\n"
@@ -214,7 +216,7 @@ static struct tests_t {
 			"EHLO pilight\r\n"
 		}
 	},
-	{ "gmail invalid base64", 10587, 0, -1, 0, 0,
+	{ "gmail invalid base64", "127.0.0.1", 0, 10587, 0, -1, 0, 0,
 		{
 			"220 smtp.gmail.com ESMTP im3sm19207876wjb.13 - gsmtp\r\n",
 			"250-smtp.gmail.com at your service, [108.177.96.109]\r\n"
@@ -232,7 +234,7 @@ static struct tests_t {
 			"AUTH PLAIN AHBpbGlnaHQAdGVzdA==\r\n",
 		}
 	},
-	{ "gmail wrong username/password", 10587, 0, -1, 0, 0,
+	{ "gmail wrong username/password", "127.0.0.1", 0, 10587, 0, -1, 0, 0,
 		{
 			"220 smtp.gmail.com ESMTP im3sm19207876wjb.13 - gsmtp\r\n",
 			"250-smtp.gmail.com at your service, [108.177.96.109]\r\n"
@@ -250,7 +252,45 @@ static struct tests_t {
 			"EHLO pilight\r\n",
 			"AUTH PLAIN AHBpbGlnaHQAdGVzdA==\r\n",
 		}
-	}
+	},
+	{ "gmail plain (ipv6)", "::1", 0, 10025, 0, 0, 0, 0, {
+			"220 smtp.gmail.com ESMTP im3sm19207876wjb.13 - gsmtp\r\n",
+			"250-smtp.gmail.com at your service, [108.177.96.109]\r\n"
+				"250-SIZE 35882577\r\n"
+				"250-8BITMIME\r\n"
+				"250-AUTH LOGIN PLAIN XOAUTH2 PLAIN-CLIENTTOKEN OAUTHBEARER XOAUTH\r\n"
+				"250-ENHANCEDSTATUSCODES\r\n"
+				"250-PIPELINING\r\n"
+				"250-CHUNKING\r\n"
+				"250 SMTPUTF8\r\n",
+			"235 2.7.0 Accepted\r\n",
+			"250 2.1.0 OK im3sm19207876wjb.13 - gsmtp",
+			"250 2.1.5 OK im3sm19207876wjb.13 - gsmtp",
+			"354  Go ahead im3sm19207876wjb.13 - gsmtp",
+			"250 2.0.0 OK 1477744237 im3sm19207876wjb.13 - gsmtp",
+			"250 2.1.5 Flushed im3sm19207876wjb.13 - gsmtp",
+			"221 2.0.0 closing connection im3sm19207876wjb.13 - gsmtp"
+		},
+		{
+			"EHLO pilight\r\n",
+			"AUTH PLAIN AHBpbGlnaHQAdGVzdA==\r\n",
+			"MAIL FROM: <info@pilight.org>\r\n",
+			"RCPT TO: <info@pilight.org>\r\n",
+			"DATA\r\n",
+			"Subject: test\r\n"
+				"From: <info@pilight.org>\r\n"
+				"To: <info@pilight.org>\r\n"
+				"Content-Type: text/plain\r\n"
+				"Mime-Version: 1.0\r\n"
+				"X-Mailer: Emoticode smtp_send\r\n"
+				"Content-Transfer-Encoding: 7bit\r\n"
+				"\r\n"
+				"test\r\n"
+				".\r\n",
+			"RSET\r\n",
+			"QUIT\r\n"
+		}
+	},
 };
 
 static CuTest *gtc = NULL;
@@ -486,8 +526,11 @@ clear:
 	return;
 }
 
-static void mail_start(int port) {
-	struct sockaddr_in addr;
+static void mail_start(char *host, int port) {
+	struct sockaddr_in addr4;
+	struct sockaddr_in6 addr6;
+	char *ip = NULL;
+	int type = 0;
 	int opt = 1;
 	int r = 0;
 
@@ -500,18 +543,42 @@ static void mail_start(int port) {
 	}
 #endif
 
-	mail_server = socket(AF_INET, SOCK_STREAM, 0);
+	type = host2ip(host, &ip);
+	CuAssertTrue(gtc, type == AF_INET || type == AF_INET6);
+
+	mail_server = socket(type, SOCK_STREAM, 0);
 	CuAssertTrue(gtc, mail_server > 0);
 
-	memset((char *)&addr, '\0', sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	addr.sin_port = htons(port);
+	switch(type) {
+		case AF_INET: {
+			memset((char *)&addr4, '\0', sizeof(addr4));
+			addr4.sin_family = type;
+			addr4.sin_addr.s_addr = htonl(INADDR_ANY);
+			addr4.sin_port = htons(port);
+		} break;
+		case AF_INET6: {
+			memset((char *)&addr6, '\0', sizeof(addr6));
+			addr6.sin6_family = type;
+			addr6.sin6_flowinfo = 0;
+			addr6.sin6_port = htons(port);
+			addr6.sin6_addr = in6addr_loopback;
+		} break;
+		default: {
+		} break;
+	}
+	FREE(ip);
 
 	r = setsockopt(mail_server, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(int));
 	CuAssertTrue(gtc, r >= 0);
 
-	r = bind(mail_server, (struct sockaddr *)&addr, sizeof(addr));
+	switch(type) {
+		case AF_INET: {
+			r = bind(mail_server, (struct sockaddr *)&addr4, sizeof(addr4));
+		} break;
+		case AF_INET6: {
+			r = bind(mail_server, (struct sockaddr *)&addr6, sizeof(addr6));
+		} break;
+	}
 	CuAssertTrue(gtc, r >= 0);
 
 	r = listen(mail_server, 0);
@@ -540,7 +607,7 @@ static void test(void *param) {
 		force_ssl = 1;
 	}
 
-	mail_start(tests[testnr].port);
+	mail_start(tests[testnr].host, tests[testnr].port);
 
 	uv_thread_create(&pth, mail_wait, NULL);
 
@@ -549,9 +616,20 @@ static void test(void *param) {
 	mail->from = sender;
 	mail->to = to;
 
-	CuAssertIntEquals(gtc, 0, sendmail("127.0.0.1", user, password, tests[testnr].port, tests[testnr].ssl, mail, callback));
+	CuAssertIntEquals(gtc, tests[testnr].success, sendmail(tests[testnr].host, user, password, tests[testnr].port, tests[testnr].ssl, mail, callback));
 
-	started = 1;
+	if(tests[testnr].success == -1) {
+		if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+
+		uv_timer_init(uv_default_loop(), timer_req);
+		uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 100, 0);
+
+		testnr++;
+	} else {
+		started = 1;
+	}
 }
 
 static void test_mail(CuTest *tc) {
@@ -600,7 +678,7 @@ static void test_mail(CuTest *tc) {
 	storage_gc();
 	eventpool_gc();
 
-	CuAssertIntEquals(tc, 7, testnr);
+	CuAssertIntEquals(tc, 8, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -658,7 +736,7 @@ static void test_mail_threaded(CuTest *tc) {
 	storage_gc();
 	eventpool_gc();
 
-	CuAssertIntEquals(tc, 7, testnr);
+	CuAssertIntEquals(tc, 8, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 

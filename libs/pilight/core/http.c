@@ -296,31 +296,51 @@ static int prepare_request(struct request_t **request, int method, char *url, co
 		(*request)->content_len = strlen(post);
 	}
 
-	if((tok = strstr((*request)->host, ":"))) {
-		size_t pglen = strlen((*request)->host);
-		tlen = (size_t)(tok-(*request)->host)+1;
-		if(isNumeric(&(*request)->host[tlen]) == 0) {
-			(*request)->port = atoi(&(*request)->host[tlen]);
-		} else {
-			logprintf(LOG_ERR, "A custom URL port must be numeric");
-			FREE((*request)->host);
-			FREE((*request)->uri);
-			FREE((*request));
-			return -1;
+	len = strlen((*request)->host);
+	int i = 0;
+	while(i < len) {
+		if((tok = strstr(&(*request)->host[i], ":"))) {
+			size_t pglen = strlen((*request)->host);
+			tlen = (size_t)(tok-(*request)->host)+1;
+			if((*request)->host[tlen] == ':') {
+				i = tlen;
+				while(i < len && (*request)->host[i++] == ':');
+				continue;
+			}
+			if(isNumeric(&(*request)->host[tlen]) == 0) {
+				(*request)->port = atoi(&(*request)->host[tlen]);
+			} else {
+				logprintf(LOG_ERR, "A custom URL port must be numeric");
+				FREE((*request)->host);
+				FREE((*request)->uri);
+				FREE((*request));
+				return -1;
+			}
+			if(pglen == tlen) {
+				logprintf(LOG_ERR, "A custom URL port is missing");
+				FREE((*request)->host);
+				FREE((*request)->uri);
+				FREE((*request));
+				return -1;
+			}
+			(*request)->host[tlen-1] = '\0';
+			break;
 		}
-		if(pglen == tlen) {
-			logprintf(LOG_ERR, "A custom URL port is missing");
-			FREE((*request)->host);
-			FREE((*request)->uri);
-			FREE((*request));
-			return -1;
-		}
-		(*request)->host[tlen-1] = '\0';
+		i++;
+	}
+	len = strlen((*request)->host)-1;
+	if((*request)->host[0] == '[') {
+		memmove(&(*request)->host[0], &(*request)->host[1], len);
+		(*request)->host[len] = '\0';
+	}
+	if((*request)->host[len-1] == ']') {
+		(*request)->host[len-1] = '\0';
 	}
 
 	(*request)->userdata = userdata;
 	(*request)->callback = callback;
 	(*request)->request_method = method;
+
 	return 0;
 }
 
@@ -643,8 +663,9 @@ static void write_cb(uv_poll_t *req) {
 char *http_process(int type, char *url, const char *conttype, char *post, void (*callback)(int, char *, int, char *, void *), void *userdata) {
 	struct request_t *request = NULL;
 	struct uv_custom_poll_t *custom_poll_data = NULL;
-	struct sockaddr_in addr;
-	char ip[INET_ADDRSTRLEN+1], *p = ip;
+	struct sockaddr_in addr4;
+	struct sockaddr_in6 addr6;
+	char *ip = NULL;
 	int r = 0, sockfd = 0;
 
 	if(http_lock_init == 0) {
@@ -667,23 +688,44 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 	}
 #endif
 
+	memset(&addr4, 0, sizeof(addr4));
+	memset(&addr6, 0, sizeof(addr6));
 	if(prepare_request(&request, type, url, conttype, post, callback, userdata) == 0) {
-		r = host2ip(request->host, p);
-		
-		if(r != 0) {
-			logprintf(LOG_ERR, "host2ip");
-			goto freeuv;
+		int inet = host2ip(request->host, &ip);
+		switch(inet) {
+			case AF_INET: {
+				memset(&addr4, '\0', sizeof(struct sockaddr_in));
+				r = uv_ip4_addr(ip, request->port, &addr4);
+				if(r != 0) {
+					/*LCOV_EXCL_START*/
+					logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
+					goto freeuv;
+					/*LCOV_EXCL_END*/
+				}
+			} break;
+			case AF_INET6: {
+				memset(&addr6, '\0', sizeof(struct sockaddr_in6));
+				r = uv_ip6_addr(ip, request->port, &addr6);
+				if(r != 0) {
+					/*LCOV_EXCL_START*/
+					logprintf(LOG_ERR, "uv_ip6_addr: %s", uv_strerror(r));
+					goto freeuv;
+					/*LCOV_EXCL_END*/
+				}
+			} break;
+			default: {
+				/*LCOV_EXCL_START*/
+				logprintf(LOG_ERR, "host2ip");
+				goto freeuv;
+				/*LCOV_EXCL_END*/
+			} break;
 		}
+		FREE(ip);
 
-		r = uv_ip4_addr(ip, request->port, &addr);
-		if(r != 0) {
-			logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
-			goto freeuv;
-		}
 		/*
 		 * Partly bypass libuv in case of ssl connections
 		 */
-		if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+		if((sockfd = socket(inet, SOCK_STREAM, 0)) < 0){
 			/*LCOV_EXCL_START*/
 			logprintf(LOG_ERR, "socket: %s", strerror(errno));
 			goto freeuv;
@@ -698,7 +740,18 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 		fcntl(sockfd, F_SETFL, arg | O_NONBLOCK);
 #endif
 
-		if(connect(sockfd, (const struct sockaddr *)&addr, sizeof(struct sockaddr)) < 0) {
+		switch(inet) {
+			case AF_INET: {
+				r = connect(sockfd, (struct sockaddr *)&addr4, sizeof(addr4));
+			} break;
+			case AF_INET6: {
+				r = connect(sockfd, (struct sockaddr *)&addr6, sizeof(addr6));
+			} break;
+			default: {
+			} break;
+		}
+
+		if(r < 0) {
 #ifdef _WIN32
 			if(!(WSAGetLastError() == WSAEWOULDBLOCK || WSAGetLastError() == WSAEISCONN)) {
 #else
