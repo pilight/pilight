@@ -286,6 +286,9 @@ void ssdp_seek(void) {
 */
 
 static void on_send(uv_udp_send_t *req, int status) {
+	if(req->data != NULL) {
+		FREE(req->data);
+	}
 	FREE(req);
 }
 
@@ -299,7 +302,7 @@ static void alloc(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
 
 static void read_cb(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const struct sockaddr *addr, unsigned int port) {
 	struct data_t *node = stream->data;
-	char name[BUFFER_SIZE], buffer[BUFFER_SIZE];
+	char name[BUFFER_SIZE];
 	char *p = name;
 
 	if(node->type == SERVER) {
@@ -319,17 +322,17 @@ static void read_cb(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const st
 					if(send_req == NULL) {
 						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
+					memset(send_req, 0, sizeof(uv_udp_send_t));
 
-					uv_buf_t buf = uv_buf_init(buffer, BUFFER_SIZE);
+					uv_buf_t buf1 = uv_buf_init(header[x], strlen(header[x]));
+					/*
+					 * Freeing header[x] immediatly creates
+					 * unaddressable memory in udp send.
+					 */
+					send_req->data = header[x];
 
-					strcpy(buf.base, header[x]);	
-					buf.len = strlen(buf.base);
-
-					uv_udp_send(send_req, node->ssdp_req, &buf, 1, addr, on_send);
+					uv_udp_send(send_req, node->ssdp_req, &buf1, 1, addr, on_send);
 				}
-			}
-			for(x=0;x<nrheader;x++) {
-				FREE(header[x]);
 			}
 			FREE(header);
 		}
@@ -465,7 +468,6 @@ static void stop(uv_timer_t *handle) {
 void ssdp_seek(void) {
 	struct sockaddr_in addr;
 	uv_udp_send_t *send_req = NULL;
-	char buffer[BUFFER_SIZE];
 	int r = 0;
 
 	if(lock_init == 0) {
@@ -509,14 +511,15 @@ void ssdp_seek(void) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
-	uv_buf_t buf = uv_buf_init(buffer, BUFFER_SIZE);
+	memset(send_req, 0, sizeof(uv_udp_send_t));
 
-	strcpy(buf.base, "M-SEARCH * HTTP/1.1\r\n"
+	char *msg = "M-SEARCH * HTTP/1.1\r\n"
 			"Host:239.255.255.250:1900\r\n"
 			"ST:urn:schemas-upnp-org:service:pilight:1\r\n"
 			"MAN:\"ssdp:discover\"\r\n"
-			"MX:3\r\n\r\n");	
-	buf.len = strlen(buf.base);
+			"MX:3\r\n\r\n";
+
+	uv_buf_t buf = uv_buf_init(msg, strlen(msg));
 
 	r = uv_ip4_addr("239.255.255.250", 1900, &addr);
 	if(r != 0) {
