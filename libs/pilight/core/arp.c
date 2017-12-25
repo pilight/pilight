@@ -63,6 +63,12 @@
 #define ARP_PKTLEN 		28         // ARP packet length
 #define ETH_ALEN 			6
 
+typedef struct aap {
+	char ip[INET_ADDRSTRLEN];
+	char mac[18];
+	unsigned long lastseen;
+} aap;
+
 typedef struct data_t {
 	pcap_t *handle;
 	int fd;
@@ -231,7 +237,7 @@ static void write_cb(uv_poll_t *req) {
 	}
 
 	if(data->stop == 0) {
-		if((*iter)++ >= *nr) {
+		if(++(*iter) >= *nr) {
 			*iter = 0;
 			uv_timer_start(data->timer_req, (void (*)(uv_timer_t *))restart, data->interval*1000, 0);
 		} else {
@@ -295,7 +301,7 @@ static void callback(u_char *user, const struct pcap_pkthdr *pkt_header, const u
 		}
 
 		uv_mutex_lock(&data->found.lock);
-		if((data->found.data = REALLOC(data->found.data, sizeof((*data->found.data))*(data->found.nr+1))) == NULL) {
+		if((data->found.data = REALLOC(data->found.data, sizeof(*data->found.data)*(data->found.nr+1))) == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(data->found.data[data->found.nr].mac, mac);
