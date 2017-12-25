@@ -74,23 +74,18 @@ static void test_proc(CuTest *tc) {
 		fflush(stdout);
 
 		struct cpu_usage_t cpu_usage;
+		memset(&cpu_usage, 0, sizeof(struct cpu_usage_t));
 		getThreadCPUUsage(pthread_self(), &cpu_usage);
-		cpu[0] = cpu_usage.cpu_per;
-		cpu[1] = getCPUUsage();
+		cpu[0] = getCPUUsage();
 		do_primes(50000, 0);
-		cpu[2] = getCPUUsage();
-		getThreadCPUUsage(pthread_self(), &cpu_usage);
-		cpu[3] = cpu_usage.cpu_per;
-		CuAssertTrue(tc, cpu[0] < cpu[3]);
-		CuAssertTrue(tc, cpu[1] < cpu[2]);
+		cpu[1] = getCPUUsage();
+		CuAssertTrue(tc, cpu[0] < cpu[1]);
 	}
 
 	{
 		printf("[ - %-46s ]\n", "now 35000 and 25000 primes in two threads");
 		fflush(stdout);
 
-		struct cpu_usage_t cpu_usage;
-		cpu[4] = cpu_usage.cpu_per;
 		memset(&cpu, 0, 12 * sizeof(double));
 		pthread_create(&pth[0], NULL, thread1, NULL);
 		pthread_create(&pth[1], NULL, thread2, NULL);
@@ -99,15 +94,9 @@ static void test_proc(CuTest *tc) {
 		}
 		pthread_join(pth[0], NULL);
 		pthread_join(pth[1], NULL);
-		cpu[5] = cpu_usage.cpu_per;
-
 		CuAssertTrue(tc,
 			(cpu[0] < cpu[1]) &&
 			(cpu[2] < cpu[3]) &&
-			(cpu[4] < cpu[5]) &&
-			(cpu[3] < cpu[1]) && 
-			(cpu[1] < cpu[5]) &&
-			(cpu[3] < cpu[5]) &&
 			(cpu[3] < cpu[1])
 		);
 	}
