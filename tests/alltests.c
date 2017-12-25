@@ -25,6 +25,8 @@
 
 #define NRSUITS 128
 
+static int dolist = 0;
+
 CuSuite *suite_common(void);
 CuSuite *suite_network(void);
 CuSuite *suite_binary(void);
@@ -134,7 +136,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_network();
 	suites[nr++] = suite_binary(); // Ported (Missing signed tests)
 	const char *s = getenv("CI");
-	if(s == NULL || strcmp(s, "true") != 0) {
+	if((s == NULL || strcmp(s, "true") != 0) && !RUNNING_ON_VALGRIND) {
 		suites[nr++] = suite_proc();
 	}
 	suites[nr++] = suite_datetime(); // Ported
@@ -188,13 +190,21 @@ int RunAllTests(void) {
 		CuSuiteAddSuite(suite, suites[i]);
 	}
 
-	CuSuiteRun(suite);
-	CuSuiteSummary(suite, output);
-	CuSuiteDetails(suite, output);
-	printf("%s\n", output->buffer);
+	int r = 0;
+	if(dolist == 0) {
+		CuSuiteRun(suite);
+		CuSuiteSummary(suite, output);
+		CuSuiteDetails(suite, output);
+		printf("%s\n", output->buffer);
 
-	int r = (suite->failCount == 0) ? 0 : -1;
-
+		r = (suite->failCount == 0) ? 0 : -1;
+	} else {
+		int i = 0;
+		for(i = 0 ; i < suite->count; ++i) {
+			CuTest *testCase = suite->list[i];
+			printf("[ %-48s ]\n", testCase->name);
+		}
+	}
 	for(i=0;i<nr;i++) {
 		free(suites[i]);
 	}
@@ -211,18 +221,26 @@ int main(int argc, char **argv) {
 	fprintf(f, "%s", gplv3);
 	fclose(f);
 
-	/*
-	 * Testing the debug code. If this doesn't work
-	 * everything else will fail as well.
-	 */
-	printf("[ %-48s ]\n", "test_unittest");
-	fflush(stdout);
-	assert(17 == test_unittest());
-
-	if(!RUNNING_ON_VALGRIND) {
-		printf("[ %-48s ]\n", "test_memory");
+	if(argc == 2) {
+		if(strcmp(argv[1], "list") == 0) {
+			dolist = 1;
+		} else {
+			CuSetFilter(argv[1]);
+		}
+	} else {
+		/*
+		 * Testing the debug code. If this doesn't work
+		 * everything else will fail as well.
+		 */
+		printf("[ %-48s ]\n", "test_unittest");
 		fflush(stdout);
-		assert(0 == test_memory());
+		assert(17 == test_unittest());
+
+		if(!RUNNING_ON_VALGRIND) {
+			printf("[ %-48s ]\n", "test_memory");
+			fflush(stdout);
+			assert(0 == test_memory());
+		}
 	}
 
 	return RunAllTests();

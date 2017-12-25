@@ -24,6 +24,7 @@ typedef struct
 	char* buffer;
 } CuString;
 
+void CuSetFilter(const char *filter);
 void CuStringInit(CuString* str);
 CuString* CuStringNew(void);
 void CuStringRead(CuString* str, const char* path);

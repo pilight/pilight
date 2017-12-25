@@ -7,6 +7,12 @@
 
 #include "CuTest.h"
 
+const char *CuFilter = NULL;
+
+void CuSetFilter(const char *filter) {
+	CuFilter = filter;
+}
+
 /*-------------------------------------------------------------------------*
  * CuStr
  *-------------------------------------------------------------------------*/
@@ -283,6 +289,10 @@ void CuSuiteDelete(CuSuite *testSuite)
 
 void CuSuiteAdd(CuSuite* testSuite, CuTest *testCase)
 {
+	if(CuFilter != NULL && strcmp(testCase->name, CuFilter) != 0) {
+		CuTestDelete(testCase);
+		return;
+	}
 	assert(testSuite->count < MAX_TEST_CASES);
 	testSuite->list[testSuite->count] = testCase;
 	testSuite->count++;
