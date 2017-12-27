@@ -135,10 +135,10 @@ int RunAllTests(void) {
 	suites[nr++] = suite_common();
 	suites[nr++] = suite_network();
 	suites[nr++] = suite_binary(); // Ported (Missing signed tests)
-	const char *s = getenv("CI");
-	if((s == NULL || strcmp(s, "true") != 0) && !RUNNING_ON_VALGRIND) {
+//	const char *s = getenv("CI");
+//	if((s == NULL || strcmp(s, "true") != 0) && !RUNNING_ON_VALGRIND) {
 		suites[nr++] = suite_proc();
-	}
+//	}
 	suites[nr++] = suite_datetime(); // Ported
 	suites[nr++] = suite_json(); // Ported
 	suites[nr++] = suite_cast(); // Ported
