@@ -740,6 +740,33 @@ static void test_mail_threaded(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
+static void test_mail_dot_message(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	gtc = tc;
+	started = 0;
+	testnr = 0;
+
+	memtrack();
+
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
+
+	if((mail = MALLOC(sizeof(struct mail_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+
+	mail->subject = subject;
+	mail->message = ".";
+	mail->from = sender;
+	mail->to = to;
+
+	CuAssertIntEquals(gtc, -1, sendmail("127.0.0.1", user, password, 25, 0, mail, callback));
+
+	FREE(mail);
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
 CuSuite *suite_mail(void) {
 	CuSuite *suite = CuSuiteNew();
 
@@ -753,6 +780,7 @@ CuSuite *suite_mail(void) {
 
 	SUITE_ADD_TEST(suite, test_mail);
 	SUITE_ADD_TEST(suite, test_mail_threaded);
+	SUITE_ADD_TEST(suite, test_mail_dot_message);
 
 	return suite;
 }
