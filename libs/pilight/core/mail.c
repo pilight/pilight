@@ -551,6 +551,10 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 		logprintf(LOG_ERR, "SMTP: recipient not set");
 		return -1;
 	}
+	if(strcmp(mail->message, ".") == 0) {
+		logprintf(LOG_ERR, "SMTP: message cannot be a single .");
+		return -1;
+	}
 
 	if((request = MALLOC(sizeof(struct request_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
