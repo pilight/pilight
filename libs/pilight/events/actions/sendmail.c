@@ -84,6 +84,11 @@ static int checkArguments(struct rules_actions_t *obj) {
 		logprintf(LOG_ERR, "sendmail action \"MESSAGE\" only takes one argument");
 		return -1;
 	}
+	jval = json_find_element(jvalues, 0);
+	if(jval->tag == JSON_STRING && strcmp(jval->string_, ".") == 0) {
+		logprintf(LOG_ERR, "sendmail action \"MESSAGE\" cannot be a single dot");
+		return -1;
+	}
 	nrvalues = 0;
 	if((jvalues = json_find_member(jto, "value")) != NULL) {
 		jchild = json_first_child(jvalues);
@@ -130,9 +135,9 @@ static int checkArguments(struct rules_actions_t *obj) {
 
 static void callback(int status, struct mail_t *mail) {
 	if(status == 0) {
-		logprintf(LOG_INFO, "successfully sent sendmail action message");
+		logprintf(LOG_INFO, "successfully sent sendmail action message with subject \"%s\" to %s", mail->subject, mail->to);
 	} else {
-		logprintf(LOG_INFO, "failed to send sendmail action message");
+		logprintf(LOG_NOTICE, "failed to send sendmail action message with subject \"%s\" to %s", mail->subject, mail->to);
 	}
 	FREE(mail->from);
 	FREE(mail->to);
@@ -156,9 +161,14 @@ static void *thread(void *param) {
 
 	action_sendmail->nrthreads++;
 
-	struct mail_t mail;
-	char *shost = NULL, *suser = NULL, *spassword = NULL;
+	struct mail_t *mail = MALLOC(sizeof(struct mail_t));
+	char *shost = NULL, *suser = NULL;
+	char *spassword = NULL, *sfrom = NULL;
 	int sport = 0, ssl = 0;
+
+	if(mail == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
 
 	jmessage = json_find_member(arguments, "MESSAGE");
 	jsubject = json_find_member(arguments, "SUBJECT");
@@ -176,19 +186,28 @@ static void *thread(void *param) {
 				jval1->tag == JSON_STRING && jval2->tag == JSON_STRING && jval3->tag == JSON_STRING) {
 
 				//smtp settings
-				settings_find_string("smtp-sender", &mail.from);
+				settings_find_string("smtp-sender", &sfrom);
 				settings_find_string("smtp-host", &shost);
 				settings_find_number("smtp-port", &sport);
 				settings_find_string("smtp-user", &suser);
 				settings_find_string("smtp-password", &spassword);
 				settings_find_number("smtp-ssl", &ssl);
 
-				mail.subject = jval1->string_;
-				mail.message = jval2->string_;
-				mail.to = jval3->string_;
+				if((mail->from = STRDUP(sfrom)) == NULL) {
+					OUT_OF_MEMORY
+				}
+				if((mail->subject = STRDUP(jval1->string_)) == NULL) {
+					OUT_OF_MEMORY
+				}
+				if((mail->message = STRDUP(jval2->string_)) == NULL) {
+					OUT_OF_MEMORY
+				}
+				if((mail->to = STRDUP(jval3->string_)) == NULL) {
+					OUT_OF_MEMORY
+				}
 
-				if(sendmail(shost, suser, spassword, sport, ssl, &mail, callback) != 0) {
-					logprintf(LOG_ERR, "Sendmail failed to send message \"%s\"", jval2->string_);
+				if(sendmail(shost, suser, spassword, sport, ssl, mail, callback) != 0) {
+					callback(-1, mail);
 				}
 			}
 		}
