@@ -193,9 +193,9 @@ static int checkArguments(struct rules_actions_t *obj) {
 
 static void callback(int status, struct mail_t *mail) {
 	if(status == 0) {
-		logprintf(LOG_INFO, "successfully sent sendmail action message");
+		logprintf(LOG_INFO, "successfully sent sendmail action message with subject \"%s\" to %s", mail->subject, mail->to);
 	} else {
-		logprintf(LOG_INFO, "failed to send sendmail action message");
+		logprintf(LOG_NOTICE, "failed to send sendmail action message with subject \"%s\" to %s", mail->subject, mail->to);
 	}
 	FREE(mail->from);
 	FREE(mail->to);
@@ -275,7 +275,7 @@ static int run(struct rules_actions_t *obj) {
 				strcpy(mail->to, jval3->string_);
 
 				if(sendmail(shost, suser, spassword, sport, is_ssl, mail, callback) != 0) {
-					logprintf(LOG_ERR, "sendmail action failed to send message \"%s\"", jval2->string_);
+					callback(-1, mail);
 					return -1;
 				}
 			}
