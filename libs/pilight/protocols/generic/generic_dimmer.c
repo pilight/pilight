@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -27,11 +17,7 @@
 #include "../../core/log.h"
 #include "../protocol.h"
 #include "../../core/binary.h"
-#include "../../core/gc.h"
 #include "generic_dimmer.h"
-
-#define MIN_DIMMER_VALUE 0
-#define MAX_DIMMER_VALUE 15
 
 static void createMessage(int id, int state, int dimlevel) {
 	generic_dimmer->message = json_mkobject();
@@ -47,10 +33,11 @@ static void createMessage(int id, int state, int dimlevel) {
 	}
 }
 
-static int checkValues(JsonNode *code) {
+
+static int checkValues(struct JsonNode *code) {
 	int dimlevel = -1;
-	int max = MAX_DIMMER_VALUE;
-	int min = MIN_DIMMER_VALUE;
+	int max = 15;
+	int min = 0;
 	double itmp = -1;
 
 	if(json_find_number(code, "dimlevel-maximum", &itmp) == 0)
@@ -74,12 +61,12 @@ static int checkValues(JsonNode *code) {
 	return 0;
 }
 
-static int createCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	int dimlevel = -1;
-	int max = MAX_DIMMER_VALUE;
-	int min = MIN_DIMMER_VALUE;
+	int max = -1;
+	int min = -1;
 	double itmp = -1;
 
 	if(json_find_number(code, "dimlevel-maximum", &itmp) == 0)
@@ -99,7 +86,7 @@ static int createCode(JsonNode *code) {
 	if(id == -1 || (dimlevel == -1 && state == -1)) {
 		logprintf(LOG_ERR, "generic_dimmer: insufficient number of arguments");
 		return EXIT_FAILURE;
-	} else if(dimlevel != -1 && (dimlevel > max || dimlevel < min)) {
+	} else if(dimlevel != -1 && ((max != -1 && dimlevel > max) || (min != -1 && dimlevel < min))) {
 		logprintf(LOG_ERR, "generic_dimmer: invalid dimlevel range");
 		return EXIT_FAILURE;
 	} else if(dimlevel >= 0 && state == 0) {
@@ -150,9 +137,9 @@ void genericDimmerInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "generic_dimmer";
-	module->version = "1.5";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {
