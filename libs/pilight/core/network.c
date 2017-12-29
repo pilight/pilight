@@ -115,7 +115,7 @@ int inetdevs(char ***array) {
 #else
 	int family = 0, s = 0;
 	char host[NI_MAXHOST];
-	struct ifaddrs *ifaddr, *ifa;
+	struct ifaddrs *ifaddr = NULL, *ifa = NULL;
 
 #ifdef __FreeBSD__
 	if(rep_getifaddrs(&ifaddr) == -1) {
@@ -308,29 +308,52 @@ int dev2ip(char *dev, char **ip, sa_family_t type) {
 	return 0;
 }
 
-int host2ip(char *host, char *ip) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
+int host2ip(char *host, char **ip) {
 	int rv = 0;
 	struct addrinfo hints, *servinfo, *p;
-	struct sockaddr_in *h = NULL;
+
+#ifdef _WIN32
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "WSAStartup");
+		exit(EXIT_FAILURE);
+	}
+#endif
 
 	memset(&hints, 0, sizeof hints);
-	hints.ai_family = AF_INET;
+	hints.ai_family = AF_INET6;
 	hints.ai_socktype = SOCK_STREAM;
 
 	if((rv = getaddrinfo(host, NULL , NULL, &servinfo)) != 0) {
+		/*LCOV_EXCL_START*/
 		logprintf(LOG_NOTICE, "getaddrinfo: %s, %s", host, gai_strerror(rv));
 		return -1;
+		/*LCOV_EXCL_STOP*/
 	}
 
 	for(p = servinfo; p != NULL; p = p->ai_next) {
-		memcpy(&h, &p->ai_addr, sizeof(struct sockaddr_in *));
-		memset(ip, '\0', INET_ADDRSTRLEN+1);
-		inet_ntop(AF_INET, (void *)&(h->sin_addr), ip, INET_ADDRSTRLEN+1);
-		if(strlen(ip) > 0) {
+		if(p->ai_family == AF_INET6) {
+			if((*ip = MALLOC(INET6_ADDRSTRLEN+1)) == NULL) {
+				OUT_OF_MEMORY
+			}
+			struct sockaddr_in6 *h = NULL;
+			memcpy(&h, &p->ai_addr, sizeof(struct sockaddr_in6 *));
+			memset(*ip, '\0', INET6_ADDRSTRLEN+1);
+			uv_inet_ntop(p->ai_family, (void *)&(h->sin6_addr), *ip, INET6_ADDRSTRLEN+1);
+		} else if(p->ai_family == AF_INET) {
+			if((*ip = MALLOC(INET_ADDRSTRLEN+1)) == NULL) {
+				OUT_OF_MEMORY
+			}
+			struct sockaddr_in *h = NULL;
+			memcpy(&h, &p->ai_addr, sizeof(struct sockaddr_in *));
+			memset(*ip, '\0', INET_ADDRSTRLEN+1);
+			uv_inet_ntop(p->ai_family, (void *)&(h->sin_addr), *ip, INET_ADDRSTRLEN+1);
+		}
+		if(*ip != NULL && strlen(*ip) > 0) {
+			int r = p->ai_family;
 			freeaddrinfo(servinfo);
-			return 0;
+			return r;
 		}
 	}
 
@@ -406,16 +429,21 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 
 	struct ifconf ifc;
 	char buff[8192];
-	int fd, i, n;
-	struct ifreq ifr, *ifrp=NULL;
+	int fd = 0, i = 0, n = 0;
+	struct ifreq ifr, *ifrp = NULL;
 	struct ifaddrs *curif = NULL, *ifa = NULL;
 	struct ifaddrs *lastif = NULL;
+
+	memset(buff, 0, 8192);
 
 	*ifap = NULL;
 
 	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
 		return -1;
 	}
+
+	memset(&ifc, 0, sizeof(struct ifconf));
+	memset(&ifr, 0, sizeof(struct ifreq));
 
 	ifc.ifc_len = sizeof(buff);
 	ifc.ifc_buf = buff;
@@ -456,13 +484,14 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 			return -1;
 		}
 
-		curif->ifa_name = MALLOC(sizeof(IFNAMSIZ)+1);
+		curif->ifa_name = MALLOC(IFNAMSIZ+1);
 		if(curif->ifa_name == NULL) {
 			FREE(curif);
 			freeifaddrs(*ifap);
 			close(fd);
 			return -1;
 		}
+		memset(curif->ifa_name, 0, IFNAMSIZ+1);
 		strncpy(curif->ifa_name, ifrp->ifr_name, IFNAMSIZ);
 		strncpy(ifr.ifr_name, ifrp->ifr_name, IFNAMSIZ);
 
