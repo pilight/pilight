@@ -50,8 +50,8 @@ static int createCode(struct JsonNode *code, char **message) {
 	int id = -1;
 	int state = -1;
 	int dimlevel = -1;
-	int max = 10;
-	int min = 0;
+	int max = -1;
+	int min = -1;
 	double itmp = -1;
 
 	if(json_find_number(code, "dimlevel-maximum", &itmp) == 0)
@@ -71,7 +71,7 @@ static int createCode(struct JsonNode *code, char **message) {
 	if(id == -1 || (dimlevel == -1 && state == -1)) {
 		logprintf(LOG_ERR, "generic_dimmer: insufficient number of arguments");
 		return EXIT_FAILURE;
-	} else if(dimlevel != -1 && (dimlevel > max || dimlevel < min)) {
+	} else if(dimlevel != -1 && ((max != -1 && dimlevel > max) || (min != -1 && dimlevel < min))) {
 		logprintf(LOG_ERR, "generic_dimmer: invalid dimlevel range");
 		return EXIT_FAILURE;
 	} else if(dimlevel >= 0 && state == 0) {
