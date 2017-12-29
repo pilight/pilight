@@ -3272,9 +3272,24 @@ int start_pilight(int argc, char **argv) {
 #endif
 #endif
 
-	char *ntpsync = NULL;
-	if(settings_find_string("ntpserver0", &ntpsync) == 0) {
-		threads_register("ntp sync", &ntpthread, NULL, 0);
+	{
+		char name[25], *server = NULL;
+		unsigned int nrservers = 0;
+		while(1) {
+			sprintf(name, "ntpserver%d", nrservers);
+			if(settings_find_string(name, &server) == 0) {
+				strcpy(ntp_servers.server[nrservers].host, server);
+				ntp_servers.server[x].port = 123;
+				nrservers++;
+			} else {
+				break;
+			}
+		}
+		ntp_servers.nrservers = nrservers;
+		ntp_servers.callback = NULL;
+		if(nrservers > 0) {
+			ntpsync();
+		}
 	}
 
 // #ifdef _WIN32
