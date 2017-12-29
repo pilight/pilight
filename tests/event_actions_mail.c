@@ -553,6 +553,44 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 
 		storage_gc();
 		eventpool_gc();
+
+		/*
+		 * Single dot as a message
+		 */
+		f = fopen("event_actions_mail.json", "w");
+		fprintf(f,
+			"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
+			"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
+			"\"gui\":{},\"rules\":{},"\
+			"\"settings\":{\"smtp-host\":\"127.0.0.1\",\"smtp-port\":10025,\"smtp-user\":\"pilight\",\"smtp-password\":\"test\",\"smtp-sender\":\"info@pilight.org\"},"\
+			"\"hardware\":{},\"registry\":{}}"
+		);
+		fclose(f);
+
+		eventpool_init(EVENTPOOL_NO_THREADS);
+		storage_init();
+		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_DEVICES | CONFIG_SETTINGS));
+
+		obj = MALLOC(sizeof(struct rules_actions_t));
+		CuAssertPtrNotNull(tc, obj);
+		memset(obj, 0, sizeof(struct rules_actions_t));
+
+		obj->parsedargs = json_decode("{\
+			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
+			\"MESSAGE\":{\"value\":[\".\"],\"order\":2},\
+			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
+		}");
+
+		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
+
+		json_delete(obj->parsedargs);
+		FREE(obj);
+
+		uv_walk(uv_default_loop(), walk_cb, NULL);
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		storage_gc();
+		eventpool_gc();
 	}
 
 	event_action_gc();

@@ -120,6 +120,12 @@ static int checkArguments(struct rules_actions_t *obj) {
 		return -1;
 	}
 
+	jval = json_find_element(jvalues, 0);
+	if(jval->tag == JSON_STRING && strcmp(jval->string_, ".") == 0) {
+		logprintf(LOG_ERR, "sendmail action \"MESSAGE\" cannot be a single dot");
+		return -1;
+	}
+
 	nrvalues = 0;
 	if((jvalues = json_find_member(jto, "value")) != NULL) {
 		jchild = json_first_child(jvalues);
