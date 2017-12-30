@@ -253,6 +253,7 @@ static struct tests_t {
 			"AUTH PLAIN AHBpbGlnaHQAdGVzdA==\r\n",
 		}
 	},
+	{ "invalid smtp host", "WvQTxNJ13BJUBC62R8PM", -1, 10587, 0, -1, 0, 0, { "foo" }, { "foo" }},
 	{ "gmail plain (ipv6)", "::1", 0, 10025, 0, 0, 0, 0, {
 			"220 smtp.gmail.com ESMTP im3sm19207876wjb.13 - gsmtp\r\n",
 			"250-smtp.gmail.com at your service, [108.177.96.109]\r\n"
@@ -352,7 +353,7 @@ static void callback(int status, struct mail_t *mail) {
 	uv_timer_init(uv_default_loop(), timer_req);
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 100, 0);
 
-	if(status == -1) {
+	if(status == -1 && mail_server > 0 && mail_client > 0) {
 		mail_loop = 0;
 
 #ifdef _WIN32
@@ -600,6 +601,8 @@ static void test(void *param) {
 	steps = 0;
 	doquit = 0;
 
+	int success = tests[testnr].success;
+
 	tests[testnr].recvmsgnr = 0;
 	tests[testnr].sendmsgnr = 0;
 
@@ -607,27 +610,20 @@ static void test(void *param) {
 		force_ssl = 1;
 	}
 
-	mail_start(tests[testnr].host, tests[testnr].port);
+	if(success == 0) {
+		mail_start(tests[testnr].host, tests[testnr].port);
+		uv_thread_create(&pth, mail_wait, NULL);
+	}
 
-	uv_thread_create(&pth, mail_wait, NULL);
 
 	mail->subject = subject;
 	mail->message = message;
 	mail->from = sender;
 	mail->to = to;
 
-	CuAssertIntEquals(gtc, tests[testnr].success, sendmail(tests[testnr].host, user, password, tests[testnr].port, tests[testnr].ssl, mail, callback));
+	CuAssertIntEquals(gtc, success, sendmail(tests[testnr].host, user, password, tests[testnr].port, tests[testnr].ssl, mail, callback));
 
-	if(tests[testnr].success == -1) {
-		if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
-
-		uv_timer_init(uv_default_loop(), timer_req);
-		uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 100, 0);
-
-		testnr++;
-	} else {
+	if(success == 0) {
 		started = 1;
 	}
 }
@@ -658,6 +654,7 @@ static void test_mail(CuTest *tc) {
 		printf("[ - %-46s ]\n", tests[testnr].desc);
 		fflush(stdout);
 
+		int success = tests[testnr].success;
 		threaded = 0;
 		test(NULL);
 
@@ -669,7 +666,9 @@ static void test_mail(CuTest *tc) {
 			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 		}
 
-		uv_thread_join(&pth);
+		if(success == 0) {
+			uv_thread_join(&pth);
+		}
 	}
 
 	FREE(mail);
@@ -678,7 +677,7 @@ static void test_mail(CuTest *tc) {
 	storage_gc();
 	eventpool_gc();
 
-	CuAssertIntEquals(tc, 8, testnr);
+	CuAssertIntEquals(tc, 9, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -736,7 +735,7 @@ static void test_mail_threaded(CuTest *tc) {
 	storage_gc();
 	eventpool_gc();
 
-	CuAssertIntEquals(tc, 8, testnr);
+	CuAssertIntEquals(tc, 9, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -761,9 +760,66 @@ static void test_mail_dot_message(CuTest *tc) {
 	mail->from = sender;
 	mail->to = to;
 
-	CuAssertIntEquals(gtc, -1, sendmail("127.0.0.1", user, password, 25, 0, mail, callback));
+	CuAssertIntEquals(gtc, -1, sendmail("127.0.0.1", user, password, 10025, 0, mail, callback));
 
 	FREE(mail);
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
+static void callback1(int status, struct mail_t *mail) {
+	CuAssertIntEquals(gtc, -1, status);
+
+	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+
+	uv_timer_init(uv_default_loop(), timer_req);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 100, 0);
+}
+
+static void test_mail_inactive_server(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	gtc = tc;
+	started = 0;
+	testnr = 0;
+
+	memtrack();
+
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
+
+	if((mail = MALLOC(sizeof(struct mail_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+
+	mail->subject = subject;
+	mail->message = message;
+	mail->from = sender;
+	mail->to = to;
+
+	CuAssertIntEquals(gtc, 0, sendmail("127.0.0.1", user, password, 10025, 0, mail, callback1));
+
+	eventpool_init(EVENTPOOL_NO_THREADS);
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("mail.json", CONFIG_SETTINGS));
+
+	ssl_init();
+
+	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	}
+
+	FREE(mail);
+
+	ssl_gc();
+	storage_gc();
+	eventpool_gc();
+
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -781,6 +837,7 @@ CuSuite *suite_mail(void) {
 	SUITE_ADD_TEST(suite, test_mail);
 	SUITE_ADD_TEST(suite, test_mail_threaded);
 	SUITE_ADD_TEST(suite, test_mail_dot_message);
+	SUITE_ADD_TEST(suite, test_mail_inactive_server);
 
 	return suite;
 }

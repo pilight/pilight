@@ -480,10 +480,22 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 		return;
 	}
 
-	// r = uv_fileno((uv_handle_t *)req, &fd);
-	if(status < 0) {
+	/*
+	 * Status == -9: Socket is unreachable
+	 * Events == 0: Client-end got disconnected
+	 */
+	r = uv_fileno((uv_handle_t *)req, &fd);
+	if(status < 0 || events == 0) {
 		logprintf(LOG_ERR, "uv_custom_poll_cb: %s", uv_strerror(status));
-		uv_poll_stop(req);
+		if(custom_poll_data->close_cb != NULL) {
+			custom_poll_data->close_cb(req);
+		}
+		if(!uv_is_closing((uv_handle_t *)req)) {
+			uv_poll_stop(req);
+		}
+		if(fd > 0) {
+			close(fd);
+		}
 		return;
 	}
 
@@ -502,19 +514,6 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
 		return;
 	}
-
-	/*
-	 * TESTME: Client-end got disconnected
-	 */
-	// if(events == 0) {
-		// if(custom_poll_data->close_cb != NULL) {
-			// custom_poll_data->close_cb(req);
-			// return;
-		// } else {
-			// uv_poll_stop(req);
-			// close(fd);
-		// }
-	// }
 
 	if(custom_poll_data->is_ssl == 1 && custom_poll_data->ssl.init == 0) {
 		custom_poll_data->ssl.init = 1;
