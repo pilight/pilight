@@ -87,7 +87,8 @@ static char *pid_file;
 static unsigned short pid_file_free = 0;
 #endif
  
-static uv_signal_t *signal_req = NULL;
+static uv_signal_t **signal_req = NULL;
+static int signals[5] = { SIGINT, SIGQUIT, SIGTERM, SIGABRT, SIGTSTP };
 static uv_timer_t *timer_abort_req = NULL;
 static uv_timer_t *timer_stats_req = NULL;
 
@@ -1560,7 +1561,10 @@ void main_gc(void) {
 
 static void signal_cb(uv_signal_t *handle, int signum) {
 	logprintf(LOG_INFO, "Interrupt signal received. Please wait while pilight is shutting down");
-	main_gc();	
+	/*
+	 * FIXME: Sync configuration
+	 */
+	main_gc();
 	uv_stop(uv_default_loop());
 }
 
@@ -1572,12 +1576,20 @@ int start_pilight(int argc, char **argv) {
 	}
 	strcpy(progname, "pilight-daemon");	
 
-	if((signal_req = MALLOC(sizeof(uv_signal_t))) == NULL) {
-		OUT_OF_MEMORY
-	}
+	{
+		int nr = sizeof(signals)/sizeof(signals[0]), i = 0;
+		if((signal_req = MALLOC(sizeof(uv_signal_t *)*nr)) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		for(i=0;i<nr;i++) {
+			if((signal_req[i] = MALLOC(sizeof(uv_signal_t))) == NULL) {
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+			}
 
-	uv_signal_init(uv_default_loop(), signal_req);
-	uv_signal_start(signal_req, signal_cb, SIGINT);	
+			uv_signal_init(uv_default_loop(), signal_req[i]);
+			uv_signal_start(signal_req[i], signal_cb, signals[i]);
+		}
+	}
 
 	struct options_t *options = NULL;
 
