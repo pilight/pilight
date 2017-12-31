@@ -541,8 +541,7 @@ static int event_remove_hooks(char **rule, struct rules_t *obj, int depth) {
 }
 
 static int event_parse_function(char **rule, struct rules_t *obj, unsigned short validate, enum origin_t origin) {
-	struct JsonNode *arguments = NULL;
-	struct event_functions_t *tmp_function = event_functions;
+	struct event_function_args_t *args = NULL;
 	struct varcont_t v;
 	char *tmp = *rule, *ca = NULL;
 	char *ohook = strstr(tmp, "("), *chook = strstr(tmp, ")");
@@ -601,6 +600,7 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 			}
 			if(hooks > 0) {
 				subfunction[len++] = tmp[i+1];
+
 				if(buflen <= len) {
 					buflen *= 2;
 					if((subfunction = REALLOC(subfunction, buflen)) == NULL) {
@@ -616,7 +616,9 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 					}
 					unsigned long z = 1;
 					char *replace = MALLOC(len+1);
-
+					if(replace == NULL) {
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+					}
 					subfunction[len-1] = '\0';
 					strcpy(replace, subfunction);
 
@@ -677,7 +679,6 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 	strncpy(name, &tmp[pos1], nl);
 	name[nl] = '\0';
 
-	arguments = json_mkarray();
 	pos4 = pos3+1;
 	for(i=pos3+1;i<(pos3+(fl-nl));i++) {
 		if(tmp[i] == '\'') {
@@ -699,13 +700,19 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 			ret = event_lookup_variable(&tmp[pos4+had_quote], obj, &v, validate, origin);
 			if(ret == 0) {
 				if(v.type_ == JSON_STRING) {
-					json_append_element(arguments, json_mkstring(v.string_));
+					args = event_function_add_argument(&v, args);
 				}
 				if(v.type_ == JSON_NUMBER) {
-					json_append_element(arguments, json_mknumber(v.number_, v.decimals_));
+					args = event_function_add_argument(&v, args);
 				}
 			} else {
-				json_append_element(arguments, json_mkstring(&tmp[pos4+had_quote]));
+				memset(&v, 0, sizeof(struct varcont_t));
+				if((v.string_ = STRDUP(&tmp[pos4+had_quote])) == NULL) {
+					OUT_OF_MEMORY
+				}
+				v.type_ = JSON_STRING;
+				args = event_function_add_argument(&v, args);
+				FREE(v.string_);
 			}
 			if(had_quote == 1) {
 				tmp[i-had_quote] = '\'';
@@ -753,6 +760,7 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 		}
 	}
 	if(has_quote[0] == 1 || has_quote[1] == 1) {
+		event_function_free_argument(args);
 		logprintf(LOG_ERR, "rule #%d invalid: unterminated quote", obj->nr, name);
 		return -1;
 	}
@@ -763,46 +771,46 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 		ret = event_lookup_variable(&tmp[pos4], obj, &v, validate, origin);
 		if(ret == 0) {
 			if(v.type_ == JSON_STRING) {
-				json_append_element(arguments, json_mkstring(v.string_));
+				args = event_function_add_argument(&v, args);
 			}
 			if(v.type_ == JSON_NUMBER) {
-				json_append_element(arguments, json_mknumber(v.number_, v.decimals_));
+				args = event_function_add_argument(&v, args);
 			}
 		} else {
-			json_append_element(arguments, json_mkstring(&tmp[pos4]));
+			memset(&v, 0, sizeof(struct varcont_t));
+			if((v.string_ = STRDUP(&tmp[pos4])) == NULL) {
+				OUT_OF_MEMORY
+			}
+			v.type_ = JSON_STRING;
+			args = event_function_add_argument(&v, args);
+			FREE(v.string_);
 		}
 	}	else {
-		json_append_element(arguments, json_mkstring(&tmp[pos4]));
+		memset(&v, 0, sizeof(struct varcont_t));
+		if((v.string_ = STRDUP(&tmp[pos4])) == NULL) {
+			OUT_OF_MEMORY
+		}
+		v.type_ = JSON_STRING;
+		args = event_function_add_argument(&v, args);
+		FREE(v.string_);
 	}
 	tmp[i-1] = t;
 
-	if((output = MALLOC(BUFFER_SIZE)) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-	memset(output, '\0', BUFFER_SIZE);
-
-	int match = 0;
-	while(tmp_function) {
-		if(error == 0) {
-			if(strcmp(name, tmp_function->name) == 0) {
-				if(tmp_function->run != NULL) {
-					error = tmp_function->run(obj, arguments, &output, origin);
-					match = 1;
-					break;
-				}
-			}
-		} else {
-			goto close;
-		}
-		tmp_function = tmp_function->next;
-	}
-	if(match == 0) {
+	if(event_function_exists(name) != 0) {
+		event_function_free_argument(args);
 		logprintf(LOG_ERR, "rule #%d invalid: function \"%s\" does not exist", obj->nr, name);
 		error = -1;
 		goto close;
 	}
 
-	if(strlen(output) > 0) {
+	event_function_callback(name, args, &output);
+
+	if(output == NULL) {
+		error = -1;
+		goto close;
+	}
+
+	if(output != NULL && strlen(output) > 0) {
 		if(pilight.debuglevel >= 2) {
 			fprintf(stderr, "replace %s with %s in %s\n", function, output, *rule);
 		}
@@ -810,8 +818,9 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 	}
 
 close:
-	json_delete(arguments);
-	FREE(output);
+	if(output != NULL) {
+		FREE(output);
+	}
 	FREE(name);
 	FREE(function);
 	return error;
