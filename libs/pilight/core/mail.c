@@ -585,7 +585,7 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 			if(r != 0) {
 				/*LCOV_EXCL_START*/
 				logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
-				goto freeuv;
+				goto free;
 				/*LCOV_EXCL_END*/
 			}
 		} break;
@@ -595,14 +595,14 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 			if(r != 0) {
 				/*LCOV_EXCL_START*/
 				logprintf(LOG_ERR, "uv_ip6_addr: %s", uv_strerror(r));
-				goto freeuv;
+				goto free;
 				/*LCOV_EXCL_END*/
 			}
 		} break;
 		default: {
 			/*LCOV_EXCL_START*/
 			logprintf(LOG_ERR, "host2ip");
-			goto freeuv;
+			goto free;
 			/*LCOV_EXCL_END*/
 		} break;
 	}
@@ -667,7 +667,7 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
 		FREE(poll_req);
-		goto freeuv;
+		goto free;
 		/*LCOV_EXCL_STOP*/
 	}
 
@@ -676,10 +676,14 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 
 	return 0;
 
-freeuv:
-	FREE(request);
-	FREE(ip);
 free:
+	if(request != NULL && request->callback != NULL) {
+		request->callback(-1, request->mail);
+	}
+	FREE(request);
+	if(custom_poll_data != NULL) {
+		uv_custom_poll_free(custom_poll_data);
+	}
 	if(sockfd > 0) {
 #ifdef _WIN32
 		closesocket(sockfd);
