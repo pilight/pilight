@@ -51,14 +51,14 @@ AREABIT
 #include "../../core/gc.h"
 #include "rev_v5.h"
 
-#define PULSE_MULTIPLIER	3
-#define NORMAL_REPEATS		10
-#define MIN_PULSE_LENGTH	410
-#define MAX_PULSE_LENGTH	490
-#define AVG_PULSE_LENGTH	400
-#define RAW_LENGTH		50
+#define PULSE_MULTIPLIER      3
+#define NORMAL_REPEATS       10
+#define MIN_PULSE_LENGTH    410
+#define MAX_PULSE_LENGTH    490
+#define AVG_PULSE_LENGTH    432
+#define RAW_LENGTH           50
 
-#define ID_COUNT            	16
+#define ID_COUNT             16
 
 static char idLetters[ID_COUNT] = {"ABIJCDKLGHOPEFMN"}; //A-P
 
@@ -75,7 +75,10 @@ static int validate(void) {
 
 static void createMessage(int id, int unit, int state, int all) {
 	rev5_switch->message = json_mkobject();
-	json_append_member(rev5_switch->message, "id", json_mknumber(id, 0));
+        char cId[2] = {0};
+        cId[0] =  idLetters[id];
+
+        json_append_member(rev5_switch->message, "id", json_mkstring(&cId[0]));
 	if(all >= 1) {
 		json_append_member(rev5_switch->message, "all", json_mknumber(all, 0));
 	} else {
@@ -310,6 +313,7 @@ static int createCode(struct JsonNode *code) {
 	
 	if(json_find_number(code, "all", &itmp) == 0) {
 		all = (int)round(itmp);
+		unit = -1;  //force no unit value when the all parameter is specified
 	}
 	
 	if(json_find_number(code, "off", &itmp) == 0) {
@@ -325,9 +329,6 @@ static int createCode(struct JsonNode *code) {
 		return EXIT_FAILURE;
 	} else if(id > (ID_COUNT-1) || id < 0) {
 		logprintf(LOG_ERR, "rev5_switch: invalid id range");
-		return EXIT_FAILURE;
-	} else if(unit > -1 && all > 0) {
-		logprintf(LOG_ERR, "rev5_switch: only unit-parameter or all-parameter can be specified");
 		return EXIT_FAILURE;
 	} else if((unit > 7 || unit < 0) && (all == 0)) {
 		logprintf(LOG_ERR, "rev5_switch: invalid unit range");
@@ -376,6 +377,7 @@ void rev5Init(void) {
 	protocol_device_add(rev5_switch, "rev5_switch", "Rev Switches v5 (type 8462, ...)");
 	rev5_switch->devtype = SWITCH;
 	rev5_switch->hwtype = RF433;
+	rev5_switch->txrpt = NORMAL_REPEATS;
 	rev5_switch->minrawlen = RAW_LENGTH;
 	rev5_switch->maxrawlen = RAW_LENGTH;
 	rev5_switch->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
@@ -384,8 +386,8 @@ void rev5Init(void) {
 	options_add(&rev5_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&rev5_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&rev5_switch->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-7])$");
-	options_add(&rev5_switch->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^(A-P|1[0-5]|[0-9])$");
-	options_add(&rev5_switch->options, 'a', "all", OPTION_HAS_VALUE, 0, JSON_NUMBER, NULL, "^([1-2])$");
+	options_add(&rev5_switch->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^([A-P]|1[0-5]|[0-9])$");
+	options_add(&rev5_switch->options, 'a', "all", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^([1-2])$");
 
 	options_add(&rev5_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	options_add(&rev5_switch->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");

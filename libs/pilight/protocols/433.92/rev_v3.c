@@ -59,7 +59,7 @@ static void createMessage(int id, int unit, int state) {
 }
 
 static void parseCode(void) {
-	int x = 0, i = 0, binary[RAW_LENGTH/4];
+	int x=0, i=0, binary[RAW_LENGTH/4];
 
 	if(rev3_switch->rawlen>RAW_LENGTH) {
 		logprintf(LOG_ERR, "rev3_switch: parsecode - invalid parameter passed %d", rev3_switch->rawlen);
@@ -109,9 +109,7 @@ static void clearCode(void) {
 }
 
 static void createUnit(int unit) {
-	int binary[255];
-	int length = 0;
-	int i=0, x=0;
+	int length=0, i=0, x=0, binary[255];
 
 	length = decToBinRev(unit, binary);
 	for(i=0;i<=length;i++) {
@@ -123,9 +121,7 @@ static void createUnit(int unit) {
 }
 
 static void createId(int id) {
-	int binary[255];
-	int length = 0;
-	int i=0, x=0;
+	int length=0, i=0, x=0, binary[255];
 
 	length = decToBinRev(id, binary);
 	for(i=0;i<=length;i++) {
@@ -152,10 +148,10 @@ static void createFooter(void) {
 }
 
 static int createCode(struct JsonNode *code) {
-	int id = -1;
-	int unit = -1;
-	int state = -1;
-	double itmp = -1;
+	int id=-1;
+	int unit=-1;
+	int state=-1;
+	double itmp=-1;
 
 	if(json_find_number(code, "id", &itmp) == 0)
 		id = (int)round(itmp);
@@ -206,10 +202,10 @@ void rev3Init(void) {
     protocol_device_add(rev3_switch, "rev3_switch", "Rev Switches v3");
     rev3_switch->devtype = SWITCH;
     rev3_switch->hwtype = RF433;
-		rev3_switch->minrawlen = RAW_LENGTH;
-		rev3_switch->maxrawlen = RAW_LENGTH;
-		rev3_switch->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
-		rev3_switch->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
+	rev3_switch->minrawlen = RAW_LENGTH;
+	rev3_switch->maxrawlen = RAW_LENGTH;
+	rev3_switch->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	rev3_switch->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
     options_add(&rev3_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
     options_add(&rev3_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
