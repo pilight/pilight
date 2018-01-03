@@ -313,7 +313,7 @@ static int createCode(struct JsonNode *code) {
 	
 	if(json_find_number(code, "all", &itmp) == 0) {
 		all = (int)round(itmp);
-		unit = -1;  //force no unit value when the all parameter is specified
+		unit = -1;  // force no unit value when the all parameter is specified
 	}
 	
 	if(json_find_number(code, "off", &itmp) == 0) {
