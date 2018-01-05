@@ -12,6 +12,7 @@
 #include <lua.h>
 
 #define OPERATOR 1
+#define FUNCTION 2
 
 typedef struct plua_module_t {
 	char name[255];
