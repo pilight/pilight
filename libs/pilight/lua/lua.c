@@ -243,6 +243,19 @@ static int plua_module_init(struct lua_State *L, char *file, struct plua_module_
 		return 0;
 	}
 
+	char *type = NULL;
+	switch(mod->type) {
+		case FUNCTION: {
+			type = STRDUP("event function");
+		} break;
+		case OPERATOR: {
+			type = STRDUP("event operator");
+		} break;
+	}
+	if(type == NULL) {
+		OUT_OF_MEMORY
+	}
+
 	/*
 	 * Returned table (first argument) is at top of stack
 	 *
@@ -258,32 +271,38 @@ static int plua_module_init(struct lua_State *L, char *file, struct plua_module_
 
 	if(lua_istable(L, -1) == 0) {
 		logprintf(LOG_ERR, "%s: the info function returned %s, table expected", file, lua_typename(L, lua_type(L, -1)));
+		FREE(type);
 		return 0;
 	}
 
 	char *keys[12] = {"name", "version", "reqversion", "reqcommit"};
 	if(plua_table_has_keys(L, keys, 4) == 0) {
 		logprintf(LOG_ERR, "%s: the info table has invalid keys", file);
+		FREE(type);
 		return 0;
 	}
 
 	const char *name = NULL, *version = NULL, *reqversion = NULL, *reqcommit = NULL;
 	if(plua_get_table_string_by_key(L, "name", &name) == 0) {
 		logprintf(LOG_ERR, "%s: the info table 'name' key is missing or invalid", file);
+		FREE(type);
 		return 0;
 	}
 
 	if(plua_get_table_string_by_key(L, "version", &version) == 0) {
 		logprintf(LOG_ERR, "%s: the info table 'version' key is missing or invalid", file);
+		FREE(type);
 		return 0;
 	}
 
 	if(plua_get_table_string_by_key(L, "reqversion", &reqversion) == 0) {
 		logprintf(LOG_ERR, "%s: the info table 'reqversion' key is missing or invalid", file);
+		FREE(type);
 		return 0;
 	}
 	if(plua_get_table_string_by_key(L, "reqcommit", &reqcommit) == 0) {
 		logprintf(LOG_ERR, "%s: the info table 'reqcommit' key is missing or invalid", file);
+		FREE(type);
 		return 0;
 	}
 
@@ -309,12 +328,12 @@ static int plua_module_init(struct lua_State *L, char *file, struct plua_module_
 		}
 	}
 	if(valid == 1) {
-		logprintf(LOG_DEBUG, "loaded event action %s v%s", file, version);
+		logprintf(LOG_DEBUG, "loaded %s %s v%s", type, file, version);
 	} else {
 		if(strlen(mod->reqcommit) > 0) {
-			logprintf(LOG_ERR, "event action %s requires at least pilight v%s (commit %s)", file, mod->reqversion, mod->reqcommit);
+			logprintf(LOG_ERR, "%s %s requires at least pilight v%s (commit %s)", type, file, mod->reqversion, mod->reqcommit);
 		} else {
-			logprintf(LOG_ERR, "event action %s requires at least pilight v%s", file, mod->reqversion);
+			logprintf(LOG_ERR, "%s %s requires at least pilight v%s", type, file, mod->reqversion);
 		}
 		/*
 		 * Pop function from stack
@@ -322,6 +341,7 @@ static int plua_module_init(struct lua_State *L, char *file, struct plua_module_
 		 * The stack now contains: nothing
 		 */
 		lua_pop(L, 1);
+		FREE(type);
 		return 0;
 	}
 
@@ -331,6 +351,7 @@ static int plua_module_init(struct lua_State *L, char *file, struct plua_module_
 	 * The stack now contains: nothing
 	 */
 	lua_pop(L, 1);
+	FREE(type);
 	return 1;
 }
 
@@ -338,6 +359,7 @@ void plua_module_load(char *file, int type) {
 	if(L == NULL) {
 		return;
 	}
+
 	struct plua_module_t *module = MALLOC(sizeof(struct plua_module_t));
 	char name[255] = { '\0' }, *p = name;
 
@@ -353,6 +375,7 @@ void plua_module_load(char *file, int type) {
 	if(lua_istable(L, -1) == 0) {
 		logprintf(LOG_ERR, "%s: does not return a table");
 		lua_pop(L, 1);
+		FREE(module);
 		return;
 	}
 
@@ -364,11 +387,16 @@ void plua_module_load(char *file, int type) {
 			case OPERATOR:
 				sprintf(p, "operator.%s", module->name);
 			break;
+			case FUNCTION:
+				sprintf(p, "function.%s", module->name);
+			break;
 		}
 		lua_setglobal(L, name);
 
 		module->next = modules;
 		modules = module;
+	} else {
+		FREE(module);
 	}
 }
 
@@ -444,6 +472,9 @@ int plua_module_exists(char *module, int type) {
 		case OPERATOR: {
 			sprintf(p, "operator.%s", module);
 		} break;
+		case FUNCTION:
+			sprintf(p, "function.%s", module);
+		break;
 	}
 
 	lua_getglobal(L, name);
