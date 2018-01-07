@@ -26,7 +26,7 @@
 #include "../libs/pilight/events/operator.h"
 #include "../libs/pilight/events/function.h"
 #include "../libs/pilight/events/actions/dim.h"
-#include "../libs/pilight/protocols/generic/generic_dimmer.h"
+#include "../libs/pilight/protocols/433.92/arctech_dimmer.h"
 #include "../libs/pilight/protocols/generic/generic_label.h"
 
 #include "alltests.h"
@@ -70,7 +70,7 @@ static void test_event_actions_dim_check_parameters(CuTest *tc) {
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
-	genericDimmerInit();
+	arctechDimmerInit();
 	genericLabelInit();
 	actionDimInit();
 	CuAssertStrEquals(tc, "dim", action_dim->name);
@@ -590,7 +590,7 @@ static void test_event_actions_dim_check_parameters(CuTest *tc) {
 
 		obj->parsedargs = json_decode("{\
 			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[0],\"order\":2}\
+			\"TO\":{\"value\":[-1],\"order\":2}\
 		}");
 
 		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
@@ -644,7 +644,7 @@ static void test_event_actions_dim_check_parameters(CuTest *tc) {
 		obj->parsedargs = json_decode("{\
 			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
 			\"TO\":{\"value\":[1],\"order\":2},\
-			\"FROM\":{\"value\":[0],\"order\":3},\
+			\"FROM\":{\"value\":[-1],\"order\":3},\
 			\"IN\":{\"value\":[\"1 SECOND\"],\"order\":4}\
 		}");
 
@@ -754,7 +754,7 @@ static void test_event_actions_dim_run(CuTest *tc) {
 
 	gtc = tc;
 
-	genericDimmerInit();
+	arctechDimmerInit();
 	genericLabelInit();
 	actionDimInit();
 	CuAssertStrEquals(tc, "dim", action_dim->name);
@@ -818,7 +818,7 @@ static void test_event_actions_dim_run_delayed(CuTest *tc) {
 
 	gtc = tc;
 
-	genericDimmerInit();
+	arctechDimmerInit();
 	genericLabelInit();
 	actionDimInit();
 	CuAssertStrEquals(tc, "dim", action_dim->name);
@@ -884,7 +884,7 @@ static void test_event_actions_dim_run_stepped(CuTest *tc) {
 
 	gtc = tc;
 
-	genericDimmerInit();
+	arctechDimmerInit();
 	genericLabelInit();
 	actionDimInit();
 	CuAssertStrEquals(tc, "dim", action_dim->name);
@@ -978,7 +978,7 @@ static void test_event_actions_dim_run_overlapped(CuTest *tc) {
 
 	gtc = tc;
 
-	genericDimmerInit();
+	arctechDimmerInit();
 	genericLabelInit();
 	actionDimInit();
 	CuAssertStrEquals(tc, "dim", action_dim->name);
@@ -1058,7 +1058,7 @@ static void test_event_actions_dim_run_override(CuTest *tc) {
 
 	gtc = tc;
 
-	genericDimmerInit();
+	arctechDimmerInit();
 	genericLabelInit();
 	actionDimInit();
 	CuAssertStrEquals(tc, "dim", action_dim->name);
@@ -1129,7 +1129,7 @@ static void test_event_actions_dim_run_override(CuTest *tc) {
 CuSuite *suite_event_actions_dim(void) {
 	CuSuite *suite = CuSuiteNew();
 
-	char config[1024] = "{\"devices\":{\"dimmer\":{\"protocol\":[\"generic_dimmer\"],\"id\":[{\"id\":100}],\"state\":\"off\",\"dimlevel\":1,\"dimlevel-minimum\":1,\"dimlevel-maximum\":15}," \
+	char config[1024] = "{\"devices\":{\"dimmer\":{\"protocol\":[\"kaku_dimmer\"],\"id\":[{\"id\":100,\"unit\":5}],\"state\":\"off\",\"dimlevel\":1}," \
 		"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"bar\",\"color\":\"green\"}}," \
 		"\"gui\":{},\"rules\":{"\
 			"\"rule1\":{\"rule\":\"IF dimmer.state == on THEN dim DEVICE dimmer TO 1\",\"active\":1}"\
