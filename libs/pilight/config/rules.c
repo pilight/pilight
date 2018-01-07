@@ -50,6 +50,7 @@ static int rules_parse(JsonNode *root) {
 	char *rule = NULL;
 	double active = 1.0;
 
+	event_function_init();
 	event_operator_init();
 
 	if(root->tag == JSON_OBJECT) {
@@ -259,7 +260,6 @@ int rules_gc(void) {
 
 void rules_init(void) {
 	event_action_init();
-	event_function_init();
 
 	pthread_mutexattr_init(&mutex_attr);
 	pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
