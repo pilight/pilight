@@ -33,7 +33,7 @@ static void createMessage(int id, int state, int dimlevel) {
 	}
 }
 
-
+/*
 static int checkValues(struct JsonNode *code) {
 	int dimlevel = -1;
 	int max = 15;
@@ -60,19 +60,24 @@ static int checkValues(struct JsonNode *code) {
 	}
 	return 0;
 }
+*/
 
 static int createCode(struct JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	int dimlevel = -1;
+	/*
 	int max = -1;
 	int min = -1;
+	*/
 	double itmp = -1;
 
+	/*
 	if(json_find_number(code, "dimlevel-maximum", &itmp) == 0)
 		max = (int)round(itmp);
 	if(json_find_number(code, "dimlevel-minimum", &itmp) == 0)
 		min = (int)round(itmp);
+	*/
 
 	if(json_find_number(code, "id", &itmp) == 0)
 		id = (int)round(itmp);
@@ -86,9 +91,11 @@ static int createCode(struct JsonNode *code) {
 	if(id == -1 || (dimlevel == -1 && state == -1)) {
 		logprintf(LOG_ERR, "generic_dimmer: insufficient number of arguments");
 		return EXIT_FAILURE;
+	/*
 	} else if(dimlevel != -1 && ((max != -1 && dimlevel > max) || (min != -1 && dimlevel < min))) {
 		logprintf(LOG_ERR, "generic_dimmer: invalid dimlevel range");
 		return EXIT_FAILURE;
+	*/
 	} else if(dimlevel >= 0 && state == 0) {
 		logprintf(LOG_ERR, "generic_dimmer: dimlevel and state cannot be combined");
 		return EXIT_FAILURE;
@@ -124,14 +131,18 @@ void genericDimmerInit(void) {
 	options_add(&generic_dimmer->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&generic_dimmer->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,})$");
 
+	/*
 	options_add(&generic_dimmer->options, 0, "dimlevel-minimum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "^([0-9]{1}|[1][0-5])$");
 	options_add(&generic_dimmer->options, 0, "dimlevel-maximum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)15, "^([0-9]{1}|[1][0-5])$");
+	*/
 	options_add(&generic_dimmer->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	options_add(&generic_dimmer->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	generic_dimmer->printHelp=&printHelp;
 	generic_dimmer->createCode=&createCode;
+	/*
 	generic_dimmer->checkValues=&checkValues;
+	*/
 }
 
 #if defined(MODULE) && !defined(_WIN32)
