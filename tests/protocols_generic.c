@@ -41,19 +41,20 @@ static void test_protocols_generic_dimmer(CuTest *tc) {
 	genericDimmerInit();
 
 	struct JsonNode *jcode = json_mkobject();
-	json_append_member(jcode, "dimlevel-maximum", json_mknumber(10, 0));
-	json_append_member(jcode, "dimlevel-minimum", json_mknumber(0, 0));
+	/*json_append_member(jcode, "dimlevel-maximum", json_mknumber(10, 0));
+	json_append_member(jcode, "dimlevel-minimum", json_mknumber(0, 0));*/
 	json_append_member(jcode, "id", json_mknumber(1, 0));
 	json_append_member(jcode, "dimlevel", json_mknumber(5, 0));
 	json_append_member(jcode, "on", json_mknumber(1, 0));
 
 	char *p = message;
-	CuAssertIntEquals(tc, 0, generic_dimmer->checkValues(jcode));
+	/*CuAssertIntEquals(tc, 0, generic_dimmer->checkValues(jcode));*/
 	CuAssertIntEquals(tc, 0, generic_dimmer->createCode(jcode, &p));
 	CuAssertStrEquals(tc, "{\"id\":1,\"dimlevel\":5,\"state\":\"on\"}", message);
 
 	json_delete(jcode);
 
+	/*
 	jcode = json_mkobject();
 	json_append_member(jcode, "dimlevel-maximum", json_mknumber(20, 0));
 	json_append_member(jcode, "dimlevel-minimum", json_mknumber(0, 0));
@@ -63,6 +64,13 @@ static void test_protocols_generic_dimmer(CuTest *tc) {
 
 	CuAssertIntEquals(tc, 0, generic_dimmer->checkValues(jcode));
 	json_delete(jcode);
+
+	jcode = json_mkobject();
+	json_append_member(jcode, "dimlevel", json_mknumber(16, 0));
+
+	CuAssertIntEquals(tc, 0, generic_dimmer->checkValues(jcode));
+	json_delete(jcode);
+	*/
 
 	jcode = json_mkobject();
 	json_append_member(jcode, "id", json_mknumber(1, 0));
