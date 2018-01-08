@@ -35,6 +35,20 @@ static void test_binary(CuTest *tc) {
 	CuAssertIntEquals(tc, 42, binToDec(binary, 0, 5));
 	CuAssertIntEquals(tc, 42, binToDec(binary, 0, 6));
 	CuAssertIntEquals(tc, 170, binToDec(binary, 0, 7));
+	CuAssertIntEquals(tc, 1, binToDec(binary, 1, 1));
+	CuAssertIntEquals(tc, 1, binToDec(binary, 1, 2));
+	CuAssertIntEquals(tc, 5, binToDec(binary, 1, 3));
+	CuAssertIntEquals(tc, 5, binToDec(binary, 1, 4));
+	CuAssertIntEquals(tc, 21, binToDec(binary, 1, 5));
+	CuAssertIntEquals(tc, 21, binToDec(binary, 1, 6));
+	CuAssertIntEquals(tc, 85, binToDec(binary, 1, 7));
+	CuAssertIntEquals(tc, 1, binToDec(binary+1, 0, 0));
+	CuAssertIntEquals(tc, 1, binToDec(binary+1, 0, 1));
+	CuAssertIntEquals(tc, 5, binToDec(binary+1, 0, 2));
+	CuAssertIntEquals(tc, 5, binToDec(binary+1, 0, 3));
+	CuAssertIntEquals(tc, 21, binToDec(binary+1, 0, 4));
+	CuAssertIntEquals(tc, 21, binToDec(binary+1, 0, 5));
+	CuAssertIntEquals(tc, 85, binToDec(binary+1, 0, 6));
 
 	CuAssertIntEquals(tc, 0, binToDecRev(binary, 0, 0));
 	CuAssertIntEquals(tc, 1, binToDecRev(binary, 0, 1));
@@ -44,6 +58,20 @@ static void test_binary(CuTest *tc) {
 	CuAssertIntEquals(tc, 21, binToDecRev(binary, 0, 5));
 	CuAssertIntEquals(tc, 42, binToDecRev(binary, 0, 6));
 	CuAssertIntEquals(tc, 85, binToDecRev(binary, 0, 7));
+	CuAssertIntEquals(tc, 1, binToDecRev(binary, 1, 1));
+	CuAssertIntEquals(tc, 2, binToDecRev(binary, 1, 2));
+	CuAssertIntEquals(tc, 5, binToDecRev(binary, 1, 3));
+	CuAssertIntEquals(tc, 10, binToDecRev(binary, 1, 4));
+	CuAssertIntEquals(tc, 21, binToDecRev(binary, 1, 5));
+	CuAssertIntEquals(tc, 42, binToDecRev(binary, 1, 6));
+	CuAssertIntEquals(tc, 85, binToDecRev(binary, 1, 7));
+	CuAssertIntEquals(tc, 1, binToDecRev(binary+1, 0, 0));
+	CuAssertIntEquals(tc, 2, binToDecRev(binary+1, 0, 1));
+	CuAssertIntEquals(tc, 5, binToDecRev(binary+1, 0, 2));
+	CuAssertIntEquals(tc, 10, binToDecRev(binary+1, 0, 3));
+	CuAssertIntEquals(tc, 21, binToDecRev(binary+1, 0, 4));
+	CuAssertIntEquals(tc, 42, binToDecRev(binary+1, 0, 5));
+	CuAssertIntEquals(tc, 85, binToDecRev(binary+1, 0, 6));
 
 	CuAssertIntEquals(tc, 4, decToBin(31, out));
 	for(i=0;i<5;i++) {
@@ -68,7 +96,7 @@ static void test_binary(CuTest *tc) {
 		binary[i] = i % 2 == 0;
 	}
 	CuAssertULongEquals(tc, 6148914691236517205, binToDecUl(binary, 0, 63));
-	CuAssertULongEquals(tc, 3074457345618258602, binToDecRevUl(binary, 0, 63));
+	CuAssertULongEquals(tc, 12297829382473034410U, binToDecRevUl(binary, 0, 63));
 
 	CuAssertULongEquals(tc, 63, decToBinUl(12297829382473034410U, binary));
 
