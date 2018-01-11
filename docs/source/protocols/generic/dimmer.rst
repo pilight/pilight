@@ -65,21 +65,7 @@ Dimmer
 | dimlevel         | 0 - 99999       |
 +------------------+-----------------+
 
-.. note::
-
-   The minimum and maximum is dependent on the ``Device Settings`` below.
-
 .. rubric:: Optional Settings
-
-:underline:`Device Settings`
-
-+------------------+-------------+------------+------------------+
-| **Setting**      | **Default** | **Format** | **Description**  |
-+------------------+-------------+------------+------------------+
-| dimlevel-minimum | 0           | number     | Minimum dimlevel |
-+------------------+-------------+------------+------------------+
-| dimlevel-maximum | 15          | number     | Maximum dimlevel |
-+------------------+-------------+------------+------------------+
 
 :underline:`GUI Settings`
 
@@ -90,3 +76,19 @@ Dimmer
 +------------------+-------------+------------+-----------------------------------------------+
 | confirm          | 0           | 1 or 0     | Ask for confirmation when switching device    |
 +------------------+-------------+------------+-----------------------------------------------+
+
+.. deprecated:: 8.0.5
+
+.. note::
+
+   The minimum and maximum is dependent on the ``Device Settings`` below.
+
+:underline:`Device Settings`
+
++------------------+-------------+------------+------------------+
+| **Setting**      | **Default** | **Format** | **Description**  |
++------------------+-------------+------------+------------------+
+| dimlevel-minimum | 0           | number     | Minimum dimlevel |
++------------------+-------------+------------+------------------+
+| dimlevel-maximum | 15          | number     | Maximum dimlevel |
++------------------+-------------+------------+------------------+

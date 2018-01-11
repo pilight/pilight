@@ -1,6 +1,25 @@
 Changelog
 =========
 
+.. versionadded:: 8.0.5
+
+.. rubric:: New functionality
+
+- IPv6 support for all in library clients
+- Disable min / max dimlevel in generic_dimmer
+
+.. rubric:: Internal core changed
+
+- Callback in mail library when host is not reachable
+- Shutdown on more signals
+
+.. rubric:: Bugfixes
+
+- Fixed pilight removal with apt
+- Calling REST API with socket API
+- Prevent using ``.`` as message body
+- Segfault due to wrong memory freeing
+
 .. versionadded:: 8.0.4
 
 .. rubric:: New functionality
