@@ -73,6 +73,52 @@ static void test_binary(CuTest *tc) {
 	CuAssertIntEquals(tc, 42, binToDecRev(binary+1, 0, 5));
 	CuAssertIntEquals(tc, 85, binToDecRev(binary+1, 0, 6));
 
+	CuAssertIntEquals(tc, 0, binToSigned(binary, 0, 0));
+	CuAssertIntEquals(tc, -2, binToSigned(binary, 0, 1));
+	CuAssertIntEquals(tc, 2, binToSigned(binary, 0, 2));
+	CuAssertIntEquals(tc, -6, binToSigned(binary, 0, 3));
+	CuAssertIntEquals(tc, 10, binToSigned(binary, 0, 4));
+	CuAssertIntEquals(tc, -22, binToSigned(binary, 0, 5));
+	CuAssertIntEquals(tc, 42, binToSigned(binary, 0, 6));
+	CuAssertIntEquals(tc, -86, binToSigned(binary, 0, 7));
+	CuAssertIntEquals(tc, -1, binToSigned(binary, 1, 1));
+	CuAssertIntEquals(tc, 1, binToSigned(binary, 1, 2));
+	CuAssertIntEquals(tc, -3, binToSigned(binary, 1, 3));
+	CuAssertIntEquals(tc, 5, binToSigned(binary, 1, 4));
+	CuAssertIntEquals(tc, -11, binToSigned(binary, 1, 5));
+	CuAssertIntEquals(tc, 21, binToSigned(binary, 1, 6));
+	CuAssertIntEquals(tc, -43, binToSigned(binary, 1, 7));
+	CuAssertIntEquals(tc, -1, binToSigned(binary+1, 0, 0));
+	CuAssertIntEquals(tc, 1, binToSigned(binary+1, 0, 1));
+	CuAssertIntEquals(tc, -3, binToSigned(binary+1, 0, 2));
+	CuAssertIntEquals(tc, 5, binToSigned(binary+1, 0, 3));
+	CuAssertIntEquals(tc, -11, binToSigned(binary+1, 0, 4));
+	CuAssertIntEquals(tc, 21, binToSigned(binary+1, 0, 5));
+	CuAssertIntEquals(tc, -43, binToSigned(binary+1, 0, 6));
+
+	CuAssertIntEquals(tc, 0, binToSignedRev(binary, 0, 0));
+	CuAssertIntEquals(tc, 1, binToSignedRev(binary, 0, 1));
+	CuAssertIntEquals(tc, 2, binToSignedRev(binary, 0, 2));
+	CuAssertIntEquals(tc, 5, binToSignedRev(binary, 0, 3));
+	CuAssertIntEquals(tc, 10, binToSignedRev(binary, 0, 4));
+	CuAssertIntEquals(tc, 21, binToSignedRev(binary, 0, 5));
+	CuAssertIntEquals(tc, 42, binToSignedRev(binary, 0, 6));
+	CuAssertIntEquals(tc, 85, binToSignedRev(binary, 0, 7));
+	CuAssertIntEquals(tc, -1, binToSignedRev(binary, 1, 1));
+	CuAssertIntEquals(tc, -2, binToSignedRev(binary, 1, 2));
+	CuAssertIntEquals(tc, -3, binToSignedRev(binary, 1, 3));
+	CuAssertIntEquals(tc, -6, binToSignedRev(binary, 1, 4));
+	CuAssertIntEquals(tc, -11, binToSignedRev(binary, 1, 5));
+	CuAssertIntEquals(tc, -22, binToSignedRev(binary, 1, 6));
+	CuAssertIntEquals(tc, -43, binToSignedRev(binary, 1, 7));
+	CuAssertIntEquals(tc, -1, binToSignedRev(binary+1, 0, 0));
+	CuAssertIntEquals(tc, -2, binToSignedRev(binary+1, 0, 1));
+	CuAssertIntEquals(tc, -3, binToSignedRev(binary+1, 0, 2));
+	CuAssertIntEquals(tc, -6, binToSignedRev(binary+1, 0, 3));
+	CuAssertIntEquals(tc, -11, binToSignedRev(binary+1, 0, 4));
+	CuAssertIntEquals(tc, -22, binToSignedRev(binary+1, 0, 5));
+	CuAssertIntEquals(tc, -43, binToSignedRev(binary+1, 0, 6));
+
 	CuAssertIntEquals(tc, 4, decToBin(31, out));
 	for(i=0;i<5;i++) {
 		CuAssertIntEquals(tc, 1, out[i]);
