@@ -43,9 +43,9 @@ int psutil_proc_exe(const pid_t pid, char **name) {
 	return -1;
 }
 
-int psutil_proc_name(const pid_t pid, char **name) {
+int psutil_proc_name(const pid_t pid, char **name, size_t bufsize) {
 	int ptr = 0, fd = 0;
-	char path[512], *p = path, cmdline[1024];
+	char path[512], *p = path, cmdline[bufsize];
 
 	snprintf(p, 511, "/proc/%d/cmdline", pid);
 	fd = open(path, O_RDONLY, 0);
@@ -53,7 +53,7 @@ int psutil_proc_name(const pid_t pid, char **name) {
 		return -1;
 	}
 
-	if((ptr = (int)read(fd, cmdline, 1023)) > 0) {
+	if((ptr = (int)read(fd, cmdline, bufsize-1)) > 0) {
 		strcpy(*name, basename(cmdline));
 		close(fd);
 		return 0;

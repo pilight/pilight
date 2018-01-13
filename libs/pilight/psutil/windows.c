@@ -95,7 +95,7 @@ int psutil_proc_exe(const pid_t pid, char **name) {
 	return 0;
 }
 
-int psutil_proc_name(const pid_t pid, char **name) {
+int psutil_proc_name(const pid_t pid, char **name, size_t bufsize) {
 	if((pid % 4) != 0) {
 		return -1;
 	}

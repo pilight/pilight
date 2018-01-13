@@ -35,7 +35,7 @@ int psutil_proc_exe(const pid_t pid, char **name) {
 	return 0;
 }
 
-int psutil_proc_name(const pid_t pid, char **name) {
+int psutil_proc_name(const pid_t pid, char **name, size_t bufsize) {
 	// Fills a kinfo_proc struct based on process pid.
 	struct kinfo_proc proc;
 	int mib[4];

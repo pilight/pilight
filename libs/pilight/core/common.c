@@ -234,11 +234,11 @@ int isrunning(const char *program) {
 		return -1;
 	}
 	int i = 0;
-	char name[255], *p = name;
-	memset(&name, '\0', 255);
+	char name[1024], *p = name;
+	memset(&name, '\0', sizeof(name));
 
 	for(i=0;i<psutil_max_pid();i++) {
-		if(psutil_proc_name(i, &p) == 0) {
+		if(psutil_proc_name(i, &p, sizeof(name)) == 0) {
 			if(strcmp(name, program) == 0) {
 				return i;
 			}
