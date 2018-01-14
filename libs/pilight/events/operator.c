@@ -154,7 +154,17 @@ int event_operator_exists(char *module) {
 }
 
 int event_operator_callback(char *module, struct varcont_t *a, struct varcont_t *b, char **ret) {
-	struct lua_State *L = plua_get_state();
+	struct lua_state_t *state = plua_get_free_state();
+	struct lua_State *L = NULL;
+
+	if(state == NULL) {
+		return -1;
+	}
+
+	if((L = state->L) == NULL) {
+		uv_mutex_unlock(&state->lock);
+		return -1;
+	}
 
 	char name[255], *p = name;
 	memset(name, '\0', 255);
@@ -163,6 +173,7 @@ int event_operator_callback(char *module, struct varcont_t *a, struct varcont_t 
 
 	lua_getglobal(L, name);
 	if(lua_isnil(L, -1) != 0) {
+		uv_mutex_unlock(&state->lock);
 		return -1;
 	}
 	if(lua_istable(L, -1) != 0) {
@@ -171,16 +182,20 @@ int event_operator_callback(char *module, struct varcont_t *a, struct varcont_t 
 		while(tmp) {
 			if(strcmp(module, tmp->name) == 0) {
 				file = tmp->file;
+				state->module = tmp;
 				break;
 			}
 			tmp = tmp->next;
 		}
 		if(plua_operator_module_run(L, file, a, b, ret) == 0) {
 			lua_pop(L, -1);
+			uv_mutex_unlock(&state->lock);
 			return -1;
 		}
 	}
 	lua_pop(L, -1);
+
+	uv_mutex_unlock(&state->lock);
 
 	return 0;
 }

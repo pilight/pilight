@@ -33,33 +33,216 @@
 #include "../core/mem.h"
 #include "../core/common.h"
 
-static struct lua_State *L = NULL;
+#define NRLUASTATES	5
 
+static int init = 0;
+struct lua_state_t lua_state[NRLUASTATES];
 struct plua_module_t *modules = NULL;
 
-// static void stackDump(lua_State *L) {
-	// int i = 0;
-	// int top = lua_gettop(L);
-	// for(i = 1; i <= top; i++) {  /* repeat for each level */
-		// int t = lua_type(L, i);
-		// switch(t) {
-			// case LUA_TSTRING:  /* strings */
-				// printf("%d: '%s'", i, lua_tostring(L, i));
-			// break;
-			// case LUA_TBOOLEAN:  /* booleans */
-				// printf("%d: %s", i, lua_toboolean(L, i) ? "true" : "false");
-			// break;
-			// case LUA_TNUMBER:  /* numbers */
-				// printf("%d: %g", i, lua_tonumber(L, i));
-			// break;
-			// default:  /* other values */
-				// printf("%d: %s", i, lua_typename(L, t));
-			// break;
-		// }
-		// printf("  ");  /* put a separator */
-	// }
-	// printf("\n");  /* end the listing */
-// }
+void plua_stack_dump(lua_State *L) {
+	int i = 0;
+	int top = lua_gettop(L);
+	for(i = 1; i <= top; i++) {  /* repeat for each level */
+		int t = lua_type(L, i);
+		switch(t) {
+			case LUA_TSTRING:  /* strings */
+				printf("%d: '%s'", i, lua_tostring(L, i));
+			break;
+			case LUA_TBOOLEAN:  /* booleans */
+				printf("%d: %s", i, lua_toboolean(L, i) ? "true" : "false");
+			break;
+			case LUA_TNUMBER:  /* numbers */
+				printf("%d: %g", i, lua_tonumber(L, i));
+			break;
+			default:  /* other values */
+				printf("%d: %s", i, lua_typename(L, t));
+			break;
+		}
+		printf("  ");  /* put a separator */
+	}
+	printf("\n");  /* end the listing */
+}
+
+static void plua_metatable_free(struct plua_metatable_t *table) {
+	int x = 0;
+	for(x=0;x<table->nrvar;x++) {
+		if(table->table[x].val.type_ == LUA_TSTRING) {
+			FREE(table->table[x].val.string_);
+		}
+		if(table->table[x].key.type_ == LUA_TSTRING) {
+			FREE(table->table[x].key.string_);
+		}
+	}
+	if(table->nrvar > 0) {
+		FREE(table->table);
+	}
+	FREE(table);
+}
+
+void plua_metatable_clone(struct plua_metatable_t **src, struct plua_metatable_t **dst) {
+	int i = 0;
+	struct plua_metatable_t *a = *src;
+
+	if((*dst) != NULL) {
+		plua_metatable_free((*dst));
+	}
+	if(((*dst) = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+	memset((*dst), 0, sizeof(struct plua_metatable_t));
+	if(((*dst)->table = MALLOC(sizeof(*a->table)*(a->nrvar))) == NULL) {
+		OUT_OF_MEMORY
+	}
+	memset((*dst)->table, 0, sizeof(*a->table)*(a->nrvar));
+	for(i=0;i<a->nrvar;i++) {
+		(*dst)->table[i].key.type_ = a->table[i].key.type_;
+		(*dst)->table[i].val.type_ = a->table[i].val.type_;
+
+		if(a->table[i].key.type_ == LUA_TSTRING) {
+			if(((*dst)->table[i].key.string_ = STRDUP(a->table[i].key.string_)) == NULL) {
+				OUT_OF_MEMORY
+			}
+		}
+		if(a->table[i].key.type_ == LUA_TNUMBER) {
+			(*dst)->table[i].key.number_ = a->table[i].key.number_;
+		}
+
+		if(a->table[i].val.type_ == LUA_TSTRING) {
+			if(((*dst)->table[i].val.string_ = STRDUP(a->table[i].val.string_)) == NULL) {
+				OUT_OF_MEMORY
+			}
+		}
+		if(a->table[i].val.type_ == LUA_TNUMBER) {
+			(*dst)->table[i].val.number_ = a->table[i].val.number_;
+		}
+	}
+	(*dst)->nrvar = a->nrvar;
+}
+
+int plua_metatable_pairs(lua_State *L) {
+	logprintf(LOG_NOTICE, "pilight lua metatables do not support pairs");
+  return 0;
+}
+
+int plua_metatable_get(lua_State *L) {
+	struct plua_metatable_t *node = NULL;
+	char buf[128] = { '\0' }, *p = buf;
+	char *error = "string or number expected, got %s";
+	int x = 0;
+
+	sprintf(p, error, lua_typename(L, lua_type(L, -1)));
+
+	luaL_argcheck(L,
+		(lua_isstring(L, -1) || lua_isnumber(L, -1)),
+		1, buf);
+
+	struct lua_state_t *state = plua_get_current_state(L);
+
+	node = state->table;
+	for(x=0;x<node->nrvar;x++) {
+		if((lua_isnumber(L, -1) == 1 && node->table[x].key.type_ == LUA_TNUMBER && node->table[x].key.number_ == (int)lua_tonumber(L, -1)) ||
+		   (lua_isstring(L, -1) == 1 && node->table[x].key.type_ == LUA_TSTRING && strcmp(node->table[x].key.string_, lua_tostring(L, -1)) == 0)) {
+			if(node->table[x].val.type_ == LUA_TNUMBER) {
+				lua_pushnumber(L, node->table[x].val.number_);
+			}
+			if(node->table[x].val.type_ == LUA_TSTRING) {
+				lua_pushstring(L, node->table[x].val.string_);
+			}
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+int plua_metatable_set(lua_State *L) {
+	struct plua_metatable_t *node = NULL;
+	char buf[128] = { '\0' }, *p = buf;
+	char *error = "string or number expected, got %s";
+	int match = 0, x = 0;
+
+	sprintf(p, error, lua_typename(L, lua_type(L, -1)));
+
+	luaL_argcheck(L,
+		(lua_isstring(L, -1) || lua_isnumber(L, -1)),
+		1, buf);
+
+	sprintf(p, error, lua_typename(L, lua_type(L, -1)));
+
+	luaL_argcheck(L,
+		(lua_isstring(L, -2) || lua_isnumber(L, -2)),
+		1, buf);
+
+	struct lua_state_t *state = plua_get_current_state(L);
+
+	node = state->table;
+	for(x=0;x<node->nrvar;x++) {
+		if((lua_isnumber(L, -2) == 1 && node->table[x].key.type_ == LUA_TNUMBER && node->table[x].key.number_ == (int)lua_tonumber(L, -1)) ||
+		   (lua_isstring(L, -2) == 1 && node->table[x].key.type_ == LUA_TSTRING && strcmp(node->table[x].key.string_, lua_tostring(L, -1)) == 0)) {
+			match = 1;
+			if(lua_isnumber(L, -1) == 1) {
+				node->table[x].val.number_ = lua_tonumber(L, -1);
+				node->table[x].val.type_ = LUA_TNUMBER;
+			}
+			if(lua_isstring(L, -1) == 1) {
+				node->table[x].val.string_ = STRDUP((char *)lua_tostring(L, -1));
+				node->table[x].val.type_ = LUA_TSTRING;
+			}
+			break;
+		}
+	}
+
+	if(node != NULL) {
+		if(match == 0) {
+			int idx = node->nrvar;
+			if((node->table = REALLOC(node->table, sizeof(*node->table)*(idx+1))) == NULL) {
+				OUT_OF_MEMORY
+			}
+			if(lua_isnumber(L, -1) == 1) {
+				node->table[idx].val.number_ = lua_tonumber(L, -1);
+				node->table[idx].val.type_ = LUA_TNUMBER;
+			}
+			if(lua_isstring(L, -1) == 1) {
+				node->table[idx].val.string_ = STRDUP((char *)lua_tostring(L, -1));
+				node->table[idx].val.type_ = LUA_TSTRING;
+			}
+			if(lua_isnumber(L, -2) == 1) {
+				node->table[idx].key.number_ = lua_tonumber(L, -2);
+				node->table[idx].key.type_ = LUA_TNUMBER;
+			}
+			if(lua_isstring(L, -2) == 1) {
+				node->table[idx].key.string_ = STRDUP((char *)lua_tostring(L, -2));
+				node->table[idx].key.type_ = LUA_TSTRING;
+			}
+			node->nrvar++;
+		}
+	}
+	return 1;
+}
+
+int plua_metatable_gc(lua_State *L){
+	return 1;
+}
+
+struct lua_state_t *plua_get_free_state(void) {
+	int i = 0;
+	for(i=0;i<NRLUASTATES;i++) {
+		if(uv_mutex_trylock(&lua_state[i].lock) == 0) {
+			return &lua_state[i];
+		}
+	}
+	return NULL;
+}
+
+struct lua_state_t *plua_get_current_state(lua_State *L) {
+	int i = 0;
+	for(i=0;i<NRLUASTATES;i++) {
+		if(lua_state[i].L == L) {
+			return &lua_state[i];
+		}
+	}
+	return NULL;
+}
 
 static int plua_get_table_string_by_key(struct lua_State *L, const char *key, const char **ret) {
 	/*
@@ -356,82 +539,53 @@ static int plua_module_init(struct lua_State *L, char *file, struct plua_module_
 }
 
 void plua_module_load(char *file, int type) {
-	if(L == NULL) {
-		return;
-	}
-
 	struct plua_module_t *module = MALLOC(sizeof(struct plua_module_t));
 	char name[255] = { '\0' }, *p = name;
+	int i = 0;
 
 	if(module == NULL) {
 		OUT_OF_MEMORY
 	}
 
-	if(luaL_dofile(L, file) != 0) {
-		logprintf(LOG_ERR, "%s", lua_tostring(L,  1));
-		lua_pop(L, 1);
-	}
+	for(i=0;i<NRLUASTATES;i++) {
+		lua_State *L = lua_state[i].L;
+		if(luaL_dofile(L, file) != 0) {
+			logprintf(LOG_ERR, "%s", lua_tostring(L,  1));
+			lua_pop(L, 1);
+			FREE(module);
+			return;
+		}
 
-	if(lua_istable(L, -1) == 0) {
-		logprintf(LOG_ERR, "%s: does not return a table");
-		lua_pop(L, 1);
-		FREE(module);
-		return;
-	}
+		if(lua_istable(L, -1) == 0) {
+			logprintf(LOG_ERR, "%s: does not return a table");
+			lua_pop(L, 1);
+			FREE(module);
+			return;
+		}
 
-	module->type = type;
-	strcpy(module->file, file);
-	if(plua_module_init(L, file, module) != 0) {
-		memset(p, '\0', sizeof(name));
-		switch(module->type) {
-			case OPERATOR:
-				sprintf(p, "operator.%s", module->name);
-			break;
-			case FUNCTION:
-				sprintf(p, "function.%s", module->name);
-			break;
+		if(i == 0) {
+			module->type = type;
+			strcpy(module->file, file);
+			if(plua_module_init(L, file, module) != 0) {
+				memset(p, '\0', sizeof(name));
+				switch(module->type) {
+					case OPERATOR:
+						sprintf(p, "operator.%s", module->name);
+					break;
+					case FUNCTION:
+						sprintf(p, "function.%s", module->name);
+					break;
+				}
+
+				module->next = modules;
+				modules = module;
+			} else {
+				FREE(module);
+				return;
+			}
 		}
 		lua_setglobal(L, name);
-
-		module->next = modules;
-		modules = module;
-	} else {
-		FREE(module);
 	}
-}
-
-// static void plua_create_module_list(struct lua_State *L) {
-	// char name[255], *p = name;
-	// int nrmodules = 0;
-	// struct plua_module_t *tmp = modules;
-	// while(tmp) {
-		// nrmodules++;
-		// tmp = tmp->next;
-	// }
-
-	// /*
-	 // * Create an internal hashtable with plugins
-	 // */
-	// lua_createtable(L, 0, nrmodules);
-	// tmp = modules;
-	// while(tmp) {
-		// memset(p, '\0', sizeof(name));
-		// switch(tmp->type) {
-			// case OPERATOR:
-				// sprintf(p, "operator.%s", tmp->name);
-			// break;
-		// }
-
-		// lua_pushstring(L, name);
-		// lua_pushnumber(L, 1);
-		// lua_settable(L, -3);
-		// tmp = tmp->next;
-	// }
-	// lua_setglobal(L, "modules");
-// }
-
-struct lua_State *plua_get_state(void) {
-	return L;
 }
 
 struct plua_module_t *plua_get_modules(void) {
@@ -450,21 +604,41 @@ static void *plua_alloc(void *ud, void *ptr, size_t osize, size_t nsize) {
 }
 
 void plua_init(void) {
-	if(L == NULL) {
+	if(init == 1) {
+		return;
+	}
+	init = 1;
+
+	int i = 0;
+	for(i=0;i<NRLUASTATES;i++) {
+		memset(&lua_state[i], 0, sizeof(struct lua_state_t));
+		uv_mutex_init(&lua_state[i].lock);
+
+		if((lua_state[i].table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
+			OUT_OF_MEMORY
+		}
+		memset(lua_state[i].table, 0, sizeof(struct plua_metatable_t));
+		struct lua_State *L = NULL;
 		L = lua_newstate(plua_alloc, NULL);
 		luaL_openlibs(L);
-
 		plua_register_library(L);
+		lua_state[i].L = L;
+		lua_state[i].idx = i;
 	}
-
-	// lua_create_module_list(L);
-	// lua_list_modules(L);
 }
 
 int plua_module_exists(char *module, int type) {
-	if(L == NULL) {
+	struct lua_state_t *state = plua_get_free_state();
+	struct lua_State *L = NULL;
+
+	if(state == NULL) {
 		return 1;
 	}
+	if((L = state->L) == NULL) {
+		uv_mutex_unlock(&state->lock);
+		return 1;
+	}
+
 	char name[255], *p = name;
 	memset(name, '\0', 255);
 
@@ -488,6 +662,7 @@ int plua_module_exists(char *module, int type) {
 	}
 	lua_pop(L, -1);
 
+	uv_mutex_unlock(&state->lock);
 	return 0;
 }
 
@@ -498,10 +673,15 @@ int plua_gc(void) {
 		modules = modules->next;
 		FREE(tmp);
 	}
-	if(L != NULL) {
-		lua_close(L);
-		L = NULL;
+	int i = 0;
+	for(i=0;i<NRLUASTATES;i++) {
+		if(lua_state[i].L != NULL) {
+			plua_metatable_free(lua_state[i].table);
+			lua_close(lua_state[i].L);
+			lua_state[i].L = NULL;
+		}
 	}
+	init = 0;
 	logprintf(LOG_DEBUG, "garbage collected lua library");
 	return 0;
 }

@@ -10,9 +10,19 @@
 #define _LUA_H_
 
 #include <lua.h>
+#include "../libs/pilight/core/common.h"
 
-#define OPERATOR 1
-#define FUNCTION 2
+#define OPERATOR	1
+#define FUNCTION	2
+
+typedef struct plua_metatable_t {
+	struct {
+		struct varcont_t val;
+		struct varcont_t key;
+	} *table;
+	int nrvar;
+	int idx;
+} plua_metatable_t;
 
 typedef struct plua_module_t {
 	char name[255];
@@ -25,9 +35,24 @@ typedef struct plua_module_t {
 	struct plua_module_t *next;
 } plua_module_t;
 
+typedef struct lua_state_t {
+	lua_State *L;
+	uv_mutex_t lock;
+	struct plua_module_t *module;
+	struct plua_metatable_t *table;
+	int idx;
+} lua_state_t;
+
+int plua_metatable_set(lua_State *L);
+int plua_metatable_get(lua_State *L);
+int plua_metatable_gc(lua_State *L);
+int plua_metatable_pairs(lua_State *L);
+void plua_stack_dump(lua_State *L);
 void plua_module_load(char *, int);
 int plua_module_exists(char *, int);
-struct lua_State *plua_get_state(void);
+void plua_metatable_clone(struct plua_metatable_t **, struct plua_metatable_t **);
+struct lua_state_t *plua_get_free_state(void);
+struct lua_state_t *plua_get_current_state(lua_State *L);
 struct plua_module_t *plua_get_modules(void);
 void plua_init(void);
 int plua_gc(void);
