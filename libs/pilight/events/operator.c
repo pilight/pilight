@@ -22,10 +22,6 @@
 	#include <unistd.h>
 #endif
 
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
-
 #include "../core/pilight.h"
 #include "../core/common.h"
 #include "../core/dso.h"

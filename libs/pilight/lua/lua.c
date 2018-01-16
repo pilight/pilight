@@ -22,12 +22,9 @@
 	#include <unistd.h>
 #endif
 
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
-
 #include "lua.h"
 #include "lualibrary.h"
+
 #include "../core/log.h"
 #include "../core/json.h"
 #include "../core/mem.h"
@@ -39,6 +36,7 @@ static int init = 0;
 struct lua_state_t lua_state[NRLUASTATES];
 struct plua_module_t *modules = NULL;
 
+/* LCOV_EXCL_START */
 void plua_stack_dump(lua_State *L) {
 	int i = 0;
 	int top = lua_gettop(L);
@@ -62,6 +60,7 @@ void plua_stack_dump(lua_State *L) {
 	}
 	printf("\n");  /* end the listing */
 }
+/* LCOV_EXCL_STOP */
 
 static void plua_metatable_free(struct plua_metatable_t *table) {
 	int x = 0;
@@ -228,6 +227,13 @@ struct lua_state_t *plua_get_free_state(void) {
 	int i = 0;
 	for(i=0;i<NRLUASTATES;i++) {
 		if(uv_mutex_trylock(&lua_state[i].lock) == 0) {
+			if(lua_state[i].table != NULL) {
+				plua_metatable_free(lua_state[i].table);
+				if((lua_state[i].table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
+					OUT_OF_MEMORY
+				}
+				memset(lua_state[i].table, 0, sizeof(struct plua_metatable_t));
+			}
 			return &lua_state[i];
 		}
 	}
@@ -538,70 +544,95 @@ static int plua_module_init(struct lua_State *L, char *file, struct plua_module_
 	return 1;
 }
 
+static int plua_writer(lua_State *L, const void* p, size_t sz, void* ud) {
+	struct plua_module_t *module = ud;
+	if((module->bytecode = REALLOC(module->bytecode, module->size+sz)) == NULL) {
+		OUT_OF_MEMORY
+	}
+	memcpy(module->bytecode, p, sz);
+	module->size += sz;
+	return 0;
+}
+
 void plua_module_load(char *file, int type) {
 	struct plua_module_t *module = MALLOC(sizeof(struct plua_module_t));
+	lua_State *L = lua_state[0].L;
 	char name[255] = { '\0' }, *p = name;
 	int i = 0;
-
 	if(module == NULL) {
 		OUT_OF_MEMORY
 	}
+	memset(module, 0, sizeof(struct plua_module_t));
 
-	for(i=0;i<NRLUASTATES;i++) {
-		lua_State *L = lua_state[i].L;
-		if(luaL_dofile(L, file) != 0) {
-			logprintf(LOG_ERR, "%s", lua_tostring(L,  1));
-			lua_pop(L, 1);
-			FREE(module);
-			return;
-		}
-
-		if(lua_istable(L, -1) == 0) {
-			logprintf(LOG_ERR, "%s: does not return a table");
-			lua_pop(L, 1);
-			FREE(module);
-			return;
-		}
-
-		if(i == 0) {
-			module->type = type;
-			strcpy(module->file, file);
-			if(plua_module_init(L, file, module) != 0) {
-				memset(p, '\0', sizeof(name));
-				switch(module->type) {
-					case OPERATOR:
-						sprintf(p, "operator.%s", module->name);
-					break;
-					case FUNCTION:
-						sprintf(p, "function.%s", module->name);
-					break;
-				}
-
-				module->next = modules;
-				modules = module;
-			} else {
-				FREE(module);
-				return;
-			}
-		}
-		lua_setglobal(L, name);
+	if(luaL_loadfile(L, file) != 0) {
+		logprintf(LOG_ERR, "cannot load lua file: %s", file);
+		lua_pop(L, 1);
+		FREE(module);
+		return;
 	}
+	strcpy(module->file, file);
+	if(lua_dump(L, plua_writer, module) != 0) {
+		logprintf(LOG_ERR, "cannot dump lua file: %s", file);
+		lua_pop(L, 1);
+		FREE(module->bytecode);
+		FREE(module);
+		return;
+	}
+
+	lua_pcall(L, 0, LUA_MULTRET, 0);
+
+	if(lua_istable(L, -1) == 0) {
+		logprintf(LOG_ERR, "%s: does not return a table", file);
+		lua_pop(L, 1);
+		FREE(module->bytecode);
+		FREE(module);
+		return;
+	}
+
+	module->type = type;
+	strcpy(module->file, file);
+	if(plua_module_init(L, file, module) != 0) {
+		memset(p, '\0', sizeof(name));
+		switch(module->type) {
+			case OPERATOR:
+				sprintf(p, "operator.%s", module->name);
+			break;
+			case FUNCTION:
+				sprintf(p, "function.%s", module->name);
+			break;
+		}
+
+		module->next = modules;
+		modules = module;
+	} else {
+		FREE(module->bytecode);
+		FREE(module);
+		return;
+	}
+	lua_setglobal(L, name);
+
+	for(i=1;i<NRLUASTATES;i++) {
+		L = lua_state[i].L;
+		luaL_loadbuffer(L, module->bytecode, module->size, module->name);
+	}
+	lua_pcall(L, 0, LUA_MULTRET, 0);
+	lua_setglobal(L, name);
 }
 
 struct plua_module_t *plua_get_modules(void) {
 	return modules;
 }
 
-static void *plua_alloc(void *ud, void *ptr, size_t osize, size_t nsize) {
-	if(nsize == 0) {
-		if(ptr != NULL) {
-			FREE(ptr);
-		}
-		return 0;
-	} else {
-		return REALLOC(ptr, nsize);
-	}
-}
+// static void *plua_alloc(void *ud, void *ptr, size_t osize, size_t nsize) {
+	// if(nsize == 0) {
+		// if(ptr != NULL) {
+			// FREE(ptr);
+		// }
+		// return 0;
+	// } else {
+		// return REALLOC(ptr, nsize);
+	// }
+// }
 
 void plua_init(void) {
 	if(init == 1) {
@@ -618,8 +649,8 @@ void plua_init(void) {
 			OUT_OF_MEMORY
 		}
 		memset(lua_state[i].table, 0, sizeof(struct plua_metatable_t));
-		struct lua_State *L = NULL;
-		L = lua_newstate(plua_alloc, NULL);
+		lua_State *L = luaL_newstate();
+
 		luaL_openlibs(L);
 		plua_register_library(L);
 		lua_state[i].L = L;
@@ -670,6 +701,7 @@ int plua_gc(void) {
 	struct plua_module_t *tmp = NULL;
 	while(modules) {
 		tmp = modules;
+		FREE(tmp->bytecode);
 		modules = modules->next;
 		FREE(tmp);
 	}

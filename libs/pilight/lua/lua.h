@@ -9,7 +9,10 @@
 #ifndef _LUA_H_
 #define _LUA_H_
 
-#include <lua.h>
+#include "luajit.h"
+#include "lauxlib.h"
+#include "lualib.h"
+
 #include "../libs/pilight/core/common.h"
 
 #define OPERATOR	1
@@ -30,6 +33,8 @@ typedef struct plua_module_t {
 	char version[12];
 	char reqversion[12];
 	char reqcommit[12];
+	void *bytecode;
+	int size;
 	int type;
 
 	struct plua_module_t *next;

@@ -281,7 +281,7 @@ else()
 endif()
 
 find_library(CMAKE_LUA_LIBS_INIT
-NAME lua lua5 lua5.1 lua5.2 lua5.3
+NAME luajit-5.1
 PATHS
 	${CROSS_COMPILE_LIBS}
 	/usr/lib
@@ -316,6 +316,7 @@ endif()
 include_directories(${PROJECT_SOURCE_DIR}/inc)
 include_directories(${PROJECT_SOURCE_DIR}/libs/libuv)
 include_directories(/usr/local/include/)
+include_directories(/usr/include/luajit-2.0)
 include_directories("${CMAKE_LUA_INCLUDE_DIR}/lua${CMAKE_LUA_LIBS_VERSION}/")
 
 add_subdirectory(inc)

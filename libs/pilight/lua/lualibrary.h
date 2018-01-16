@@ -9,7 +9,7 @@
 #ifndef _PLUA_LIBRARY_H_
 #define _PLUA_LIBRARY_H_
 
-#include <lua.h>
+#include "lua.h"
 
 void plua_register_library(struct lua_State *);
 

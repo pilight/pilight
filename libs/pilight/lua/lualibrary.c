@@ -24,10 +24,6 @@
 	#include <unistd.h>
 #endif
 
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
-
 #include "../core/pilight.h"
 #include "../core/common.h"
 #include "../core/strptime.h"
@@ -42,24 +38,6 @@ typedef struct lua_thread_t {
 	lua_state_t *state;
 	char *callback;
 } lua_thread_t;
-
-#if !defined LUA_VERSION_NUM || LUA_VERSION_NUM==501
-/*
-** Adapted from Lua 5.2.0
-*/
-static void luaL_setfuncs (lua_State *L, const luaL_Reg *l, int nup) {
-  luaL_checkstack(L, nup+1, "too many upvalues");
-  for (; l->name != NULL; l++) {  /* fill the table with given functions */
-    int i;
-    lua_pushstring(L, l->name);
-    for (i = 0; i < nup; i++)  /* copy upvalues to the top */
-      lua_pushvalue(L, -(nup+1));
-    lua_pushcclosure(L, l->func, nup);  /* closure with those upvalues */
-    lua_settable(L, -(nup + 3));
-  }
-  lua_pop(L, nup);  /* remove upvalues */
-}
-#endif
 
 static int plua_toboolean(struct lua_State *L) {
 	char buf[128] = { '\0' }, *p = buf;
@@ -562,7 +540,10 @@ static int plua_thread(struct lua_State *L) {
 	return 1;
 }
 
-static const luaL_Reg pilightlib[] = {
+static struct lua_libs {
+	char *name;
+	int (*func)(struct lua_State *);
+} pilightlib[] = {
 	{"toboolean", plua_toboolean},
 	{"tonumber", plua_tonumber},
 	{"tostring", plua_tostring},
@@ -574,11 +555,16 @@ static const luaL_Reg pilightlib[] = {
 };
 
 void plua_register_library(struct lua_State *L) {
+	int i = 0;
 	/*
 	 * Register pilight lua library
 	 */
 	lua_newtable(L);
-	luaL_setfuncs(L, pilightlib, 0);
+	while(pilightlib[i].name != NULL) {
+		lua_pushcfunction(L, pilightlib[i].func);
+		lua_setfield(L, -2, pilightlib[i].name);
+		i++;
+	}
 	lua_pushvalue(L, -1);
 	lua_setglobal(L, "pilight");
 }
