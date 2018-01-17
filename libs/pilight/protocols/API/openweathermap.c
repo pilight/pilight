@@ -317,12 +317,13 @@ static void *openweathermapParse(void *param) {
 #else
 static int min_interval = INTERVAL;
 static int time_override = -1;
-static char url[1024] = "http://api.openweathermap.org/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493";
+static char url[1024] = "http://api.openweathermap.org/data/2.5/weather?q=%s,%s&APPID=%s";
 
 typedef struct data_t {
 	char *name;
 	char *country;
 	char *location;
+	char *api;
 	uv_timer_t *enable_timer_req;
 	uv_timer_t *update_timer_req;
 
@@ -430,8 +431,8 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 									OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 								};
 								snprintf(data->message, 1024,
-									"{\"location\":\"%s\",\"country\":\"%s\",\"temperature\":%.2f,\"humidity\":%.2f,\"update\":0,\"sunrise\":%.2f,\"sunset\":%.2f,\"sun\":\"%s\"}",
-									settings->location, settings->country, temp, humi, ((double)((tm_rise.tm_hour*100)+tm_rise.tm_min)/100), ((double)((tm_set.tm_hour*100)+tm_set.tm_min)/100), _sun
+									"{\"api\":\"%s\",\"location\":\"%s\",\"country\":\"%s\",\"temperature\":%.2f,\"humidity\":%.2f,\"update\":0,\"sunrise\":%.2f,\"sunset\":%.2f,\"sun\":\"%s\"}",
+									settings->api, settings->location, settings->country, temp, humi, ((double)((tm_rise.tm_hour*100)+tm_rise.tm_min)/100), ((double)((tm_set.tm_hour*100)+tm_set.tm_min)/100), _sun
 								);
 								strncpy(data->origin, "receiver", 255);
 								data->protocol = openweathermap->id;
@@ -524,7 +525,7 @@ static void thread(uv_work_t *req) {
 	char *enc = urlencode(settings->location);
 
 	memset(parsed, '\0', 1024);
-	snprintf(parsed, 1024, url, enc, settings->country);
+	snprintf(parsed, 1024, url, enc, settings->country, settings->api);
 	FREE(enc);
 
 	http_get_content(parsed, callback, settings);
@@ -559,8 +560,8 @@ static void *enable(void *param) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	};
 	snprintf(data->message, 1024,
-		"{\"location\":\"%s\",\"country\":\"%s\",\"update\":1}",
-		settings->location, settings->country
+		"{\"api\":\"%s\",\"location\":\"%s\",\"country\":\"%s\",\"update\":1}",
+		settings->api, settings->location, settings->country
 	);
 	strncpy(data->origin, "receiver", 255);
 	data->protocol = openweathermap->id;
@@ -655,14 +656,21 @@ static struct threadqueue_t *initDev(struct JsonNode *jdevice) {
 	node->update = 0;
 	node->temp_offset = 0;
 
-	int has_country = 0, has_location = 0;
+	int has_country = 0, has_location = 0, has_api = 0;
 	if((jid = json_find_member(jdevice, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
-			has_country = 0, has_location = 0;
+			has_country = 0, has_location = 0, has_api = 0;
 			jchild1 = json_first_child(jchild);
 
 			while(jchild1) {
+				if(strcmp(jchild1->key, "api") == 0) {
+					has_api = 1;
+					if((node->api = MALLOC(strlen(jchild1->string_)+1)) == NULL) {
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+					}
+					strcpy(node->api, jchild1->string_);
+				}
 				if(strcmp(jchild1->key, "location") == 0) {
 					has_location = 1;
 					if((node->location = MALLOC(strlen(jchild1->string_)+1)) == NULL) {
@@ -679,7 +687,7 @@ static struct threadqueue_t *initDev(struct JsonNode *jdevice) {
 				}
 				jchild1 = jchild1->next;
 			}
-			if(has_country == 1 && has_location == 1) {
+			if(has_country == 1 && has_location == 1 && has_api == 1) {
 				node->next = data;
 				data = node;
 			} else {
@@ -782,6 +790,7 @@ static int createCode(JsonNode *code) {
 	struct data_t *tmp = data;
 	char *country = NULL;
 	char *location = NULL;
+	char *api = NULL;
 	double itmp = 0;
 
 	if(json_find_number(code, "min-interval", &itmp) == 0) {
@@ -791,6 +800,7 @@ static int createCode(JsonNode *code) {
 
 	if(json_find_string(code, "country", &country) == 0 &&
 	   json_find_string(code, "location", &location) == 0 &&
+		 json_find_string(code, "api", &api) == 0 &&
 	   json_find_number(code, "update", &itmp) == 0) {
 
 		time_t currenttime = time(NULL);
@@ -800,7 +810,8 @@ static int createCode(JsonNode *code) {
 
 		while(tmp) {
 			if(strcmp(tmp->country, country) == 0
-			   && strcmp(tmp->location, location) == 0) {
+			   && strcmp(tmp->location, location) == 0
+				 && strcmp(tmp->api, api) == 0) {
 				if((currenttime-tmp->update) > min_interval) {
 
 					uv_work_t *work_req = NULL;
@@ -859,6 +870,7 @@ static void threadGC(void) {
 		FREE(tmp->country);
 		FREE(tmp->location);
 		FREE(tmp->name);
+		FREE(tmp->api);
 		data = data->next;
 		FREE(tmp);
 	}
@@ -871,6 +883,7 @@ static void threadGC(void) {
 static void printHelp(void) {
 	printf("\t -c --country=country\t\tupdate an entry with this country\n");
 	printf("\t -l --location=location\t\tupdate an entry with this location\n");
+	printf("\t -a --api=api\t\t\tupdate an entry with this api code\n");
 	printf("\t -u --update\t\t\tupdate the defined weather entry\n");
 }
 
@@ -896,6 +909,7 @@ void openweathermapInit(void) {
 	options_add(&openweathermap->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 	options_add(&openweathermap->options, 'l', "location", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^([a-zA-Z-]|[[:space:]])+$");
 	options_add(&openweathermap->options, 'c', "country", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^[a-zA-Z]+$");
+	options_add(&openweathermap->options, 'a', "api", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^[a-zA-Z]+$");
 	options_add(&openweathermap->options, 'x', "sunrise", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
 	options_add(&openweathermap->options, 'y', "sunset", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
 	options_add(&openweathermap->options, 's', "sun", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
