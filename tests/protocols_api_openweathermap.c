@@ -72,11 +72,11 @@ static void *received(int reason, void *param) {
 					CuAssertIntEquals(gtc, 1, duration);
 					char message[1024];
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"update\":1}",
+						"{\"api\":\"8db24c4ac56251371c7ea87fd3115493\",\"location\":\"amsterdam\",\"country\":\"nl\",\"update\":1}",
 						data->message);
 					steps = 1;
 					CuAssertPtrNotNull(gtc, openweathermap->createCode);
-					struct JsonNode *code = json_decode("{\"location\":\"amsterdam\",\"country\":\"nl\",\"update\":1}");
+					struct JsonNode *code = json_decode("{\"api\":\"8db24c4ac56251371c7ea87fd3115493\",\"location\":\"amsterdam\",\"country\":\"nl\",\"update\":1}");
 					char *p = message;
 					openweathermap->createCode(code, &p);
 					json_delete(code);
@@ -86,7 +86,7 @@ static void *received(int reason, void *param) {
 				case 1: {
 					CuAssertIntEquals(gtc, 0, duration);
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"set\"}",
+						"{\"api\":\"8db24c4ac56251371c7ea87fd3115493\",\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"set\"}",
 						data->message);
 					uv_stop(uv_default_loop());
 				} break;
@@ -107,7 +107,7 @@ static void *received(int reason, void *param) {
 					 * After two seconds the first message should be received
 					 */
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"set\"}",
+						"{\"api\":\"8db24c4ac56251371c7ea87fd3115493\",\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"set\"}",
 						data->message);
 					/*
 					 * Shift time to after sunrise and check if we get a
@@ -125,7 +125,7 @@ static void *received(int reason, void *param) {
 					 * After one second the sunrise notification should be sent
 					 */
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"rise\"}",
+						"{\"api\":\"8db24c4ac56251371c7ea87fd3115493\",\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"rise\"}",
 						data->message);
 					uv_stop(uv_default_loop());
 				} break;
@@ -146,7 +146,7 @@ static void *received(int reason, void *param) {
 					 * After two seconds the first message should be received
 					 */
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"rise\"}",
+						"{\"api\":\"8db24c4ac56251371c7ea87fd3115493\",\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"rise\"}",
 						data->message);
 					/*
 					 * Shift time to after sunset and check if we get a
@@ -164,7 +164,7 @@ static void *received(int reason, void *param) {
 					 * After one second the sunrise notification should be sent
 					 */
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"set\"}",
+						"{\"api\":\"8db24c4ac56251371c7ea87fd3115493\",\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"set\"}",
 						data->message);
 					uv_stop(uv_default_loop());
 				} break;
@@ -185,7 +185,7 @@ static void *received(int reason, void *param) {
 					 * Directly after, the first message should be received
 					 */
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"set\"}",
+						"{\"api\":\"8db24c4ac56251371c7ea87fd3115493\",\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"set\"}",
 						data->message);
 
 					steps = 2;
@@ -198,7 +198,7 @@ static void *received(int reason, void *param) {
 					 * After one second the sunrise notification should be sent
 					 */
 					CuAssertStrEquals(gtc,
-						"{\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"set\"}",
+						"{\"api\":\"8db24c4ac56251371c7ea87fd3115493\",\"location\":\"amsterdam\",\"country\":\"nl\",\"temperature\":-1.00,\"humidity\":74.00,\"update\":0,\"sunrise\":7.48,\"sunset\":15.44,\"sun\":\"set\"}",
 						data->message);
 					uv_stop(uv_default_loop());
 				} break;
@@ -328,8 +328,8 @@ static void test_protocols_api_openweathermap_update(CuTest *tc) {
 	memset(&add, '\0', 1024);
 	memset(&adapt, '\0', 1024);
 
-	strcpy(adapt, "{\"openweathermap\":{\"time-override\":1484393226,\"url\":\"http://127.0.0.1:10080/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493\"}}");
-	strcpy(add, "{\"test\":{\"protocol\":[\"openweathermap\"],\"id\":[{\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
+	strcpy(adapt, "{\"openweathermap\":{\"time-override\":1484393226,\"url\":\"http://127.0.0.1:10080/data/2.5/weather?q=%s,%s&APPID=%s\"}}");
+	strcpy(add, "{\"test\":{\"protocol\":[\"openweathermap\"],\"id\":[{\"api\":\"8db24c4ac56251371c7ea87fd3115493\",\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
 
 	run = UPDATE;
 	
@@ -354,8 +354,8 @@ static void test_protocols_api_openweathermap_sunrise(CuTest *tc) {
 	memset(&add, '\0', 1024);
 	memset(&adapt, '\0', 1024);
 	
-	strcpy(adapt, "{\"openweathermap\":{\"time-override\":1483688921,\"url\":\"http://127.0.0.1:10080/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493\"}}");
-	strcpy(add, "{\"test\":{\"protocol\":[\"openweathermap\"],\"id\":[{\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
+	strcpy(adapt, "{\"openweathermap\":{\"time-override\":1483688921,\"url\":\"http://127.0.0.1:10080/data/2.5/weather?q=%s,%s&APPID=%s\"}}");
+	strcpy(add, "{\"test\":{\"protocol\":[\"openweathermap\"],\"id\":[{\"api\":\"8db24c4ac56251371c7ea87fd3115493\",\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
 
 	printf("[ %-48s ]\n", "- waiting for first openweathermap notification");
 	fflush(stdout);	
@@ -380,8 +380,8 @@ static void test_protocols_api_openweathermap_sunset(CuTest *tc) {
 	memset(&add, '\0', 1024);
 	memset(&adapt, '\0', 1024);
 	
-	strcpy(adapt, "{\"openweathermap\":{\"time-override\":1483717489,\"url\":\"http://127.0.0.1:10080/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493\"}}");
-	strcpy(add, "{\"test\":{\"protocol\":[\"openweathermap\"],\"id\":[{\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
+	strcpy(adapt, "{\"openweathermap\":{\"time-override\":1483717489,\"url\":\"http://127.0.0.1:10080/data/2.5/weather?q=%s,%s&APPID=%s\"}}");
+	strcpy(add, "{\"test\":{\"protocol\":[\"openweathermap\"],\"id\":[{\"api\":\"8db24c4ac56251371c7ea87fd3115493\",\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
 
 	printf("[ %-48s ]\n", "- waiting for first openweathermap notification");
 	fflush(stdout);	
@@ -406,8 +406,8 @@ static void test_protocols_api_openweathermap_midnight(CuTest *tc) {
 	memset(&add, '\0', 1024);
 	memset(&adapt, '\0', 1024);
 	
-	strcpy(adapt, "{\"openweathermap\":{\"time-override\":1483833599,\"url\":\"http://127.0.0.1:10080/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493\"}}");
-	strcpy(add, "{\"test\":{\"protocol\":[\"openweathermap\"],\"id\":[{\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
+	strcpy(adapt, "{\"openweathermap\":{\"time-override\":1483833599,\"url\":\"http://127.0.0.1:10080/data/2.5/weather?q=%s,%s&APPID=%s\"}}");
+	strcpy(add, "{\"test\":{\"protocol\":[\"openweathermap\"],\"id\":[{\"api\":\"8db24c4ac56251371c7ea87fd3115493\",\"country\":\"nl\",\"location\":\"amsterdam\"}],\"humidity\":94.00,\"temperature\":0.21,\"sunrise\":8.29,\"sunset\":17.05,\"sun\":\"set\",\"update\":0,\"poll-interval\":1}}");
 
 	printf("[ %-48s ]\n", "- waiting for first openweathermap notification");
 	fflush(stdout);	
