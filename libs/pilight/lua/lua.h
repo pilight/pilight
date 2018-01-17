@@ -9,9 +9,9 @@
 #ifndef _LUA_H_
 #define _LUA_H_
 
-#include "luajit.h"
-#include "lauxlib.h"
-#include "lualib.h"
+#include <luajit-2.0/lua.h>
+#include <luajit-2.0/lualib.h>
+#include <luajit-2.0/lauxlib.h>
 
 #include "../libs/pilight/core/common.h"
 
