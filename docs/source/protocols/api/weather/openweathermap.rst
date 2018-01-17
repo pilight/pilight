@@ -36,6 +36,7 @@ OpenWeatherMap
          "protocol": [ "openweathermap" ],
          "id": [{
            "location": "amsterdam",
+           "api": "1234567890",
            "country": "nl"
          }],
          "humidity": 76.00,
@@ -73,6 +74,14 @@ OpenWeatherMap
 | sun              | rise / set                       |
 +------------------+----------------------------------+
 | update           | 0 - 1                            |
++------------------+----------------------------------+
+
+.. versionadded:: 8.0.7
+
++------------------+----------------------------------+
+| **Option**       | **Value**                        |
++------------------+----------------------------------+
+| api              | *valid openweathermap api key*   |
 +------------------+----------------------------------+
 
 .. rubric:: Optional Settings

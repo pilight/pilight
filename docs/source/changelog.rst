@@ -1,6 +1,16 @@
 Changelog
 =========
 
+.. versionadded:: 8.0.7
+
+.. rubric:: Change functionality
+
+- Openweathermap now requires a personal API key. Until now, a free pilight organization API key was used, but that exceeded the maximum allowed requests per minute.
+
+.. rubric:: Bugfixes
+
+- Actually allow --debuglevel=2 to see additional mail logging
+
 .. versionadded:: 8.0.6
 
 .. rubric:: Bugfixes
