@@ -1,6 +1,12 @@
 Changelog
 =========
 
+.. versionadded:: 8.0.6
+
+.. rubric:: Bugfixes
+
+- Readded min / max dimlevel in generic_dimmer, but validation is still disabled
+
 .. versionadded:: 8.0.5
 
 .. rubric:: New functionality

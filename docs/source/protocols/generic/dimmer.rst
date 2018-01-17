@@ -77,6 +77,23 @@ Dimmer
 | confirm          | 0           | 1 or 0     | Ask for confirmation when switching device    |
 +------------------+-------------+------------+-----------------------------------------------+
 
+.. versionadded:: 8.0.6
+
+.. note::
+
+   The minimum and maximum is dependent on the ``Device Settings`` below.
+   The actual dimlevel is not validated against these ranges.
+
+:underline:`GUI Settings`
+
++------------------+-------------+------------+------------------+
+| **Setting**      | **Default** | **Format** | **Description**  |
++------------------+-------------+------------+------------------+
+| dimlevel-minimum | 0           | number     | Minimum dimlevel |
++------------------+-------------+------------+------------------+
+| dimlevel-maximum | 15          | number     | Maximum dimlevel |
++------------------+-------------+------------+------------------+
+
 .. deprecated:: 8.0.5
 
 .. note::
