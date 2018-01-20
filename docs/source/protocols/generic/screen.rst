@@ -41,7 +41,7 @@ Screen
          "id": [{
            "id": 100
          }],
-         "label": "down"
+         "state": "down"
        }
      },
      "gui": {
