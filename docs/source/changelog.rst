@@ -1,6 +1,12 @@
 Changelog
 =========
 
+.. versionadded:: 8.0.8
+
+.. rubric:: Bugfixes
+
+- --debuglevel=2 replaced --debuglevel=1. Now both are allowed.
+
 .. versionadded:: 8.0.7
 
 .. rubric:: Change functionality
