@@ -1,6 +1,12 @@
 Changelog
 =========
 
+.. versionadded:: 8.0.9
+
+.. rubric:: Bugfixes
+
+- Properly reset time variable in DATE_FORMAT function to correctly handle dst.
+
 .. versionadded:: 8.0.8
 
 .. rubric:: Bugfixes
