@@ -2611,6 +2611,7 @@ static void signal_cb(uv_signal_t *handle, int signum) {
 
 	main_gc();	
 	uv_stop(uv_default_loop());
+	FREE(signal_req);
 }
 
 int start_pilight(int argc, char **argv) {
