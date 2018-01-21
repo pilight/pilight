@@ -48,6 +48,8 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	struct tm tm;
 	char *p = *ret, *datetime = NULL, *format = NULL;
 
+	memset(&tm, 0, sizeof(struct tm));
+
 	if(childs == NULL) {
 		logprintf(LOG_ERR, "DATE_FORMAT requires at least two parameters e.g. DATE_FORMAT(datetime, %Y-%m-%d)");
 		return -1;
@@ -140,6 +142,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 		logprintf(LOG_ERR, "DATE_FORMAT error on mktime()");
 		return -1;
 	}
+
 	strftime(p, BUFFER_SIZE, childs->string_, &tm);
 
 	return 0;
