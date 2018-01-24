@@ -32,6 +32,7 @@
 #include "../libs/pilight/protocols/generic/generic_label.h"
 #include "../libs/pilight/protocols/433.92/arctech_switch.h"
 #include "../libs/pilight/protocols/API/datetime.h"
+#include "../libs/pilight/protocols/API/sunriseset.h"
 
 #include "alltests.h"
 
@@ -489,7 +490,31 @@ static struct tests_t get_tests[] = {
 		0, &updates1[0],
 		{ &receives[3] },
 		{ 1, 0 }
-	}
+	},
+	{
+			/*
+			 * FIXME
+			 *
+			 * This rule should be evaluated like this:
+			 *  ((sun.sunrise == DATE_FORMAT(DATE_ADD(date, -10 MINUTE), %%Y-%%m-%%d %%H:%%M:%%S, %%H.%%M)) AND (date.second == 1)) OR (1 == 0)
+			 *
+			 * But is currently more or less evaluated like this
+			 *  (((sun.sunrise == DATE_FORMAT(DATE_ADD(date, -10 MINUTE), %%Y-%%m-%%d %%H:%%M:%%S, %%H.%%M)) AND date.second) == 1) OR (1 == 0)
+			 */
+			"prioritize_evaluations",
+			"{\"devices\":{"\
+				"\"date\":{\"protocol\":[\"datetime\"],\"id\":[{\"longitude\":4.895168,\"latitude\":52.370216}],\"year\":2016,\"month\":3,\"day\":14,\"hour\":8,\"minute\":44,\"second\":48,\"weekday\":1,\"dst\":0},"\
+				"\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"},"\
+				"\"sun\":{\"protocol\":[\"sunriseset\"],\"id\":[{\"longitude\":4.895167899999933,\"latitude\":52.3702157}],\"sunrise\":8.34,\"sunset\":17.14,\"sun\":\"set\"}"\
+			"},"\
+			"\"gui\":{},"\
+			"\"rules\":{"\
+				"\"switch\":{\"rule\":\"IF (sun.sunrise == DATE_FORMAT(DATE_ADD(date, -10 MINUTE), %%Y-%%m-%%d %%H:%%M:%%S, %%H.%%M) AND date.second == 1) OR (1 == 0) THEN switch DEVICE switch TO on\",\"active\":1}"\
+			"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
+			UV_RUN_NOWAIT,
+			0, &updates1[0],
+			{ NULL }, { 0 }
+		}
 };
 
 static void close_cb(uv_handle_t *handle) {
@@ -588,6 +613,7 @@ static void test_events(CuTest *tc) {
 		genericDimmerInit();
 		genericLabelInit();
 		datetimeInit();
+		sunRiseSetInit();
 
 		CuAssertIntEquals(tc, 0, storage_read("events.json", CONFIG_DEVICES | CONFIG_RULES));
 

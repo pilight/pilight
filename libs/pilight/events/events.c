@@ -889,7 +889,9 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 				}
 				strcpy(p, res);
 				unsigned long r = 0;
-				// printf("replace %s with %s in %s\n", search, p, tmp);
+				if(pilight.debuglevel >= 1) {
+					printf("replace %s with %s in %s\n", search, p, tmp);
+				}
 				if((r = (unsigned long)str_replace(search, p, &tmp)) == -1) {
 					logprintf(LOG_ERR, "rule #%d: an unexpected error occurred while parsing", obj->nr);
 					FREE(p);
@@ -913,6 +915,9 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 				memset(var2, '\0', strlen(var2));
 			} if(search != NULL ) {
 				memset(search, '\0', strlen(search));
+			}
+			if(strcmp(tmp, "AND") == 0 || strcmp(tmp, "OR") == 0) {
+				break;
 			}
 		}
 		pos++;
