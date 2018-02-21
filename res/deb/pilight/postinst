@@ -1,4 +1,5 @@
 #!/bin/bash
+test -f /etc/os-release && . /etc/os-release
 
 if [[ $1 == "configure" ]]; then
 
@@ -10,6 +11,10 @@ if [[ $1 == "configure" ]]; then
 
 	update-rc.d pilight defaults 1>/dev/null 2>/dev/null;
 	systemctl enable pilight.service 1>/dev/null 2>/dev/null;
+
+	if [ "$ID" = "raspbian" ] && [ $VERSION_ID -ge 9 ]; then #Raspbian stretch or newer
+		systemctl enable pilight-wait-for-route.service 1>/dev/null 2>/dev/null;
+	fi
 
 	if [ -L /usr/local/lib/libpilight.so ]; then
 		rm /usr/local/lib/libpilight.so 1>/dev/null 2>/dev/null;

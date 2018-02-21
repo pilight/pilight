@@ -1,0 +1,24 @@
+[Unit]
+Description=pilight - Wait for route
+Documentation=https://www.raspberrypi.org/forums/viewtopic.php?t=187225
+DefaultDependencies=no
+Wants=network.target
+After=local-fs.target network.target apparmor.service systemd-sysctl.service systemd-modules-load.service
+Before=shutdown.target network-online.target
+Conflicts=shutdown.target
+
+[Install]
+WantedBy=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+TimeoutStartSec=2min
+ExecStart=/bin/bash -c " \
+    count=0; \
+    while [ -z \"$(/sbin/ip route | awk '/default/ { print $3 }')\" ]; \
+    do \
+        sleep 1s; \
+        count=$((count+1)); \
+        echo \"Waited for route for $count seconds\"; \
+    done;"
