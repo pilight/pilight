@@ -27,6 +27,7 @@ mkdir -p source/etc/systemd/system
 mkdir -p source/etc/init
 cp ../res/init/pilight.sysv source/etc/init.d/pilight
 cp ../res/init/pilight.systemd source/etc/systemd/system/pilight.service
+cp ../res/init/wait-for-route.systemd source/etc/systemd/system/wait-for-route.service
 cp ../res/init/pilight.upstart source/etc/init/pilight.conf
 cp ../res/pilight.pem source/etc/pilight/pilight.pem
 

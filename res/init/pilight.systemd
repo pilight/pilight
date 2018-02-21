@@ -1,6 +1,7 @@
 [Unit]
 Description=pilight
 After=network-online.target
+Wants=network-online.target
 
 [Service]
 ExecStart=/usr/local/sbin/pilight-daemon
