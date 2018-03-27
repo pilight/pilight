@@ -1,6 +1,12 @@
 Changelog
 =========
 
+.. versionadded:: 8.0.10
+
+.. rubric:: Bugfixes
+
+- Ignore dst in DATE_FORMAT function to keep input datetime unaffected by dst.
+
 .. versionadded:: 8.0.9
 
 .. rubric:: Bugfixes
