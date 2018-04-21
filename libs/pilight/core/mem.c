@@ -87,8 +87,8 @@ int xfree(void) {
 		while(mallocs) {
 			tmp = mallocs;
 			totalsize += mallocs->size;
+			fprintf(stderr, "WARNING: unfreed pointer (%p) in %s at line #%d\n", mallocs->p, tmp->file, tmp->line);
 			free(mallocs->p);
-			fprintf(stderr, "WARNING: unfreed pointer in %s at line #%d\n", tmp->file, tmp->line);
 			mallocs = mallocs->next;
 			free(tmp);
 		}
