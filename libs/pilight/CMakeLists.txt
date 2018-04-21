@@ -11,6 +11,9 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	add_subdirectory(config)
 	set(${PROJECT_NAME}_files	${${PROJECT_NAME}_files} ${${PROJECT_NAME}_config_files} CACHE INTERNAL "")
 
+	add_subdirectory(datatypes)
+	set(${PROJECT_NAME}_files	${${PROJECT_NAME}_files} ${${PROJECT_NAME}_datatypes_files} CACHE INTERNAL "")
+
 	if(${EVENTS} MATCHES "ON")
 		add_subdirectory(events)
 		set(${PROJECT_NAME}_files	${${PROJECT_NAME}_files} ${${PROJECT_NAME}_events_files} CACHE INTERNAL "")
