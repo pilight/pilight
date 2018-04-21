@@ -8,13 +8,21 @@ local M = {}
 
 function M.run(a, b)
 	if pilight.tonumber(a) == 0 or pilight.tonumber(b) == 0 then
-		return "0";
+		return 0;
 	else
 		aa = pilight.tonumber(a);
 		bb = pilight.tonumber(b);
 
-		return string.format("%.6f", aa - bb * math.floor(aa / bb));
+		return (aa - bb * math.floor(aa / bb));
 	end
+end
+
+function M.associativity()
+	return 70;
+end
+
+function M.precedence()
+	return 1;
 end
 
 function M.info()

@@ -12,6 +12,7 @@
 #include "../storage/storage.h"
 #include "../core/common.h"
 
+void events_tree_gc(struct tree_t *tree);
 void event_cache_device(struct rules_t *obj, char *device);
 int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varcont, unsigned short validate, enum origin_t origin);
 int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short validate);

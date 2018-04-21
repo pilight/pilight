@@ -36,6 +36,7 @@
 #include "../core/log.h"
 #include "../events/events.h"
 #include "../events/action.h"
+#include "../datatypes/stack.h"
 #include "storage.h"
 
 #include "json.h"
@@ -1137,13 +1138,7 @@ int rules_struct_parse(struct JsonNode *jrules, int i) {
 	if(node == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
-	node->next = NULL;
-	node->values = NULL;
-	node->nrdevices = 0;
-	node->status = 0;
-	node->devices = NULL;
-	node->actions = NULL;
-	node->jtrigger = NULL;
+	memset(node, 0, sizeof(struct rules_t));
 	node->nr = i;
 	if((node->name = MALLOC(strlen(jrules->key)+1)) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -2864,6 +2859,7 @@ int rules_gc(void) {
 		tmp_rules = rules;
 		FREE(tmp_rules->name);
 		FREE(tmp_rules->rule);
+		events_tree_gc(tmp_rules->tree);
 		for(i=0;i<tmp_rules->nrdevices;i++) {
 			FREE(tmp_rules->devices[i]);
 		}
@@ -2879,12 +2875,6 @@ int rules_gc(void) {
 		}
 		while(tmp_rules->actions) {
 			tmp_actions = tmp_rules->actions;
-			if(tmp_actions->arguments != NULL) {
-				json_delete(tmp_actions->arguments);
-			}
-			if(tmp_actions->parsedargs != NULL) {
-				json_delete(tmp_actions->parsedargs);
-			}
 			tmp_rules->actions = tmp_rules->actions->next;
 			if(tmp_actions != NULL) {
 				FREE(tmp_actions);

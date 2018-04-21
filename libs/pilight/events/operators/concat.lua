@@ -7,15 +7,11 @@
 local M = {}
 
 function M.run(a, b)
-	if pilight.tonumber(a) == 0 or pilight.tonumber(b) == 0 then
-		return 0;
-	else
-		return (pilight.tonumber(a) / pilight.tonumber(b));
-	end
+	return a .. b;
 end
 
 function M.associativity()
-	return 70;
+	return 40;
 end
 
 function M.precedence()
@@ -24,7 +20,7 @@ end
 
 function M.info()
 	return {
-		name = "/",
+		name = ".",
 		version = "1.0",
 		reqversion = "5.0",
 		reqcommit = "87"

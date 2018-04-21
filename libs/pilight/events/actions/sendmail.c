@@ -59,14 +59,14 @@ static int checkArguments(struct rules_actions_t *obj) {
 		return -1;
 	}
 
-	if(obj->parsedargs == NULL) {
+	if(obj->arguments == NULL) {
 		/* Internal error */
 		return -1;
 	}
 
-	jsubject = json_find_member(obj->parsedargs, "SUBJECT");
-	jmessage = json_find_member(obj->parsedargs, "MESSAGE");
-	jto = json_find_member(obj->parsedargs, "TO");
+	jsubject = json_find_member(obj->arguments, "SUBJECT");
+	jmessage = json_find_member(obj->arguments, "MESSAGE");
+	jto = json_find_member(obj->arguments, "TO");
 
 	if(jsubject == NULL) {
 		logprintf(LOG_ERR, "sendmail action is missing a \"SUBJECT\"");
@@ -205,7 +205,7 @@ static void callback(int status, struct mail_t *mail) {
 }
 
 static int run(struct rules_actions_t *obj) {
-	struct JsonNode *json = obj->parsedargs;
+	struct JsonNode *json = obj->arguments;
 
 	struct JsonNode *jsubject = NULL;
 	struct JsonNode *jmessage = NULL;

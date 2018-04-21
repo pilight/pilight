@@ -87,15 +87,15 @@ static int checkArguments(struct rules_actions_t *obj) {
 		return -1;
 	}
 
-	if(obj->parsedargs == NULL) {
+	if(obj->arguments == NULL) {
 		/* Internal error */
 		return -1;
 	}
 
-	jdevice = json_find_member(obj->parsedargs, "DEVICE");
-	jto = json_find_member(obj->parsedargs, "TO");
-	jfor = json_find_member(obj->parsedargs, "FOR");
-	jafter = json_find_member(obj->parsedargs, "AFTER");
+	jdevice = json_find_member(obj->arguments, "DEVICE");
+	jto = json_find_member(obj->arguments, "TO");
+	jfor = json_find_member(obj->arguments, "FOR");
+	jafter = json_find_member(obj->arguments, "AFTER");
 
 	if(jdevice == NULL) {
 		logprintf(LOG_ERR, "switch action is missing a \"DEVICE\" statement");
@@ -454,7 +454,7 @@ static void thread_free(uv_work_t *req, int status) {
 }
 
 static void prepare(struct rules_actions_t *obj, char *dev) {
-	struct JsonNode *json = obj->parsedargs;
+	struct JsonNode *json = obj->arguments;
 
 	struct JsonNode *jto = NULL;
 	struct JsonNode *jafter = NULL;
@@ -604,8 +604,8 @@ static int run(struct rules_actions_t *obj) {
 	struct JsonNode *jbchild = NULL;
 	struct device_t *dev = NULL;
 
-	if((jdevice = json_find_member(obj->parsedargs, "DEVICE")) != NULL &&
-		 (jto = json_find_member(obj->parsedargs, "TO")) != NULL) {
+	if((jdevice = json_find_member(obj->arguments, "DEVICE")) != NULL &&
+		 (jto = json_find_member(obj->arguments, "TO")) != NULL) {
 		if((jbvalues = json_find_member(jdevice, "value")) != NULL) {
 			jbchild = json_first_child(jbvalues);
 			while(jbchild) {

@@ -24,7 +24,7 @@ static void test_event_function_date_add(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
-	char *out = NULL;
+	struct varcont_t ret;
 	struct varcont_t v;
 	memtrack();
 
@@ -37,30 +37,34 @@ static void test_event_function_date_add(CuTest *tc) {
 	 * Invalid parameters
 	 */
 	{
-		{
+
+		{			
 			/*
 			 * No json parameters
 			 */
-			CuAssertIntEquals(tc, -1, event_function_callback("DATE_ADD", NULL, &out));
-			CuAssertPtrEquals(tc, NULL, out);
+			memset(&ret, 0, sizeof(struct varcont_t));
+			CuAssertIntEquals(tc, -1, event_function_callback("DATE_ADD", NULL, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
 		}
 
-	/*
-	 * Missing json parameters
-	 */
 	 {
+			/*
+			 * Missing json parameters
+			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2017-02-28 23:59:59"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, -1, event_function_callback("DATE_ADD", args, &out));
-			CuAssertPtrEquals(tc, NULL, out);
+			CuAssertIntEquals(tc, -1, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
 	 }
 
 	 {
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2017-02-28 23:59:59"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -76,8 +80,8 @@ static void test_event_function_date_add(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, -1, event_function_callback("DATE_ADD", args, &out));
-			CuAssertPtrEquals(tc, NULL, out);
+			CuAssertIntEquals(tc, -1, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
 	 }
 
 	 {
@@ -85,6 +89,7 @@ static void test_event_function_date_add(CuTest *tc) {
 			 * Invalid unit number
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2017-02-28 23:59:59"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -95,8 +100,8 @@ static void test_event_function_date_add(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, -1, event_function_callback("DATE_ADD", args, &out));
-			CuAssertPtrEquals(tc, NULL, out);
+			CuAssertIntEquals(tc, -1, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
 	 }
 
 	 {
@@ -104,6 +109,7 @@ static void test_event_function_date_add(CuTest *tc) {
 			 * Invalid unit parameter
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2017-02-28 23:59:59"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -114,8 +120,8 @@ static void test_event_function_date_add(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, -1, event_function_callback("DATE_ADD", args, &out));
-			CuAssertPtrEquals(tc, NULL, out);
+			CuAssertIntEquals(tc, -1, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
 	 }
 
 	 {
@@ -123,6 +129,7 @@ static void test_event_function_date_add(CuTest *tc) {
 			 * Invalid unit type
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2017-02-28 23:59:59"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -133,8 +140,8 @@ static void test_event_function_date_add(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, -1, event_function_callback("DATE_ADD", args, &out));
-			CuAssertPtrEquals(tc, NULL, out);
+			CuAssertIntEquals(tc, -1, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
 	 }
 
 	 {
@@ -142,6 +149,7 @@ static void test_event_function_date_add(CuTest *tc) {
 			 * Invalid input dateformat
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2017/02/28 23.59.59"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -152,8 +160,8 @@ static void test_event_function_date_add(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, -1, event_function_callback("DATE_ADD", args, &out));
-			CuAssertPtrEquals(tc, NULL, out);
+			CuAssertIntEquals(tc, -1, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
 		}
 	}
 
@@ -166,6 +174,7 @@ static void test_event_function_date_add(CuTest *tc) {
 			 * Year interval
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2016-02-29 21:49:49"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -176,9 +185,10 @@ static void test_event_function_date_add(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &out));
-			CuAssertStrEquals(tc, "2017-03-01 21:49:49", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, JSON_STRING, ret.type_);
+			CuAssertStrEquals(tc, "2017-03-01 21:49:49", ret.string_);
+			FREE(ret.string_);
 		}
 
 		{
@@ -186,6 +196,7 @@ static void test_event_function_date_add(CuTest *tc) {
 			 * Year interval
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2016-02-29 21:49:49"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -196,9 +207,10 @@ static void test_event_function_date_add(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &out));
-			CuAssertStrEquals(tc, "2015-03-01 21:49:49", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, JSON_STRING, ret.type_);
+			CuAssertStrEquals(tc, "2015-03-01 21:49:49", ret.string_);
+			FREE(ret.string_);
 		}
 
 		{
@@ -206,6 +218,7 @@ static void test_event_function_date_add(CuTest *tc) {
 			 * Month interval
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2016-01-31 21:49:49"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -216,9 +229,10 @@ static void test_event_function_date_add(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &out));
-			CuAssertStrEquals(tc, "2016-03-02 21:49:49", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, JSON_STRING, ret.type_);
+			CuAssertStrEquals(tc, "2016-03-02 21:49:49", ret.string_);
+			FREE(ret.string_);
 		}
 
 		{
@@ -226,6 +240,7 @@ static void test_event_function_date_add(CuTest *tc) {
 			 * Month interval
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2016-01-31 21:49:49"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -236,9 +251,10 @@ static void test_event_function_date_add(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &out));
-			CuAssertStrEquals(tc, "2015-12-31 21:49:49", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, JSON_STRING, ret.type_);
+			CuAssertStrEquals(tc, "2015-12-31 21:49:49", ret.string_);
+			FREE(ret.string_);
 		}
 
 		{
@@ -246,6 +262,7 @@ static void test_event_function_date_add(CuTest *tc) {
 			 * Day interval
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2017-02-28 21:49:49"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -256,9 +273,10 @@ static void test_event_function_date_add(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &out));
-			CuAssertStrEquals(tc, "2017-03-01 21:49:49", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, JSON_STRING, ret.type_);
+			CuAssertStrEquals(tc, "2017-03-01 21:49:49", ret.string_);
+			FREE(ret.string_);
 		}
 
 		{
@@ -266,6 +284,7 @@ static void test_event_function_date_add(CuTest *tc) {
 			 * Day interval
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2017-02-28 21:49:49"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -276,9 +295,10 @@ static void test_event_function_date_add(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &out));
-			CuAssertStrEquals(tc, "2017-02-27 21:49:49", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, JSON_STRING, ret.type_);
+			CuAssertStrEquals(tc, "2017-02-27 21:49:49", ret.string_);
+			FREE(ret.string_);
 		}
 
 		{
@@ -286,6 +306,7 @@ static void test_event_function_date_add(CuTest *tc) {
 			 * Hour interval
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2017-02-28 23:49:49"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -296,9 +317,10 @@ static void test_event_function_date_add(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &out));
-			CuAssertStrEquals(tc, "2017-03-01 00:49:49", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, JSON_STRING, ret.type_);
+			CuAssertStrEquals(tc, "2017-03-01 00:49:49", ret.string_);
+			FREE(ret.string_);
 		}
 
 		{
@@ -306,6 +328,7 @@ static void test_event_function_date_add(CuTest *tc) {
 			 * Hour interval
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2016-03-01 00:49:49"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -316,9 +339,10 @@ static void test_event_function_date_add(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &out));
-			CuAssertStrEquals(tc, "2016-02-29 23:49:49", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, JSON_STRING, ret.type_);
+			CuAssertStrEquals(tc, "2016-02-29 23:49:49", ret.string_);
+			FREE(ret.string_);
 		}
 
 		{
@@ -326,6 +350,7 @@ static void test_event_function_date_add(CuTest *tc) {
 			 * Minute interval
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2017-02-28 23:59:49"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -336,9 +361,10 @@ static void test_event_function_date_add(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &out));
-			CuAssertStrEquals(tc, "2017-03-01 00:00:49", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, JSON_STRING, ret.type_);
+			CuAssertStrEquals(tc, "2017-03-01 00:00:49", ret.string_);
+			FREE(ret.string_);
 		}
 
 		{
@@ -346,6 +372,7 @@ static void test_event_function_date_add(CuTest *tc) {
 			 * Minute interval
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2016-03-01 00:00:49"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -356,9 +383,10 @@ static void test_event_function_date_add(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &out));
-			CuAssertStrEquals(tc, "2016-02-29 23:59:49", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, JSON_STRING, ret.type_);
+			CuAssertStrEquals(tc, "2016-02-29 23:59:49", ret.string_);
+			FREE(ret.string_);
 		}
 
 		{
@@ -366,6 +394,7 @@ static void test_event_function_date_add(CuTest *tc) {
 			 * Second interval
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2017-02-28 23:59:59"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -376,9 +405,10 @@ static void test_event_function_date_add(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &out));
-			CuAssertStrEquals(tc, "2017-03-01 00:00:00", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, JSON_STRING, ret.type_);
+			CuAssertStrEquals(tc, "2017-03-01 00:00:00", ret.string_);
+			FREE(ret.string_);
 		}
 
 		{
@@ -386,6 +416,7 @@ static void test_event_function_date_add(CuTest *tc) {
 			 * Second interval
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2016-03-01 00:00:00"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -396,9 +427,10 @@ static void test_event_function_date_add(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &out));
-			CuAssertStrEquals(tc, "2016-02-29 23:59:59", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, JSON_STRING, ret.type_);
+			CuAssertStrEquals(tc, "2016-02-29 23:59:59", ret.string_);
+			FREE(ret.string_);
 		}
 
 		{
@@ -406,6 +438,7 @@ static void test_event_function_date_add(CuTest *tc) {
 			 * Get time from datetime protocol
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("test"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -416,9 +449,10 @@ static void test_event_function_date_add(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &out));
-			CuAssertStrEquals(tc, "2015-01-28 14:37:08", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_ADD", args, &ret));
+			CuAssertIntEquals(tc, JSON_STRING, ret.type_);
+			CuAssertStrEquals(tc, "2015-01-28 14:37:08", ret.string_);
+			FREE(ret.string_);
 		}
 	}
 
@@ -435,8 +469,8 @@ static void test_event_function_date_format(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
-	char *out = NULL;
 	struct varcont_t v;
+	struct varcont_t ret;
 	memtrack();
 
 	protocol_init();
@@ -448,33 +482,36 @@ static void test_event_function_date_format(CuTest *tc) {
 	 * Invalid parameters
 	 */
 	{
+		/*
+		 * No json parameters
+		 */
 		{
-			/*
-			 * No json parameters
-			 */
-			CuAssertIntEquals(tc, -1, event_function_callback("DATE_FORMAT", NULL, &out));
-			CuAssertPtrEquals(tc, NULL, out);
+			memset(&ret, 0, sizeof(struct varcont_t));
+			CuAssertIntEquals(tc, -1, event_function_callback("DATE_FORMAT", NULL, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
 		}
 
+		/*
+		 * Missing parameters
+		 */
 		{
-			/*
-			 * Missing parameters
-			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2016-02-29 21:49:49"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, -1, event_function_callback("DATE_FORMAT", args, &out));
-			CuAssertPtrEquals(tc, NULL, out);
+			CuAssertIntEquals(tc, -1, event_function_callback("DATE_FORMAT", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
 		}
 
+		/*
+		 * Missing parameters
+		 */
 		{
-			/*
-			 * Missing parameters
-			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2016-02-29 21:49:49"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, args);
@@ -485,15 +522,16 @@ static void test_event_function_date_format(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, -1, event_function_callback("DATE_FORMAT", args, &out));
-			CuAssertPtrEquals(tc, NULL, out);
+			CuAssertIntEquals(tc, -1, event_function_callback("DATE_FORMAT", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
 		}
 
+		/*
+		 * Invalid dateformat representation
+		 */
 		{
-			/*
-			 * Invalid dateformat representation
-			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2016-02-29 21:49:49"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, args);
@@ -509,15 +547,16 @@ static void test_event_function_date_format(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, -1, event_function_callback("DATE_FORMAT", args, &out));
-			CuAssertPtrEquals(tc, NULL, out);
+			CuAssertIntEquals(tc, -1, event_function_callback("DATE_FORMAT", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
 		}
 
+		/*
+		 * Too many values with numeric
+		 */
 		{
-			/*
-			 * Too many values with numeric
-			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("1943-02-29 21:49:49"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, args);
@@ -538,8 +577,8 @@ static void test_event_function_date_format(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, -1, event_function_callback("DATE_FORMAT", args, &out));
-			CuAssertPtrEquals(tc, NULL, out);
+			CuAssertIntEquals(tc, -1, event_function_callback("DATE_FORMAT", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
 		}
 	}
 
@@ -549,6 +588,7 @@ static void test_event_function_date_format(CuTest *tc) {
 	{
 		{
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2016-02-29 21:49:49"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, args);
@@ -564,13 +604,15 @@ static void test_event_function_date_format(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_FORMAT", args, &out));
-			CuAssertStrEquals(tc, "21.49.49 29/02/2016", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_FORMAT", args, &ret));
+			CuAssertIntEquals(tc, JSON_STRING, ret.type_);
+			CuAssertStrEquals(tc, "21.49.49 29/02/2016", ret.string_);
+			FREE(ret.string_);
 		}
 
 		{
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2016-02-29 21:49:49"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, args);
@@ -586,13 +628,15 @@ static void test_event_function_date_format(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_FORMAT", args, &out));
-			CuAssertStrEquals(tc, "Mon Feb 29 21:49:49 2016", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_FORMAT", args, &ret));
+			CuAssertIntEquals(tc, JSON_STRING, ret.type_);
+			CuAssertStrEquals(tc, "Mon Feb 29 21:49:49 2016", ret.string_);
+			FREE(ret.string_);
 		}
 
 		{
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2016-02-29"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, args);
@@ -608,13 +652,15 @@ static void test_event_function_date_format(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_FORMAT", args, &out));
-			CuAssertStrEquals(tc, "29", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_FORMAT", args, &ret));
+			CuAssertIntEquals(tc, JSON_NUMBER, ret.type_);
+			CuAssertIntEquals(tc, 29, ret.number_);
+			CuAssertIntEquals(tc, 0, ret.decimals_);
 		}
 
 		{
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("2016,02,29"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, args);
@@ -630,9 +676,10 @@ static void test_event_function_date_format(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_FORMAT", args, &out));
-			CuAssertStrEquals(tc, "29", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_FORMAT", args, &ret));
+			CuAssertIntEquals(tc, JSON_NUMBER, ret.type_);
+			CuAssertIntEquals(tc, 29, ret.number_);
+			CuAssertIntEquals(tc, 0, ret.decimals_);
 		}
 
 		{
@@ -640,6 +687,7 @@ static void test_event_function_date_format(CuTest *tc) {
 			 * Before valid epoch year (< 1970)
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("1943-02-29 21:49:49"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, args);
@@ -655,9 +703,10 @@ static void test_event_function_date_format(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_FORMAT", args, &out));
-			CuAssertStrEquals(tc, "21.49.49 01/03/1943", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_FORMAT", args, &ret));
+			CuAssertIntEquals(tc, JSON_STRING, ret.type_);
+			CuAssertStrEquals(tc, "21.49.49 01/03/1943", ret.string_);
+			FREE(ret.string_);
 		}
 
 		{
@@ -665,6 +714,7 @@ static void test_event_function_date_format(CuTest *tc) {
 			 * Get time from datetime protocol
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("test"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -675,9 +725,10 @@ static void test_event_function_date_format(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("DATE_FORMAT", args, &out));
-			CuAssertStrEquals(tc, "14.37.08 27/01/2015", out);
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("DATE_FORMAT", args, &ret));
+			CuAssertIntEquals(tc, JSON_STRING, ret.type_);
+			CuAssertStrEquals(tc, "14.37.08 27/01/2015", ret.string_);
+			FREE(ret.string_);
 		}
 	}
 
@@ -695,8 +746,8 @@ static void test_event_function_random(CuTest *tc) {
 	fflush(stdout);
 
 
-	char *out = NULL;
 	struct varcont_t v;
+	struct varcont_t ret;
 	unsigned int res[2][11] = { { 0 }, { 0 } };
 	memtrack();
 
@@ -709,26 +760,28 @@ static void test_event_function_random(CuTest *tc) {
 	 * Invalid parameters
 	 */
 	{
+		/*
+		 * Missing json parameters
+		 */
 		{
-			/*
-			 * Missing json parameters
-			 */
-			CuAssertIntEquals(tc, -1, event_function_callback("RANDOM", NULL, &out));
-			CuAssertPtrEquals(tc, NULL, out);
+			memset(&ret, 0, sizeof(struct varcont_t));
+			CuAssertIntEquals(tc, -1, event_function_callback("RANDOM", NULL, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
 		}
 
+		/*
+		 * Invalid json parameters
+		 */
 		{
-			/*
-			 * Invalid json parameters
-			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("0"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, -1, event_function_callback("RANDOM", args, &out));
-			CuAssertPtrEquals(tc, NULL, out);
+			CuAssertIntEquals(tc, -1, event_function_callback("RANDOM", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
 		}
 
 		{
@@ -736,6 +789,7 @@ static void test_event_function_random(CuTest *tc) {
 			 * Too many json parameters
 			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("0"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -751,15 +805,16 @@ static void test_event_function_random(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, -1, event_function_callback("RANDOM", args, &out));
-			CuAssertPtrEquals(tc, NULL, out);
+			CuAssertIntEquals(tc, -1, event_function_callback("RANDOM", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
 		}
 
+		/*
+		 * Invalid json parameters
+		 */
 		{
-			/*
-			 * Invalid json parameters
-			 */
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("a"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -770,8 +825,8 @@ static void test_event_function_random(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, -1, event_function_callback("RANDOM", args, &out));
-			CuAssertPtrEquals(tc, NULL, out);
+			CuAssertIntEquals(tc, -1, event_function_callback("RANDOM", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
 		}
 	}
 
@@ -782,6 +837,7 @@ static void test_event_function_random(CuTest *tc) {
 		int i = 0;
 		for(i=0;i<10000;i++) {
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("0"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -792,11 +848,11 @@ static void test_event_function_random(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("RANDOM", args, &out));
-			CuAssertPtrNotNull(tc, out);
-			CuAssertTrue(tc, (atoi(out) >= 0 && atoi(out) <= 10));
-			res[0][atoi(out)]++;
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("RANDOM", args, &ret));
+			CuAssertIntEquals(tc, JSON_NUMBER, ret.type_);
+			CuAssertIntEquals(tc, 0, ret.decimals_);
+			CuAssertTrue(tc, (ret.number_ >= 0 && ret.number_ <= 10));
+			res[0][(int)ret.number_]++;
 		}
 
 		for(i=0;i<10;i++) {
@@ -806,6 +862,7 @@ static void test_event_function_random(CuTest *tc) {
 		i = 0;
 		for(i=0;i<10000;i++) {
 			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("0"); v.type_ = JSON_STRING;
 			args = event_function_add_argument(&v, NULL);
@@ -816,11 +873,11 @@ static void test_event_function_random(CuTest *tc) {
 			args = event_function_add_argument(&v, args);
 			FREE(v.string_);
 
-			CuAssertIntEquals(tc, 0, event_function_callback("RANDOM", args, &out));
-			CuAssertPtrNotNull(tc, out);
-			CuAssertTrue(tc, (atoi(out) >= 0 && atoi(out) <= 10));
-			res[1][atoi(out)]++;
-			FREE(out);
+			CuAssertIntEquals(tc, 0, event_function_callback("RANDOM", args, &ret));
+			CuAssertIntEquals(tc, JSON_NUMBER, ret.type_);
+			CuAssertIntEquals(tc, 0, ret.decimals_);
+			CuAssertTrue(tc, (ret.number_ >= 0 && ret.number_ <= 10));
+			res[1][(int)ret.number_]++;
 		}
 
 		for(i=0;i<10;i++) {

@@ -19,7 +19,7 @@ struct event_function_args_t {
 } event_function_args_t;
 
 void event_function_init(void);
-int event_function_callback(char *, struct event_function_args_t *, char **out);
+int event_function_callback(char *, struct event_function_args_t *, struct varcont_t *v);
 struct event_function_args_t *event_function_add_argument(struct varcont_t *, struct event_function_args_t *);
 void event_function_free_argument(struct event_function_args_t *);
 int event_function_exists(char *);

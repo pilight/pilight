@@ -44,12 +44,12 @@ static int checkArguments(struct rules_actions_t *obj) {
 		return -1;
 	}
 
-	if(obj->parsedargs == NULL) {
+	if(obj->arguments == NULL) {
 		return -1;
 	}
 
-	jdevice = json_find_member(obj->parsedargs, "DEVICE");
-	jbetween = json_find_member(obj->parsedargs, "BETWEEN");
+	jdevice = json_find_member(obj->arguments, "DEVICE");
+	jbetween = json_find_member(obj->arguments, "BETWEEN");
 
 	if(jdevice == NULL) {
 		logprintf(LOG_ERR, "toggle action is missing a \"DEVICE\"");
@@ -155,7 +155,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 }
 
 static void prepare(struct rules_actions_t *obj, char *dev) {
-	struct JsonNode *json = obj->parsedargs;
+	struct JsonNode *json = obj->arguments;
 
 	struct JsonNode *jbetween = NULL;
 	struct JsonNode *jsvalues = NULL;
@@ -202,8 +202,8 @@ static int run(struct rules_actions_t *obj) {
 	struct JsonNode *jdchild = NULL;
 	struct device_t *dev = NULL;
 
-	if((jdevice = json_find_member(obj->parsedargs, "DEVICE")) != NULL &&
-		 (jbetween = json_find_member(obj->parsedargs, "BETWEEN")) != NULL) {
+	if((jdevice = json_find_member(obj->arguments, "DEVICE")) != NULL &&
+		 (jbetween = json_find_member(obj->arguments, "BETWEEN")) != NULL) {
 		if((jdvalues = json_find_member(jdevice, "value")) != NULL) {
 			jdchild = json_first_child(jdvalues);
 			while(jdchild) {

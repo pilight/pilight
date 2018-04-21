@@ -134,7 +134,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
 			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
 			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
@@ -142,7 +142,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 
 		CuAssertIntEquals(tc, 0, action_sendmail->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 	}
 
@@ -167,11 +167,11 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{}");
+		obj->arguments = json_decode("{}");
 
 		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -181,13 +181,13 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1}\
 		}");
 
 		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -197,14 +197,14 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
 			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2}\
 		}");
 
 		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -214,7 +214,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"SUBJECT\":{\"value\":[],\"order\":1},\
 			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
 			\"TO\":{\"value\":[\"Hello World!\"],\"order\":3}\
@@ -222,7 +222,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 
 		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -232,7 +232,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
 			\"MESSAGE\":{\"value\":[],\"order\":2},\
 			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
@@ -240,7 +240,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 
 		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -250,7 +250,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
 			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
 			\"TO\":{\"value\":[],\"order\":3}\
@@ -258,7 +258,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 
 		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -268,7 +268,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"SUBJECT\":{\"value\":[\"Hello World!\",\"Hello World!\"],\"order\":1},\
 			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
 			\"TO\":{\"value\":[\"Hello World!\"],\"order\":3}\
@@ -276,7 +276,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 
 		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -286,7 +286,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
 			\"MESSAGE\":{\"value\":[,\"Hello World!\",\"Hello World!\"],\"order\":2},\
 			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
@@ -294,7 +294,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 
 		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -304,7 +304,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
 			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
 			\"TO\":{\"value\":[\"info@pilight.org\",\"info@pilight.org\"],\"order\":3}\
@@ -312,7 +312,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 
 		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -322,7 +322,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
 			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
 			\"TO\":{\"value\":[1],\"order\":3}\
@@ -330,7 +330,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 
 		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -340,7 +340,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
 			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
 			\"TO\":{\"value\":[\"info\"],\"order\":3}\
@@ -355,7 +355,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
 #endif
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -385,7 +385,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
 			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
 			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
@@ -393,7 +393,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 
 		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -423,7 +423,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
 			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
 			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
@@ -431,7 +431,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 
 		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -461,7 +461,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
 			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
 			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
@@ -469,7 +469,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 
 		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -499,7 +499,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
 			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
 			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
@@ -507,7 +507,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 
 		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -537,7 +537,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
 			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
 			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
@@ -545,7 +545,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 
 		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -575,7 +575,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
 			\"MESSAGE\":{\"value\":[\".\"],\"order\":2},\
 			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
@@ -583,7 +583,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 
 		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -752,7 +752,7 @@ static void test_event_actions_mail_run(CuTest *tc) {
 	CuAssertPtrNotNull(tc, obj);
 	memset(obj, 0, sizeof(struct rules_actions_t));
 
-	obj->parsedargs = json_decode("{\
+	obj->arguments = json_decode("{\
 		\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
 		\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
 		\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
@@ -769,7 +769,7 @@ static void test_event_actions_mail_run(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 	}
 
-	json_delete(obj->parsedargs);
+	json_delete(obj->arguments);
 	FREE(obj);
 
 	event_action_gc();

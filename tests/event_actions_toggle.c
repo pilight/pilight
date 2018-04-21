@@ -68,14 +68,14 @@ static void test_event_actions_toggle_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"DEVICE\":{\"value\":[\"switch\"],\"order\":1},\
 			\"BETWEEN\":{\"value\":[\"on\",\"off\"],\"order\":2}\
 		}");
 
 		CuAssertIntEquals(tc, 0, action_toggle->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 	}
 
@@ -100,11 +100,11 @@ static void test_event_actions_toggle_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{}");
+		obj->arguments = json_decode("{}");
 
 		CuAssertIntEquals(tc, -1, action_toggle->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -114,13 +114,13 @@ static void test_event_actions_toggle_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"DEVICE\":{\"value\":[\"switch\"],\"order\":1}\
 		}");
 
 		CuAssertIntEquals(tc, -1, action_toggle->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -130,14 +130,14 @@ static void test_event_actions_toggle_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"DEVICE\":{\"value\":[\"switch\"],\"order\":2},\
 			\"BETWEEN\":{\"value\":[\"on\"],\"order\":1}\
 		}");
 
 		CuAssertIntEquals(tc, -1, action_toggle->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -147,14 +147,14 @@ static void test_event_actions_toggle_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"DEVICE\":{\"value\":[\"switch\"],\"order\":1},\
 			\"BETWEEN\":{\"value\":[\"on\"],\"order\":2}\
 		}");
 
 		CuAssertIntEquals(tc, -1, action_toggle->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -164,14 +164,14 @@ static void test_event_actions_toggle_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"DEVICE\":{\"value\":[\"switch\"],\"order\":1},\
 			\"BETWEEN\":{\"value\":[\"on\",\"off\",\"foo\"],\"order\":2}\
 		}");
 
 		CuAssertIntEquals(tc, -1, action_toggle->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -181,14 +181,14 @@ static void test_event_actions_toggle_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"DEVICE\":{\"value\":[\"switch\"],\"order\":1},\
 			\"BETWEEN\":{\"value\":[\"foo\",\"bar\"],\"order\":2}\
 		}");
 
 		CuAssertIntEquals(tc, -1, action_toggle->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -198,14 +198,14 @@ static void test_event_actions_toggle_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"DEVICE\":{\"value\":[\"switch\"],\"order\":1},\
 			\"BETWEEN\":{\"value\":[1, 2],\"order\":2}\
 		}");
 
 		CuAssertIntEquals(tc, -1, action_toggle->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -215,14 +215,14 @@ static void test_event_actions_toggle_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"DEVICE\":{\"value\":[\"switch\"],\"order\":1},\
 			\"BETWEEN\":{\"order\":2}\
 		}");
 
 		CuAssertIntEquals(tc, -1, action_toggle->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -232,14 +232,14 @@ static void test_event_actions_toggle_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
 			\"BETWEEN\":{\"value\":[\"on\", \"off\"],\"order\":2}\
 		}");
 
 		CuAssertIntEquals(tc, -1, action_toggle->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -249,14 +249,14 @@ static void test_event_actions_toggle_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"DEVICE\":{\"value\":[\"foo\"],\"order\":1},\
 			\"BETWEEN\":{\"value\":[\"on\", \"off\"],\"order\":2}\
 		}");
 
 		CuAssertIntEquals(tc, -1, action_toggle->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 
 		/*
@@ -266,14 +266,14 @@ static void test_event_actions_toggle_check_parameters(CuTest *tc) {
 		CuAssertPtrNotNull(tc, obj);
 		memset(obj, 0, sizeof(struct rules_actions_t));
 
-		obj->parsedargs = json_decode("{\
+		obj->arguments = json_decode("{\
 			\"DEVICE\":{\"value\":[1],\"order\":1},\
 			\"BETWEEN\":{\"value\":[\"on\",\"off\"],\"order\":2}\
 		}");
 
 		CuAssertIntEquals(tc, -1, action_toggle->checkArguments(obj));
 
-		json_delete(obj->parsedargs);
+		json_delete(obj->arguments);
 		FREE(obj);
 	}
 
@@ -357,7 +357,7 @@ static void test_event_actions_toggle_run(CuTest *tc) {
 	CuAssertPtrNotNull(tc, obj);
 	memset(obj, 0, sizeof(struct rules_actions_t));
 
-	obj->parsedargs = json_decode("{\
+	obj->arguments = json_decode("{\
 		\"DEVICE\":{\"value\":[\"switch\"],\"order\":1},\
 		\"BETWEEN\":{\"value\":[\"on\",\"off\"],\"order\":2}\
 	}");
@@ -385,7 +385,7 @@ static void test_event_actions_toggle_run(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 	}
 
-	json_delete(obj->parsedargs);
+	json_delete(obj->arguments);
 	FREE(obj);
 
 	event_action_gc();

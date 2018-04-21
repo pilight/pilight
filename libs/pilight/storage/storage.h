@@ -13,6 +13,7 @@
 #include "../core/pilight.h"
 #include "../core/common.h"
 #include "../core/eventpool_structs.h"
+#include "../datatypes/stack.h"
 #include "../hardware/hardware.h"
 #include "../events/action.h"
 
@@ -54,15 +55,14 @@ typedef struct rules_values_t {
 	struct rules_values_t *next;
 } rules_values_t;
 
-struct rules_actions_t {
+typedef struct rules_actions_t {
 	int nr;
 	struct rules_t *rule;
 	struct JsonNode *arguments;
-	struct JsonNode *parsedargs;
 	struct event_actions_t *action;
 
 	struct rules_actions_t *next;
-};
+} rules_actions_t;
 
 typedef struct rules_t {
 	char *rule;
@@ -76,11 +76,21 @@ typedef struct rules_t {
 		struct timespec second;
 	}	timestamp;
 	unsigned short active;
+
+	struct {
+		struct stack_dt *lexemes;
+	} condition;
+
+	struct {
+		struct stack_dt *lexemes;
+	} action;
+
 	/* Values from received protocols */
 	struct JsonNode *jtrigger;
 	/* Arguments to be send to the action */
 	struct rules_actions_t *actions;
 	struct rules_values_t *values;
+	struct tree_t *tree;
 	struct rules_t *next;
 } rules_t;
 
