@@ -86,9 +86,9 @@ static int plua_toboolean(struct lua_State *L) {
 			lua_pushboolean(L, num);
 		} break;
 		case LUA_TBOOLEAN: {
-			int b = lua_toboolean(L, 1);
-			lua_pop(L, -1);
-			lua_pushboolean(L, b);
+			// int b = lua_toboolean(L, 1);
+			// lua_pop(L, -1);
+			// lua_pushboolean(L, b);
 		} break;
 	}
 
@@ -112,9 +112,9 @@ static int plua_tonumber(struct lua_State *L) {
 			lua_pushnumber(L, num);
 		} break;
 		case LUA_TNUMBER: {
-			float num = lua_tonumber(L, 1);
-			lua_pop(L, -1);
-			lua_pushnumber(L, num);
+			// float num = lua_tonumber(L, 1);
+			// lua_pop(L, -1);
+			// lua_pushnumber(L, num);
 		} break;
 		case LUA_TBOOLEAN: {
 			int b = lua_toboolean(L, 1);
@@ -141,9 +141,9 @@ static int plua_tostring(struct lua_State *L) {
 
 	switch(lua_type(L, 1)) {
 		case LUA_TSTRING: {
-			const char *str = lua_tostring(L, 1);
-			lua_pop(L, -1);
-			lua_pushstring(L, str);
+			// const char *str = lua_tostring(L, 1);
+			// lua_pop(L, -1);
+			// lua_pushstring(L, str);
 		} break;
 		case LUA_TNUMBER: {
 			float num = lua_tonumber(L, 1);
