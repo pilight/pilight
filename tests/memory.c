@@ -50,7 +50,12 @@ static void test_memory1(CuTest *tc) {
 		}
 		CuAssertIntEquals(tc, 1, check);
 
-		char *b = REALLOC(a, 256);
+		/*
+		 * Make it smaller to ensure
+		 * it fits in the previous
+		 * memory address
+		 */
+		char *b = REALLOC(a, 64);
 		CuAssertPtrEquals(tc, a, b);
 
 		FREE(a);
