@@ -989,8 +989,29 @@ int str_replace(char *search, char *replace, char **str) {
 	}
 }
 
+int strnicmp(char const *a, char const *b, size_t len) {
+	int i = 0;
+
+	if(a == NULL || b == NULL) {
+		return -1;
+	}
+	if(len == 0) {
+		return 0;
+	}
+
+	for(;i++<len; a++, b++) {
+		int d = tolower(*a) - tolower(*b);
+		if(d != 0 || !*a || i == len) {
+			return d;
+		}
+	}
+	return -1;
+}
+
 int stricmp(char const *a, char const *b) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+	if(a == NULL || b == NULL) {
+		return -1;
+	}
 
 	for(;; a++, b++) {
 			int d = tolower(*a) - tolower(*b);
