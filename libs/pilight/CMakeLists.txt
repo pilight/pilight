@@ -8,6 +8,9 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	add_subdirectory(core)
 	set(${PROJECT_NAME}_files	${${PROJECT_NAME}_files} ${${PROJECT_NAME}_core_files} CACHE INTERNAL "")
 
+	add_subdirectory(datatypes)
+	set(${PROJECT_NAME}_files	${${PROJECT_NAME}_files} ${${PROJECT_NAME}_datatypes_files} CACHE INTERNAL "")
+
 	add_subdirectory(storage)
 	set(${PROJECT_NAME}_files	${${PROJECT_NAME}_files} ${${PROJECT_NAME}_storage_files} CACHE INTERNAL "")
 
