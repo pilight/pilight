@@ -53,6 +53,13 @@ static void test_cast_bool(CuTest *tc) {
 	 * Strings
 	 */
 	memset(&v, 0, sizeof(struct varcont_t));
+	v.string_ = STRDUP("1"); v.type_ = JSON_STRING, v.free_ = 1;
+	CuAssertPtrNotNull(tc, v.string_);
+	CuAssertIntEquals(tc, 0, cast2bool(&p));
+	CuAssertIntEquals(tc, JSON_BOOL, v.type_);
+	CuAssertIntEquals(tc, 1, v.bool_);
+
+	memset(&v, 0, sizeof(struct varcont_t));
 	v.string_ = empty; v.type_ = JSON_STRING;
 	CuAssertIntEquals(tc, 0, cast2bool(&p));
 	CuAssertIntEquals(tc, JSON_BOOL, v.type_);
@@ -138,6 +145,14 @@ static void test_cast_string(CuTest *tc) {
 	/*
 	 * Strings
 	 */
+	memset(&v, 0, sizeof(struct varcont_t));
+	v.string_ = STRDUP("a"); v.type_ = JSON_STRING, v.free_ = 1;
+	CuAssertPtrNotNull(tc, v.string_);
+	CuAssertIntEquals(tc, 0, cast2str(&p));
+	CuAssertIntEquals(tc, JSON_STRING, v.type_);
+	CuAssertStrEquals(tc, "a", v.string_);
+	FREE(v.string_);
+
 	memset(&v, 0, sizeof(struct varcont_t));
 	v.string_ = empty; v.type_ = JSON_STRING;
 	CuAssertIntEquals(tc, 0, cast2str(&p));
@@ -231,6 +246,14 @@ static void test_cast_int(CuTest *tc) {
 	/*
 	 * Strings
 	 */
+	memset(&v, 0, sizeof(struct varcont_t));
+	v.string_ = STRDUP("1"); v.type_ = JSON_STRING, v.free_ = 1;
+	CuAssertPtrNotNull(tc, v.string_);
+	CuAssertIntEquals(tc, 0, cast2int(&p));
+	CuAssertIntEquals(tc, JSON_NUMBER, v.type_);
+	CuAssertIntEquals(tc, 1, v.number_);
+	CuAssertIntEquals(tc, 0, v.decimals_);
+
 	memset(&v, 0, sizeof(struct varcont_t));
 	v.string_ = empty; v.type_ = JSON_STRING;
 	CuAssertIntEquals(tc, 0, cast2int(&p));

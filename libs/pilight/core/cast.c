@@ -33,6 +33,10 @@ int cast2bool(struct varcont_t **a) {
 		} else if(strlen((*a)->string_) > 0) {
 			b.bool_ = 1;
 		}
+		if((*a)->free_ == 1) {
+			FREE((*a)->string_);
+			(*a)->free_ = 0;
+		}
 	}
 	if((*a)->type_ == JSON_BOOL) {
 		b.bool_ = (*a)->bool_;
@@ -52,6 +56,10 @@ int cast2int(struct varcont_t **a) {
 		b.number_  = atof((*a)->string_);
 		if(b.number_ != 0) {
 			b.decimals_ = nrDecimals((*a)->string_);
+		}
+		if((*a)->free_ == 1) {
+			FREE((*a)->string_);
+			(*a)->free_ = 0;
 		}
 	}
 	if((*a)->type_ == JSON_BOOL) {
@@ -92,6 +100,10 @@ int cast2str(struct varcont_t **a) {
 	}
 	if((*a)->type_ == JSON_STRING) {
 		b.string_ = STRDUP((*a)->string_);
+		if((*a)->free_ == 1) {
+			FREE((*a)->string_);
+			(*a)->free_ = 0;
+		}
 	}
 
 	memcpy(*a, &b, sizeof(struct varcont_t));
