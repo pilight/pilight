@@ -124,7 +124,7 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 static void *thread(void *param) {
 	struct rules_actions_t *pth = (struct rules_actions_t *)param;
 	// struct rules_t *obj = pth->obj;
-	struct JsonNode *arguments = pth->parsedargs;
+	struct JsonNode *arguments = pth->arguments;
 	struct JsonNode *jtitle = NULL;
 	struct JsonNode *jmessage = NULL;
 	struct JsonNode *juser = NULL;

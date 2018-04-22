@@ -7,7 +7,15 @@
 local M = {}
 
 function M.run(a, b)
-	return string.format("%.6f", pilight.tonumber(a) - pilight.tonumber(b));
+	return pilight.tonumber(a) - pilight.tonumber(b);
+end
+
+function M.associativity()
+	return 60;
+end
+
+function M.precedence()
+	return 1;
 end
 
 function M.info()

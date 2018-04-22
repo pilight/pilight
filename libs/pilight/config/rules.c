@@ -207,6 +207,7 @@ int rules_gc(void) {
 		tmp_rules = rules;
 		FREE(tmp_rules->name);
 		FREE(tmp_rules->rule);
+		events_tree_gc(tmp_rules->tree);
 		for(i=0;i<tmp_rules->nrdevices;i++) {
 			FREE(tmp_rules->devices[i]);
 		}
@@ -224,9 +225,6 @@ int rules_gc(void) {
 			tmp_actions = tmp_rules->actions;
 			if(tmp_actions->arguments != NULL) {
 				json_delete(tmp_actions->arguments);
-			}
-			if(tmp_actions->parsedargs != NULL) {
-				json_delete(tmp_actions->parsedargs);
 			}
 			tmp_rules->actions = tmp_rules->actions->next;
 			if(tmp_actions != NULL) {

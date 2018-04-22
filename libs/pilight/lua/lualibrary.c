@@ -24,10 +24,6 @@
 	#include <unistd.h>
 #endif
 
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
-
 #include "../core/pilight.h"
 #include "../core/common.h"
 #include "../core/strptime.h"
@@ -41,24 +37,12 @@
 #else
 #include "../config/devices.h"
 #endif
+#include "lua.h"
 
-#if !defined LUA_VERSION_NUM || LUA_VERSION_NUM==501
-/*
-** Adapted from Lua 5.2.0
-*/
-static void luaL_setfuncs (lua_State *L, const luaL_Reg *l, int nup) {
-  luaL_checkstack(L, nup+1, "too many upvalues");
-  for (; l->name != NULL; l++) {  /* fill the table with given functions */
-    int i;
-    lua_pushstring(L, l->name);
-    for (i = 0; i < nup; i++)  /* copy upvalues to the top */
-      lua_pushvalue(L, -(nup+1));
-    lua_pushcclosure(L, l->func, nup);  /* closure with those upvalues */
-    lua_settable(L, -(nup + 3));
-  }
-  lua_pop(L, nup);  /* remove upvalues */
-}
-#endif
+typedef struct lua_thread_t {
+	lua_state_t *state;
+	char *callback;
+} lua_thread_t;
 
 static int plua_toboolean(struct lua_State *L) {
 	char buf[128] = { '\0' }, *p = buf;
@@ -246,8 +230,7 @@ static void datetime2table(struct lua_State *L, char *device) {
 		}
 	}
 #endif
-
-	int year = tm.tm_year+1900;
+int year = tm.tm_year+1900;
 	int month = tm.tm_mon+1;
 	int day = tm.tm_mday;
 	int hour = tm.tm_hour;
@@ -457,22 +440,184 @@ static int plua_random(struct lua_State *L) {
 	return 1;
 }
 
-static const luaL_Reg pilightlib[] = {
-  {"toboolean", plua_toboolean},
-  {"tonumber", plua_tonumber},
-  {"tostring", plua_tostring},
-  {"strptime", plua_strptime},
-  {"getdevice", plua_getdevice},
-  {"random", plua_random},
-  {NULL, NULL}
+static void thread_free(uv_work_t *req, int status) {
+	struct lua_thread_t *thread = req->data;
+	FREE(thread->callback);
+	FREE(req->data);
+	FREE(req);
+}
+
+static void thread_callback(uv_work_t *req) {
+	struct lua_thread_t *thread = req->data;
+	struct lua_state_t *state = thread->state;
+
+	char name[255], *p = name;
+	memset(name, '\0', 255);
+
+	switch(state->module->type) {
+		case FUNCTION: {
+			sprintf(p, "function.%s", state->module->name);
+		} break;
+		case OPERATOR: {
+			sprintf(p, "operator.%s", state->module->name);
+		} break;
+	}
+
+	lua_getglobal(state->L, name);
+	if(lua_isnil(state->L, -1) != 0) {
+		logprintf(LOG_ERR, "cannot find %s lua module", name);
+		return;
+	}
+
+#if LUA_VERSION_NUM <= 502
+	lua_getfield(state->L, -1, thread->callback);
+	if(strcmp(lua_typename(state->L, lua_type(state->L, -1)), "function") != 0) {
+#else
+	if(lua_getfield(state->L, -1, thread->callback) == 0) {
+#endif
+		logprintf(LOG_ERR, "%s: thread callback %s does not exist", state->module->file, thread->callback);
+		return;
+	}
+
+	lua_newtable(state->L);
+	lua_createtable(state->L, 0, 1);
+	lua_pushcfunction(state->L, plua_metatable_get);
+	lua_setfield(state->L, -2, "__index");
+	lua_pushcfunction(state->L, plua_metatable_set);
+	lua_setfield(state->L, -2, "__newindex");
+	lua_pushcfunction(state->L, plua_metatable_gc);
+	lua_setfield(state->L, -2, "__gc");
+	lua_pushcfunction(state->L, plua_metatable_pairs);
+	lua_setfield(state->L, -2, "__pairs");
+	lua_setmetatable(state->L, -2);
+
+	if(lua_pcall(state->L, 1, 0, 0) == LUA_ERRRUN) {
+		if(strcmp(lua_typename(state->L, lua_type(state->L, -1)), "string") == 0) {
+			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
+			lua_pop(state->L, 1);
+			return;
+		}
+	}
+
+	uv_mutex_unlock(&state->lock);
+}
+
+static int plua_thread(struct lua_State *L) {
+	if(lua_gettop(L) != 1) {
+		luaL_error(L, "pilight.devices_select_string_setting requires at least 1 argument, %d given", lua_gettop(L));
+		return 0;
+	}
+
+	const char *func = NULL;
+	char buf[128] = { '\0' }, *p = buf;
+	char *error = "string expected, got %s";
+
+	sprintf(p, error, lua_typename(L, lua_type(L, 1)));
+
+	luaL_argcheck(L,
+		(lua_isstring(L, 1)),
+		1, buf);
+
+	if(lua_type(L, -1) == LUA_TSTRING) {
+		func = lua_tostring(L, -1);
+		lua_pop(L, 1);
+	}
+
+	char name[255];
+	memset(name, '\0', 255);
+
+	p = name;
+
+	struct lua_state_t *state = plua_get_current_state(L);
+	if(state == NULL) {
+		return 1;
+	}
+
+	switch(state->module->type) {
+		case FUNCTION: {
+			sprintf(p, "function.%s", state->module->name);
+		} break;
+		case OPERATOR: {
+			sprintf(p, "operator.%s", state->module->name);
+		} break;
+	}
+
+	lua_getglobal(L, name);
+	if(lua_isnil(L, -1) != 0) {
+		logprintf(LOG_ERR, "cannot find %s lua module");
+		return 1;
+	}
+
+#if LUA_VERSION_NUM <= 502
+	lua_getfield(L, -1, func);
+	if(strcmp(lua_typename(L, lua_type(L, -1)), "function") != 0) {
+#else
+	if(lua_getfield(L, -1, func) == 0) {
+#endif
+		logprintf(LOG_ERR, "%s: thread callback %s does not exist", state->module->file, func);
+		return 1;
+	}
+
+	struct lua_state_t *new_state = plua_get_free_state();
+	new_state->module = state->module;
+
+	plua_metatable_clone(&state->table, &new_state->table);
+
+	uv_work_t *tp_work_req = MALLOC(sizeof(uv_work_t));
+	if(tp_work_req == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+
+	struct lua_thread_t *lua_thread = MALLOC(sizeof(struct lua_thread_t));
+	if(lua_thread == NULL) {
+		OUT_OF_MEMORY
+	}
+	lua_thread->state = new_state;
+	if((lua_thread->callback = STRDUP((char *)func)) == NULL) {
+		OUT_OF_MEMORY
+	}
+	tp_work_req->data = lua_thread;
+	char *pthname = "lua thread on state #%d";
+	memset(buf, 0, sizeof(buf));
+	p = buf;
+	sprintf(p, pthname, new_state->idx);
+
+	if(uv_queue_work(uv_default_loop(), tp_work_req, buf, thread_callback, thread_free) < 0) {
+		FREE(lua_thread->callback);
+		FREE(lua_thread);
+		FREE(tp_work_req);
+
+		uv_mutex_unlock(&new_state->lock);
+	}
+
+	return 1;
+}
+
+static struct lua_libs {
+	char *name;
+	int (*func)(struct lua_State *);
+} pilightlib[] = {
+	{"toboolean", plua_toboolean},
+	{"tonumber", plua_tonumber},
+	{"tostring", plua_tostring},
+	{"strptime", plua_strptime},
+	{"getdevice", plua_getdevice},
+	{"random", plua_random},
+	{"thread", plua_thread},
+	{NULL, NULL}
 };
 
 void plua_register_library(struct lua_State *L) {
+	int i = 0;
 	/*
 	 * Register pilight lua library
 	 */
 	lua_newtable(L);
-	luaL_setfuncs(L, pilightlib, 0);
+	while(pilightlib[i].name != NULL) {
+		lua_pushcfunction(L, pilightlib[i].func);
+		lua_setfield(L, -2, pilightlib[i].name);
+		i++;
+	}
 	lua_pushvalue(L, -1);
 	lua_setglobal(L, "pilight");
 }

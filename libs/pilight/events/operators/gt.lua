@@ -9,17 +9,25 @@ local M = {}
 function M.run(a, b)
 	if tonumber(a) == nil or tonumber(b) == nil then
 		if a > b then
-			return "1"
+			return true;
 		else
-			return "0"
+			return false;
 		end
 	else
 		if pilight.tonumber(a) > pilight.tonumber(b) then
-			return "1";
+			return true;
 		else
-			return "0"
+			return false;
 		end
 	end
+end
+
+function M.associativity()
+	return 30;
+end
+
+function M.precedence()
+	return 1;
 end
 
 function M.info()

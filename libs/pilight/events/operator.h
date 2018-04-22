@@ -14,7 +14,9 @@
 #include "events.h" /* rewrite */
 
 void event_operator_init(void);
-int event_operator_callback(char *, struct varcont_t *, struct varcont_t *, char **);
+int event_operator_callback(char *, struct varcont_t *, struct varcont_t *, struct varcont_t *v);
+int event_operator_associativity(char *, int *);
+int event_operator_precedence(char *, int *);
 int event_operator_exists(char *);
 int event_operator_gc(void);
 

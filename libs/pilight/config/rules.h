@@ -22,6 +22,7 @@
 #include "../core/json.h"
 #include "../core/config.h"
 #include "../events/action.h"
+#include "../datatypes/stack.h"
 
 typedef struct rules_values_t {
 	char *device;
@@ -31,7 +32,7 @@ typedef struct rules_values_t {
 } rules_values_t;
 
 typedef struct rules_actions_t {
-	int nr;
+	void *ptr;
 	struct rules_t *rule;
 	struct JsonNode *arguments;
 	struct JsonNode *parsedargs;
@@ -55,6 +56,7 @@ typedef struct rules_t {
 	/* Arguments to be send to the action */
 	struct rules_actions_t *actions;
 	struct rules_values_t *values;
+	struct tree_t *tree;
 	struct rules_t *next;
 } rules_t;
 

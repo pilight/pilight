@@ -8,10 +8,18 @@ local M = {}
 
 function M.run(a, b)
 	if pilight.toboolean(a) == true and pilight.toboolean(b) == true then
-		return "1";
+		return true;
 	else
-		return "0";
+		return false;
 	end
+end
+
+function M.associativity()
+	return 20;
+end
+
+function M.precedence()
+	return 1;
 end
 
 function M.info()

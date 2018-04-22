@@ -161,10 +161,91 @@ void event_function_init(void) {
 		}
 		closedir(d);
 	}
-	if(function_root_free == 1) {
-		FREE(functions_root);
-	}
+	closedir(d);
+	FREE(f);
+}
+
+static int plua_function_module_run(struct lua_State *L, char *file, struct event_function_args_t *args, struct varcont_t *v) {
+#if LUA_VERSION_NUM <= 502
+	lua_getfield(L, -1, "run");
+	if(strcmp(lua_typename(L, lua_type(L, -1)), "function") != 0) {
+#else
+	if(lua_getfield(L, -1, "run") == 0) {
 #endif
+		logprintf(LOG_ERR, "%s: run function missing", file);
+		return 0;
+	}
+
+	int nrargs = 0;
+	struct event_function_args_t *tmp1 = NULL;
+	while(args) {
+		tmp1 = args;
+		nrargs++;
+		switch(tmp1->var.type_) {
+			case JSON_NUMBER: {
+				char *tmp = NULL;
+				int len = snprintf(NULL, 0, "%.*f", tmp1->var.decimals_, tmp1->var.number_);
+				if((tmp = MALLOC(len+1)) == NULL) {
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+				}
+				memset(tmp, 0, len+1);
+				sprintf(tmp, "%.*f", tmp1->var.decimals_, tmp1->var.number_);
+				lua_pushstring(L, tmp);
+				FREE(tmp);
+			} break;
+			case JSON_STRING:
+				lua_pushstring(L, tmp1->var.string_);
+				FREE(tmp1->var.string_);
+			break;
+			case JSON_BOOL:
+				lua_pushboolean(L, tmp1->var.bool_);
+			break;
+		}
+		args = args->next;
+		FREE(tmp1);
+	}
+	args = NULL;
+
+	if(lua_pcall(L, nrargs, 1, 0) == LUA_ERRRUN) {
+		if(strcmp(lua_typename(L, lua_type(L, -1)), "nil") == 0) {
+			logprintf(LOG_ERR, "%s: syntax error", file);
+			return 0;
+		}
+		if(strcmp(lua_typename(L, lua_type(L, -1)), "string") == 0) {
+			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
+			lua_pop(L, 1);
+			return 0;
+		}
+	}
+
+	if(lua_isstring(L, -1) == 0 &&
+		lua_isnumber(L, -1) == 0 &&
+		lua_isboolean(L, -1) == 0) {
+		logprintf(LOG_ERR, "%s: the run function returned %s, string, number or boolean expected", file, lua_typename(L, lua_type(L, -1)));
+		return 0;
+	}
+
+	if(lua_isnumber(L, -1) == 1) {
+		char *p = (char *)lua_tostring(L, -1);
+		v->number_ = atof(p);
+		v->decimals_ = nrDecimals(p);
+		v->type_ = JSON_NUMBER;
+	} else if(lua_isstring(L, -1) == 1) {
+		int l = strlen(lua_tostring(L, -1));
+		if((v->string_ = REALLOC(v->string_, l+1)) == NULL) {
+			OUT_OF_MEMORY
+		}
+		strcpy(v->string_, lua_tostring(L, -1));
+		v->type_ = JSON_STRING;
+		v->free_ = 1;
+	} else if(lua_isboolean(L, -1) == 1) {
+		v->bool_ = (int)lua_toboolean(L, -1);
+		v->type_ = JSON_BOOL;
+	}
+
+	lua_pop(L, 1);
+
+	return 1;
 }
 
 void event_function_register(struct event_functions_t **act, const char *name) {
@@ -185,20 +266,60 @@ void event_function_register(struct event_functions_t **act, const char *name) {
 	event_functions = (*act);
 }
 
+int event_function_callback(char *module, struct event_function_args_t *args, struct varcont_t *v) {
+	struct lua_state_t *state = plua_get_free_state();
+	struct lua_State *L = NULL;
+
+	if(state == NULL) {
+		return -1;
+	}
+	if((L = state->L) == NULL) {
+		uv_mutex_unlock(&state->lock);
+		return -1;
+	}
+
+	char name[255], *p = name;
+	memset(name, '\0', 255);
+
+	sprintf(p, "function.%s", module);
+
+	lua_getglobal(L, name);
+	if(lua_isnil(L, -1) != 0) {
+		event_function_free_argument(args);
+		uv_mutex_unlock(&state->lock);
+		return -1;
+	}
+	if(lua_istable(L, -1) != 0) {
+		char *file = NULL;
+		struct plua_module_t *tmp = plua_get_modules();
+		while(tmp) {
+			if(strcmp(module, tmp->name) == 0) {
+				file = tmp->file;
+				state->module = tmp;
+				break;
+			}
+			tmp = tmp->next;
+		}
+		if(file != NULL) {
+			if(plua_function_module_run(L, file, args, v) == 0) {
+				lua_pop(L, -1);
+				uv_mutex_unlock(&state->lock);
+				return -1;
+			}
+		} else {
+			event_function_free_argument(args);
+			uv_mutex_unlock(&state->lock);
+			return -1;
+		}
+	}
+
+	uv_mutex_unlock(&state->lock);
+
+	return 0;
+}
+
 int event_function_gc(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	struct event_functions_t *tmp_function = NULL;
-	while(event_functions) {
-		tmp_function = event_functions;
-		FREE(tmp_function->name);
-		event_functions = event_functions->next;
-		FREE(tmp_function);
-	}
-	if(event_functions != NULL) {
-		FREE(event_functions);
-	}
-
+	init = 0;
 	logprintf(LOG_DEBUG, "garbage collected event function library");
 	return 0;
 }
