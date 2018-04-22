@@ -535,6 +535,36 @@ static void test_stricmp(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
+static void test_strnicmp(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	memtrack();
+
+	int n = strnicmp("A", "a", 1);
+	CuAssertIntEquals(tc, 0, n);
+	
+	n = strnicmp("A", "a", 0);
+	CuAssertIntEquals(tc, 0, n);
+
+	n = strnicmp("Hello World!", "hello world!", 12);
+	CuAssertIntEquals(tc, 0, n);
+
+	n = strnicmp("Hello World!", "hello", 5);
+	CuAssertIntEquals(tc, 0, n);
+
+	n = strnicmp("Hello World!", "hello", 12);
+	CuAssertTrue(tc, (n != 0));
+
+	n = strnicmp("HelloWorld!", "Hello W", 7);
+	CuAssertTrue(tc, (n != 0));
+
+	n = strnicmp("Hello World!", "hELLO wO", 8);
+	CuAssertIntEquals(tc, 0, n);
+
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
 static void test_file_get_contents(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
@@ -680,6 +710,7 @@ CuSuite *suite_common(void) {
 	SUITE_ADD_TEST(suite, test_uniq_space);
 	SUITE_ADD_TEST(suite, test_str_replace);
 	SUITE_ADD_TEST(suite, test_stricmp);
+	SUITE_ADD_TEST(suite, test_strnicmp);
 	SUITE_ADD_TEST(suite, test_file_get_contents);
 	SUITE_ADD_TEST(suite, test_calc_time_interval);
 
