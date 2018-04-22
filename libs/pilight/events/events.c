@@ -1000,7 +1000,6 @@ static int lexer_parse_function(struct lexer_t *lexer, struct tree_t *tree_in, s
 		*tree_out = NULL;
 		return err;
 	}
-
 	if((err = lexer_eat(lexer, LPAREN, &token_ret)) < 0) {
 		*tree_out = NULL;
 		return err;
@@ -1014,8 +1013,7 @@ static int lexer_parse_function(struct lexer_t *lexer, struct tree_t *tree_in, s
 		events_tree_gc(p);
 		*tree_out = NULL;
 		return err;
-   }
-
+	}
 	pos = node->token->pos+1;
 	while(1) {
 		if((err = lexer_eat(lexer, TCOMMA, &token_ret)) < 0) {
@@ -1729,7 +1727,6 @@ static int run_action(struct tree_t *tree, struct rules_t *obj, unsigned short v
 		obj->actions = node;
 	}
 
-	printf("%p\n", node->arguments);
 	if(node->arguments != NULL) {
 		json_delete(node->arguments);
 		node->arguments = NULL;
