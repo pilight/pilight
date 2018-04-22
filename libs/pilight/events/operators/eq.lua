@@ -7,11 +7,19 @@
 local M = {}
 
 function M.run(a, b)
-	if pilight.tostring(a) == pilight.tostring(b) then
-		return "1";
+	if a == b then
+		return true;
 	else
-		return "0"
+		return false;
 	end
+end
+
+function M.associativity()
+	return 30;
+end
+
+function M.precedence()
+	return 1;
 end
 
 function M.info()

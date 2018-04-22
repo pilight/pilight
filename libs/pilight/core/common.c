@@ -125,8 +125,12 @@ unsigned int explode(const char *str, const char *delimiter, char ***output) {
 	while(i < l) {
 		if(strncmp(&str[i], delimiter, p) == 0) {
 			if((i-y) > 0) {
-				*output = REALLOC(*output, sizeof(char *)*(n+1));
-				(*output)[n] = MALLOC((i-y)+1);
+				if((*output = REALLOC(*output, sizeof(char *)*(n+1))) == NULL) {
+					OUT_OF_MEMORY
+				}
+				if(((*output)[n] = MALLOC((i-y)+1)) == NULL) {
+					OUT_OF_MEMORY
+				}
 				strncpy((*output)[n], &str[y], i-y);
 				(*output)[n][(i-y)] = '\0';
 				n++;
@@ -136,8 +140,12 @@ unsigned int explode(const char *str, const char *delimiter, char ***output) {
 		i++;
 	}
 	if(strlen(&str[y]) > 0) {
-		*output = REALLOC(*output, sizeof(char *)*(n+1));
-		(*output)[n] = MALLOC((i-y)+1);
+		if((*output = REALLOC(*output, sizeof(char *)*(n+1))) == NULL) {
+			OUT_OF_MEMORY
+		}
+		if(((*output)[n] = MALLOC((i-y)+1)) == NULL) {
+			OUT_OF_MEMORY
+		}
 		strncpy((*output)[n], &str[y], i-y);
 		(*output)[n][(i-y)] = '\0';
 		n++;

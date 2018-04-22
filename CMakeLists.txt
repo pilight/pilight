@@ -117,13 +117,19 @@ endfunction()
 	endif()
 endif()
 
-execute_process(COMMAND git describe --always
+execute_process(COMMAND git log -n 1 --pretty=format:"%h"
+	WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+	RESULT_VARIABLE git_result
+	OUTPUT_VARIABLE git_hash)
+
+execute_process(COMMAND git describe --always --abbrev=0
 	WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
 	RESULT_VARIABLE git_result
 	OUTPUT_VARIABLE git_ver)
 
 string(REGEX REPLACE "\n" "" git_ver "${git_ver}")
-add_definitions(-DHASH="${git_ver}")
+string(REGEX REPLACE "\"" "" git_hash "${git_hash}")
+add_definitions(-DHASH="${git_ver}-nightly-${git_hash}")
 
 file(MD5 ${PROJECT_SOURCE_DIR}/res/pilight.pem md5sum)
 add_definitions(-DPILIGHT_PEM_MD5="${md5sum}")
@@ -281,42 +287,31 @@ else()
 endif()
 
 find_library(CMAKE_LUA_LIBS_INIT
-	NAME lua lua5 lua5.1 lua5.2 lua5.3
+	NAME luajit-5.1
 	PATHS
-		${CROSS_COMPILE_LIBS}
-		/usr/lib
-		/usr/lib32
-		/usr/lib64
-		/usr/lib/i386-linux-gnu
-		/usr/lib/x86_64-linux-gnu
-		/usr/local/lib
-		/usr/local/lib32
-		/usr/local/lib64
-		/usr/lib/arm-linux-gnueabi
-		/usr/lib/arm-linux-gnueabihf
-		/usr/lib/aarch64-linux-gnu
-	NO_DEFAULT_PATH)
+	${CROSS_COMPILE_LIBS}
+	/usr/lib
+	/usr/lib32
+	/usr/lib64
+	/usr/lib/i386-linux-gnu
+	/usr/lib/x86_64-linux-gnu
+	/usr/local/lib
+	/usr/local/lib32
+	/usr/local/lib64
+	/usr/lib/arm-linux-gnueabi
+	/usr/lib/arm-linux-gnueabihf
+	/usr/lib/aarch64-linux-gnu
+NO_DEFAULT_PATH)
 
 if(${CMAKE_LUA_LIBS_INIT} MATCHES "CMAKE_LUA_LIBS_INIT-NOTFOUND")
-	message(FATAL_ERROR "Looking for liblua - not found")
+	message(FATAL_ERROR "Looking for libluajit - not found")
 else()
-	if(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.1.*")
-		set(CMAKE_LUA_LIBS_VERSION "5.1")
-	elseif(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.2.*")
-		set(CMAKE_LUA_LIBS_VERSION "5.2")
-	elseif(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.3.*")
-		set(CMAKE_LUA_LIBS_VERSION "5.3")
-	elseif(${CMAKE_LUA_LIBS_INIT} MATCHES ".*5.*")
-		set(CMAKE_LUA_LIBS_VERSION "5")
-	endif()
-	find_path(CMAKE_LUA_INCLUDE_DIR "lua${CMAKE_LUA_LIBS_VERSION}/lua.h")
-	message(STATUS "Looking for liblua - found (${CMAKE_LUA_LIBS_INIT})")
+	message(STATUS "Looking for libluajit - found (${CMAKE_LUA_LIBS_INIT})")
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/inc)
 include_directories(${PROJECT_SOURCE_DIR}/libs/libuv)
 include_directories(/usr/local/include/)
-include_directories("${CMAKE_LUA_INCLUDE_DIR}/lua${CMAKE_LUA_LIBS_VERSION}/")
 
 add_subdirectory(inc)
 add_subdirectory(libs)
@@ -456,7 +451,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		if(WIN32)
 			install(DIRECTORY ${PROJECT_SOURCE_DIR}/libs/webgui/ DESTINATION web/ COMPONENT webgui)
 		else()
-			install(DIRECTORY ${PROJECT_SOURCE_DIR}/libs/webgui/ DESTINATION /usr/local/${PROJECT_NAME}/webgui COMPONENT webgui)
+			install(DIRECTORY ${PROJECT_SOURCE_DIR}/libs/webgui/ DESTINATION /usr/local/lib/${PROJECT_NAME}/webgui COMPONENT webgui)
 		endif()
 	endif()	
 
@@ -649,7 +644,6 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		install(FILES "${PROJECT_SOURCE_DIR}/res/win32/libmbedx509.dll" DESTINATION . COMPONENT ${PROJECT_NAME})
 		install(FILES "${PROJECT_SOURCE_DIR}/res/win32/libmbedcrypto.dll" DESTINATION . COMPONENT ${PROJECT_NAME})
 		install(FILES "${PROJECT_SOURCE_DIR}/res/win32/libmbedtls.dll" DESTINATION . COMPONENT ${PROJECT_NAME})
-		install(FILES "${PROJECT_SOURCE_DIR}/res/win32/liblua5.2.dll" DESTINATION . COMPONENT ${PROJECT_NAME})
 		install(FILES "${PROJECT_SOURCE_DIR}/res/win32/libwinpthread-1.dll" DESTINATION . COMPONENT ${PROJECT_NAME})
 		install(FILES "${PROJECT_SOURCE_DIR}/res/win32/Packet.dll" DESTINATION . COMPONENT ${PROJECT_NAME})
 		install(FILES "${PROJECT_SOURCE_DIR}/res/win32/wpcap.dll" DESTINATION . COMPONENT ${PROJECT_NAME})

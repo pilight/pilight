@@ -173,7 +173,7 @@ static int settings_parse(JsonNode *root) {
 	int reti;
 #endif
 
-	JsonNode *jsettings = json_first_child(root);
+	struct JsonNode *jsettings = json_first_child(root);
 
 	while(jsettings) {
 		if(strcmp(jsettings->key, "port") == 0) {

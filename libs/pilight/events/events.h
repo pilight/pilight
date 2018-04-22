@@ -1,42 +1,24 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #ifndef _EVENTS_H_
 #define _EVENTS_H_
 
 #include "../config/rules.h"
+#include "../core/common.h"
 
-typedef struct varcont_t {
-	union {
-		char *string_;
-		double number_;
-		int bool_;
-	};
-	int decimals_;
-	int type_;
-	int free_;
-} varcont_t;
-
+void events_tree_gc(struct tree_t *tree);
 void event_cache_device(struct rules_t *obj, char *device);
-// int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varcont_t *varcont, int *rtype, unsigned short validate, enum origin_t origin);
+int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varcont, unsigned short validate, enum origin_t origin);
 int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short validate);
 void *events_clientize(void *param);
 int events_gc(void);
+void event_init(void);
 void *events_loop(void *param);
 int events_running(void);
 

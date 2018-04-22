@@ -70,12 +70,22 @@ static int checkArguments(struct rules_actions_t *obj) {
 	int nrvalues = 0, l = 0, i = 0, match = 0;
 	int	nrunits = (sizeof(units)/sizeof(units[0]));
 
-	jdevice = json_find_member(obj->parsedargs, "DEVICE");
-	jto = json_find_member(obj->parsedargs, "TO");
-	jfor = json_find_member(obj->parsedargs, "FOR");
-	jin = json_find_member(obj->parsedargs, "IN");
-	jafter = json_find_member(obj->parsedargs, "AFTER");
-	jfrom = json_find_member(obj->parsedargs, "FROM");
+	if(obj == NULL) {
+		/* Internal error */
+		return -1;
+	}
+
+	if(obj->arguments == NULL) {
+		/* Internal error */
+		return -1;
+	}
+
+	jdevice = json_find_member(obj->arguments, "DEVICE");
+	jto = json_find_member(obj->arguments, "TO");
+	jfor = json_find_member(obj->arguments, "FOR");
+	jin = json_find_member(obj->arguments, "IN");
+	jafter = json_find_member(obj->arguments, "AFTER");
+	jfrom = json_find_member(obj->arguments, "FROM");
 
 	if(jdevice == NULL) {
 		logprintf(LOG_ERR, "dim action is missing a \"DEVICE ...\" statement");
@@ -445,7 +455,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 
 static void *thread(void *param) {
 	struct event_action_thread_t *pth = (struct event_action_thread_t *)param;
-	struct JsonNode *json = pth->obj->parsedargs;
+	struct JsonNode *json = pth->obj->arguments;
 	struct JsonNode *jedimlevel = NULL;
 	struct JsonNode *jsdimlevel = NULL;
 	struct JsonNode *jto = NULL;
@@ -819,8 +829,8 @@ static int run(struct rules_actions_t *obj) {
 	struct JsonNode *jbvalues = NULL;
 	struct JsonNode *jbchild = NULL;
 
-	if((jdevice = json_find_member(obj->parsedargs, "DEVICE")) != NULL &&
-		 (jto = json_find_member(obj->parsedargs, "TO")) != NULL) {
+	if((jdevice = json_find_member(obj->arguments, "DEVICE")) != NULL &&
+		 (jto = json_find_member(obj->arguments, "TO")) != NULL) {
 		if((jbvalues = json_find_member(jdevice, "value")) != NULL) {
 			jbchild = json_first_child(jbvalues);
 			while(jbchild) {
