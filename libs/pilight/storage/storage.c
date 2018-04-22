@@ -2875,6 +2875,9 @@ int rules_gc(void) {
 		}
 		while(tmp_rules->actions) {
 			tmp_actions = tmp_rules->actions;
+			if(tmp_actions->arguments != NULL) {
+				json_delete(tmp_actions->arguments);
+			}
 			tmp_rules->actions = tmp_rules->actions->next;
 			if(tmp_actions != NULL) {
 				FREE(tmp_actions);

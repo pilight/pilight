@@ -56,7 +56,7 @@ typedef struct rules_values_t {
 } rules_values_t;
 
 typedef struct rules_actions_t {
-	int nr;
+	void *ptr;
 	struct rules_t *rule;
 	struct JsonNode *arguments;
 	struct event_actions_t *action;

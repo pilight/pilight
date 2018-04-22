@@ -376,6 +376,20 @@ static struct tests_t get_tests[] = {
 		{ 2, 0 }
 	},
 	{
+		"invalid rule 21",
+		"{\"devices\":{"\
+			"\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"},"\
+			"\"test\":{\"protocol\":[\"datetime\"],\"id\":[{\"longitude\":4.895168,\"latitude\":52.370216}],\"year\":2016,\"month\":3,\"day\":14,\"hour\":20,\"minute\":56,\"second\":48,\"weekday\":1,\"dst\":0}"\
+		"},"\
+		"\"gui\":{},"\
+		"\"rules\":{\"switch\":{\"rule\":\"IF DATE_FORMAT(DATE_ADD(time, +1 HOUR), '%%Y-%%m-%%d %%H:%%M:%%S', '%%H.%%M') == 15.00 THEN switch DEVICE 'switch' TO on\",\"active\":1}},"\
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
+		-1, UV_RUN_DEFAULT,
+		0, &updates1[1],
+		{ &receives[0] },
+		{ 1, 0 }
+	},
+	{
 		"simple true formula",
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\

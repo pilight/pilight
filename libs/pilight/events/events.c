@@ -915,7 +915,6 @@ static int lexer_parse_function(struct lexer_t *lexer, struct tree_t *tree_in, s
 		*tree_out = NULL;
 		return err;
 	}
-
 	if((err = lexer_eat(lexer, LPAREN, &token_ret)) < 0) {
 		*tree_out = NULL;
 		return err;
@@ -923,8 +922,12 @@ static int lexer_parse_function(struct lexer_t *lexer, struct tree_t *tree_in, s
 	FREE(token_ret->value);
 	FREE(token_ret);
 
-	if(lexer_term(lexer, tree_in, 0, &node) == 0) {
+	if((err = lexer_term(lexer, tree_in, 0, &node)) == 0) {
 		ast_child(p, node);
+	} else {
+		events_tree_gc(p);
+		*tree_out = NULL;
+		return err;
 	}
 	pos = node->token->pos+1;
 	while(1) {
@@ -1475,26 +1478,26 @@ static int lexer_parse(struct lexer_t *lexer, struct tree_t **tree_out) {
 	return 0;
 }
 
-// static void print_ast(struct tree_t *tree) {
-	// int i = 0;
-	// if(tree == NULL) {
-		// return;
-	// }
-	// for(i=0;i<tree->nrchildren;i++) {
-		// if(tree->child[i]->token != NULL) {
-			// printf("\"%p\" [label=\"%s\"];\n", tree->token->value, tree->token->value);
-			// printf("\"%p\" [label=\"%s\"];\n", tree->child[i]->token->value, tree->child[i]->token->value);
-			// printf("\"%p\" -> ", tree->token->value);
-			// printf("\"%p\";\n", tree->child[i]->token->value);
-		// }
-		// print_ast(tree->child[i]);
-	// }
+static void print_ast(struct tree_t *tree) {
+	int i = 0;
+	if(tree == NULL) {
+		return;
+	}
+	for(i=0;i<tree->nrchildren;i++) {
+		if(tree->child[i]->token != NULL) {
+			printf("\"%p\" [label=\"%s\"];\n", tree->token->value, tree->token->value);
+			printf("\"%p\" [label=\"%s\"];\n", tree->child[i]->token->value, tree->child[i]->token->value);
+			printf("\"%p\" -> ", tree->token->value);
+			printf("\"%p\";\n", tree->child[i]->token->value);
+		}
+		print_ast(tree->child[i]);
+	}
 
-	// if(tree->nrchildren == 0 && tree->token != NULL) {
-		// printf("\"%p\" [label=\"%s\"];\n", tree->token->value, tree->token->value);
-		// printf("\"%p\";\n", tree->token->value);
-	// }
-// }
+	if(tree->nrchildren == 0 && tree->token != NULL) {
+		printf("\"%p\" [label=\"%s\"];\n", tree->token->value, tree->token->value);
+		printf("\"%p\";\n", tree->token->value);
+	}
+}
 
 static int interpret(struct tree_t *tree, struct rules_t *obj, unsigned short validate, struct varcont_t *v);
 
@@ -1548,9 +1551,10 @@ static int run_action(struct tree_t *tree, struct rules_t *obj, unsigned short v
 	struct JsonNode *jparam = NULL;
 	struct JsonNode *jvalues = NULL;
 	struct varcont_t v_res, v_res1, v1;
+	struct rules_actions_t *node = NULL;
 	struct event_actions_t *action = NULL;
 	char *key = NULL;
-	int i = 0, x = 0;
+	int i = 0, x = 0, match = 0;
 
 	action = get_action(tree->token->value, strlen(tree->token->value));
 
@@ -1618,14 +1622,31 @@ static int run_action(struct tree_t *tree, struct rules_t *obj, unsigned short v
 		varcont_free(&v_res);
 	}
 
-	struct rules_actions_t *node = NULL;
-	if((node = MALLOC(sizeof(struct rules_actions_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	node = obj->actions;
+	while(node) {
+		if(node->ptr == tree) {
+			match = 1;
+			break;
+		}
+		node = node->next;
 	}
-	node->nr = x;
-	node->rule = obj;
-	node->arguments = jobject;
+	if(match == 0) {
+		if((node = MALLOC(sizeof(struct rules_actions_t))) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		node->ptr = tree;
+		node->rule = obj;
+		node->arguments = NULL;
+		node->next = obj->actions;
+		obj->actions = node;
+	}
 
+	if(node->arguments != NULL) {
+		json_delete(node->arguments);
+		node->arguments = NULL;
+	}
+
+	node->arguments = jobject;
 	if(action != NULL) {
 		if(validate == 1) {
 			if(action->checkArguments != NULL) {
@@ -1641,8 +1662,6 @@ static int run_action(struct tree_t *tree, struct rules_t *obj, unsigned short v
 			}
 		}
 	}
-	json_delete(jobject);
-	FREE(node);
 
 	v_out->bool_ = 1;
 	v_out->type_ = JSON_BOOL;
@@ -1835,7 +1854,10 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 			FREE(lexer);
 			return -1;
 		}
-		// print_ast(obj->tree);
+		if(pilight.debuglevel >= 1) {
+			logprintf(LOG_DEBUG, "%s", lexer->text);
+			print_ast(obj->tree);
+		}
 		FREE(lexer->text);
 		FREE(lexer);
 	}
