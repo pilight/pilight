@@ -42,19 +42,20 @@ A rule always start with the IF, followed by the rule logic, and is closed by a 
 
 .. versionadded:: nightly
 
-The IF / THEN logic can be expanded by an ELSE. The actions written in after the ELSE will be executed if the logic contained in the first if block is false.
+The IF / THEN logic can be expanded by an ELSE. The actions written after the ELSE will be executed if the logic contained in the first if block is false.
 
 .. code-block:: guess
 
    IF ... THEN ... ELSE ...
 
-Of you can nest an infinite number of IF/ELSE conditions by using adding the END keyword
+Or you can nest an infinite number of IF/ELSE conditions by using adding the END keyword
 
 .. code-block:: guess
 
-   IF ... THEN IF ... THEN ... ELSE ... END ELSE IF ... THEN ... ELSE ... END
+   IF ... THEN IF ... THEN ... ELSE ... END ELSE IF ... THEN ... ELSE ... END END
 
 .. _True or False:
+
 .. rubric:: True or False
 
 Let us start with how pilight handles succeeding or failing conditions. pilight converts each logical mathematical and logical step into a true or false. The final condition must be true before triggering an action. If the final result is false, the action is skipped. These two examples will both succeed:
