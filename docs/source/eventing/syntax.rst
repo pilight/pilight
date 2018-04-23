@@ -357,3 +357,9 @@ In this case we use two dimmers called randomLow and randomHigh to dynamically c
 .. code-block:: guess
 
    IF sunriseset.sunset == DATE_FORMAT(DATE_ADD(datetime, +1 HOUR), \"%Y-%m-%d %H:%M:%S\", %H.%M) THEN switch DEVICE lamp1 TO on
+
+.. versionchanged:: nightly
+
+.. code-block:: guess
+
+   IF sunriseset.sunset == DATE_FORMAT(DATE_ADD(datetime, '+1 HOUR'), '%Y-%m-%d %H:%M:%S', %H.%M) THEN switch DEVICE lamp1 TO on
