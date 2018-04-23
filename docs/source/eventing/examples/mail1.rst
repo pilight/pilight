@@ -53,3 +53,15 @@ Send a mail when one of the computer goes offline.
        "active": 1
      }
    }
+
+.. versionchanged:: nightly
+
+.. code-block:: json
+   :linenos:
+
+   {
+     "nas-mail": {
+       "rule": "IF nasPing.state IS disconnected THEN sendmail TO foo@bar.com SUBJECT 'NAS is offline since ' .  DATE_FORMAT(currentdatetime, %c) MESSAGE ..",
+       "active": 1
+     }
+   }

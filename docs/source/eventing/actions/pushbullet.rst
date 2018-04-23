@@ -30,3 +30,9 @@ Send a message to your mobile phone with the pushbullet API
 .. code-block:: console
 
    IF 1 == 1 THEN pushbullet TITLE Doorbell rang BODY Doorbell rang TOKEN abcd123abc TYPE note
+
+.. versionchanged:: nightly
+
+.. code-block:: console
+
+   IF 1 == 1 THEN pushbullet TITLE 'Doorbell rang' BODY 'Doorbell rang' TOKEN abcd123abc TYPE note

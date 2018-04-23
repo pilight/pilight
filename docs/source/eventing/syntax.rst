@@ -11,11 +11,11 @@ Syntax
    - `AND and OR`_
    - `Hooks`_
 - `Operator`_
+- `String and Concatenation`_
 - `Devices`_
 - `Functions`_
 - `Actions`_
 - `Using Device Parameters`_
-- `Optimizations`_
 
 Introduction
 ------------
@@ -39,6 +39,20 @@ All rules basically consist of the same structure:
    IF ... THEN ...
 
 A rule always start with the IF, followed by the rule logic, and is closed by a THEN. All actions are put after the THEN.
+
+.. versionadded:: nightly
+
+The IF / THEN logic can be expanded by an ELSE. The actions written in after the ELSE will be executed if the logic contained in the first if block is false.
+
+.. code-block:: guess
+
+   IF ... THEN ... ELSE ...
+
+Of you can nest an infinite number of IF/ELSE conditions by using adding the END keyword
+
+.. code-block:: guess
+
+   IF ... THEN IF ... THEN ... ELSE ... END ELSE IF ... THEN ... ELSE ... END
 
 .. _True or False:
 .. rubric:: True or False
@@ -112,7 +126,7 @@ In the first examples we only used one condition but this does not allow us to m
 
    IF 1 == 1 AND 2 == 2 OR 2 == 3 THEN ...
 
-In the first two examples only a single AND and OR operator is used. In the rest of the examples we see multiple AND and OR operators. It is good to know that pilight evaluates these rules from left to right and only parses as much as necessary. In these examples only the green parts are actually evaluated and the red parts are skipped. In rule one we use an AND operator. This means that both conditions have to succeed for the rule to succeed, therefore, pilight has to evaluate both conditions. In the second rule we use the OR operator. This means that either one of the two conditions has to succeed for the whole rule to succeed. In this case, the first condition already succeeded so pilight knows it does not have to parse anything else and skips right to the action. The same logic as in rule two can be seen in rule four. This rule starts with an OR statement that already succeeds so the subsequent AND conditions do not have to be evaluated. In rule five we see that pilight parses the first condition which fails and because this condition was part of an AND operator we don't have to evaluate the second condition. pilight does evaluate the last condition because it can change the final outcome of rule five. The same happens in rule six. The first two conditions as part of the AND operator succeed so we don't have to evaluate the last condition.
+In the first two examples only a single AND and OR operator is used. In the rest of the examples we see multiple AND and OR operators. pilight follows standard operator associativity rules in parsing AND and OR operators.
 
 .. _Hooks:
 .. rubric:: Hooks
@@ -134,7 +148,7 @@ As we saw in our first examples, hooks can be used inside pilight rules. This ca
 Operator
 --------
 
-Various mathematical operators can be used to do calculations inside our rules. A list of these operators can be found further on in this manual. Let us just show some basic self-explanatory examples:
+Various mathematical operators can be used to do calculations inside our rules. A list of these operators can be found further on in this manual. pilight follows standard operator associativity rules in parsing mathematical operators. Let us just show some basic self-explanatory examples:
 
 :event-success:`Succeeds`
 
@@ -159,6 +173,67 @@ Various mathematical operators can be used to do calculations inside our rules. 
 .. code-block:: guess
 
    IF 10 / 2 == 4 THEN ...
+
+String and Concatenation
+------------------------
+
+.. versionadded:: nightly
+
+pilight parses individual components inside a rule by looking at queues like spaces, comma's, hooks, and preserved words (e.g. actions or functions). In any case, pilight can be forces to parse any of these components as strings by enclosing them into quotes.
+
+:event-success:`Succeeds`
+
+.. code-block:: guess
+
+   IF 1 + 1 == 3 - 1 THEN ...
+
+In this case, pilight will compare the outcome of both formulas (which is 2) with each other for further parsing. We can also tell pilight to compare the same formula but now with strings:
+
+:event-fail:`Fails`
+
+.. code-block:: guess
+
+   IF '1 + 1' == '3 - 1' THEN ...
+
+The same formula parsed with two strings will now fail because both strings are not equal anymore.
+
+It is important to understand how to enforce string parsing when working with functions. The following example with give a syntax error, because the DATE_ADD function only expects two arguments delimited by a comma when the first argument is a datetime device. However, pilight sees the ``+1`` and ``HOUR`` as two separate string that normally should be delimited by a comma. Would be add that comma, we would still call the DATE_ADD function with the wrong parameter count.
+
+.. code-block:: guess
+
+   IF DATE_ADD(datetime, +1 HOUR) == ...
+
+The rule above should be written like this instead so the ``+1`` and ``HOUR`` are parsed like ``+1 HOUR``.
+
+.. code-block:: guess
+
+   IF DATE_ADD(datetime, '+1 HOUR') == ...
+
+Another issue arises when strings and device values or functions need to be combined like in this example:
+
+.. code-block:: guess
+
+   IF ... THEN label DEVICE alarm TO the alarm was trigger at DATE_FORMAT(datetime, %Y-%m-%d)
+
+This rule will trigger a syntax error because the TO argument only expects one string, but five strings and a function were given. To make this into one string we need to use quotes and the concatenate ``.`` operator:
+
+.. code-block:: guess
+
+   IF ... THEN label DEVICE alarm TO 'the alarm was trigger at' . DATE_FORMAT(datetime, %Y-%m-%d)
+
+Another scenario in which we want to explicitly cast a keyword into a string is given in this example:
+
+.. code-block:: guess
+
+   IF ... THEN label DEVICE label TO on
+
+The ``label`` device is parsed by pilight as the label action because it's a reserved keyword. pilight does allow using label as a device name when casting it as a string like this:
+
+.. code-block:: guess
+
+   IF ... THEN label DEVICE 'label' TO on
+
+As shown above, keywords or operators can be parsed into strings so pilight will ignore their default meaning.
 
 Devices
 -------
@@ -187,9 +262,17 @@ As you can also see, the fields (*state* or *dimlevel*) we can use depends on th
 
 Some devices are only used inside rules. Configuring them as explicit devices might sometimes feel a bit bloated. Therefor, pilight allows you to trigger rules based on received codes instead of device updates:
 
+.. deprecated:: nightly
+
 .. code-block:: guess
 
    IF archtech_switch.state IS on AND archtech_switch.id == 123456 AND arctech_switch.unit == 0 THEN ...
+
+.. versionadded:: nightly
+
+.. code-block:: guess
+
+   IF archtech_switch.state == on AND archtech_switch.id == 123456 AND arctech_switch.unit == 0 THEN ...
 
 In this case, an action will be triggered as soon as an ``archtech_switch`` code is received with a specific state, id, and unitcode. The ``arctech_switch`` doesn't have to be configured as an explicit device for this rule to work.
 
@@ -238,6 +321,14 @@ We can combine an unlimited number of actions like this. Again we see that we us
 
    IF ... THEN switch DEVICE lamp AND television TO on AND dim DEVICE ambientLight TO 10
 
+.. versionadded:: nightly
+
+As described earlier, actions can also be trigger based on a false condition like this:
+
+.. code-block:: guess
+
+   IF ... THEN switch DEVICE lamp AND television TO on ELSE dim DEVICE ambientLight TO 10 END
+
 Using Device Parameters
 -----------------------
 
@@ -266,52 +357,3 @@ In this case we use two dimmers called randomLow and randomHigh to dynamically c
 .. code-block:: guess
 
    IF sunriseset.sunset == DATE_FORMAT(DATE_ADD(datetime, +1 HOUR), \"%Y-%m-%d %H:%M:%S\", %H.%M) THEN switch DEVICE lamp1 TO on
-
-Optimizations
--------------
-
-Although pilight is extremely fast in evaluating event rules, simple steps can be made to further improve the performance of your events. A rule is actually nothing more then several evaluations of conditions. Let's see how we can optimize time based events. E.g.
-
-.. code-block:: guess
-
-   IF datetime.hour == 23 AND datetime.minute == 0 AND datetime.second == 0 THEN ...
-
-To optimize this rule, we need to check how many times a specific condition is evaluated. Rules containing datetime values will be evaluated each second. So each part has a certain chance to be true each day based on an evaluation every second:
-
-Hour is 23 3600 times a day (60 minutes * 60 seconds).
-Minute is 0 1440 times a day (24 hours * 60 seconds).
-Second is 0 1440 times a day (24 hours * 60 minutes).
-
-So in the above rule, the first step evaluates true 3600 times, the second step 1 times, and the last step also 1 time. Let us see what happens when we change the rule:
-
-.. code-block:: guess
-
-   IF datetime.second == 0 AND datetime.minute == 0 AND datetime.hour == 23 THEN ...
-
-In this case, the first step is evaluates true 1440 times, the second step 1 times, and the last step also 1 time. So we can conclude that the first rule triggers 3602 evaluations and the last rule only 1442. So by simply shifting the conditions, we can increase the performance of a single rule.
-
-Let's take another example. In this case we trigger an event based on the sunset time. Let's use the sunset time of 19:00 and assume we turn off the Christmas tree at 0:00 each day.
-
-.. code-block:: guess
-
-   IF ((sunriseset.sunset == (datetime.hour + (datetime.minute / 100)) AND christmasstree.state IS off) AND datetime.second == 0) THEN switch DEVICE christmasstree TO on
-
-Again, the time that each evaluation is true each day based on an evaluation each second:
-
-Sunset is 19:00 60 times a day (60 seconds).
-Hour is 19 3600 times a day (60 minutes * 60 seconds).
-Minute is 0 1440 times a day (24 hours * 60 seconds).
-Second is 0 1440 times a day (24 hours * 60 minutes).
-State is off for 68400 times a day (19 hours * 60 minutes * 60 seconds).
-
-So in the above rule, the first step evaluates true 60 times, the second step 60 times, and the last step only 1 time. Although this rule uses not much evaluations for it to trigger, the first evaluation does take several math formulas to solve. Let's again see what happens when we change the rule:
-
-.. code-block:: guess
-
-   IF ((datetime.second == 0 AND sunriseset.sunset == (datetime.hour + (datetime.minute / 100))) AND christmasstree.state IS off) THEN switch DEVICE christmasstreeTO on
-
-In this case, the first evaluation is true 1440 times, the second part 60 times, and the last part only 1 time. So, moving the seconds to the beginning made the rule worse. The initial rule only needed 121 evaluates to be true, the second rule need 1501 evaluations. So, although the first rule had maths in the first evaluation, we could reduce the overall evaluations needed by 14 times by doing this.
-
-If you want to improve pilight performance, please take a close look at how your conditions are ordered in each rule. Shifting them around can increase the evaluation performance.
-
-In this case, we use the datetime device called datetime in the DATE_ADD function and the DATE_ADD function is subsequently used as input for the DATE_FORMAT function. These example should give you an idea about how we can use device parameters to dynamically change the behaviour of our rules.

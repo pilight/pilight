@@ -47,3 +47,13 @@ Changes the text and color of a generic label device.
    IF 1 == 1 THEN label DEVICE tempLabel TO 23.5 FOR 10 SECOND
    IF 1 == 1 THEN label DEVICE tempLabel TO Bell rang AFTER 30 SECOND
    IF 1 == 1 THEN label DEVICE tempLabel TO None FOR 10 MINUTE AFTER 30 SECOND
+
+.. versionchanged:: nightly
+
+.. code-block:: console
+
+   IF 1 == 1 THEN label DEVICE tempLabel TO on
+   IF 1 == 1 THEN label DEVICE tempLabel AND humiLabel TO 'No information'
+   IF 1 == 1 THEN label DEVICE tempLabel TO 23.5 FOR '10 SECOND'
+   IF 1 == 1 THEN label DEVICE tempLabel TO 'Bell rang' AFTER '30 SECOND'
+   IF 1 == 1 THEN label DEVICE tempLabel TO None FOR '10 MINUTE' AFTER '30 SECOND'

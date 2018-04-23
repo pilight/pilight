@@ -54,3 +54,11 @@ Changes the state of a switch, relay or dimmer.
    IF 1 == 1 THEN switch DEVICE light TO on FOR 10 MINUTE
    IF 1 == 1 THEN switch DEVICE light TO on AFTER 30 MILLISECOND
    IF 1 == 1 THEN switch DEVICE light TO off FOR 10 SECOND AFTER 30 MINUTE
+
+.. versionchanged:: nightly
+
+.. code-block:: console
+
+   IF 1 == 1 THEN switch DEVICE light TO on FOR '10 MINUTE'
+   IF 1 == 1 THEN switch DEVICE light TO on AFTER '30 MILLISECOND'
+   IF 1 == 1 THEN switch DEVICE light TO off FOR '10 SECOND' AFTER '30 MINUTE'

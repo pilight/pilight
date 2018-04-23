@@ -30,3 +30,9 @@ Send a message to your mobile phone with the pushover API
 .. code-block:: console
 
    IF 1 == 1 THEN pushover TITLE Doorbell rang MESSAGE Doorbell rang TOKEN abcd123abc USER pilight
+
+.. versionchanged:: nightly
+
+.. code-block:: console
+
+   IF 1 == 1 THEN pushover TITLE 'Doorbell rang' MESSAGE 'Doorbell rang' TOKEN abcd123abc USER pilight

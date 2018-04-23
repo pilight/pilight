@@ -48,3 +48,15 @@ Switch devices based on your IR remote buttons
        "active": 1
      }
    }
+
+.. versionchanged:: nightly
+
+.. code-block:: json
+   :linenos:
+
+   {
+     "remote-television-switch": {
+       "rule": "IF remote.button == KEY_P AND remote.repeat == 0 THEN toggle DEVICE television BETWEEN on AND off",
+       "active": 1
+     }
+   }

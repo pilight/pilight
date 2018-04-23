@@ -100,4 +100,48 @@ Or an hour before the sun sets:
      }
    }
 
+.. versionchanged:: nightly
 
+By using math
+
+.. code-block:: json
+   :linenos:
+
+   {
+     "sunset": {
+       "rule": "IF ((sunrisesetdevice.sunset == (currentdatetime.hour + (currentdatetime.minute / 100)) AND light.state == off) AND currentdatetime.second == 0) THEN switch DEVICE light TO on",
+       "active": 1
+     },
+     "sunrise": {
+       "rule": "IF ((sunrisesetdevice.sunrise == (currentdatetime.hour + (currentdatetime.minute / 100)) AND light.state == off) AND currentdatetime.second == 0) THEN switch DEVICE light TO on",
+       "active": 1
+     }
+   }
+
+By using the DATE_FORMAT function
+
+.. code-block:: json
+   :linenos:
+
+   {
+     "sunset": {
+       "rule": "IF (sunrisesetdevice.sunset == DATE_FORMAT(currentdatetime, %H.%M)) AND light.state == off AND currentdatetime.second == 0 THEN switch DEVICE light TO on",
+       "active": 1
+     },
+     "sunrise": {
+       "rule": "IF (sunrisesetdevice.sunrise == DATE_FORMAT(currentdatetime, %H.%M)) AND light.state == off AND currentdatetime.second == 0 THEN switch DEVICE light TO on",
+       "active": 1
+     }
+   }
+
+Or an hour before the sun sets:
+
+.. code-block:: json
+   :linenos:
+
+   {
+     "sunset": {
+       "rule": "IF (sunrisesetdevice.sunset == DATE_FORMAT(DATE_ADD(currentdatetime, '+1 HOUR'), '%Y-%m-%d %H:%M:%S', %H.%M)) AND light.state == off AND currentdatetime.second == 0 THEN switch DEVICE light TO on",
+       "active": 1
+     }
+   }

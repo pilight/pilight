@@ -51,3 +51,19 @@ Execute rules based on XBMC / KODI based events
        "active": 1
      }
    }
+
+.. versionchanged:: nightly
+
+.. code-block:: json
+   :linenos:
+
+   {
+     "speakers-on": {
+       "rule": "IF xbmcControls.action == play THEN switch DEVICE speakers TO on",
+       "active": 1
+     },
+     "speakers-off": {
+       "rule": "IF xbmcControls.action == pause OR xbmcControls.action == home THEN switch DEVICE speakers TO off AFTER '3 MINUTES'",
+       "active": 1
+     }
+   }

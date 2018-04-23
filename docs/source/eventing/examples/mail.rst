@@ -53,3 +53,15 @@ Sending a mail based on a contact device trigger including the time when it happ
        "active": 1
      }
    }
+
+.. versionchanged:: nightly
+
+.. code-block:: json
+   :linenos:
+
+   {
+     "frontdoor-contact-mail": {
+       "rule": "IF frontdoor-contact.state == opened THEN sendmail TO foo@bar.com SUBJECT 'Frontdoor was opened at ' . DATE_FORMAT(currentdatetime, %c) MESSAGE ..",
+       "active": 1
+     }
+   }

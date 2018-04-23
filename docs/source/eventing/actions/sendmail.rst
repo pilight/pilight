@@ -44,3 +44,9 @@ Send a message to any e-mail address
 .. code-block:: console
 
    IF 1 == 1 THEN sendmail SUBJECT Doorbell rang MESSAGE Doorbell rang TO someone@somewhere.com
+
+.. versionchanged:: nightly
+
+.. code-block:: console
+
+   IF 1 == 1 THEN sendmail SUBJECT 'Doorbell rang' MESSAGE 'Doorbell rang' TO someone@somewhere.com
