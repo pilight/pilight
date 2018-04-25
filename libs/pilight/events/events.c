@@ -933,6 +933,7 @@ static int lexer_parse_function(struct lexer_t *lexer, struct tree_t *tree_in, s
 	while(1) {
 		if((err = lexer_eat(lexer, TCOMMA, &token_ret)) < 0) {
 			char *tmp = "a comma or closing parenthesis";
+			pos -= 1;
 			expected = tmp;
 			events_tree_gc(p);
 			err = -1;
@@ -1460,9 +1461,11 @@ static int lexer_parse(struct lexer_t *lexer, struct tree_t **tree_out) {
 	memset(tree, 0, sizeof(struct tree_t));
 
 	if((err = lexer_expr(lexer, tree, tree_out)) < 0) {
-		// if(err == -1) {
-			// logprintf(LOG_ERR, "\n%s\n%*s^ unexpected symbol", lexer->text, lexer->pos-1, " ");
-		// }
+		if(err == -1) {
+			logprintf(LOG_ERR, "\n%s\n%*s^ unexpected symbol", lexer->text, lexer->pos+1, " ");
+			FREE(lexer->current_token->value);
+			FREE(lexer->current_token);
+		}
 		events_tree_gc(tree);
 		return err;
 	} else {

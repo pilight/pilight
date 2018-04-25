@@ -390,6 +390,38 @@ static struct tests_t get_tests[] = {
 		{ 1, 0 }
 	},
 	{
+		/*
+		 * The operators and functions are not loaded
+		 */
+		"invalid rule 22",
+		"{\"devices\":{" \
+			"\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"on\"},"\
+			"\"date\":{\"protocol\":[\"datetime\"],\"id\":[{\"longitude\":4.895167899999933,\"latitude\":52.3702157}],\"year\":2018,\"month\":1,\"day\":24,\"hour\":20,\"minute\":10,\"second\":12,\"weekday\":4,\"dst\":0},"\
+			"\"sun\": {\"protocol\":[\"sunriseset\"],\"id\":[{\"longitude\":4.895167899999933,\"latitude\":52.3702157}],\"sunrise\":8.34,\"sunset\":17.14,\"sun\":\"set\"}"\
+		"}," \
+		"\"gui\":{},"\
+		"\"rules\":{"\
+			"\"switch\":{\"rule\":\"IF (DATE_FORMAT(DATE_ADD(date, '-10 MINUTE'), '%%Y-%%m-%%d %%H:%%M:%%S', %%H.%%M) == DATE_FORMAT(DATE_ADD(date, '-10 MINUTE'), '%%Y-%%m-%%d %%H:%%M:%%S', %%H.%%M) AND date.second == 0) AND (0 AND 1) THEN switch DEVICE 'switch' TO on\",\"active\":1}"\
+		"},\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		-1, UV_RUN_NOWAIT,
+		0, &updates1[0],
+		{ NULL }, { 0 }
+	},
+	{
+		/*
+		 * The operators and functions are not loaded
+		 */
+		"invalid rule 23",
+		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"on\"}}," \
+		"\"gui\":{},"\
+		"\"rules\":{"\
+			"\"switch\":{\"rule\":\"IF (1 == 1) THEN switch DEVICE 'switch' TO on\",\"active\":1}"\
+		"},\"settings\":{},\"hardware\":{},\"registry\":{}}",
+		-1, UV_RUN_NOWAIT,
+		0, &updates1[0],
+		{ NULL }, { 0 }
+	},
+	{
 		"simple true formula",
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\
@@ -767,6 +799,20 @@ static struct tests_t get_tests[] = {
 		0, &updates1[0],
 		{ &receives[3] },
 		{ 1, 0 }
+	},
+	{
+		"concat function and string in action",
+		"{\"devices\":{"\
+			"\"testlabel\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":1}],\"label\":\"foo\",\"color\":\"black\"},"\
+			"\"datetime1\":{\"protocol\":[\"datetime\"],\"id\":[{\"longitude\":4.895168,\"latitude\":52.370216}],\"year\":2016,\"month\":3,\"day\":14,\"hour\":20,\"minute\":56,\"second\":48,\"weekday\":1,\"dst\":0}"\
+		"},"\
+		"\"gui\":{},"\
+		"\"rules\":{"\
+			"\"switch\":{\"rule\":\"IF 1 == 1 THEN label DEVICE testlabel TO 'the alarm was trigger at' . DATE_FORMAT(datetime1, %%Y-%%m-%%d)\",\"active\":1}"\
+		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
+		0, UV_RUN_DEFAULT,
+		0, &updates1[0],
+		{ NULL }, { 0 }
 	},
 	{
 		/*
