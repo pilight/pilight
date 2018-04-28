@@ -251,7 +251,6 @@ int events_gc(void) {
 	return 1;
 }
 
-
 /*
  * TESTME: Check if right devices are cached.
  */
@@ -269,12 +268,10 @@ void event_cache_device(struct rules_t *obj, char *device) {
 		if(exists == 0) {
 			/* Store all devices that are present in this rule */
 			if((obj->devices = REALLOC(obj->devices, sizeof(char *)*(unsigned int)(obj->nrdevices+1))) == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(EXIT_FAILURE);
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			if((obj->devices[obj->nrdevices] = MALLOC(strlen(device)+1)) == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(EXIT_FAILURE);
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			strcpy(obj->devices[obj->nrdevices], device);
 			obj->nrdevices++;
@@ -588,6 +585,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varc
 	}
 	return 0;
 }
+
 
 static int lexer_parse_integer(struct lexer_t *lexer, struct stack_dt *t) {
 	if(isdigit(lexer->current_char[0])) {
@@ -1296,7 +1294,6 @@ static int lexer_parse_if(struct lexer_t *lexer, struct tree_t *tree, struct tre
 			*tree_out = NULL;
 			return -1;
 		}
-
 		FREE(token->value);
 		FREE(token);
 		if(lexer_term(lexer, tree, 0, &node) == 0) {
@@ -2039,17 +2036,20 @@ void *events_loop(void *param) {
 						}
 					}
 					if(match == 1 && tmp_rules->status == 0) {
+#ifndef WIN32
 						clock_gettime(CLOCK_MONOTONIC, &tmp_rules->timestamp.first);
+#endif
 						if(event_parse_rule(str, tmp_rules, 0, 0) == 0) {
 							if(tmp_rules->status == 1) {
 								logprintf(LOG_INFO, "executed rule: %s", tmp_rules->name);
 							}
 						}
+#ifndef WIN32
 						clock_gettime(CLOCK_MONOTONIC, &tmp_rules->timestamp.second);
 						logprintf(LOG_DEBUG, "rule #%d %s was parsed in %.6f seconds", tmp_rules->nr, tmp_rules->name,
 							((double)tmp_rules->timestamp.second.tv_sec + 1.0e-9*tmp_rules->timestamp.second.tv_nsec) -
 							((double)tmp_rules->timestamp.first.tv_sec + 1.0e-9*tmp_rules->timestamp.first.tv_nsec));
-
+#endif
 						tmp_rules->status = 0;
 					}
 					FREE(str);

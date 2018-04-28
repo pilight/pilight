@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -36,74 +26,36 @@
 #include "../core/options.h"
 #include "../core/dso.h"
 #include "../core/log.h"
+#include "../lua/lua.h"
 #include "../config/settings.h"
 
 #include "function.h"
-#include "functions/function_header.h"
 
-#ifndef _WIN32
-void event_function_remove(char *name) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	struct event_functions_t *currP, *prevP;
-
-	prevP = NULL;
-
-	for(currP = event_functions; currP != NULL; prevP = currP, currP = currP->next) {
-
-		if(strcmp(currP->name, name) == 0) {
-			if(prevP == NULL) {
-				event_functions = currP->next;
-			} else {
-				prevP->next = currP->next;
-			}
-
-			logprintf(LOG_DEBUG, "removed event function %s", currP->name);
-			FREE(currP->name);
-			FREE(currP);
-
-			break;
-		}
-	}
-}
-#endif
+static int init = 0;
 
 void event_function_init(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+	if(init == 1) {
+		return;
+	}
+	init = 1;
+	plua_init();
 
-	#include "functions/function_init.h"
-
-#ifndef _WIN32
-	void *handle = NULL;
-	void (*init)(void);
-	void (*compatibility)(struct module_t *module);
 	char path[PATH_MAX];
-	struct module_t module;
-	char pilight_version[strlen(PILIGHT_VERSION)+1];
-	char pilight_commit[3];
-	char *functions_root = NULL;
-	int check1 = 0, check2 = 0, valid = 1, function_root_free = 0;
-	strcpy(pilight_version, PILIGHT_VERSION);
-
+	char *f = STRDUP(__FILE__);
 	struct dirent *file = NULL;
 	DIR *d = NULL;
 	struct stat s;
+	char *functions_root = FUNCTION_ROOT;
 
-	memset(pilight_commit, '\0', 3);
+	if(f == NULL) {
+		OUT_OF_MEMORY
+	}
 
-	if(settings_find_string("functions-root", &functions_root) != 0) {
-		/* If no function root was set, use the default function root */
-		if((functions_root = MALLOC(strlen(FUNCTION_ROOT)+1)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
-		}
-		strcpy(functions_root, FUNCTION_ROOT);
-		function_root_free = 1;
-	}
-	size_t len = strlen(functions_root);
-	if(functions_root[len-1] != '/') {
-		strcat(functions_root, "/");
-	}
+#ifdef PILIGHT_REWRITE
+	settings_select_string(ORIGIN_MASTER, "functions-root", &functions_root);
+#else
+	settings_find_string("functions-root", &functions_root);
+#endif
 
 	if((d = opendir(functions_root))) {
 		while((file = readdir(d)) != NULL) {
@@ -112,54 +64,12 @@ void event_function_init(void) {
 			if(stat(path, &s) == 0) {
 				/* Check if file */
 				if(S_ISREG(s.st_mode)) {
-					if(strstr(file->d_name, ".so") != NULL) {
-						valid = 1;
-
-						if((handle = dso_load(path)) != NULL) {
-							init = dso_function(handle, "init");
-							compatibility = dso_function(handle, "compatibility");
-							if(init && compatibility) {
-								compatibility(&module);
-								if(module.name != NULL && module.version != NULL && module.reqversion != NULL) {
-									char ver[strlen(module.reqversion)+1];
-									strcpy(ver, module.reqversion);
-
-									if((check1 = vercmp(ver, pilight_version)) > 0) {
-										valid = 0;
-									}
-
-									if(check1 == 0 && module.reqcommit != NULL) {
-										char com[strlen(module.reqcommit)+1];
-										strcpy(com, module.reqcommit);
-										sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
-
-										if(strlen(pilight_commit) > 0 && (check2 = vercmp(com, pilight_commit)) > 0) {
-											valid = 0;
-										}
-									}
-									if(valid == 1) {
-										char tmp[strlen(module.name)+1];
-										strcpy(tmp, module.name);
-										event_function_remove(tmp);
-										init();
-										logprintf(LOG_DEBUG, "loaded event function %s v%s", file->d_name, module.version);
-									} else {
-										if(module.reqcommit != NULL) {
-											logprintf(LOG_ERR, "event function %s requires at least pilight v%s (commit %s)", file->d_name, module.reqversion, module.reqcommit);
-										} else {
-											logprintf(LOG_ERR, "event function %s requires at least pilight v%s", file->d_name, module.reqversion);
-										}
-									}
-								} else {
-									logprintf(LOG_ERR, "invalid module %s", file->d_name);
-								}
-							}
-						}
+					if(strstr(file->d_name, ".lua") != NULL) {
+						plua_module_load(path, FUNCTION);
 					}
 				}
 			}
 		}
-		closedir(d);
 	}
 	closedir(d);
 	FREE(f);
@@ -248,22 +158,59 @@ static int plua_function_module_run(struct lua_State *L, char *file, struct even
 	return 1;
 }
 
-void event_function_register(struct event_functions_t **act, const char *name) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+int event_function_exists(char *module) {
+	return plua_module_exists(module, FUNCTION);
+}
 
-	if((*act = MALLOC(sizeof(struct event_functions_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+struct event_function_args_t *event_function_add_argument(struct varcont_t *var, struct event_function_args_t *head) {
+	struct event_function_args_t *node = MALLOC(sizeof(struct event_function_args_t));
+	if(node == NULL) {
+		OUT_OF_MEMORY
 	}
-	if(((*act)->name = MALLOC(strlen(name)+1)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+	memset(node, 0, sizeof(struct event_function_args_t));
+	switch(var->type_) {
+		case JSON_NUMBER: {
+			node->var.type_ = JSON_NUMBER;
+			node->var.number_ = var->number_;
+			node->var.decimals_ = var->decimals_;
+		} break;
+		case JSON_STRING: {
+			node->var.type_ = JSON_STRING;
+			if((node->var.string_ = STRDUP(var->string_)) == NULL) {
+				OUT_OF_MEMORY
+			}
+		} break;
+		case JSON_BOOL: {
+			node->var.type_ = JSON_BOOL;
+			node->var.bool_ = var->bool_;
+		} break;
 	}
-	strcpy((*act)->name, name);
+	if(head != NULL) {
+		struct event_function_args_t *tmp = head;
+		while(tmp->next != NULL) {
+			tmp = tmp->next;
+		}
+		tmp->next = node;
+		node = tmp;
+	} else {
+		node->next = head;
+		head = node;
+	}
+	return head;
+}
 
-	(*act)->run = NULL;
-	(*act)->next = event_functions;
-	event_functions = (*act);
+void event_function_free_argument(struct event_function_args_t *args) {
+	struct event_function_args_t *tmp1 = NULL;
+	while(args) {
+		tmp1 = args;
+		switch(tmp1->var.type_) {
+			case JSON_STRING:
+				FREE(tmp1->var.string_);
+			break;
+		}
+		args = args->next;
+		FREE(tmp1);
+	}
 }
 
 int event_function_callback(char *module, struct event_function_args_t *args, struct varcont_t *v) {
@@ -312,6 +259,7 @@ int event_function_callback(char *module, struct event_function_args_t *args, st
 			return -1;
 		}
 	}
+	lua_pop(L, -1);
 
 	uv_mutex_unlock(&state->lock);
 
