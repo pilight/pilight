@@ -578,7 +578,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varc
 		varcont->type_ = JSON_NUMBER;
 	} else {
 		if((varcont->string_ = STRDUP(var)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		varcont->free_ = 1;
 		varcont->type_ = JSON_STRING;
@@ -665,7 +665,7 @@ static char *stack_to_char(struct stack_dt *stack) {
 	int i = 0;
 
 	if(str == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	while((c = dt_stack_pop(stack, 0)) != NULL) {
@@ -704,7 +704,7 @@ static int lexer_next_token(struct lexer_t *lexer) {
 	int type = TEOF, ret = 0;
 
 	if(t == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	memset(t, 0, sizeof(struct stack_dt));
@@ -804,7 +804,7 @@ static int lexer_next_token(struct lexer_t *lexer) {
 		}
 		if(type != TEOF && ret == 0) {
 			if((lexer->current_token = MALLOC(sizeof(struct token_t))) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			lexer->current_token->value = stack_to_char(t);
 			lexer->current_token->type = type;
@@ -825,7 +825,7 @@ static int lexer_next_token(struct lexer_t *lexer) {
 static struct tree_t *ast_parent(struct token_t *token) {
 	struct tree_t *tree = MALLOC(sizeof(struct tree_t));
 	if(tree == NULL) {
-		return NULL;
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	tree->child = NULL;
 	tree->nrchildren = 0;
@@ -835,7 +835,7 @@ static struct tree_t *ast_parent(struct token_t *token) {
 
 static struct tree_t *ast_child(struct tree_t *p, struct tree_t *c) {
 	if((p->child = REALLOC(p->child, sizeof(struct tree_t)*(p->nrchildren+1))) == NULL) {
-		return NULL;
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	p->child[p->nrchildren] = c;
 	p->nrchildren++;
@@ -1146,6 +1146,7 @@ static int lexer_parse_action(struct lexer_t *lexer, struct tree_t *tree_in, str
 				}
 				if(match == 0) {
 					char *tmp = "an action argument";
+					pos -= strlen(token_ret->value)+1;
 					expected = tmp;
 					FREE(token_ret->value);
 					FREE(token_ret);
@@ -1539,7 +1540,7 @@ static int lexer_parse(struct lexer_t *lexer, struct tree_t **tree_out) {
 	int err = -1;
 
 	if(tree == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(tree, 0, sizeof(struct tree_t));
 
@@ -1553,8 +1554,6 @@ static int lexer_parse(struct lexer_t *lexer, struct tree_t **tree_out) {
 		return err;
 	} else {
 		if(lexer->current_token != NULL && lexer->current_token->type != TEOF) {
-			// printf("b error: %d %s\n", lexer->pos, &lexer->current_char[0]);
-			// exit(-1);
 			FREE(tree);
 			return -1;
 		}
@@ -1848,7 +1847,7 @@ static int interpret(struct tree_t *tree, struct rules_t *obj, unsigned short va
 						switch(v3.type_) {
 							case JSON_STRING: {
 								if((v1.string_ = STRDUP(v3.string_)) == NULL) {
-									OUT_OF_MEMORY
+									OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 								}
 								v1.free_ = 1;
 								v1.type_ = JSON_STRING;
@@ -1875,7 +1874,7 @@ static int interpret(struct tree_t *tree, struct rules_t *obj, unsigned short va
 						switch(v4.type_) {
 							case JSON_STRING: {
 								if((v2.string_ = STRDUP(v4.string_)) == NULL) {
-									OUT_OF_MEMORY
+									OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 								}
 								v2.free_ = 1;
 								v2.type_ = JSON_STRING;
@@ -1919,12 +1918,12 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 	if(validate == 1) {
 		struct lexer_t *lexer = MALLOC(sizeof(struct lexer_t));
 		if(lexer == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		memset(lexer, 0, sizeof(struct lexer_t));
 
 		if((lexer->text = STRDUP(rule)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		lexer->pos = 0;
 		lexer->len = strlen(lexer->text);
