@@ -2556,6 +2556,8 @@ int main_gc(void) {
 	}
 #endif
 
+	FREE(signal_req);
+
 	return 0;
 }
 
