@@ -503,6 +503,9 @@ static int plua_module_init(struct lua_State *L, char *file, struct plua_module_
 	char pilight_version[strlen(PILIGHT_VERSION)+1];
 	char pilight_commit[3], *v = (char *)reqversion, *r = (char *)reqcommit;
 	int valid = 1, check = 1;
+
+	memset(&pilight_commit, 0, sizeof(pilight_commit));
+
 	strcpy(pilight_version, PILIGHT_VERSION);
 
 	if((check = vercmp(v, pilight_version)) > 0) {
