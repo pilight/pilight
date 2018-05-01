@@ -52,6 +52,7 @@
 
 typedef struct lexer_t {
 	int pos;
+	int ppos;
 	int len;
 	char *current_char;
 	struct token_t *current_token;
@@ -249,6 +250,62 @@ int events_gc(void) {
 	event_function_gc();
 	logprintf(LOG_DEBUG, "garbage collected events library");
 	return 1;
+}
+
+static int print_error(struct lexer_t *lexer, struct tree_t *p, struct tree_t *node, struct token_t *token, int err, char *expected, int pos, int trunc) {
+	char *p_elipses = "...";
+	char *s_elipses = "...";
+	char *s_tmp = "";
+	char *p_tmp = "";
+	int length = lexer->ppos+25;
+
+	trunc -= 15;
+
+	if(trunc < 0) {
+		trunc = 0;
+	}
+
+	if(err == -1) {
+		while(trunc > 0 && lexer->text[trunc] != ' ') {
+			trunc--;
+		}
+		if(trunc > 0) {
+			p_tmp = p_elipses;
+		}
+		if(length < strlen(&lexer->text[trunc])) {
+			while(length < strlen(&lexer->text[trunc]) && lexer->text[length+trunc] != ' ') {
+				length++;
+			}
+			s_tmp = s_elipses;
+		}
+		if(expected != NULL) {
+			logprintf(LOG_ERR,
+				"\n%s%.*s %s\n%*s^ unexpected symbol, expected %s",
+				p_tmp, length, &lexer->text[trunc], s_tmp, pos+strlen(p_tmp)-trunc, " ", expected);
+		} else {
+			logprintf(LOG_ERR,
+				"\n%s%.*s %s\n%*s^ unexpected symbol",
+				p_tmp, length, &lexer->text[trunc], s_tmp, pos+strlen(p_tmp)-trunc, " ");
+		}
+		err = -2;
+	}
+	if(node != NULL) {
+		events_tree_gc(node);
+		node = NULL;
+	}
+	if(lexer->current_token != NULL) {
+		FREE(lexer->current_token->value);
+		FREE(lexer->current_token);
+	}
+	if(token != NULL) {
+		FREE(token->value);
+		FREE(token);
+	}
+	if(p != NULL) {
+		events_tree_gc(p);
+	}
+
+	return err;
 }
 
 /*
@@ -710,6 +767,7 @@ static int lexer_next_token(struct lexer_t *lexer) {
 	memset(t, 0, sizeof(struct stack_dt));
 
 	while(lexer->pos <= lexer->len) {
+		lexer->ppos = lexer->pos;
 		if(lexer->current_char[0] == ' ') {
 			if(lexer_parse_space(lexer) == -1) {
 				return -1;
@@ -954,6 +1012,7 @@ static int lexer_factor(struct lexer_t *lexer, struct tree_t *tree_in, struct tr
 				if((err = lexer_eat(lexer, RPAREN, &token_ret)) < 0) {
 					char *tmp = "a closing parenthesis";
 					expected = tmp;
+					pos += 1;
 					goto error;
 				}
 				FREE(token_ret->value);
@@ -967,24 +1026,7 @@ static int lexer_factor(struct lexer_t *lexer, struct tree_t *tree_in, struct tr
 	return -1;
 
 error:
-	if(err == -1) {
-		logprintf(LOG_ERR, "\n%s\n%*s^ unexpected symbol, expected %s", lexer->text, pos, " ", expected);
-		err = -2;
-	}
-	if(lexer->current_token != NULL) {
-		FREE(lexer->current_token->value);
-		FREE(lexer->current_token);
-	}
-	if(token_ret != NULL) {
-		FREE(token_ret->value);
-		FREE(token_ret);
-	}
-	if(*tree_out != NULL) {
-		events_tree_gc(*tree_out);
-	}
-	*tree_out = NULL;
-
-	return err;
+	return print_error(lexer, NULL, *tree_out, token_ret, err, expected, pos, lexer->ppos-1);
 }
 
 static int lexer_parse_function(struct lexer_t *lexer, struct tree_t *tree_in, struct tree_t **tree_out) {
@@ -1016,7 +1058,8 @@ static int lexer_parse_function(struct lexer_t *lexer, struct tree_t *tree_in, s
 	while(1) {
 		if((err = lexer_eat(lexer, TCOMMA, &token_ret)) < 0) {
 			char *tmp = "a comma or closing parenthesis";
-			pos -= 1;
+			pos -= strlen(node->token->value);
+			lexer->ppos -= 2;
 			expected = tmp;
 			events_tree_gc(p);
 			err = -1;
@@ -1054,24 +1097,7 @@ static int lexer_parse_function(struct lexer_t *lexer, struct tree_t *tree_in, s
 	return 0;
 
 error:
-	if(err == -1) {
-		logprintf(LOG_ERR, "\n%s\n%*s^ unexpected symbol, expected %s", lexer->text, pos, " ", expected);
-		err = -2;
-	}
-	if(lexer->current_token != NULL) {
-		FREE(lexer->current_token->value);
-		FREE(lexer->current_token);
-	}
-	if(token_ret != NULL) {
-		FREE(token_ret->value);
-		FREE(token_ret);
-	}
-	if(*tree_out != NULL) {
-		events_tree_gc(*tree_out);
-	}
-	*tree_out = NULL;
-
-	return err;
+	return print_error(lexer, NULL, NULL, NULL, err, expected, pos, lexer->ppos-1);
 }
 
 static void print_ast(struct tree_t *tree);
@@ -1131,6 +1157,8 @@ static int lexer_parse_action(struct lexer_t *lexer, struct tree_t *tree_in, str
 			}
 			if((err = lexer_eat(lexer, TSTRING, &token_ret)) < 0) {
 				char *tmp = "an action argument";
+				pos -= strlen(token_ret->value)+1;
+				lexer->ppos -= lexer->ppos-pos;
 				expected = tmp;
 				err = -1;
 				goto error;
@@ -1147,6 +1175,7 @@ static int lexer_parse_action(struct lexer_t *lexer, struct tree_t *tree_in, str
 				if(match == 0) {
 					char *tmp = "an action argument";
 					pos -= strlen(token_ret->value)+1;
+					lexer->ppos -= lexer->ppos-pos;
 					expected = tmp;
 					FREE(token_ret->value);
 					FREE(token_ret);
@@ -1207,6 +1236,7 @@ static int lexer_parse_action(struct lexer_t *lexer, struct tree_t *tree_in, str
 					if(lexer_peek(lexer, 0, TACTION, NULL) == 0) {
 						char *tmp = "a string, number, or function, got an action";
 						expected = tmp;
+						lexer->ppos -= strlen(lexer->current_token->value)+1;
 						err = -1;
 						goto error;
 					}
@@ -1228,19 +1258,7 @@ static int lexer_parse_action(struct lexer_t *lexer, struct tree_t *tree_in, str
 	return 0;
 
 error:
-	if(err == -1) {
-		logprintf(LOG_ERR, "\n%s\n%*s^ unexpected symbol, expected %s", lexer->text, pos, " ", expected);
-		err = -2;
-	}
-	if(lexer->current_token != NULL) {
-		FREE(lexer->current_token->value);
-		FREE(lexer->current_token);
-	}
-	events_tree_gc(p);
-	if(node != NULL) {
-		// events_tree_gc(node);
-	}
-	return err;
+		return print_error(lexer, p, NULL, NULL, err, expected, pos, lexer->ppos-1);
 }
 
 static int lexer_parse_if(struct lexer_t *lexer, struct tree_t *tree, struct tree_t **tree_out) {
@@ -1259,9 +1277,10 @@ static int lexer_parse_if(struct lexer_t *lexer, struct tree_t *tree, struct tre
 	} else {
 		char *tmp = "a condition";
 		expected = tmp;
-		pos = token->pos;
+		pos = lexer->pos;
 		goto error;
 	}
+
 	token = lexer->current_token;
 	pos = token->pos;
 
@@ -1337,19 +1356,7 @@ static int lexer_parse_if(struct lexer_t *lexer, struct tree_t *tree, struct tre
 	return 0;
 
 error:
-	if(err == -1) {
-		logprintf(LOG_ERR, "\n%s\n%*s^ unexpected symbol, expected %s", lexer->text, pos, " ", expected);
-		err = -2;
-	}
-	if(lexer->current_token != NULL) {
-		FREE(lexer->current_token->value);
-		FREE(lexer->current_token);
-	}
-	events_tree_gc(p);
-	if(node != NULL) {
-		// events_tree_gc(node);
-	}
-	return err;
+	return print_error(lexer, p, NULL, NULL, err, expected, pos, lexer->ppos-1);
 }
 
 /*
@@ -1432,7 +1439,7 @@ static int lexer_term(struct lexer_t *lexer, struct tree_t *tree_in, int precede
 					*tree_out = NULL;
 					char *tmp = "an operator";
 					expected = tmp;
-					pos = lexer->pos-strlen(lexer->current_token->value);
+					pos = lexer->pos-strlen(lexer->current_token->value)-1;
 					events_tree_gc(tree_ret);
 					err = -1;
 					goto error;
@@ -1446,6 +1453,7 @@ static int lexer_term(struct lexer_t *lexer, struct tree_t *tree_in, int precede
 				return 0;
 			} break;
 			case TOPERATOR: {
+				int tpos = lexer->ppos;
 				int z = get_precedence(lexer->current_token->value);
 				int y = get_associativity(lexer->current_token->value);
 				if((z == precedence && y == 1) || z > precedence) {
@@ -1462,12 +1470,14 @@ static int lexer_term(struct lexer_t *lexer, struct tree_t *tree_in, int precede
 						if((err = lexer_term(lexer, tree_in, precedence, &tree_ret)) < 0) {
 							char *tmp = "an operand";
 							expected = tmp;
+							lexer->ppos = tpos;
 							pos = token->pos;
 							goto error;
 						}
 						if(tree_ret->token->type == TACTION) {
 							char *tmp = "an operand, got an action";
 							expected = tmp;
+							lexer->ppos = tpos;
 							pos = token->pos;
 							err = -1;
 							events_tree_gc(tree_ret);
@@ -1483,12 +1493,14 @@ static int lexer_term(struct lexer_t *lexer, struct tree_t *tree_in, int precede
 							char *tmp = "an operand";
 							expected = tmp;
 							pos = token->pos;
+							lexer->ppos = tpos;
 							goto error;
 						}
 						if(tree_ret->token->type == TACTION) {
 							char *tmp = "an operand, got an action";
 							expected = tmp;
 							pos = token->pos;
+							lexer->ppos = tpos;
 							err = -1;
 							events_tree_gc(tree_ret);
 							goto error;
@@ -1510,25 +1522,7 @@ static int lexer_term(struct lexer_t *lexer, struct tree_t *tree_in, int precede
 	return 0;
 
 error:
-	if(err == -1) {
-		logprintf(LOG_ERR, "\n%s\n%*s^ unexpected symbol, expected %s", lexer->text, pos-1, " ", expected);
-		err = -2;
-	}
-	if(lexer->current_token != NULL) {
-		FREE(lexer->current_token->value);
-		FREE(lexer->current_token);
-	}
-	events_tree_gc(p);
-	if(node != NULL) {
-		events_tree_gc(node);
-		node = NULL;
-	}
-	if(token != NULL) {
-		FREE(token->value);
-		FREE(token);
-	}
-
-	return err;
+	return print_error(lexer, p, node, token, err, expected, pos, lexer->ppos-1);
 }
 
 static int lexer_expr(struct lexer_t *lexer, struct tree_t *tree, struct tree_t **out) {
@@ -1546,11 +1540,10 @@ static int lexer_parse(struct lexer_t *lexer, struct tree_t **tree_out) {
 
 	if((err = lexer_expr(lexer, tree, tree_out)) < 0) {
 		if(err == -1) {
-			logprintf(LOG_ERR, "\n%s\n%*s^ unexpected symbol", lexer->text, lexer->pos+1, " ");
-			FREE(lexer->current_token->value);
-			FREE(lexer->current_token);
+			err = print_error(lexer, tree, NULL, NULL, err, NULL, lexer->pos+1, lexer->ppos-1);
+		} else {
+			events_tree_gc(tree);
 		}
-		events_tree_gc(tree);
 		return err;
 	} else {
 		if(lexer->current_token != NULL && lexer->current_token->type != TEOF) {
