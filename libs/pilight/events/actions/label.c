@@ -438,7 +438,7 @@ static void *thread(void *param) {
 							}
 							memset(label, '\0', l);
 							free_label = 1;
-							snprintf(label, l, "%.*f", jlabel->decimals_, jlabel->number_);
+							snprintf(label, l + 1, "%.*f", jlabel->decimals_, jlabel->number_);
 							label[l] = '\0';
 						}
 						if((new_label = MALLOC(strlen(label)+1)) == NULL) {
