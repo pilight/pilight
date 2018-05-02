@@ -524,6 +524,8 @@ static void *control_device(int reason, void *param) {
 		CuAssertStrEquals(gtc, "{\"color\":\"red\",\"label\":\"foo\"}", values);
 	} else if(steps == 2) {
 		CuAssertStrEquals(gtc, "{\"color\":\"green\",\"label\":\"bar\"}", values);
+	} else if(steps == 4) {
+		CuAssertStrEquals(gtc, "{\"color\":\"red\",\"label\":\"1010\"}", values);
 	}
 	if(steps == nrsteps) {
 		uv_stop(uv_default_loop());
@@ -561,6 +563,68 @@ static void test_event_actions_label_run(CuTest *tc) {
 	obj->arguments = json_decode("{\
 		\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
 		\"TO\":{\"value\":[\"foo\"],\"order\":2},\
+		\"COLOR\":{\"value\":[\"red\"],\"order\":3}\
+	}");
+
+	eventpool_init(EVENTPOOL_THREADED);
+	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
+
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	timestamp.first = timestamp.second;
+	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+
+	CuAssertIntEquals(tc, 0, action_label->checkArguments(obj));
+	CuAssertIntEquals(tc, 0, action_label->run(obj));
+
+	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
+	}
+
+	json_delete(obj->arguments);
+	FREE(obj);
+
+	event_action_gc();
+	protocol_gc();
+	eventpool_gc();
+	storage_gc();
+
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
+static void test_event_actions_label_run1(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	steps = 3;
+	nrsteps = 4;
+	interval = 3000;
+
+	memtrack();
+
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
+
+	gtc = tc;
+
+	genericSwitchInit();
+	genericLabelInit();
+	actionLabelInit();
+	CuAssertStrEquals(tc, "label", action_label->name);
+
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_DEVICES));
+
+	obj = MALLOC(sizeof(struct rules_actions_t));
+	CuAssertPtrNotNull(tc, obj);
+	memset(obj, 0, sizeof(struct rules_actions_t));
+
+	obj->arguments = json_decode("{\
+		\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
+		\"TO\":{\"value\":[1010],\"order\":2},\
 		\"COLOR\":{\"value\":[\"red\"],\"order\":3}\
 	}");
 
@@ -869,6 +933,7 @@ CuSuite *suite_event_actions_label(void) {
 
 	SUITE_ADD_TEST(suite, test_event_actions_label_check_parameters);
 	SUITE_ADD_TEST(suite, test_event_actions_label_run);
+	SUITE_ADD_TEST(suite, test_event_actions_label_run1);
 	SUITE_ADD_TEST(suite, test_event_actions_label_run_delayed);
 	SUITE_ADD_TEST(suite, test_event_actions_label_run_overlapped);
 	SUITE_ADD_TEST(suite, test_event_actions_label_run_override);
