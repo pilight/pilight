@@ -687,7 +687,8 @@ static int lexer_parse_quoted_string(struct lexer_t *lexer, struct stack_dt *t) 
 			lexer->current_char = &lexer->text[lexer->pos++];
 		}
 		if(lexer->current_char[0] != '"' && lexer->current_char[0] != '\'') {
-			return -1;
+			dt_stack_free(t, NULL);
+			return print_error(lexer, NULL, NULL, NULL, -1, "a ending quote", lexer->pos, lexer->ppos-1);
 		} else if(lexer->pos <= lexer->len) {
 			lexer->current_char = &lexer->text[lexer->pos++];
 			return 0;
@@ -869,7 +870,7 @@ static int lexer_next_token(struct lexer_t *lexer) {
 			lexer->current_token->pos = lexer->pos;
 			return 0;
 		} else {
-			return -1;
+			return ret;
 		}
 	}
 	if(t != NULL) {
@@ -901,13 +902,13 @@ static struct tree_t *ast_child(struct tree_t *p, struct tree_t *c) {
 }
 
 static int lexer_peek(struct lexer_t *lexer, int skip, int type, char *val) {
-	int pos = lexer->pos, i = 0;
+	int pos = lexer->pos, i = 0, ret = -1;
 	struct token_t *tmp = lexer->current_token;
 	char *c = lexer->current_char;
 
 	if(skip > 0) {
 		for(i=0;i<skip;i++) {
-			if(lexer_next_token(lexer) == -1) {
+			if((ret = lexer_next_token(lexer)) < 0) {
 				goto bad;
 			}
 			if(i < skip-1 && lexer->current_token != NULL) {
@@ -924,12 +925,14 @@ static int lexer_peek(struct lexer_t *lexer, int skip, int type, char *val) {
 			if(stricmp(lexer->current_token->value, val) == 0) {
 				goto good;
 			} else {
+				ret = -1;
 				goto bad;
 			}
 		} else {
 			goto good;
 		}
 	} else {
+		ret = -1;
 		goto bad;
 	}
 
@@ -950,17 +953,19 @@ bad:
 	lexer->pos = pos;
 	lexer->current_token = tmp;
 	lexer->current_char = c;
-	return -1;
+
+	return ret;
 }
 
 static int lexer_eat(struct lexer_t *lexer, int type, struct token_t **token_out) {
 	struct token_t *token = lexer->current_token;
+	int ret = -1;
 
 	if((type == TEOF && lexer->current_token == NULL) ||
 	   (lexer->current_token != NULL && lexer->current_token->type == type)) {
-		if(lexer_next_token(lexer) == -1) {
+		if((ret = lexer_next_token(lexer)) < 0) {
 			*token_out = NULL;
-			return -1;
+			return ret;
 		}
 	} else {
 		if(lexer->current_token != NULL) {
@@ -1130,7 +1135,7 @@ static int lexer_parse_action(struct lexer_t *lexer, struct tree_t *tree_in, str
 		 *
 		 * We want to be able to free the 'DEVICE' string.
 		 */
-		if(lexer_peek(lexer, 0, TSTRING, NULL) == -1) {
+		if(lexer_peek(lexer, 0, TSTRING, NULL) < 0) {
 			if(lexer_peek(lexer, 0, TACTION, NULL) == 0) {
 				char *tmp = "a string but got an action";
 				expected = tmp;
@@ -1157,10 +1162,11 @@ static int lexer_parse_action(struct lexer_t *lexer, struct tree_t *tree_in, str
 			}
 			if((err = lexer_eat(lexer, TSTRING, &token_ret)) < 0) {
 				char *tmp = "an action argument";
-				pos -= strlen(token_ret->value)+1;
+				if(token_ret != NULL) {
+					pos -= strlen(token_ret->value)+1;
+				}
 				lexer->ppos -= lexer->ppos-pos;
 				expected = tmp;
-				err = -1;
 				goto error;
 			} else {
 				match = 0;
@@ -1293,7 +1299,7 @@ static int lexer_parse_if(struct lexer_t *lexer, struct tree_t *tree, struct tre
 	pos = token->pos;
 	FREE(token->value);
 	FREE(token);
-	if(lexer_peek(lexer, 0, TACTION, NULL) == -1 && lexer_peek(lexer, 0, TIF, NULL) == -1) {
+	if(lexer_peek(lexer, 0, TACTION, NULL) < 0 && lexer_peek(lexer, 0, TIF, NULL) < 0) {
 		if((err = lexer_peek(lexer, 0, TACTION, NULL)) < 0) {
 			char *tmp = "an action";
 			expected = tmp;
@@ -1319,8 +1325,8 @@ static int lexer_parse_if(struct lexer_t *lexer, struct tree_t *tree, struct tre
 		if(lexer_term(lexer, tree, 0, &node) == 0) {
 			ast_child(p, node);
 		}
-		if(lexer_peek(lexer, 0, TACTION, NULL) == -1 && lexer_peek(lexer, 0, TIF, NULL) == -1 &&
-			lexer_peek(lexer, 0, TEND, NULL) == -1 && lexer_peek(lexer, 0, TEOF, NULL) == -1) {
+		if(lexer_peek(lexer, 0, TACTION, NULL) < 0 && lexer_peek(lexer, 0, TIF, NULL) < 0 &&
+			lexer_peek(lexer, 0, TEND, NULL) < 0 && lexer_peek(lexer, 0, TEOF, NULL) < 0) {
 			if((err = lexer_peek(lexer, 0, TACTION, NULL)) < 0) {
 				char *tmp = "an action";
 				expected = tmp;
