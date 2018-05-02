@@ -103,14 +103,16 @@ static char *values[] = {
 	NULL,
 	"{\"dimlevel\":2}",
 	NULL,
-	"{\"label\":\"21:01 21:00\"}"
+	"{\"label\":\"21:01 21:00\"}",
+	"{\"label\":\"1010\"}"
 };
 
 static struct reason_control_device_t receives[] = {
 	{ "switch", "on", NULL },
 	{ "dimmer", "on", NULL },
 	{ "switch1", "on", NULL },
-	{ "label", NULL, NULL } // Initialize struct JsonNode;
+	{ "label", NULL, NULL }, // Initialize struct JsonNode;
+	{ "testlabel", NULL, NULL }
 };
 
 struct tests_t {
@@ -427,6 +429,19 @@ static struct tests_t get_tests[] = {
 		"\"gui\":{},"\
 		"\"rules\":{"\
 			"\"switch\":{\"rule\":\"IF 1 == 1 THEN label DEVICE label1 TO 'error:' foo COLOR red BLINK on\",\"active\":1}"\
+		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
+		-1, UV_RUN_NOWAIT,
+		0, &updates1[0],
+		{ NULL }, { 0 }
+	},
+	{
+		"invalid rule 25",
+		"{\"devices\":{"\
+			"\"testlabel\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":1}],\"label\":\"foo\",\"color\":\"black\"}"\
+		"},"\
+		"\"gui\":{},"\
+		"\"rules\":{"\
+			"\"switch\":{\"rule\":\"IF 1 == 1 THEN label DEVICE testlabel TO 'a\",\"active\":1}"\
 		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		-1, UV_RUN_NOWAIT,
 		0, &updates1[0],
@@ -885,6 +900,20 @@ static struct tests_t get_tests[] = {
 		0, UV_RUN_DEFAULT,
 		0, &updates1[0],
 		{ &receives[0] },
+		{ 1, 0 }
+	},
+	{
+		"calculation inside label",
+		"{\"devices\":{"\
+			"\"testlabel\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":1}],\"label\":\"foo\",\"color\":\"black\"}"\
+		"},"\
+		"\"gui\":{},"\
+		"\"rules\":{"\
+			"\"switch\":{\"rule\":\"IF 1 == 1 THEN label DEVICE testlabel TO 1000 + 10\",\"active\":1}"\
+		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
+		0, UV_RUN_DEFAULT,
+		0, &updates1[0],
+		{ &receives[4] },
 		{ 1, 0 }
 	},
 };
