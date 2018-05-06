@@ -1,6 +1,27 @@
 Changelog
 =========
 
+.. versionadded:: nightly 8.0.10-42
+
+.. rubric:: Improvements
+
+- Ported events operators and functions to LUA
+- Complete rewritten event parser with:
+   - (nested) IF/ELSE/THEN support
+   - case insensitive
+   - operator precedence compliant
+   - better error messages
+   - string concatenation
+   - calculations inside actions
+   - etc.
+
+.. rubric:: bugfixes
+
+- webGUI: Take `stats-enable` into account
+- webGUI: Warp long labels into multiple lines
+- webGUI: Keep values together on small screens
+- webGUI: Fix dimmer element being too small
+
 .. versionadded:: 8.0.10
 
 .. rubric:: Bugfixes
