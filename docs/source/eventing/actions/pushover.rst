@@ -31,7 +31,7 @@ Send a message to your mobile phone with the pushover API
 
    IF 1 == 1 THEN pushover TITLE Doorbell rang MESSAGE Doorbell rang TOKEN abcd123abc USER pilight
 
-.. versionchanged:: nightly
+.. versionchanged:: 8.1.0
 
 .. code-block:: console
 

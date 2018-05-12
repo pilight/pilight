@@ -64,7 +64,7 @@ Dims a device to a dimlevel or starts a sequence from one dimlevel to another.
    IF 1 == 1 THEN dim DEVICE mainlight TO 15 FROM 0 IN 45 MINUTE FOR 15 MINUTE AFTER 5 MINUTE
    IF 1 == 1 THEN switch DEVICE light TO off FOR 10 SECOND AFTER 30 MINUTE
 
-.. versionchanged:: nightly
+.. versionchanged:: 8.1.0
 
 .. code-block:: console
 

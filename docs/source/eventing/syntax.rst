@@ -40,7 +40,7 @@ All rules basically consist of the same structure:
 
 A rule always start with the IF, followed by the rule logic, and is closed by a THEN. All actions are put after the THEN.
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.0
 
 The IF / THEN logic can be expanded by an ELSE. The actions written after the ELSE will be executed if the logic contained in the first if block is false.
 
@@ -178,7 +178,7 @@ Various mathematical operators can be used to do calculations inside our rules. 
 String and Concatenation
 ------------------------
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.0
 
 pilight parses individual components inside a rule by looking at queues like spaces, comma's, hooks, and preserved words (e.g. actions or functions). In any case, pilight can be forces to parse any of these components as strings by enclosing them into quotes.
 
@@ -263,13 +263,13 @@ As you can also see, the fields (*state* or *dimlevel*) we can use depends on th
 
 Some devices are only used inside rules. Configuring them as explicit devices might sometimes feel a bit bloated. Therefor, pilight allows you to trigger rules based on received codes instead of device updates:
 
-.. deprecated:: nightly
+.. deprecated:: 8.1.0
 
 .. code-block:: guess
 
    IF archtech_switch.state IS on AND archtech_switch.id == 123456 AND arctech_switch.unit == 0 THEN ...
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.0
 
 .. code-block:: guess
 
@@ -322,7 +322,7 @@ We can combine an unlimited number of actions like this. Again we see that we us
 
    IF ... THEN switch DEVICE lamp AND television TO on AND dim DEVICE ambientLight TO 10
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.0
 
 As described earlier, actions can also be trigger based on a false condition like this:
 
@@ -359,7 +359,7 @@ In this case we use two dimmers called randomLow and randomHigh to dynamically c
 
    IF sunriseset.sunset == DATE_FORMAT(DATE_ADD(datetime, +1 HOUR), \"%Y-%m-%d %H:%M:%S\", %H.%M) THEN switch DEVICE lamp1 TO on
 
-.. versionchanged:: nightly
+.. versionchanged:: 8.1.0
 
 .. code-block:: guess
 

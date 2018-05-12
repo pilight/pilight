@@ -45,7 +45,7 @@ Send a message to any e-mail address
 
    IF 1 == 1 THEN sendmail SUBJECT Doorbell rang MESSAGE Doorbell rang TO someone@somewhere.com
 
-.. versionchanged:: nightly
+.. versionchanged:: 8.1.0
 
 .. code-block:: console
 

@@ -65,7 +65,7 @@ Operators
 
 .. versionadded:: 8.0 ISNOT operator added
 
-.. deprecated:: nightly
+.. deprecated:: 8.1.0
 
 +--------------+-------------------------------------------------+--------------------------+
 | **Operator** | **Description**                                 | **Example**              |
@@ -94,7 +94,7 @@ Operators
 
 .. rubric:: Other
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.0
 
 +----------------+-------------------------------------------------+--------------------------+
 | **Operator**   | **Description**                                 | **Example**              |

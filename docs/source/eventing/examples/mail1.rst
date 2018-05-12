@@ -54,7 +54,7 @@ Send a mail when one of the computer goes offline.
      }
    }
 
-.. versionchanged:: nightly
+.. versionchanged:: 8.1.0
 
 .. code-block:: json
    :linenos:

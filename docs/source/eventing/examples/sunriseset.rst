@@ -100,7 +100,7 @@ Or an hour before the sun sets:
      }
    }
 
-.. versionchanged:: nightly
+.. versionchanged:: 8.1.0
 
 By using math
 

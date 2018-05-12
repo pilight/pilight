@@ -52,7 +52,7 @@ Execute rules based on XBMC / KODI based events
      }
    }
 
-.. versionchanged:: nightly
+.. versionchanged:: 8.1.0
 
 .. code-block:: json
    :linenos:

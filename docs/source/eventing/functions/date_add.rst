@@ -45,7 +45,7 @@ The returned datetime string is always in the format ``%Y-%m-%d %H:%M:%S``. So i
    IF DATE_ADD(datetime, RANDOM(-3, +3) DAY) == ...
    IF DATE_FORMAT(DATE_ADD(2015-01-01 21:00:00, RANDOM(0, 120) MINUTE), \"%Y-%m-%d %H:%M:%S\", %H.%M) == ...
 
-.. versionchanged:: nightly
+.. versionchanged:: 8.1.0
 
 .. code-block:: console
 

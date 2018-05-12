@@ -54,7 +54,7 @@ Trigger events based on time
      }
    }
 
-.. versionchanged:: nightly
+.. versionchanged:: 8.1.0
 
 .. code-block:: json
    :linenos:

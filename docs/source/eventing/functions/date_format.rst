@@ -51,7 +51,7 @@ Also consider the usage of quotes. The flexibility in which DATE_FORMAT can form
    IF DATE_ADD(datetime, RANDOM(-3, +3) DAY) == ...
    IF DATE_FORMAT(DATE_ADD(2015-01-01 21:00:00, RANDOM(0, 120) MINUTE), \"%Y-%m-%d %H:%M:%S\", %H.%M) == ...
 
-.. versionchanged:: nightly
+.. versionchanged:: 8.1.0
 
 .. code-block:: console
 

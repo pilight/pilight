@@ -54,7 +54,7 @@ Sending a mail based on a contact device trigger including the time when it happ
      }
    }
 
-.. versionchanged:: nightly
+.. versionchanged:: 8.1.0
 
 .. code-block:: json
    :linenos:

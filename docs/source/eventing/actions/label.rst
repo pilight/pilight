@@ -48,7 +48,7 @@ Changes the text and color of a generic label device.
    IF 1 == 1 THEN label DEVICE tempLabel TO Bell rang AFTER 30 SECOND
    IF 1 == 1 THEN label DEVICE tempLabel TO None FOR 10 MINUTE AFTER 30 SECOND
 
-.. versionchanged:: nightly
+.. versionchanged:: 8.1.0.
 
 .. code-block:: console
 
