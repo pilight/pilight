@@ -3,6 +3,7 @@ Frequently Asked Questions
 
 - `General`_
    - `Retrieving pilight version`_
+   - `pilight doesn't start or immediately exits`_
    - `Fixing SSDP connection issues`_
    - `Disabling SSDP completely`_
    - `Using other devices besides 433.92 MHz`_
@@ -48,6 +49,15 @@ If you run a developmental version, a commit message will also be shown. It will
    pilight-daemon version v7.0-24-gb64a135
 
 In this case, the 24th commit after version 7.0 with the SHA id gb64a135 is running. To see which commit this is, check the `git development commit list <https://github.com/pilight/pilight/commits/development>`_.
+
+.. _pilight doesn't start or immediately exits:
+.. rubric:: pilight doesn't start or immediately exits
+
+Most probably you made an error in the pilight configuration. Start pilight in debug mode and check the output:
+
+.. code-block:: console
+
+   pi@pilight:~# pilight-daemon -D
 
 .. _Fixing SSDP connection issues:
 .. rubric:: Fixing SSDP connection issues
