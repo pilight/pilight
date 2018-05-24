@@ -368,7 +368,7 @@ The webserver has some special pages:
 
    .. code-block:: guess
 
-      http://x.x.x.x:5001/send?protocol=kaku_switch&state=on&id=1&unit=1
+      http://x.x.x.x:5001/send?protocol=kaku_switch&on=1&id=1&unit=1
 
    As can be seen, the URL arguments are the same as for the ``kaku_switch`` protocol:
 
