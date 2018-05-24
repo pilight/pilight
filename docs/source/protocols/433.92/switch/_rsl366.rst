@@ -41,11 +41,11 @@
 
    {
      "devices": {
-       "dimmer": {
+       "switch": {
          "protocol": [ "promax" ],
          "id": [{
            "systemcode": 4,
-           "unitcode": 1
+           "programcode": 1
          }],
          "state": "off"
        }
