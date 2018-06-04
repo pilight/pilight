@@ -37,8 +37,6 @@
 #include "alltests.h"
 
 static int testnr = 0;
-static uv_timer_t *timer_req = NULL;
-static uv_async_t *async_req = NULL;
 static CuTest *gtc = NULL;
 
 static struct reason_code_received_t updates2[] = {
@@ -597,6 +595,35 @@ static struct tests_t get_tests[] = {
 		{ NULL }, { 0 }
 	},
 	{
+		"decimals",
+		"{\"devices\":{"\
+			"\"testlabel\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":1}],\"label\":\"foo\",\"color\":\"black\"}"\
+		"},"\
+		"\"gui\":{},"\
+		"\"rules\":{"\
+			"\"switch\":{\"rule\":\"IF 9.4 == 9.4 THEN label DEVICE testlabel TO 1000 + 10\",\"active\":1}"\
+		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
+		0, UV_RUN_DEFAULT,
+		0, &updates1[0],
+		{ &receives[4] },
+		{ 1, 0 }
+	},
+	{
+		"float from functions",
+		"{\"devices\":{"\
+			"\"testlabel\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":1}],\"label\":\"foo\",\"color\":\"black\"},"\
+			"\"date\":{\"protocol\":[\"datetime\"],\"id\":[{\"longitude\":4.895167899999933,\"latitude\":52.3702157}],\"year\":2018,\"month\":1,\"day\":24,\"hour\":12,\"minute\":30,\"second\":12,\"weekday\":4,\"dst\":0}"\
+		"},"\
+		"\"gui\":{},"\
+		"\"rules\":{"\
+			"\"switch\":{\"rule\":\"IF DATE_FORMAT(date, %H.%M) == 12.30 THEN label DEVICE testlabel TO 1000 + 10\",\"active\":1}"\
+		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
+		0, UV_RUN_DEFAULT,
+		0, &updates1[0],
+		{ &receives[4] },
+		{ 1, 0 }
+	},
+	{
 		"valid device param",
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\
@@ -928,18 +955,6 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 	}
 }
 
-static void async_close_cb(uv_async_t *handle) {
-	if(!uv_is_closing((uv_handle_t *)handle)) {
-		uv_close((uv_handle_t *)handle, close_cb);
-	}
-	uv_timer_stop(timer_req);
-	uv_stop(uv_default_loop());
-}
-
-static void stop(void) {
-	uv_async_send(async_req);
-}
-
 static void *control_device(int reason, void *param) {
 	int a = get_tests[testnr].nrreceives[1], i = 0;
 	int len = sizeof(receives)/sizeof(receives[0]);
@@ -984,17 +999,6 @@ static void test_events(CuTest *tc) {
 	gtc = tc;
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
-
-	// async_req = MALLOC(sizeof(uv_async_t));
-	// CuAssertPtrNotNull(gtc, async_req);
-	// uv_async_init(uv_default_loop(), async_req, async_close_cb);
-
-	// timer_req = MALLOC(sizeof(uv_timer_t));
-	// CuAssertPtrNotNull(gtc, timer_req);
-
-	// uv_timer_init(uv_default_loop(), timer_req);
-	// uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 500, 0);
-
 
 	int len = sizeof(get_tests)/sizeof(get_tests[0]), i = 0;
 	for(testnr=0;testnr<len;testnr++) {

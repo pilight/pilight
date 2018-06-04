@@ -563,7 +563,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varc
 
 static int lexer_parse_integer(struct lexer_t *lexer, struct stack_dt *t) {
 	if(isdigit(lexer->current_char[0])) {
-		while(lexer->pos <= lexer->len && isdigit(lexer->current_char[0])) {
+		while(lexer->pos <= lexer->len && (isdigit(lexer->current_char[0]) || lexer->current_char[0] == '.')) {
 			dt_stack_push(t, sizeof(char *), lexer->current_char);
 			lexer->current_char = &lexer->text[lexer->pos++];
 		}
