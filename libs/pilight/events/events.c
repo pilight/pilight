@@ -562,10 +562,24 @@ int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varc
 }
 
 static int lexer_parse_integer(struct lexer_t *lexer, struct stack_dt *t) {
+	int i = 0, nrdot = 0;
 	if(isdigit(lexer->current_char[0])) {
-		while(lexer->pos <= lexer->len && (isdigit(lexer->current_char[0]) || lexer->current_char[0] == '.')) {
+		/*
+		 * The dot cannot be the first character
+		 * and we cannot have more than 1 dot
+		 */
+		while(lexer->pos <= lexer->len &&
+				(
+					isdigit(lexer->current_char[0]) ||
+					(i > 0 && nrdot == 0 && lexer->current_char[0] == '.')
+				)
+			) {
+			if(lexer->current_char[0] == '.') {
+				nrdot++;
+			}
 			dt_stack_push(t, sizeof(char *), lexer->current_char);
 			lexer->current_char = &lexer->text[lexer->pos++];
+			i++;
 		}
 		return 0;
 	} else {
