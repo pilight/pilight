@@ -1619,7 +1619,7 @@ static int run_function(struct tree_t *tree, int in_action, struct rules_t *obj,
 					if(in_action == 0 && devices_select_struct(ORIGIN_RULE, v1.string_, &dev) == 0) {
 #else
 					struct devices_t *dev = NULL;
-					if(devices_get(v1.string_, &dev) == 0) {
+					if(in_action == 0 && devices_get(v1.string_, &dev) == 0) {
 #endif
 						event_cache_device(obj, v1.string_);
 					}
