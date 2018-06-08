@@ -75,6 +75,7 @@
 #endif	
 #define LOG_MAX_SIZE 						1048576 // 1024*1024
 
+#define LOOPBACK								0
 #define UUID_LENGTH							21
 
 #define FIRMWARE_PATH				"c:/pilight/"

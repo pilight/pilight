@@ -30,6 +30,8 @@
 
 static int gpio_433_in = -1;
 static int gpio_433_out = -1;
+static int wait = 0;
+static int loopback = LOOPBACK;
 static int pollpri = UV_PRIORITIZED;
 
 #if defined(__arm__) || defined(__mips__) || defined(PILIGHT_UNITTEST)
@@ -62,7 +64,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 	int duration = 0;
 	int fd = req->io_watcher.fd;
 
-	if(events & pollpri) {
+	if((events & pollpri) && ((wait == 0 && loopback == 0) || loopback == 1)) {
 		uint8_t c = 0;
 
 		(void)read(fd, &c, 1);
@@ -109,6 +111,8 @@ static void *gpio433Send(int reason, void *param) {
 	int rawlen = data1->rawlen;
 	int repeats = data1->txrpt;
 
+	wait = 1;
+	
 	int r = 0, x = 0;
 	if(gpio_433_out >= 0) {
 		for(r=0;r<repeats;r++) {
@@ -123,6 +127,8 @@ static void *gpio433Send(int reason, void *param) {
 		}
 		digitalWrite(gpio_433_out, 0);
 	}
+
+	wait = 0;
 
 	struct reason_code_sent_success_t *data2 = MALLOC(sizeof(struct reason_code_sent_success_t));
 	strcpy(data2->message, data1->message);
@@ -158,6 +164,8 @@ static unsigned short int gpio433HwInit(void) {
 		return EXIT_FAILURE;
 	}
 #else
+	settings_find_number("loopback", &loopback);
+
 	if(settings_find_string("gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
 		logprintf(LOG_ERR, "no gpio-platform configured");
 		return EXIT_FAILURE;

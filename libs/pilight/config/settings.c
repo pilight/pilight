@@ -230,7 +230,8 @@ static int settings_parse(JsonNode *root) {
 			}
 		} else if(strcmp(jsettings->key, "standalone") == 0 ||
 							strcmp(jsettings->key, "watchdog-enable") == 0 ||
-							strcmp(jsettings->key, "stats-enable") == 0) {
+							strcmp(jsettings->key, "stats-enable") == 0 ||
+							strcmp(jsettings->key, "loopback") == 0) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be either 0 or 1", jsettings->key);
 				have_error = 1;
