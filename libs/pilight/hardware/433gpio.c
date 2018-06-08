@@ -64,7 +64,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 	int duration = 0;
 	int fd = req->io_watcher.fd;
 
-	if((events & pollpri) && ((wait == 0 && loopback == 0) || loopback == 1)) {
+	if(events & pollpri) {
 		uint8_t c = 0;
 
 		(void)read(fd, &c, 1);
@@ -75,28 +75,32 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 		timestamp.first = timestamp.second;
 		timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
-		duration = (int)((int)timestamp.second-(int)timestamp.first);
+		if((wait == 0 && loopback == 0) || loopback == 1) {
+			duration = (int)((int)timestamp.second-(int)timestamp.first);
 
-		if(duration > 0) {
-			data.rbuffer[data.rptr++] = duration;
-			if(data.rptr > MAXPULSESTREAMLENGTH-1) {
-				data.rptr = 0;
-			}
-			if(duration > gpio433->mingaplen) {
-				/* Let's do a little filtering here as well */
-				if(data.rptr >= gpio433->minrawlen && data.rptr <= gpio433->maxrawlen) {
-					struct reason_received_pulsetrain_t *data1 = MALLOC(sizeof(struct reason_received_pulsetrain_t));
-					if(data1 == NULL) {
-						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-					}
-					data1->length = data.rptr;
-					memcpy(data1->pulses, data.rbuffer, data.rptr*sizeof(int));
-					data1->hardware = gpio433->id;
-
-					eventpool_trigger(REASON_RECEIVED_PULSETRAIN, reason_received_pulsetrain_free, data1);
+			if(duration > 0) {
+				data.rbuffer[data.rptr++] = duration;
+				if(data.rptr > MAXPULSESTREAMLENGTH-1) {
+					data.rptr = 0;
 				}
-				data.rptr = 0;
+				if(duration > gpio433->mingaplen) {
+					/* Let's do a little filtering here as well */
+					if(data.rptr >= gpio433->minrawlen && data.rptr <= gpio433->maxrawlen) {
+						struct reason_received_pulsetrain_t *data1 = MALLOC(sizeof(struct reason_received_pulsetrain_t));
+						if(data1 == NULL) {
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+						}
+						data1->length = data.rptr;
+						memcpy(data1->pulses, data.rbuffer, data.rptr*sizeof(int));
+						data1->hardware = gpio433->id;
+
+						eventpool_trigger(REASON_RECEIVED_PULSETRAIN, reason_received_pulsetrain_free, data1);
+					}
+					data.rptr = 0;
+				}
 			}
+		} else {
+			data.rptr = 0;
 		}
 	};
 	if(events & UV_DISCONNECT) {
