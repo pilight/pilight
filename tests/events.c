@@ -94,6 +94,23 @@ static struct reason_config_update_t updates1[] = {
 			}
 		},
 		NULL 								// uuid
+	},
+	{	/* 2 */
+		"update", 						// origin
+		DATETIME,							// type
+		1,										// timestamp
+		1,										// nrdev
+		{ "date" },						// devices
+		1,										// nrval
+		{											// values
+			{ "year", { .number_ = 2016 }, 0, JSON_NUMBER },
+			{ "month", { .number_ = 2 }, 0, JSON_NUMBER },
+			{ "day", { .number_ = 1 }, 0, JSON_NUMBER },
+			{ "hour", { .number_ = 12 }, 0, JSON_NUMBER },
+			{ "minute", { .number_ = 31 }, 0, JSON_NUMBER },
+			{ "second", { .number_ = 15 }, 0, JSON_NUMBER }
+		},
+		NULL 								// uuid
 	}
 };
 
@@ -619,7 +636,7 @@ static struct tests_t get_tests[] = {
 			"\"switch\":{\"rule\":\"IF DATE_FORMAT(date, %H.%M) == 12.30 THEN label DEVICE testlabel TO 1000 + 10\",\"active\":1}"\
 		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		0, UV_RUN_DEFAULT,
-		0, &updates1[0],
+		0, &updates1[2],
 		{ &receives[4] },
 		{ 1, 0 }
 	},
@@ -928,6 +945,41 @@ static struct tests_t get_tests[] = {
 		0, &updates1[0],
 		{ &receives[0] },
 		{ 1, 0 }
+	},
+	/*
+	 * This rule intentionally has a DATE_FORMAT function
+	 * in various places. In the IF, the ELSE and inside
+	 * an action. This rule (and the next) can be used to
+	 * test if the date is the only device being cached,
+	 * and not the date1. So an `date` device should
+	 * trigger this rule, a `date1` should not.
+	 */
+	{
+		"stacked if else with device parameters 1",
+		"{\"devices\":{"\
+			"\"dimmer\":{\"protocol\":[\"generic_dimmer\"],\"id\":[{\"id\":100}],\"state\":\"off\",\"dimlevel\":10}," \
+			"\"date\":{\"protocol\":[\"datetime\"],\"id\":[{\"longitude\":4.895168,\"latitude\":52.370216}],\"year\":2016,\"month\":3,\"day\":14,\"hour\":8,\"minute\":44,\"second\":48,\"weekday\":1,\"dst\":0},	"\
+			"\"date1\":{\"protocol\":[\"datetime\"],\"id\":[{\"longitude\":4.895168,\"latitude\":52.370216}],\"year\":2016,\"month\":3,\"day\":14,\"hour\":8,\"minute\":44,\"second\":48,\"weekday\":1,\"dst\":0}"\
+		"},\"gui\":{},"\
+		"\"rules\":{\"dimmer\":{\"rule\":\"IF 1 == 0 AND DATE_FORMAT(date, %H.%M) == 12.30 THEN IF 1 == 1 AND DATE_FORMAT(date, %H.%M) == 12.30 THEN dim DEVICE 'dimmer' TO DATE_FORMAT(date1, %H) - 4 ELSE dim DEVICE 'dimmer' TO DATE_FORMAT(date1, %H) - 5 END ELSE dim DEVICE 'dimmer' TO DATE_FORMAT(date1, %H) - 6\",\"active\":1}},"\
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
+		0, UV_RUN_DEFAULT,
+		0, &updates1[2],
+		{ &receives[1] },
+		{ 1, 0 }
+	},
+	{
+		"stacked if else with device parameters 2",
+		"{\"devices\":{"\
+			"\"dimmer\":{\"protocol\":[\"generic_dimmer\"],\"id\":[{\"id\":100}],\"state\":\"off\",\"dimlevel\":10}," \
+			"\"date\":{\"protocol\":[\"datetime\"],\"id\":[{\"longitude\":4.895168,\"latitude\":52.370216}],\"year\":2016,\"month\":3,\"day\":14,\"hour\":8,\"minute\":44,\"second\":48,\"weekday\":1,\"dst\":0},	"\
+			"\"date1\":{\"protocol\":[\"datetime\"],\"id\":[{\"longitude\":4.895168,\"latitude\":52.370216}],\"year\":2016,\"month\":3,\"day\":14,\"hour\":8,\"minute\":44,\"second\":48,\"weekday\":1,\"dst\":0}"\
+		"},\"gui\":{},"\
+		"\"rules\":{\"dimmer\":{\"rule\":\"IF 1 == 0 AND DATE_FORMAT(date1, %H.%M) == 12.30 THEN IF 1 == 1 AND DATE_FORMAT(date1, %H.%M) == 12.30 THEN dim DEVICE 'dimmer' TO DATE_FORMAT(date, %H) - 4 ELSE dim DEVICE 'dimmer' TO DATE_FORMAT(date, %H) - 5 END ELSE dim DEVICE 'dimmer' TO DATE_FORMAT(date, %H) - 6\",\"active\":1}},"\
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
+		0, UV_RUN_NOWAIT,
+		0, &updates1[2],
+		{ NULL }, { 0 }
 	},
 	{
 		"calculation inside label",

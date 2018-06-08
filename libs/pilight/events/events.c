@@ -1514,7 +1514,7 @@ static void print_ast(struct tree_t *tree) {
 	}
 }
 
-static int interpret(struct tree_t *tree, struct rules_t *obj, unsigned short validate, struct varcont_t *v);
+static int interpret(struct tree_t *tree, int in_action, struct rules_t *obj, unsigned short validate, struct varcont_t *v);
 
 static void varcont_free(struct varcont_t *v) {
 	if(v->free_ == 1) {
@@ -1525,8 +1525,9 @@ static void varcont_free(struct varcont_t *v) {
 	}
 }
 
-static int run_function(struct tree_t *tree, struct rules_t *obj, unsigned short validate, struct varcont_t *v) {
+static int run_function(struct tree_t *tree, int in_action, struct rules_t *obj, unsigned short validate, struct varcont_t *v) {
 	struct event_function_args_t *args = NULL;
+	struct device_t *dev = NULL;
 	struct varcont_t v_res, v1;
 	int i = 0;
 
@@ -1534,7 +1535,7 @@ static int run_function(struct tree_t *tree, struct rules_t *obj, unsigned short
 		memset(&v_res, '\0', sizeof(struct varcont_t));
 		memset(&v1, '\0', sizeof(struct varcont_t));
 
-		if(interpret(tree->child[i], obj, validate, &v_res) == -1) {
+		if(interpret(tree->child[i], in_action, obj, validate, &v_res) == -1) {
 			v = NULL;
 			return -1;
 		}
@@ -1544,6 +1545,11 @@ static int run_function(struct tree_t *tree, struct rules_t *obj, unsigned short
 				varcont_free(&v_res);
 				return -1;
 			} else {
+				if(v1.type_ == JSON_STRING) {
+					if(in_action == 0 && devices_select_struct(ORIGIN_RULE, v1.string_, &dev) == 0) {
+						event_cache_device(obj, v1.string_);
+					}
+				}
 				args = event_function_add_argument(&v1, args);
 				varcont_free(&v1);
 				varcont_free(&v_res);
@@ -1575,7 +1581,7 @@ static int run_action(struct tree_t *tree, struct rules_t *obj, unsigned short v
 
 	for(i=0;i<tree->nrchildren;i++) {
 		if(tree->child[i]->token->type == TACTION) {
-			if(interpret(tree->child[i], obj, validate, &v_res) == -1) {
+			if(interpret(tree->child[i], 1, obj, validate, &v_res) == -1) {
 				v_out = NULL;
 				return -1;
 			}
@@ -1589,14 +1595,14 @@ static int run_action(struct tree_t *tree, struct rules_t *obj, unsigned short v
 		jvalues = json_mkarray();
 		json_append_member(jparam, "order", json_mknumber(i+1, 0));
 		json_append_member(jparam, "value", jvalues);
-		if(interpret(tree->child[i], obj, validate, &v_res) == -1) {
+		if(interpret(tree->child[i], 1, obj, validate, &v_res) == -1) {
 			v_out = NULL;
 			return -1;
 		}
 		key = v_res.string_;
 
 		for(x=0;x<tree->child[i]->nrchildren;x++) {
-			if(interpret(tree->child[i]->child[x], obj, validate, &v_res1) == -1) {
+			if(interpret(tree->child[i]->child[x], 1, obj, validate, &v_res1) == -1) {
 				v_out = NULL;
 				return -1;
 			}
@@ -1683,7 +1689,7 @@ static int run_action(struct tree_t *tree, struct rules_t *obj, unsigned short v
 	return 0;
 }
 
-static int interpret(struct tree_t *tree, struct rules_t *obj, unsigned short validate, struct varcont_t *v_out) {
+static int interpret(struct tree_t *tree, int in_action, struct rules_t *obj, unsigned short validate, struct varcont_t *v_out) {
 	struct varcont_t v_res;
 	memset(&v_res, 0, sizeof(struct varcont_t));
 	if(tree == NULL) {
@@ -1698,7 +1704,7 @@ static int interpret(struct tree_t *tree, struct rules_t *obj, unsigned short va
 			return 0;
 		} break;
 		case TFUNCTION: {
-			if(run_function(tree, obj, validate, v_out) == -1) {
+			if(run_function(tree, in_action, obj, validate, v_out) == -1) {
 				return -1;
 			}
 			return 0;
@@ -1715,7 +1721,7 @@ static int interpret(struct tree_t *tree, struct rules_t *obj, unsigned short va
 			return 0;
 		} break;
 		case TIF: {
-			if(interpret(tree->child[0], obj, validate, &v_res) == -1) {
+			if(interpret(tree->child[0], 0, obj, validate, &v_res) == -1) {
 				varcont_free(&v_res);
 				return -1;
 			} else {
@@ -1725,7 +1731,7 @@ static int interpret(struct tree_t *tree, struct rules_t *obj, unsigned short va
 				}
 				if(v_res.bool_ == 1) {
 					varcont_free(&v_res);
-					if(interpret(tree->child[1], obj, validate, &v_res) == -1) {
+					if(interpret(tree->child[1], 0, obj, validate, &v_res) == -1) {
 						varcont_free(&v_res);
 						return -1;
 					}
@@ -1734,7 +1740,7 @@ static int interpret(struct tree_t *tree, struct rules_t *obj, unsigned short va
 					return 0;
 				} else if(tree->nrchildren == 3) {
 					varcont_free(&v_res);
-					if(interpret(tree->child[2], obj, validate, &v_res) == -1) {
+					if(interpret(tree->child[2], 0, obj, validate, &v_res) == -1) {
 						varcont_free(&v_res);
 						return -1;
 					}
@@ -1760,11 +1766,11 @@ static int interpret(struct tree_t *tree, struct rules_t *obj, unsigned short va
 			memset(&v4, '\0', sizeof(struct varcont_t));
 
 			if(event_operator_exists(tree->token->value) == 0) {
-				if(interpret(tree->child[0], obj, validate, &v1) == -1) {
+				if(interpret(tree->child[0], in_action, obj, validate, &v1) == -1) {
 					varcont_free(&v1);
 					return -1;
 				}
-				if(interpret(tree->child[1], obj, validate, &v2) == -1) {
+				if(interpret(tree->child[1], in_action, obj, validate, &v2) == -1) {
 					varcont_free(&v2);
 					return -1;
 				}
@@ -1877,7 +1883,7 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 		FREE(lexer);
 	}
 
-	if(interpret(obj->tree, obj, validate, &v_res) == -1) {
+	if(interpret(obj->tree, 0, obj, validate, &v_res) == -1) {
 		return -1;
 	}
 	if(v_res.type_ == JSON_BOOL) {
@@ -1981,6 +1987,7 @@ void *events_loop(int reason, void *param) {
 		}
 	}
 
+
 	if(rules_select_struct(ORIGIN_MASTER, NULL, &tmp_rules) == 0) {
 		while(tmp_rules) {
 			if(tmp_rules->active == 1) {
@@ -2033,12 +2040,14 @@ void *events_loop(int reason, void *param) {
 			tmp_rules = tmp_rules->next;
 		}
 	}
+
 	if(list != NULL && list->nr > 0) {
 		uv_work_t *tp_work_req = MALLOC(sizeof(uv_work_t));
 		if(tp_work_req == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		tp_work_req->data = list;
+
 		if(uv_queue_work(uv_default_loop(), tp_work_req, "rules loop", events_iterate, fib_free) < 0) {
 			/*
 			 * FIXME
