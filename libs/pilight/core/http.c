@@ -805,7 +805,7 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 		}
 
 		uv_timer_init(uv_default_loop(), request->timer_req);
-		uv_timer_start(request->timer_req, (void (*)(uv_timer_t *))timeout, 1000, 0);
+		uv_timer_start(request->timer_req, (void (*)(uv_timer_t *))timeout, 3000, 0);
 
 		http_client_add(request->poll_req, custom_poll_data);
 		request->steps = STEP_WRITE;
