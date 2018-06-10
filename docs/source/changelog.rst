@@ -1,6 +1,18 @@
 Changelog
 =========
 
+.. versionadded:: nightly
+
+.. rubric:: Improvements
+
+- HTTP library callback when client stops responding
+- Disable loopback by default (can be enabled with the ``loopback`` setting).
+
+.. rubric:: Bugfixes
+
+- New eventparser again evaluates devices used in functions
+- 433nano works again
+
 .. versionadded:: 8.1.0
 
 .. rubric:: Improvements
