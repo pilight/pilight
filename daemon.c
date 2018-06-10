@@ -737,7 +737,7 @@ void *send_code(void *param) {
 						pthread_cond_signal(&hw->signal);
 					}
 #else
-				if((hw->comtype == COMOOK) || (hw->comtype == COMPLSTRAIN && hw->sendOOK != NULL)) {
+				if(hw->comtype == COMOOK || hw->comtype == COMPLSTRAIN) {
 #endif
 					logprintf(LOG_DEBUG, "**** RAW CODE ****");
 					if(log_level_get() >= LOG_DEBUG) {
