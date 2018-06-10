@@ -237,7 +237,6 @@ static uv_thread_t pth;
 static uv_thread_t pth1;
 static int testnr = 0;
 static int http_server = 0;
-static int http_client = 0;
 static int http_loop = 1;
 static int is_ssl = 0;
 static int is_ssl_init = 0;
@@ -294,6 +293,7 @@ static void http_wait(void *param) {
 	char *message = NULL;
 	int n = 0, r = 0, len = 0;
 	int doread = 0, dowrite = 0;
+	int http_client = 0;
 	fd_set fdsread;
 	fd_set fdswrite;
 
@@ -311,9 +311,7 @@ static void http_wait(void *param) {
 #endif
 
 	FD_ZERO(&fdsread);
-	if(tests[testnr].sendmsg != NULL) {
-		FD_ZERO(&fdswrite);
-	}
+	FD_ZERO(&fdswrite);
 	FD_SET((unsigned long)http_server, &fdsread);
 
 	if(tests[testnr].ssl == 1) {
@@ -399,7 +397,9 @@ static void http_wait(void *param) {
 				}
 				CuAssertTrue(gtc, r >= 0);
 				CuAssertStrEquals(gtc, message, tests[testnr].recvmsg);
-				dowrite = 1;
+				if(tests[testnr].sendmsg != NULL) {
+					dowrite = 1;
+				}
 			}
 			if(FD_ISSET(http_client, &fdswrite)) {
 				FD_ZERO(&fdswrite);
