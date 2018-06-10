@@ -46,3 +46,6 @@ pilight-uuid
 ._*
 ehthumbs.db
 Thumbs.db
+
+# docs
+docs/build
