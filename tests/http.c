@@ -219,6 +219,13 @@ static struct tests_t {
 				"Content-Type: %s\r\n\r\n"
 				"%s"
 	},
+	{ "connection made but no response", GET, "http://127.0.0.1:10080/", 10080, 0, 0, 408, 0, NULL, NULL, NULL,
+			"GET / HTTP/1.1\r\n"
+				"Host: 127.0.0.1\r\n"
+				"User-Agent: pilight\r\n"
+				"Connection: close\r\n\r\n",
+			NULL
+	},
 	{ "invalid url (getaddrinfo error)", GET, "http://WvQTxNJ13BJUBC62R8PM.com/", 10080, 0, 1, 404, 0, NULL, NULL, "",
 			NULL,
 			NULL
@@ -304,7 +311,9 @@ static void http_wait(void *param) {
 #endif
 
 	FD_ZERO(&fdsread);
-	FD_ZERO(&fdswrite);
+	if(tests[testnr].sendmsg != NULL) {
+		FD_ZERO(&fdswrite);
+	}
 	FD_SET((unsigned long)http_server, &fdsread);
 
 	if(tests[testnr].ssl == 1) {
@@ -319,11 +328,19 @@ static void http_wait(void *param) {
 		if(doquit == 2) {
 			http_loop = 0;
 #ifdef _WIN32
-			closesocket(http_client);
-			closesocket(http_server);
+			if(http_client > 0) {
+				closesocket(http_client);
+			}
+			if(http_server > 0) {
+				closesocket(http_server);
+			}
 #else
-			close(http_client);
-			close(http_server);
+			if(http_client > 0) {
+				close(http_client);
+			}
+			if(http_server > 0) {
+				close(http_server);
+			}
 #endif
 			http_client = 0;
 			http_server = 0;
@@ -531,7 +548,7 @@ static void test(void *param) {
 	is_ssl = 0;
 	doquit = 0;
 
-	if(testnr != 11) {
+	if(testnr != 12) {
 		http_start(tests[testnr].url, tests[testnr].port);
 		uv_thread_create(&pth, http_wait, NULL);
 	}
@@ -582,7 +599,7 @@ static void test_http(CuTest *tc) {
 	storage_gc();
 	eventpool_gc();
 
-	CuAssertIntEquals(tc, 12, testnr);
+	CuAssertIntEquals(tc, 13, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 
 }
@@ -638,7 +655,7 @@ static void test_http_threaded(CuTest *tc) {
 	storage_gc();
 	eventpool_gc();
 
-	CuAssertIntEquals(tc, 12, testnr);
+	CuAssertIntEquals(tc, 13, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
