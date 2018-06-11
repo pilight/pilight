@@ -460,7 +460,6 @@ static unsigned short int nano433HwInit(void) {
 }
 
 static unsigned short nano433HwDeinit(void) {
-	printf("goed\n");
 	loop = 0;
 #ifdef _WIN32
 	CloseHandle(serial_433_fd);
