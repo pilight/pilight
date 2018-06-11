@@ -30,6 +30,8 @@
 #define	POST	1
 #define BUFSIZE 1024*1024
 
+void *_userdata = NULL;
+
 /*
  * FIXME
  * - 300 urls
@@ -282,6 +284,7 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 	if(tests[testnr].type != NULL) {
 		CuAssertStrEquals(gtc, type, tests[testnr].type);
 	}
+	CuAssertTrue(gtc, _userdata == userdata);
 
 	testnr++;
 
@@ -582,10 +585,10 @@ static void test(void *param) {
 	}
 
 	if(tests[testnr].getpost == GET) {
-		http_get_content(tests[testnr].url, callback, NULL);
+		http_get_content(tests[testnr].url, callback, _userdata);
 	}
 	if(tests[testnr].getpost == POST) {
-		http_post_content(tests[testnr].url, tests[testnr].type, tests[testnr].post, callback, NULL);
+		http_post_content(tests[testnr].url, tests[testnr].type, tests[testnr].post, callback, _userdata);
 	}
 
 	started = 1;
@@ -602,6 +605,9 @@ static void test_http(CuTest *tc) {
 	testnr = 0;
 
 	gtc = tc;
+
+	_userdata = MALLOC(0);
+	CuAssertPtrNotNull(tc, _userdata);
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
@@ -627,6 +633,8 @@ static void test_http(CuTest *tc) {
 	storage_gc();
 	eventpool_gc();
 
+	FREE(_userdata);
+
 	CuAssertIntEquals(tc, 15, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 
@@ -642,6 +650,9 @@ static void test_http_threaded(CuTest *tc) {
 
 	gtc = tc;
 	testnr = 0;
+
+	_userdata = MALLOC(0);
+	CuAssertPtrNotNull(tc, _userdata);
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
@@ -683,6 +694,7 @@ static void test_http_threaded(CuTest *tc) {
 	storage_gc();
 	eventpool_gc();
 
+	FREE(_userdata);
 	CuAssertIntEquals(tc, 15, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 }
