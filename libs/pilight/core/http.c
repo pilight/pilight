@@ -464,6 +464,15 @@ static void http_client_close(uv_poll_t *req) {
 	struct request_t *request = custom_poll_data->data;
 	uv_timer_t *timer_req = request->timer_req;
 
+	/*
+	 * Callback when we were receiving data
+	 * that was disrupted early.
+	 */
+	if(request->reading == 1) {
+		if(request->callback != NULL) {
+			request->callback(408, NULL, 0, NULL, request->userdata);
+		}
+	}
 	uv_timer_stop(timer_req);
 
 	if(request->fd > -1) {
@@ -496,6 +505,19 @@ static void http_client_close(uv_poll_t *req) {
 
 static void poll_close_cb(uv_poll_t *req) {
 	http_client_close(req);
+}
+
+static void timeout(uv_timer_t *req) {
+	struct request_t *request = req->data;
+	void (*callback)(int, char *, int, char *, void *) = request->callback;
+	void *userdata = request->userdata;
+	if(request->timer_req != NULL) {
+		uv_timer_stop(request->timer_req);
+	}
+	http_client_close(request->poll_req);
+	if(callback != NULL) {
+		callback(408, NULL, 0, NULL, userdata);
+	}
 }
 
 static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
@@ -601,6 +623,7 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		if(request->chunked == 1 || request->bytes_read < request->content_len) {
 			request->reading = 1;
 		} else if(request->content != NULL) {
+			request->reading = 0;
 			request->content[request->content_len] = '\0';
 			uv_timer_stop(request->timer_req);
 			if(request->callback != NULL) {
@@ -661,18 +684,6 @@ static void write_cb(uv_poll_t *req) {
 			uv_custom_read(req);
 			return;
 		break;
-	}
-}
-
-static void timeout(uv_timer_t *req) {
-	struct request_t *request = req->data;
-	void (*callback)(int, char *, int, char *, void *) = request->callback;
-	if(request->timer_req != NULL) {
-		uv_timer_stop(request->timer_req);
-	}
-	http_client_close(request->poll_req);
-	if(callback != NULL) {
-		callback(408, NULL, 0, NULL, NULL);
 	}
 }
 

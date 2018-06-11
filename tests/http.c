@@ -82,6 +82,23 @@ static struct tests_t {
 				"Content-Type: %s\r\n\r\n"
 				"%s"
 	},
+	// Content-Length is actually 12 bytes
+	{ "too big content-length", GET, "http://127.0.0.1:10080/", 10080, 0, 1, 408, 0, NULL, NULL, "",
+			"GET / HTTP/1.1\r\n"
+				"Host: 127.0.0.1\r\n"
+				"User-Agent: pilight\r\n"
+				"Connection: close\r\n\r\n",
+			"HTTP/1.1 200 OK\r\n"
+				"Date: Sun, 30 Oct 2016 15:07:58 GMT\r\n"
+				"Server: Apache/2.4.23 (FreeBSD) PHP/5.6.26\r\n"
+				"Last-Modified: Tue, 22 Oct 2013 15:02:41 GMT\r\n"
+				"ETag: \"d5-4e955b12f4640\"\r\n"
+				"Accept-Ranges: bytes\r\n"
+				"Content-Length: 18\r\n"
+				"Connection: close\r\n"
+				"Content-Type: %s\r\n\r\n"
+				"Hello World!"
+	},
 	{ "plain get ssl", GET, "https://127.0.0.1:10443/", 10443, 1, 1, 200, 12, "text/html", "Hello World!", "",
 			"GET / HTTP/1.1\r\n"
 				"Host: 127.0.0.1\r\n"
@@ -155,6 +172,17 @@ static struct tests_t {
 			"13\r\n"
 			"1234567890123456789\r\n"
 			"0\r\n\r\n"
+	},
+	{ "partial chunked get", GET, "http://127.0.0.1:10080/test.jpg", 10080, 0, 0, 408, 0, NULL, NULL, "",
+		"GET /test.jpg HTTP/1.1\r\n"
+			"Host: 127.0.0.1\r\n"
+			"User-Agent: pilight\r\n"
+			"Connection: close\r\n\r\n",
+		"HTTP/1.1 200 OK\r\n"
+			"Keep-Alive: timeout=15, max=100\r\n"
+			"Transfer-Encoding: chunked\r\n\r\n"
+			"1E\r\n"
+			"123456789012345678901234567890\r\n"
 	},
 	{ "404 header, ssl, and lower case headers", GET, "https://127.0.0.1:10443/foobar", 10443, 1, 1, 404, 0, "text/plain", "", "",
 		"GET /foobar HTTP/1.1\r\n"
@@ -548,7 +576,7 @@ static void test(void *param) {
 	is_ssl = 0;
 	doquit = 0;
 
-	if(testnr != 12) {
+	if(testnr != 14) {
 		http_start(tests[testnr].url, tests[testnr].port);
 		uv_thread_create(&pth, http_wait, NULL);
 	}
@@ -599,7 +627,7 @@ static void test_http(CuTest *tc) {
 	storage_gc();
 	eventpool_gc();
 
-	CuAssertIntEquals(tc, 13, testnr);
+	CuAssertIntEquals(tc, 15, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 
 }
@@ -655,7 +683,7 @@ static void test_http_threaded(CuTest *tc) {
 	storage_gc();
 	eventpool_gc();
 
-	CuAssertIntEquals(tc, 13, testnr);
+	CuAssertIntEquals(tc, 15, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
