@@ -13,6 +13,7 @@ Settings
    - `stats-enable`_
    - `watchdog-enable`_
    - `gpio-platform`_
+   - `loopback`_
 - `Webserver`_
    - `webgui-websockets`_
    - `webserver-authentication`_
@@ -264,6 +265,22 @@ pilight can be ran on various GPIO compatible platforms. However, it is impossib
               - pcduino1
 
 If you are running on a platform that doesn't support GPIO, you can either use ``none`` as the ``gpio-platform`` or remove the setting altogether.
+
+.. _loopback:
+.. rubric:: loopback
+
+.. versionadded:: 8.1.1
+
+.. note::
+
+   Linux
+
+.. code-block:: json
+   :linenos:
+
+   { "loopback": 0 }
+
+pilight has the ability to sent and receive pulsestreams at the same time when using the ``433gpio`` hardware module. This is especially usefull when developing new protocols. It does have it's downsides. Protocols sent out are not always received back correctly. Secondly, when a protocol has been received while also a delayed action has been triggered, the action will be aborted. Therefor, the ``loopback`` is disabled by default.
 
 Webserver
 ---------

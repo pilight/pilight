@@ -1,7 +1,7 @@
 Changelog
 =========
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.1
 
 .. rubric:: Improvements
 
