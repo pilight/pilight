@@ -621,13 +621,19 @@ int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varc
 			return -1;
 		}*/
 		array_free(&array, n);
-	} else if(nrdots > 2) {
+	}
+	/*
+	 * Multiple dots should also be allowed and not be seen as config device
+	 * e.g.: http://192.168.1.1/
+	 */
+	/*
+		else if(nrdots > 2) {
 		logprintf(LOG_ERR, "rule #%d invalid: variable \"%s\" is invalid", obj->nr, var);
 		varcont->string_ = NULL;
 		varcont->number_ = 0;
 		varcont->decimals_ = 0;
 		return -1;
-	}
+	} */
 
 	if(isNumeric(var) == 0) {
 		varcont->number_ = atof(var);
