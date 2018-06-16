@@ -626,6 +626,17 @@ static struct tests_t get_tests[] = {
 		{ 1, 0 }
 	},
 	{
+		"with multiple dots",
+		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
+		"\"gui\":{},"\
+		"\"rules\":{\"switch\":{\"rule\":\"IF 'http://192.168.1.1/' == 'http://192.168.1.1/' THEN switch DEVICE 'switch' TO on\",\"active\":1}},"\
+		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
+		0, UV_RUN_DEFAULT,
+		0, &updates1[0],
+		{ &receives[0] },
+		{ 1, 0 }
+	},
+	{
 		"float from functions",
 		"{\"devices\":{"\
 			"\"testlabel\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":1}],\"label\":\"foo\",\"color\":\"black\"},"\
