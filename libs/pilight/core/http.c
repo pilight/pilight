@@ -87,6 +87,8 @@ typedef struct request_t {
 
 	int steps;
 	int request_method;
+	int has_length;
+	int has_chunked;
 
   char *content;
 	char mimetype[255];
@@ -275,6 +277,7 @@ static int prepare_request(struct request_t **request, int method, char *url, co
 		if(((*request)->uri = MALLOC(2)) == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
+		memset((*request)->uri, 0, 2);
 		strncpy((*request)->uri, "/", 1);
 	}
 	if((tok = strstr((*request)->host, "@"))) {
@@ -464,13 +467,19 @@ static void http_client_close(uv_poll_t *req) {
 	struct request_t *request = custom_poll_data->data;
 	uv_timer_t *timer_req = request->timer_req;
 
-	/*
-	 * Callback when we were receiving data
-	 * that was disrupted early.
-	 */
 	if(request->reading == 1) {
-		if(request->callback != NULL) {
-			request->callback(408, NULL, 0, NULL, request->userdata);
+		if(request->has_length == 0 && request->has_chunked == 0) {
+			if(request->callback != NULL) {
+				request->callback(request->status_code, request->content, strlen(request->content), request->mimetype, request->userdata);
+			}
+		} else {
+		/*
+		 * Callback when we were receiving data
+		 * that was disrupted early.
+		 */
+			if(request->callback != NULL) {
+				request->callback(408, NULL, 0, NULL, request->userdata);
+			}
 		}
 	}
 	uv_timer_stop(timer_req);
@@ -583,10 +592,16 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			}
 			if(http_get_header(&c, "Content-Length") != NULL) {
 				request->content_len = atoi(http_get_header(&c, "Content-Length"));
+				request->has_length = 1;
+			}
+			if(http_get_header(&c, "Content-length") != NULL) {
+				request->content_len = atoi(http_get_header(&c, "Content-length"));
+				request->has_length = 1;
 			}
 			if(http_get_header(&c, "Transfer-Encoding") != NULL) {
 				if(strcmp(http_get_header(&c, "Transfer-Encoding"), "chunked") == 0) {
 					request->chunked = 1;
+					request->has_chunked = 1;
 				}
 			}
 			FREE(header);
@@ -620,7 +635,7 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			request->content_len = request->bytes_read;
 		}
 
-		if(request->chunked == 1 || request->bytes_read < request->content_len) {
+		if(request->chunked == 1 || (request->has_length == 0 && request->has_chunked == 0) || request->bytes_read < request->content_len) {
 			request->reading = 1;
 		} else if(request->content != NULL) {
 			request->reading = 0;

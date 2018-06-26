@@ -149,6 +149,21 @@ static struct tests_t {
 				"Content-Type: %s\r\n\r\n"
 				"%s"
 	},
+	{ "big file get without content-length", GET, "http://127.0.0.1:10080/LICENSE.txt", 10080, 0, 1, 200, 35146, "text/plain", gplv3, "",
+			"GET /LICENSE.txt HTTP/1.1\r\n"
+				"Host: 127.0.0.1\r\n"
+				"User-Agent: pilight\r\n"
+				"Connection: close\r\n\r\n",
+			"HTTP/1.1 200 OK\r\n"
+				"Date: Sun, 30 Oct 2016 15:07:58 GMT\r\n"
+				"Server: Apache/2.4.23 (FreeBSD) PHP/5.6.26\r\n"
+				"Last-Modified: Tue, 22 Oct 2013 15:02:41 GMT\r\n"
+				"ETag: \"d5-4e955b12f4640\"\r\n"
+				"Accept-Ranges: bytes\r\n"
+				"Connection: close\r\n"
+				"Content-Type: %s\r\n\r\n"
+				"%s"
+	},
 	{ "chunked get", GET, "http://127.0.0.1:10080/test.jpg", 10080, 0, 0, 200, 30, NULL, "123456789012345678901234567890", "",
 		"GET /test.jpg HTTP/1.1\r\n"
 			"Host: 127.0.0.1\r\n"
@@ -186,15 +201,15 @@ static struct tests_t {
 			"1E\r\n"
 			"123456789012345678901234567890\r\n"
 	},
-	{ "404 header, ssl, and lower case headers", GET, "https://127.0.0.1:10443/foobar", 10443, 1, 1, 404, 0, "text/plain", "", "",
+	{ "404 header, ssl, and lower case headers", GET, "https://127.0.0.1:10443/foobar", 10443, 1, 1, 404, 108, "text/plain", "<html><head><title>Not Found</title></head><body>Sorry, the object you requested was not found.</body><html>", "",
 		"GET /foobar HTTP/1.1\r\n"
 			"Host: 127.0.0.1\r\n"
 			"User-Agent: pilight\r\n"
 			"Connection: close\r\n\r\n",
 		"HTTP/1.1 404 Not Found\r\n"
-			"Content-length: 1%d8\r\n"
+			"Content-length: %d\r\n"
 			"Content-type: %s\r\n\r\n"
-			"<html><head><title>Not Found</title></head><body>Sorry, the object you requested was not found.</body><html>"
+			"%s"
 	},
 	{ "simple post", POST, "http://127.0.0.1:10080/index.php?foo=bar", 10080, 0, 1, 200, 55, "application/json", "", "{\"foo\":\"bar\"}",
 		"POST /index.php?foo=bar HTTP/1.0\r\n"
@@ -435,7 +450,11 @@ static void http_wait(void *param) {
 			if(FD_ISSET(http_client, &fdswrite)) {
 				FD_ZERO(&fdswrite);
 				if(tests[testnr].sprintf == 1) {
-					len = sprintf(message, tests[testnr].sendmsg, tests[testnr].size, tests[testnr].type, tests[testnr].data);
+					if(strstr(tests[testnr].sendmsg, "Content-Length") == NULL && strstr(tests[testnr].sendmsg, "Content-length") == NULL) {
+						len = sprintf(message, tests[testnr].sendmsg, tests[testnr].type, tests[testnr].data);
+					} else {
+						len = sprintf(message, tests[testnr].sendmsg, tests[testnr].size, tests[testnr].type, tests[testnr].data);
+					}
 				} else {
 					strcpy(message, tests[testnr].sendmsg);
 					len = strlen(message);
@@ -579,7 +598,7 @@ static void test(void *param) {
 	is_ssl = 0;
 	doquit = 0;
 
-	if(testnr != 14) {
+	if(testnr != 15) {
 		http_start(tests[testnr].url, tests[testnr].port);
 		uv_thread_create(&pth, http_wait, NULL);
 	}
@@ -635,7 +654,7 @@ static void test_http(CuTest *tc) {
 
 	FREE(_userdata);
 
-	CuAssertIntEquals(tc, 15, testnr);
+	CuAssertIntEquals(tc, 16, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 
 }
@@ -695,7 +714,7 @@ static void test_http_threaded(CuTest *tc) {
 	eventpool_gc();
 
 	FREE(_userdata);
-	CuAssertIntEquals(tc, 15, testnr);
+	CuAssertIntEquals(tc, 16, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
