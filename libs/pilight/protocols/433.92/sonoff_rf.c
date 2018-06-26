@@ -88,7 +88,8 @@ void sonoffRfInit(void) {
 	sonoff_rf->minrawlen = RAW_LENGTH;
 	sonoff_rf->maxrawlen = RAW_LENGTH;
 
-	options_add(&sonoff_rf->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]{1-4}$");
+	options_add(&sonoff_rf->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]{1-6}$");
+	options_add(&sonoff_rf->options, 'b', "buttonmask", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1-2}$");
 
 	sonoff_rf->parseCode=&parseCode;
 	sonoff_rf->validate=&validate;
