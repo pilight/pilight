@@ -7,10 +7,10 @@
 local M = {}
 
 function M.run(a, b)
-	if pilight.tonumber(a) == 0 or pilight.tonumber(b) == 0 then
+	if pilight.cast.tonumber(a) == 0 or pilight.cast.tonumber(b) == 0 then
 		return 0;
 	else
-		return (pilight.tonumber(a) / pilight.tonumber(b));
+		return (pilight.cast.tonumber(a) / pilight.cast.tonumber(b));
 	end
 end
 

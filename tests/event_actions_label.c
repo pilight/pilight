@@ -14,6 +14,7 @@
 	#include <unistd.h>
 	#include <sys/time.h>
 #endif
+#include <valgrind/valgrind.h>
 
 #include "../libs/libuv/uv.h"
 #include "../libs/pilight/core/CuTest.h"
@@ -25,21 +26,19 @@
 #include "../libs/pilight/events/function.h"
 #include "../libs/pilight/events/operator.h"
 #include "../libs/pilight/events/events.h"
-#include "../libs/pilight/events/actions/label.h"
 #include "../libs/pilight/protocols/generic/generic_switch.h"
 #include "../libs/pilight/protocols/generic/generic_label.h"
 
 #include "alltests.h"
 
+static int run = 0;
 static int steps = 0;
 static int nrsteps = 0;
+static int checktime = 0;
 static uv_thread_t pth;
 static CuTest *gtc = NULL;
 static unsigned long interval = 0;
 static uv_timer_t *timer_req = NULL;
-
-static struct rules_actions_t *obj = NULL;
-static struct rules_actions_t *obj1 = NULL;
 
 typedef struct timestamp_t {
 	unsigned long first;
@@ -58,7 +57,9 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 	}
 }
 
-static void test_event_actions_label_check_parameters(CuTest *tc) {
+static void test_event_actions_label_get_parameters(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -66,433 +67,546 @@ static void test_event_actions_label_check_parameters(CuTest *tc) {
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
+	plua_init();
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_SETTINGS));
+	event_action_init();
+
+	char **ret = NULL;
+	int nr = 0, i = 0, check = 0;
+	CuAssertIntEquals(tc, 0, event_action_get_parameters("label", &nr, &ret));
+	for(i=0;i<nr;i++) {
+		if(stricmp(ret[i], "DEVICE") == 0) {
+			check |= 1 << i;
+		}
+		if(stricmp(ret[i], "TO") == 0) {
+			check |= 1 << i;
+		}
+		if(stricmp(ret[i], "FOR") == 0) {
+			check |= 1 << i;
+		}
+		if(stricmp(ret[i], "AFTER") == 0) {
+			check |= 1 << i;
+		}
+		if(stricmp(ret[i], "COLOR") == 0) {
+			check |= 1 << i;
+		}
+		FREE(ret[i]);
+	}
+	FREE(ret);
+
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+	event_action_gc();
+	storage_gc();
+	eventpool_gc();
+	plua_gc();
+
+	CuAssertIntEquals(tc, 31, check);
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
+static void test_event_actions_label_check_parameters(CuTest *tc) {
+	if(suiteFailed()) return;
+
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	struct varcont_t v;
+	memtrack();
+
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
+
 	genericSwitchInit();
 	genericLabelInit();
-	actionLabelInit();
-	CuAssertStrEquals(tc, "label", action_label->name);
 
-	eventpool_init(EVENTPOOL_NO_THREADS);
+	plua_init();
 	storage_init();
-	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_DEVICES));
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+	event_action_init();
 
 	/*
-	 * Valid parameters
+	 * Valid arguments
 	 */
 	{
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-			\"TO\":{\"value\":[\"foo\"],\"order\":2},\
-			\"COLOR\":{\"value\":[\"black\"],\"order\":3},\
-			\"FOR\":{\"value\":[\"1 SECOND\"],\"order\":4},\
-			\"AFTER\":{\"value\":[\"1 SECOND\"],\"order\":5}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("foo"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, 0, action_label->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("black"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "COLOR", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "AFTER", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, 0, event_action_check_arguments("label", args));
 	}
 
 	{
 		/*
 		 * No arguments
 		 */
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(NULL));
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", NULL));
+	}
 
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
-
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
-
-		FREE(obj);
-
+	{
 		/*
-		 * Missing json parameters
+		 * Missing arguments
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
 
-		obj->arguments = json_decode("{}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
 
-		json_delete(obj->arguments);
-		FREE(obj);
-
+	{
 		/*
-		 * Missing json parameters
+		 * Wrong order of arguments
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
 
+	{
 		/*
-		 * Wrong order of parameters
+		 * Wrong order of arguments
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-			\"TO\":{\"value\":[\"on\"],\"order\":3},\
-			\"FOR\":{\"value\":[\"1 SECOND\"],\"order\":2}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("black"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "COLOR", &v);
+		FREE(v.string_);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
+
+	{
 		/*
-		 * Wrong order of parameters
+		 * Wrong order of arguments
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-			\"TO\":{\"value\":[\"on\"],\"order\":2},\
-			\"COLOR\":{\"value\":[\"black\"],\"order\":4},\
-			\"FOR\":{\"value\":[\"1 SECOND\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "AFTER", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
 
+	{
 		/*
-		 * Wrong order of parameters
+		 * Wrong order of arguments
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-			\"TO\":{\"value\":[\"on\"],\"order\":3},\
-			\"AFTER\":{\"value\":[\"1 SECOND\"],\"order\":2}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "AFTER", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("black"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "COLOR", &v);
+		FREE(v.string_);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
+
+	{
 		/*
-		 * Wrong order of parameters
+		 * Wrong order of arguments
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-			\"TO\":{\"value\":[\"on\"],\"order\":2},\
-			\"COLOR\":{\"value\":[\"black\"],\"order\":4},\
-			\"AFTER\":{\"value\":[\"1 SECOND\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
 
-		json_delete(obj->arguments);
-		FREE(obj);
-
+	{
 		/*
-		 * Wrong order of parameters
+		 * Wrong order of arguments
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":2},\
-			\"TO\":{\"value\":[\"on\"],\"order\":1}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("black"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "COLOR", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
 
-		/*
-		 * Wrong order of parameters
-		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
-
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-			\"TO\":{\"value\":[\"on\"],\"order\":3},\
-			\"COLOR\":{\"value\":[\"black\"],\"order\":2}\
-		}");
-
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
-
-		json_delete(obj->arguments);
-		FREE(obj);
-
+	{
 		/*
 		 * Too many argument for a parameter
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-			\"TO\":{\"value\":[\"foo\",\"bar\"],\"order\":2}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("off"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
 
+	{
 		/*
 		 * Negative FOR duration
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-			\"TO\":{\"value\":[\"foo\"],\"order\":2},\
-			\"FOR\":{\"value\":[\"-1 SECOND\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("-1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
 
+	{
 		/*
 		 * Invalid FOR unit
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-			\"TO\":{\"value\":[\"on\"],\"order\":2},\
-			\"FOR\":{\"value\":[\"1 FOO\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 FOO"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
 
+	{
 		/*
 		 * Invalid FOR unit
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-			\"TO\":{\"value\":[\"on\"],\"order\":2},\
-			\"FOR\":{\"value\":[\"1 SECOND MINUTE\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND MINUTE"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
 
+	{
 		/*
 		 * Too many FOR arguments
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-			\"TO\":{\"value\":[\"on\"],\"order\":2},\
-			\"FOR\":{\"value\":[\"1 SECOND\",\"1 MINUTE\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 MINUTE"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
+
+	{
 		/*
 		 * Negative AFTER duration
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-			\"TO\":{\"value\":[\"on\"],\"order\":2},\
-			\"AFTER\":{\"value\":[\"-1 SECOND\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("-1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "AFTER", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
 
+	{
 		/*
 		 * Invalid AFTER unit
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-			\"TO\":{\"value\":[\"on\"],\"order\":2},\
-			\"AFTER\":{\"value\":[\"1 FOO\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 FOO"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "AFTER", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
 
+	{
 		/*
 		 * Invalid AFTER unit
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-			\"TO\":{\"value\":[\"on\"],\"order\":2},\
-			\"AFTER\":{\"value\":[\"1 SECOND MINUTE\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND MINUTE"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "AFTER", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
 
+	{
 		/*
 		 * Too many AFTER arguments
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-			\"TO\":{\"value\":[\"on\"],\"order\":2},\
-			\"AFTER\":{\"value\":[\"1 SECOND\",\"1 MINUTE\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "AFTER", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 MINUTE"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "AFTER", &v);
+		FREE(v.string_);
 
-		/*
-		 * Too many AFTER arguments
-		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-			\"TO\":{\"value\":[\"on\"],\"order\":2},\
-			\"COLOR\":{\"value\":[\"foo\",\"bar\"],\"order\":3}\
-		}");
-
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
-
-		json_delete(obj->arguments);
-		FREE(obj);
-
+	{
 		/*
 		 * State missing value parameter
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-			\"TO\":{\"order\":2}\
-		}");
+		args = event_action_add_argument(args, "TO", NULL);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
 
-		json_delete(obj->arguments);
-		FREE(obj);
+	{
+		/*
+		 * Invalid device type
+		 */
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("switch"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"switch\"],\"order\":1},\
-			\"TO\":{\"value\":[\"on\"],\"order\":2}\
-		}");
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
-
-		json_delete(obj->arguments);
-		FREE(obj);
-
+	{
 		/*
 		 * Device not configured
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("switch"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"foo\"],\"order\":1},\
-			\"TO\":{\"value\":[\"on\"],\"order\":2}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
+	}
 
-		json_delete(obj->arguments);
-		FREE(obj);
-
+	{
 		/*
-		 * Device value a nummeric value
+		 * Device value numeric
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "DEVICE", &v);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[1],\"order\":1},\
-			\"TO\":{\"value\":[\"on\"],\"order\":2}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_label->checkArguments(obj));
-
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("label", args));
 	}
 
 	uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -502,6 +616,7 @@ static void test_event_actions_label_check_parameters(CuTest *tc) {
 	protocol_gc();
 	storage_gc();
 	eventpool_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -515,18 +630,25 @@ static void *control_device(int reason, void *param) {
 	timestamp.first = timestamp.second;
 	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
-	// int duration = (int)((int)timestamp.second-(int)timestamp.first);
-
-	// CuAssertTrue(gtc, (duration < interval));
+	if(!RUNNING_ON_VALGRIND && checktime == 1) {
+		int duration = (int)((int)timestamp.second-(int)timestamp.first);
+		CuAssertTrue(gtc, (duration < interval));
+	}
 
 	steps++;
-	if(steps == 1) {
+	if(run == 0) {
 		CuAssertStrEquals(gtc, "{\"color\":\"red\",\"label\":\"foo\"}", values);
-	} else if(steps == 2) {
-		CuAssertStrEquals(gtc, "{\"color\":\"green\",\"label\":\"bar\"}", values);
-	} else if(steps == 4) {
+		CuAssertTrue(gtc, strcmp(data->dev, "label") == 0 || strcmp(data->dev, "label1") == 0);
+	} else if(run == 1) {
+		if(steps == 1) {
+			CuAssertStrEquals(gtc, "{\"color\":\"red\",\"label\":\"foo\"}", values);
+		} else if(steps == 2) {
+			CuAssertStrEquals(gtc, "{\"color\":\"green\",\"label\":\"bar\"}", values);
+		}
+	} else if(run == 2) {
 		CuAssertStrEquals(gtc, "{\"color\":\"red\",\"label\":\"1010\"}", values);
 	}
+
 	if(steps == nrsteps) {
 		uv_stop(uv_default_loop());
 	}
@@ -534,13 +656,142 @@ static void *control_device(int reason, void *param) {
 	return NULL;
 }
 
+static struct event_action_args_t *initialize_vars(int num) {
+	struct event_action_args_t *args = NULL;
+	struct varcont_t v;
+
+	switch(num) {
+		case 1: {
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "DEVICE", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("label1"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "DEVICE", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("foo"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "TO", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("red"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "COLOR", &v);
+			FREE(v.string_);
+
+		} break;
+		case 2: {
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "DEVICE", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.number_ = 1010; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+			args = event_action_add_argument(args, "TO", &v);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("red"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "COLOR", &v);
+			FREE(v.string_);
+
+		} break;
+		case 3: {
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "DEVICE", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("foo"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "TO", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("red"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "COLOR", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("250 MILLISECOND"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "FOR", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("250 MILLISECOND"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "AFTER", &v);
+			FREE(v.string_);
+		} break;
+		case 4: {
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "DEVICE", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("foo"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "TO", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("black"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "COLOR", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("500 MILLISECOND"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "FOR", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("500 MILLISECOND"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "AFTER", &v);
+			FREE(v.string_);
+		} break;
+		case 5: {
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "DEVICE", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("foo"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "TO", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("black"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "COLOR", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("500 MILLISECOND"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "AFTER", &v);
+			FREE(v.string_);
+		} break;
+	}
+
+	return args;
+}
+
+static void stop(uv_work_t *req) {
+	uv_stop(uv_default_loop());
+}
+
 static void test_event_actions_label_run(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
+	run = 0;
 	steps = 0;
-	nrsteps = 1;
+	nrsteps = 2;
 	interval = 3000;
+	checktime = 1;
 
 	memtrack();
 
@@ -550,21 +801,16 @@ static void test_event_actions_label_run(CuTest *tc) {
 
 	genericSwitchInit();
 	genericLabelInit();
-	actionLabelInit();
-	CuAssertStrEquals(tc, "label", action_label->name);
 
 	storage_init();
-	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_DEVICES));
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+	event_action_init();
 
-	obj = MALLOC(sizeof(struct rules_actions_t));
-	CuAssertPtrNotNull(tc, obj);
-	memset(obj, 0, sizeof(struct rules_actions_t));
-
-	obj->arguments = json_decode("{\
-		\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-		\"TO\":{\"value\":[\"foo\"],\"order\":2},\
-		\"COLOR\":{\"value\":[\"red\"],\"order\":3}\
-	}");
+	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	uv_timer_init(uv_default_loop(), timer_req);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
 	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
@@ -574,8 +820,11 @@ static void test_event_actions_label_run(CuTest *tc) {
 	timestamp.first = timestamp.second;
 	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
-	CuAssertIntEquals(tc, 0, action_label->checkArguments(obj));
-	CuAssertIntEquals(tc, 0, action_label->run(obj));
+	struct event_action_args_t *args = initialize_vars(1);
+	CuAssertIntEquals(tc, 0, event_action_check_arguments("label", args));
+
+	args = initialize_vars(1);
+	CuAssertIntEquals(tc, 0, event_action_run("label", args));
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -585,24 +834,27 @@ static void test_event_actions_label_run(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 	}
 
-	json_delete(obj->arguments);
-	FREE(obj);
-
+	plua_gc();
 	event_action_gc();
 	protocol_gc();
 	eventpool_gc();
 	storage_gc();
 
+	CuAssertIntEquals(tc, 2, steps);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
 static void test_event_actions_label_run1(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
-	steps = 3;
-	nrsteps = 4;
+	run = 2;
+	steps = 0;
+	nrsteps = 1;
 	interval = 3000;
+	checktime = 1;
 
 	memtrack();
 
@@ -612,21 +864,16 @@ static void test_event_actions_label_run1(CuTest *tc) {
 
 	genericSwitchInit();
 	genericLabelInit();
-	actionLabelInit();
-	CuAssertStrEquals(tc, "label", action_label->name);
 
 	storage_init();
-	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_DEVICES));
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+	event_action_init();
 
-	obj = MALLOC(sizeof(struct rules_actions_t));
-	CuAssertPtrNotNull(tc, obj);
-	memset(obj, 0, sizeof(struct rules_actions_t));
-
-	obj->arguments = json_decode("{\
-		\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-		\"TO\":{\"value\":[1010],\"order\":2},\
-		\"COLOR\":{\"value\":[\"red\"],\"order\":3}\
-	}");
+	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	uv_timer_init(uv_default_loop(), timer_req);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
 	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
@@ -636,8 +883,11 @@ static void test_event_actions_label_run1(CuTest *tc) {
 	timestamp.first = timestamp.second;
 	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
-	CuAssertIntEquals(tc, 0, action_label->checkArguments(obj));
-	CuAssertIntEquals(tc, 0, action_label->run(obj));
+	struct event_action_args_t *args = initialize_vars(2);
+	CuAssertIntEquals(tc, 0, event_action_check_arguments("label", args));
+
+	args = initialize_vars(2);
+	CuAssertIntEquals(tc, 0, event_action_run("label", args));
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -647,24 +897,27 @@ static void test_event_actions_label_run1(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 	}
 
-	json_delete(obj->arguments);
-	FREE(obj);
-
+	plua_gc();
 	event_action_gc();
 	protocol_gc();
 	eventpool_gc();
 	storage_gc();
 
+	CuAssertIntEquals(tc, 1, steps);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
 static void test_event_actions_label_run_delayed(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
+	run = 1;
 	steps = 0;
 	nrsteps = 2;
 	interval = 275000;
+	checktime = 1;
 
 	memtrack();
 
@@ -674,23 +927,16 @@ static void test_event_actions_label_run_delayed(CuTest *tc) {
 
 	genericSwitchInit();
 	genericLabelInit();
-	actionLabelInit();
-	CuAssertStrEquals(tc, "label", action_label->name);
 
 	storage_init();
-	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_DEVICES));
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+	event_action_init();
 
-	obj = MALLOC(sizeof(struct rules_actions_t));
-	CuAssertPtrNotNull(tc, obj);
-	memset(obj, 0, sizeof(struct rules_actions_t));
-
-	obj->arguments = json_decode("{\
-		\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-		\"TO\":{\"value\":[\"foo\"],\"order\":2},\
-		\"COLOR\":{\"value\":[\"red\"],\"order\":3},\
-		\"FOR\":{\"value\":[\"250 MILLISECOND\"],\"order\":4},\
-		\"AFTER\":{\"value\":[\"250 MILLISECOND\"],\"order\":5}\
-	}");
+	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	uv_timer_init(uv_default_loop(), timer_req);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
 	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
@@ -700,8 +946,11 @@ static void test_event_actions_label_run_delayed(CuTest *tc) {
 	timestamp.first = timestamp.second;
 	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
-	CuAssertIntEquals(tc, 0, action_label->checkArguments(obj));
-	CuAssertIntEquals(tc, 0, action_label->run(obj));
+	struct event_action_args_t *args = initialize_vars(3);
+	CuAssertIntEquals(tc, 0, event_action_check_arguments("label", args));
+
+	args = initialize_vars(3);
+	CuAssertIntEquals(tc, 0, event_action_run("label", args));
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -711,34 +960,24 @@ static void test_event_actions_label_run_delayed(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 	}
 
-	json_delete(obj->arguments);
-	FREE(obj);
-
+	plua_gc();
 	event_action_gc();
 	protocol_gc();
 	eventpool_gc();
 	storage_gc();
 
+	CuAssertIntEquals(tc, 2, steps);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
 static void second_label(void *param) {
-	obj1 = MALLOC(sizeof(struct rules_actions_t));
-	CuAssertPtrNotNull(gtc, obj1);
-	memset(obj1, 0, sizeof(struct rules_actions_t));
-
 	usleep(100);
 
-	obj1->arguments = json_decode("{\
-		\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-		\"TO\":{\"value\":[\"foo\"],\"order\":2},\
-		\"COLOR\":{\"value\":[\"red\"],\"order\":3},\
-		\"FOR\":{\"value\":[\"250 MILLISECOND\"],\"order\":4},\
-		\"AFTER\":{\"value\":[\"250 MILLISECOND\"],\"order\":5}\
-	}");
+	struct event_action_args_t *args = initialize_vars(3);
+	CuAssertIntEquals(gtc, 0, event_action_check_arguments("label", args));
 
-	CuAssertIntEquals(gtc, 0, action_label->checkArguments(obj1));
-	CuAssertIntEquals(gtc, 0, action_label->run(obj1));
+	args = initialize_vars(3);
+	CuAssertIntEquals(gtc, 0, event_action_run("label", args));
 }
 
 static struct reason_config_update_t update = {
@@ -752,12 +991,16 @@ static void config_update(void *param) {
 }
 
 static void test_event_actions_label_run_overlapped(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
+	run = 1;
 	steps = 0;
 	nrsteps = 2;
 	interval = 275000;
+	checktime = 1;
 
 	memtrack();
 
@@ -767,23 +1010,16 @@ static void test_event_actions_label_run_overlapped(CuTest *tc) {
 
 	genericSwitchInit();
 	genericLabelInit();
-	actionLabelInit();
-	CuAssertStrEquals(tc, "label", action_label->name);
 
 	storage_init();
-	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_DEVICES));
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+	event_action_init();
 
-	obj = MALLOC(sizeof(struct rules_actions_t));
-	CuAssertPtrNotNull(tc, obj);
-	memset(obj, 0, sizeof(struct rules_actions_t));
-
-	obj->arguments = json_decode("{\
-		\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-		\"TO\":{\"value\":[\"foo\"],\"order\":2},\
-		\"COLOR\":{\"value\":[\"black\"],\"order\":3},\
-		\"FOR\":{\"value\":[\"500 MILLISECOND\"],\"order\":4},\
-		\"AFTER\":{\"value\":[\"500 MILLISECOND\"],\"order\":5}\
-	}");
+	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	uv_timer_init(uv_default_loop(), timer_req);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
 	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
@@ -793,8 +1029,11 @@ static void test_event_actions_label_run_overlapped(CuTest *tc) {
 	timestamp.first = timestamp.second;
 	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
-	CuAssertIntEquals(tc, 0, action_label->checkArguments(obj));
-	CuAssertIntEquals(tc, 0, action_label->run(obj));
+	struct event_action_args_t *args = initialize_vars(3);
+	CuAssertIntEquals(tc, 0, event_action_check_arguments("label", args));
+
+	args = initialize_vars(3);
+	CuAssertIntEquals(tc, 0, event_action_run("label", args));
 
 	uv_thread_create(&pth, second_label, NULL);
 
@@ -806,23 +1045,14 @@ static void test_event_actions_label_run_overlapped(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 	}
 
-	json_delete(obj->arguments);
-	json_delete(obj1->arguments);
-	FREE(obj);
-	FREE(obj1);
-
-	uv_thread_join(&pth);
-
+	plua_gc();
 	event_action_gc();
 	protocol_gc();
 	eventpool_gc();
 	storage_gc();
 
+	CuAssertIntEquals(tc, 2, steps);
 	CuAssertIntEquals(tc, 0, xfree());
-}
-
-static void stop(uv_work_t *req) {
-	uv_stop(uv_default_loop());
 }
 
 /*
@@ -830,6 +1060,8 @@ static void stop(uv_work_t *req) {
  * the delayed action should be skipped.
  */
 static void test_event_actions_label_run_override(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
@@ -845,34 +1077,23 @@ static void test_event_actions_label_run_override(CuTest *tc) {
 
 	genericSwitchInit();
 	genericLabelInit();
-	actionLabelInit();
-	CuAssertStrEquals(tc, "label", action_label->name);
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_SETTINGS));
 	event_operator_init();
+	event_action_init();
+	event_function_init();
 	storage_gc();
 
 	event_init();
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_DEVICES | CONFIG_RULES));
 
-	obj = MALLOC(sizeof(struct rules_actions_t));
-	CuAssertPtrNotNull(tc, obj);
-	memset(obj, 0, sizeof(struct rules_actions_t));
-
-	obj->arguments = json_decode("{\
-		\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-		\"TO\":{\"value\":[\"foo\"],\"order\":2},\
-		\"COLOR\":{\"value\":[\"black\"],\"order\":3},\
-		\"AFTER\":{\"value\":[\"500 MILLISECOND\"],\"order\":4}\
-	}");
-
 	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	uv_timer_init(uv_default_loop(), timer_req);
-	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 750, 0);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 500, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
 	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
@@ -882,8 +1103,11 @@ static void test_event_actions_label_run_override(CuTest *tc) {
 	timestamp.first = timestamp.second;
 	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
-	CuAssertIntEquals(tc, 0, action_label->checkArguments(obj));
-	CuAssertIntEquals(tc, 0, action_label->run(obj));
+	struct event_action_args_t *args = initialize_vars(5);
+	CuAssertIntEquals(tc, 0, event_action_check_arguments("label", args));
+
+	args = initialize_vars(5);
+	CuAssertIntEquals(tc, 0, event_action_run("label", args));
 
 	uv_thread_create(&pth, config_update, NULL);
 
@@ -895,14 +1119,11 @@ static void test_event_actions_label_run_override(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 	}
 
-	json_delete(obj->arguments);
-	FREE(obj);
-
 	uv_thread_join(&pth);
 
 	event_operator_gc();
-	event_function_gc();
 	event_action_gc();
+	event_function_gc();
 	protocol_gc();
 	eventpool_gc();
 	storage_gc();
@@ -916,10 +1137,15 @@ CuSuite *suite_event_actions_label(void) {
 	CuSuite *suite = CuSuiteNew();
 
 	char config[1024] = "{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
-		"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"bar\",\"color\":\"green\"}}," \
+		"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"bar\",\"color\":\"green\"}," \
+		"\"label1\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":102}],\"label\":\"bar\",\"color\":\"green\"}}," \
 		"\"gui\":{},\"rules\":{"\
-			"\"rule1\":{\"rule\":\"IF label.label == bar THEN label DEVICE 'label' TO bar\",\"active\":1}"\
-		"},\"settings\":{\"operators-root\":\"%s../libs/pilight/events/operators/\"},\"hardware\":{},\"registry\":{}}";
+		"\"rule1\":{\"rule\":\"IF label.label == bar THEN label DEVICE 'label' TO bar\",\"active\":1}"\
+		"},\"settings\":{" \
+		"\"actions-root\":\"%s../libs/pilight/events/actions/\"," \
+		"\"operators-root\":\"%s../libs/pilight/events/operators/\"," \
+		"\"functions-root\":\"%s../libs/pilight/events/functions/\"" \
+		"},\"hardware\":{},\"registry\":{}}";
 	char *file = STRDUP(__FILE__);
 	if(file == NULL) {
 		OUT_OF_MEMORY
@@ -927,10 +1153,11 @@ CuSuite *suite_event_actions_label(void) {
 	str_replace("event_actions_label.c", "", &file);
 
 	FILE *f = fopen("event_actions_label.json", "w");
-	fprintf(f, config, file);
+	fprintf(f, config, file, file, file);
 	fclose(f);
-	FREE(file);	
+	FREE(file);
 
+	SUITE_ADD_TEST(suite, test_event_actions_label_get_parameters);
 	SUITE_ADD_TEST(suite, test_event_actions_label_check_parameters);
 	SUITE_ADD_TEST(suite, test_event_actions_label_run);
 	SUITE_ADD_TEST(suite, test_event_actions_label_run1);

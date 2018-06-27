@@ -14,6 +14,7 @@
 	#include <unistd.h>
 	#include <sys/time.h>
 #endif
+#include <valgrind/valgrind.h>
 
 #include "../libs/libuv/uv.h"
 #include "../libs/pilight/core/CuTest.h"
@@ -25,7 +26,6 @@
 #include "../libs/pilight/events/action.h"
 #include "../libs/pilight/events/operator.h"
 #include "../libs/pilight/events/function.h"
-#include "../libs/pilight/events/actions/dim.h"
 #include "../libs/pilight/protocols/433.92/arctech_dimmer.h"
 #include "../libs/pilight/protocols/generic/generic_label.h"
 
@@ -34,13 +34,11 @@
 static int steps = 0;
 static int nrsteps = 0;
 static int run = 0;
+static int checktime = 0;
 static uv_thread_t pth;
 static CuTest *gtc = NULL;
-static unsigned long interval = 0;
+static unsigned long interval[15] = {0};
 static uv_timer_t *timer_req = NULL;
-
-static struct rules_actions_t *obj = NULL;
-static struct rules_actions_t *obj1 = NULL;
 
 typedef struct timestamp_t {
 	unsigned long first;
@@ -60,7 +58,7 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 	}
 }
 
-static void test_event_actions_dim_check_parameters(CuTest *tc) {
+static void test_event_actions_dim_get_parameters(CuTest *tc) {
 	if(suiteFailed()) return;
 
 	printf("[ %-48s ]\n", __FUNCTION__);
@@ -70,622 +68,784 @@ static void test_event_actions_dim_check_parameters(CuTest *tc) {
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
+	plua_init();
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_SETTINGS));
+	event_action_init();
+
+	char **ret = NULL;
+	int nr = 0, i = 0, check = 0;
+	CuAssertIntEquals(tc, 0, event_action_get_parameters("dim", &nr, &ret));
+	for(i=0;i<nr;i++) {
+		if(stricmp(ret[i], "DEVICE") == 0) {
+			check |= 1 << i;
+		}
+		if(stricmp(ret[i], "TO") == 0) {
+			check |= 1 << i;
+		}
+		if(stricmp(ret[i], "FROM") == 0) {
+			check |= 1 << i;
+		}
+		if(stricmp(ret[i], "FOR") == 0) {
+			check |= 1 << i;
+		}
+		if(stricmp(ret[i], "AFTER") == 0) {
+			check |= 1 << i;
+		}
+		if(stricmp(ret[i], "IN") == 0) {
+			check |= 1 << i;
+		}
+		FREE(ret[i]);
+	}
+	FREE(ret);
+
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+	event_action_gc();
+	storage_gc();
+	eventpool_gc();
+	plua_gc();
+
+	CuAssertIntEquals(tc, 63, check);
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
+static void test_event_actions_dim_check_parameters(CuTest *tc) {
+	if(suiteFailed()) return;
+
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	struct varcont_t v;
+	memtrack();
+
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
+
 	arctechDimmerInit();
 	genericLabelInit();
-	actionDimInit();
-	CuAssertStrEquals(tc, "dim", action_dim->name);
 
-	eventpool_init(EVENTPOOL_NO_THREADS);
+	plua_init();
 	storage_init();
-	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_DEVICES));
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+	event_action_init();
 
 	/*
 	 * Valid parameters
 	 */
 	{
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"FROM\":{\"value\":[10],\"order\":3},\
-			\"FOR\":{\"value\":[\"1 SECOND\"],\"order\":4},\
-			\"AFTER\":{\"value\":[\"1 SECOND\"],\"order\":5},\
-			\"IN\":{\"value\":[\"10 SECOND\"],\"order\":6}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		CuAssertIntEquals(tc, 0, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 10; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "FROM", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "AFTER", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("10 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "IN", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, 0, event_action_check_arguments("dim", args));
 	}
 
 	{
 		/*
 		 * No arguments
 		 */
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(NULL));
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", NULL));
+	}
 
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
-
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
-
-		FREE(obj);
-
+	{
 		/*
-		 * Missing json parameters
+		 * Missing arguments
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
 
-		json_delete(obj->arguments);
-		FREE(obj);
-
-		/*
-		 * Missing json parameters
-		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
-
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1}\
-		}");
-
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
-
-		json_delete(obj->arguments);
-		FREE(obj);
-
+	{
 		/*
 		 * Wrong order of parameters
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":3},\
-			\"FOR\":{\"value\":[\"1 SECOND\"],\"order\":2}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
 		 * Wrong order of parameters
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"FOR\":{\"value\":[\"1 SECOND\"],\"order\":0}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
 		 * Wrong order of parameters
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"AFTER\":{\"value\":[\"1 SECOND\"],\"order\":0}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "AFTER", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
 		 * Wrong order of parameters
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"IN\":{\"value\":[\"1 SECOND\"],\"order\":0}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "IN", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		/*
-		 * Wrong order of parameters
-		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"IN\":{\"value\":[\"1 SECOND\"],\"order\":0}\
-		}");
-
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
-
-		json_delete(obj->arguments);
-		FREE(obj);
-
+	{
 		/*
 		 * Calling IN without a FROM
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"IN\":{\"value\":[\"1 SECOND\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "IN", &v);
+		FREE(v.string_);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
 		 * Wrong order of parameters
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"IN\":{\"value\":[\"1 SECOND\"],\"order\":3},\
-			\"FROM\":{\"value\":[\"1 SECOND\"],\"order\":0}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "FROM", &v);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "IN", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
 		 * Calling FROM without an IN
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"FROM\":{\"value\":[\"1 SECOND\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "FROM", &v);
 
-		/*
-		 * Wrong variable type for the TO parameter (not an array)
-		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":1,\"order\":2}\
-		}");
-
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
-
-		json_delete(obj->arguments);
-		FREE(obj);
-
+	{
 		/*
 		 * Too many argument for a parameter
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1,2],\"order\":2}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 2; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
 		 * Negative FOR duration
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"FOR\":{\"value\":[\"-1 SECOND\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		v.string_ = STRDUP("-1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
 		 * Invalid FOR unit
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"FOR\":{\"value\":[\"1 FOO\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		v.string_ = STRDUP("1 FOO"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
 		 * Invalid FOR unit
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"FOR\":{\"value\":[\"1 SECOND MINUTE\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		v.string_ = STRDUP("1 SECOND MINUTE"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
-		 * Too many FOR arguments
+		 * Invalid FOR unit
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"FOR\":{\"value\":[\"1 SECOND\",\"1 MINUTE\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
 
+		v.string_ = STRDUP("1 MINUTE"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
 		 * Negative AFTER duration
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"AFTER\":{\"value\":[\"-1 SECOND\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		v.string_ = STRDUP("-1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "AFTER", &v);
+		FREE(v.string_);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
 		 * Invalid AFTER unit
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"AFTER\":{\"value\":[\"1 FOO\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		v.string_ = STRDUP("1 FOO"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "AFTER", &v);
+		FREE(v.string_);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
 		 * Invalid AFTER unit
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"AFTER\":{\"value\":[\"1 SECOND MINUTE\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		v.string_ = STRDUP("1 SECOND MINUTE"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "AFTER", &v);
+		FREE(v.string_);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
-		 * Too many AFTER arguments
+		 * Invalid AFTER unit
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"AFTER\":{\"value\":[\"1 SECOND\",\"1 MINUTE\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "AFTER", &v);
+		FREE(v.string_);
 
+		v.string_ = STRDUP("1 MINUTE"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "AFTER", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
 		 * Too many FROM arguments
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"FROM\":{\"value\":[1,2],\"order\":3},\
-			\"IN\":{\"value\":[\"1 SECOND\"],\"order\":4}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "FROM", &v);
 
+		v.number_ = 2; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "FROM", &v);
+
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "IN", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
-		 * Negative IN argument
+		 * Negative IN duration
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"FROM\":{\"value\":[2],\"order\":3},\
-			\"IN\":{\"value\":[\"-1 SECOND\"],\"order\":4}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		v.string_ = STRDUP("-1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "IN", &v);
+		FREE(v.string_);
 
-		/*
-		 * Negative IN argument
-		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"FROM\":{\"value\":[2],\"order\":3},\
-			\"IN\":{\"value\":[\"1 FOO\"],\"order\":4}\
-		}");
-
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
-
-		json_delete(obj->arguments);
-		FREE(obj);
-
+	{
 		/*
 		 * Invalid IN unit
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"switch\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"FROM\":{\"value\":[2],\"order\":3},\
-			\"IN\":{\"value\":[\"1 SECOND MINUTE\"],\"order\":4}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		v.string_ = STRDUP("1 FOO"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "IN", &v);
+		FREE(v.string_);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
-		 * Too many IN arguments
+		 * Invalid IN unit
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"FROM\":{\"value\":[2],\"order\":3},\
-			\"IN\":{\"value\":[\"1 SECOND\",\"1 MINUTE\"],\"order\":4}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		v.string_ = STRDUP("1 SECOND MINUTE"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "IN", &v);
+		FREE(v.string_);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
+		/*
+		 * Invalid IN unit
+		 */
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
+
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "IN", &v);
+		FREE(v.string_);
+
+		v.string_ = STRDUP("1 MINUTE"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "IN", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
 		 * Invalid dimlevel for dimmer device
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[16],\"order\":2}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 16; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
 
+	{
 		/*
 		 * Invalid dimlevel for dimmer device
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[-1],\"order\":2}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = -1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
 
+	{
 		/*
 		 * Missing value object for TO argument
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"order\":2}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		args = event_action_add_argument(args, "TO", NULL);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
 
+	{
 		/*
 		 * Invalid dimlevel for dimmer device
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"FROM\":{\"value\":[16],\"order\":3},\
-			\"IN\":{\"value\":[\"1 SECOND\"],\"order\":4}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 16; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "FROM", &v);
 
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "IN", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
 		 * Invalid dimlevel for dimmer device
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2},\
-			\"FROM\":{\"value\":[-1],\"order\":3},\
-			\"IN\":{\"value\":[\"1 SECOND\"],\"order\":4}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = -1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "FROM", &v);
 
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "IN", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
 		/*
 		 * Device does not exist
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"foo\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("foo"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
 
+	{
 		/*
 		 * Invalid device for dim action
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 
-		obj->arguments = json_decode("{\
-			\"DEVICE\":{\"value\":[\"label\"],\"order\":1},\
-			\"TO\":{\"value\":[1],\"order\":2}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("label"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_dim->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
 	}
 
 	uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -695,6 +855,7 @@ static void test_event_actions_dim_check_parameters(CuTest *tc) {
 	protocol_gc();
 	storage_gc();
 	eventpool_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -708,9 +869,10 @@ static void *control_device(int reason, void *param) {
 	timestamp.first = timestamp.second;
 	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
-	// int duration = (int)((int)timestamp.second-(int)timestamp.first);
-
-	// CuAssertTrue(gtc, (duration < interval));
+	if(!RUNNING_ON_VALGRIND && checktime == 1) {
+		int duration = (int)((int)timestamp.second-(int)timestamp.first);
+		CuAssertTrue(gtc, (duration < interval[steps]));
+	}
 
 	steps++;
 	if(run == 1) {
@@ -737,16 +899,149 @@ static void *control_device(int reason, void *param) {
 	return NULL;
 }
 
+static struct event_action_args_t *initialize_vars(int test) {
+	struct event_action_args_t *args = NULL;
+	struct varcont_t v;
+
+	switch(test) {
+		case 1: {
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "DEVICE", &v);
+			FREE(v.string_);
+
+			// memset(&v, 0, sizeof(struct varcont_t));
+			// v.string_ = STRDUP("dimmer1"); v.type_ = JSON_STRING;
+			// args = event_action_add_argument(args, "DEVICE", &v);
+			// FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+			args = event_action_add_argument(args, "TO", &v);
+		} break;
+		case 2: {
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "DEVICE", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.number_ = 2; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+			args = event_action_add_argument(args, "TO", &v);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("250 MILLISECOND"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "FOR", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("250 MILLISECOND"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "AFTER", &v);
+			FREE(v.string_);
+		} break;
+		case 3: {
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "DEVICE", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.number_ = 2; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+			args = event_action_add_argument(args, "TO", &v);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.number_ = 10; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+			args = event_action_add_argument(args, "FROM", &v);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "IN", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("500 MILLISECOND"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "AFTER", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("250 MILLISECOND"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "FOR", &v);
+			FREE(v.string_);
+		} break;
+		case 4: {
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "DEVICE", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.number_ = 2; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+			args = event_action_add_argument(args, "TO", &v);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("500 MILLISECOND"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "FOR", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("500 MILLISECOND"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "AFTER", &v);
+			FREE(v.string_);
+		} break;
+		case 5: {
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "DEVICE", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.number_ = 5; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+			args = event_action_add_argument(args, "TO", &v);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("250 MILLISECOND"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "FOR", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("250 MILLISECOND"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "AFTER", &v);
+			FREE(v.string_);
+		} break;
+		case 6: {
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "DEVICE", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.number_ = 2; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+			args = event_action_add_argument(args, "TO", &v);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("500 MILLISECOND"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "AFTER", &v);
+			FREE(v.string_);
+		} break;
+	}
+	return args;
+}
+
+static void stop(uv_work_t *req) {
+	uv_stop(uv_default_loop());
+}
+
 static void test_event_actions_dim_run(CuTest *tc) {
 	if(suiteFailed()) return;
 
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
+	run = 0;
 	steps = 0;
 	nrsteps = 1;
-	run = 0;
-	interval = 3000;
+	interval[0] = 3000;
+	checktime = 1;
 
 	memtrack();
 
@@ -756,20 +1051,16 @@ static void test_event_actions_dim_run(CuTest *tc) {
 
 	arctechDimmerInit();
 	genericLabelInit();
-	actionDimInit();
-	CuAssertStrEquals(tc, "dim", action_dim->name);
 
 	storage_init();
-	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_DEVICES));
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+	event_action_init();
 
-	obj = MALLOC(sizeof(struct rules_actions_t));
-	CuAssertPtrNotNull(tc, obj);
-	memset(obj, 0, sizeof(struct rules_actions_t));
-
-	obj->arguments = json_decode("{\
-		\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-		\"TO\":{\"value\":[1],\"order\":2}\
-	}");
+	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	uv_timer_init(uv_default_loop(), timer_req);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
 	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
@@ -779,8 +1070,11 @@ static void test_event_actions_dim_run(CuTest *tc) {
 	timestamp.first = timestamp.second;
 	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
-	CuAssertIntEquals(tc, 0, action_dim->checkArguments(obj));
-	CuAssertIntEquals(tc, 0, action_dim->run(obj));
+	struct event_action_args_t *args = initialize_vars(1);
+	CuAssertIntEquals(tc, 0, event_action_check_arguments("dim", args));
+
+	args = initialize_vars(1);
+	CuAssertIntEquals(tc, 0, event_action_run("dim", args));
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -790,14 +1084,14 @@ static void test_event_actions_dim_run(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 	}
 
-	json_delete(obj->arguments);
-	FREE(obj);
-
+	plua_gc();
 	event_action_gc();
+	event_function_gc();
 	protocol_gc();
 	eventpool_gc();
 	storage_gc();
 
+	CuAssertIntEquals(tc, 1, steps);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -807,10 +1101,12 @@ static void test_event_actions_dim_run_delayed(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
+	run = 1;
 	steps = 0;
 	nrsteps = 2;
-	run = 1;
-	interval = 275000;
+	interval[0] = 275000;
+	interval[1] = 275000;
+	checktime = 1;
 
 	memtrack();
 
@@ -820,22 +1116,16 @@ static void test_event_actions_dim_run_delayed(CuTest *tc) {
 
 	arctechDimmerInit();
 	genericLabelInit();
-	actionDimInit();
-	CuAssertStrEquals(tc, "dim", action_dim->name);
 
 	storage_init();
-	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_DEVICES));
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+	event_action_init();
 
-	obj = MALLOC(sizeof(struct rules_actions_t));
-	CuAssertPtrNotNull(tc, obj);
-	memset(obj, 0, sizeof(struct rules_actions_t));
-
-	obj->arguments = json_decode("{\
-		\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-		\"TO\":{\"value\":[2],\"order\":2},\
-		\"FOR\":{\"value\":[\"250 MILLISECOND\"],\"order\":3},\
-		\"AFTER\":{\"value\":[\"250 MILLISECOND\"],\"order\":4}\
-	}");
+	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	uv_timer_init(uv_default_loop(), timer_req);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 750, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
 	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
@@ -845,8 +1135,11 @@ static void test_event_actions_dim_run_delayed(CuTest *tc) {
 	timestamp.first = timestamp.second;
 	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
-	CuAssertIntEquals(tc, 0, action_dim->checkArguments(obj));
-	CuAssertIntEquals(tc, 0, action_dim->run(obj));
+	struct event_action_args_t *args = initialize_vars(2);
+	CuAssertIntEquals(tc, 0, event_action_check_arguments("dim", args));
+
+	args = initialize_vars(2);
+	CuAssertIntEquals(tc, 0, event_action_run("dim", args));
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -856,14 +1149,14 @@ static void test_event_actions_dim_run_delayed(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 	}
 
-	json_delete(obj->arguments);
-	FREE(obj);
-
+	plua_gc();
 	event_action_gc();
+	event_function_gc();
 	protocol_gc();
 	eventpool_gc();
 	storage_gc();
 
+	CuAssertIntEquals(tc, 2, steps);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -873,10 +1166,16 @@ static void test_event_actions_dim_run_stepped(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
+	int i = 0;
+	run = 0;
 	steps = 0;
-	nrsteps = 9;
-	run = 2;
-	interval = 150000;
+	nrsteps = 11;
+	interval[0] = 525000;
+	for(i=1;i<10;i++) {
+		interval[i] = 150000;
+	}
+	interval[10] = 275000;
+	checktime = 1;
 
 	memtrack();
 
@@ -886,24 +1185,18 @@ static void test_event_actions_dim_run_stepped(CuTest *tc) {
 
 	arctechDimmerInit();
 	genericLabelInit();
-	actionDimInit();
-	CuAssertStrEquals(tc, "dim", action_dim->name);
 
 	storage_init();
-	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_DEVICES));
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+	event_action_init();
 
-	obj = MALLOC(sizeof(struct rules_actions_t));
-	CuAssertPtrNotNull(tc, obj);
-	memset(obj, 0, sizeof(struct rules_actions_t));
+	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	uv_timer_init(uv_default_loop(), timer_req);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 15000, 0);
 
-	obj->arguments = json_decode("{\
-		\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-		\"TO\":{\"value\":[2],\"order\":2},\
-		\"FROM\":{\"value\":[10],\"order\":3},\
-		\"IN\":{\"value\":[\"1 SECOND\"],\"order\":4}\
-	}");
-
-	eventpool_init(EVENTPOOL_NO_THREADS);
+	eventpool_init(EVENTPOOL_THREADED);
 	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
 
 	struct timeval tv;
@@ -911,8 +1204,11 @@ static void test_event_actions_dim_run_stepped(CuTest *tc) {
 	timestamp.first = timestamp.second;
 	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
-	CuAssertIntEquals(tc, 0, action_dim->checkArguments(obj));
-	CuAssertIntEquals(tc, 0, action_dim->run(obj));
+	struct event_action_args_t *args = initialize_vars(3);
+	CuAssertIntEquals(tc, 0, event_action_check_arguments("dim", args));
+
+	args = initialize_vars(3);
+	CuAssertIntEquals(tc, 0, event_action_run("dim", args));
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -922,33 +1218,25 @@ static void test_event_actions_dim_run_stepped(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 	}
 
-	json_delete(obj->arguments);
-	FREE(obj);
-
+	plua_gc();
 	event_action_gc();
+	event_function_gc();
 	protocol_gc();
 	eventpool_gc();
 	storage_gc();
 
+	CuAssertIntEquals(tc, 11, steps);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
 static void second_dimmer(void *param) {
-	obj1 = MALLOC(sizeof(struct rules_actions_t));
-	CuAssertPtrNotNull(gtc, obj1);
-	memset(obj1, 0, sizeof(struct rules_actions_t));
-
 	usleep(100);
 
-	obj1->arguments = json_decode("{\
-		\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-		\"TO\":{\"value\":[5],\"order\":2},\
-		\"FOR\":{\"value\":[\"250 MILLISECOND\"],\"order\":3},\
-		\"AFTER\":{\"value\":[\"250 MILLISECOND\"],\"order\":4}\
-	}");
+	struct event_action_args_t *args = initialize_vars(5);
+	CuAssertIntEquals(gtc, 0, event_action_check_arguments("dim", args));
 
-	CuAssertIntEquals(gtc, 0, action_dim->checkArguments(obj1));
-	CuAssertIntEquals(gtc, 0, action_dim->run(obj1));
+	args = initialize_vars(5);
+	CuAssertIntEquals(gtc, 0, event_action_run("dim", args));
 }
 
 static struct reason_config_update_t update = {
@@ -967,10 +1255,12 @@ static void test_event_actions_dim_run_overlapped(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
-	steps = 0;
 	run = 3;
+	steps = 0;
 	nrsteps = 2;
-	interval = 275000;
+	interval[0] = 275000;
+	interval[1] = 275000;
+	checktime = 0;
 
 	memtrack();
 
@@ -980,33 +1270,25 @@ static void test_event_actions_dim_run_overlapped(CuTest *tc) {
 
 	arctechDimmerInit();
 	genericLabelInit();
-	actionDimInit();
-	CuAssertStrEquals(tc, "dim", action_dim->name);
 
 	storage_init();
-	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_DEVICES));
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+	event_action_init();
 
-	obj = MALLOC(sizeof(struct rules_actions_t));
-	CuAssertPtrNotNull(tc, obj);
-	memset(obj, 0, sizeof(struct rules_actions_t));
-
-	obj->arguments = json_decode("{\
-		\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-		\"TO\":{\"value\":[2],\"order\":2},\
-		\"FOR\":{\"value\":[\"500 MILLISECOND\"],\"order\":3},\
-		\"AFTER\":{\"value\":[\"500 MILLISECOND\"],\"order\":4}\
-	}");
+	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	uv_timer_init(uv_default_loop(), timer_req);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1500, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
 	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
 
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	timestamp.first = timestamp.second;
-	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+	struct event_action_args_t *args = initialize_vars(4);
+	CuAssertIntEquals(tc, 0, event_action_check_arguments("dim", args));
 
-	CuAssertIntEquals(tc, 0, action_dim->checkArguments(obj));
-	CuAssertIntEquals(tc, 0, action_dim->run(obj));
+	args = initialize_vars(4);
+	CuAssertIntEquals(tc, 0, event_action_run("dim", args));
 
 	uv_thread_create(&pth, second_dimmer, NULL);
 
@@ -1018,23 +1300,17 @@ static void test_event_actions_dim_run_overlapped(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 	}
 
-	json_delete(obj->arguments);
-	json_delete(obj1->arguments);
-	FREE(obj);
-	FREE(obj1);
-
 	uv_thread_join(&pth);
 
+	plua_gc();
 	event_action_gc();
+	event_function_gc();
 	protocol_gc();
 	eventpool_gc();
 	storage_gc();
 
+	CuAssertIntEquals(tc, 2, steps);
 	CuAssertIntEquals(tc, 0, xfree());
-}
-
-static void stop(uv_work_t *req) {
-	uv_stop(uv_default_loop());
 }
 
 /*
@@ -1047,10 +1323,11 @@ static void test_event_actions_dim_run_override(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
-	steps = 0;
 	run = 4;
+	steps = 0;
 	nrsteps = 1;
-	interval = 575000;
+	interval[0] = 575000;
+	checktime = 1;
 
 	memtrack();
 
@@ -1060,33 +1337,23 @@ static void test_event_actions_dim_run_override(CuTest *tc) {
 
 	arctechDimmerInit();
 	genericLabelInit();
-	actionDimInit();
-	CuAssertStrEquals(tc, "dim", action_dim->name);
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_SETTINGS));
 	event_operator_init();
+	event_action_init();
+	event_function_init();
 	storage_gc();
 
 	event_init();
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_DEVICES | CONFIG_RULES));
 
-	obj = MALLOC(sizeof(struct rules_actions_t));
-	CuAssertPtrNotNull(tc, obj);
-	memset(obj, 0, sizeof(struct rules_actions_t));
-
-	obj->arguments = json_decode("{\
-		\"DEVICE\":{\"value\":[\"dimmer\"],\"order\":1},\
-		\"TO\":{\"value\":[2],\"order\":2},\
-		\"AFTER\":{\"value\":[\"500 MILLISECOND\"],\"order\":3}\
-	}");
-
 	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	uv_timer_init(uv_default_loop(), timer_req);
-	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 750, 0);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 500, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
 	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
@@ -1096,8 +1363,11 @@ static void test_event_actions_dim_run_override(CuTest *tc) {
 	timestamp.first = timestamp.second;
 	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
-	CuAssertIntEquals(tc, 0, action_dim->checkArguments(obj));
-	CuAssertIntEquals(tc, 0, action_dim->run(obj));
+	struct event_action_args_t *args = initialize_vars(6);
+	CuAssertIntEquals(tc, 0, event_action_check_arguments("dim", args));
+
+	args = initialize_vars(6);
+	CuAssertIntEquals(tc, 0, event_action_run("dim", args));
 
 	uv_thread_create(&pth, config_update, NULL);
 
@@ -1109,18 +1379,14 @@ static void test_event_actions_dim_run_override(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 	}
 
-	json_delete(obj->arguments);
-	FREE(obj);
-
 	uv_thread_join(&pth);
 
-	event_operator_gc();
+	plua_gc();
 	event_action_gc();
 	event_function_gc();
 	protocol_gc();
 	eventpool_gc();
 	storage_gc();
-	plua_gc();
 
 	CuAssertIntEquals(tc, 0, steps);
 	CuAssertIntEquals(tc, 0, xfree());
@@ -1133,7 +1399,12 @@ CuSuite *suite_event_actions_dim(void) {
 		"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"bar\",\"color\":\"green\"}}," \
 		"\"gui\":{},\"rules\":{"\
 			"\"rule1\":{\"rule\":\"IF dimmer.state == on THEN dim DEVICE dimmer TO 1\",\"active\":1}"\
-		"},\"settings\":{\"operators-root\":\"%s../libs/pilight/events/operators/\"},\"hardware\":{},\"registry\":{}}";
+		"},\"settings\":{" \
+		"\"actions-root\":\"%s../libs/pilight/events/actions/\"," \
+		"\"operators-root\":\"%s../libs/pilight/events/operators/\"," \
+		"\"functions-root\":\"%s../libs/pilight/events/functions/\"" \
+		"},\"hardware\":{},\"registry\":{}}";
+
 	char *file = STRDUP(__FILE__);
 	if(file == NULL) {
 		OUT_OF_MEMORY
@@ -1141,10 +1412,11 @@ CuSuite *suite_event_actions_dim(void) {
 	str_replace("event_actions_dim.c", "", &file);
 
 	FILE *f = fopen("event_actions_dimmer.json", "w");
-	fprintf(f, config, file);
+	fprintf(f, config, file, file, file);
 	fclose(f);
 	FREE(file);	
 
+	SUITE_ADD_TEST(suite, test_event_actions_dim_get_parameters);
 	SUITE_ADD_TEST(suite, test_event_actions_dim_check_parameters);
 	SUITE_ADD_TEST(suite, test_event_actions_dim_run);
 	SUITE_ADD_TEST(suite, test_event_actions_dim_run_delayed);

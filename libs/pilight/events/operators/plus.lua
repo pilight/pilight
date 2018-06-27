@@ -7,7 +7,7 @@
 local M = {}
 
 function M.run(a, b)
-	return pilight.tonumber(a) + pilight.tonumber(b);
+	return pilight.cast.tonumber(a) + pilight.cast.tonumber(b);
 end
 
 function M.associativity()

@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <limits.h>
+#include <assert.h>
 
 #ifndef _WIN32
 	#include <libgen.h>
@@ -37,7 +38,7 @@ void event_operator_init(void) {
 	if(init == 1) {
 		return;
 	}
-	init = 1;	
+	init = 1;
 	plua_init();
 
 	char path[PATH_MAX];
@@ -74,7 +75,7 @@ void event_operator_init(void) {
 static int plua_operator_precedence_run(struct lua_State *L, char *file, int *ret) {
 #if LUA_VERSION_NUM <= 502
 	lua_getfield(L, -1, "precedence");
-	if(strcmp(lua_typename(L, lua_type(L, -1)), "function") != 0) {
+	if(lua_type(L, -1) != LUA_TFUNCTION) {
 #else
 	if(lua_getfield(L, -1, "precedence") == 0) {
 #endif
@@ -83,11 +84,11 @@ static int plua_operator_precedence_run(struct lua_State *L, char *file, int *re
 	}
 
 	if(lua_pcall(L, 0, 1, 0) == LUA_ERRRUN) {
-		if(strcmp(lua_typename(L, lua_type(L, -1)), "nil") == 0) {
+		if(lua_type(L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", file);
 			return 0;
 		}
-		if(strcmp(lua_typename(L, lua_type(L, -1)), "string") == 0) {
+		if(lua_type(L, -1) == LUA_TSTRING) {
 			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
 			lua_pop(L, 1);
 			return 0;
@@ -109,7 +110,7 @@ static int plua_operator_precedence_run(struct lua_State *L, char *file, int *re
 static int plua_operator_associativity_run(struct lua_State *L, char *file, int *ret) {
 #if LUA_VERSION_NUM <= 502
 	lua_getfield(L, -1, "associativity");
-	if(strcmp(lua_typename(L, lua_type(L, -1)), "function") != 0) {
+	if(lua_type(L, -1) != LUA_TFUNCTION) {
 #else
 	if(lua_getfield(L, -1, "associativity") == 0) {
 #endif
@@ -118,11 +119,11 @@ static int plua_operator_associativity_run(struct lua_State *L, char *file, int 
 	}
 
 	if(lua_pcall(L, 0, 1, 0) == LUA_ERRRUN) {
-		if(strcmp(lua_typename(L, lua_type(L, -1)), "nil") == 0) {
+		if(lua_type(L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", file);
 			return 0;
 		}
-		if(strcmp(lua_typename(L, lua_type(L, -1)), "string") == 0) {
+		if(lua_type(L, -1) == LUA_TSTRING) {
 			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
 			lua_pop(L, 1);
 			return 0;
@@ -144,7 +145,7 @@ static int plua_operator_associativity_run(struct lua_State *L, char *file, int 
 static int plua_operator_module_run(struct lua_State *L, char *file, struct varcont_t *a, struct varcont_t *b, struct varcont_t *v) {
 #if LUA_VERSION_NUM <= 502
 	lua_getfield(L, -1, "run");
-	if(strcmp(lua_typename(L, lua_type(L, -1)), "function") != 0) {
+	if(lua_type(L, -1) != LUA_TFUNCTION) {
 #else
 	if(lua_getfield(L, -1, "run") == 0) {
 #endif
@@ -176,11 +177,11 @@ static int plua_operator_module_run(struct lua_State *L, char *file, struct varc
 	}
 
 	if(lua_pcall(L, 2, 1, 0) == LUA_ERRRUN) {
-		if(strcmp(lua_typename(L, lua_type(L, -1)), "nil") == 0) {
+		if(lua_type(L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", file);
 			return 0;
 		}
-		if(strcmp(lua_typename(L, lua_type(L, -1)), "string") == 0) {
+		if(lua_type(L, -1) == LUA_TSTRING) {
 			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
 			lua_pop(L, 1);
 			return 0;
@@ -230,6 +231,7 @@ int event_operator_precedence(char *module, int *ret) {
 	}
 
 	if((L = state->L) == NULL) {
+		assert(lua_gettop(L) == 0);
 		uv_mutex_unlock(&state->lock);
 		return -1;
 	}
@@ -241,6 +243,7 @@ int event_operator_precedence(char *module, int *ret) {
 
 	lua_getglobal(L, name);
 	if(lua_isnil(L, -1) != 0) {
+		assert(lua_gettop(L) == 0);
 		uv_mutex_unlock(&state->lock);
 		return -1;
 	}
@@ -257,12 +260,14 @@ int event_operator_precedence(char *module, int *ret) {
 		}
 		if(plua_operator_precedence_run(L, file, ret) == 0) {
 			lua_pop(L, -1);
+			assert(lua_gettop(L) == 0);
 			uv_mutex_unlock(&state->lock);
 			return -1;
 		}
 	}
 	lua_pop(L, -1);
 
+	assert(lua_gettop(L) == 0);
 	uv_mutex_unlock(&state->lock);
 
 	return 0;
@@ -277,6 +282,7 @@ int event_operator_associativity(char *module, int *ret) {
 	}
 
 	if((L = state->L) == NULL) {
+		assert(lua_gettop(L) == 0);
 		uv_mutex_unlock(&state->lock);
 		return -1;
 	}
@@ -288,6 +294,7 @@ int event_operator_associativity(char *module, int *ret) {
 
 	lua_getglobal(L, name);
 	if(lua_isnil(L, -1) != 0) {
+		assert(lua_gettop(L) == 0);
 		uv_mutex_unlock(&state->lock);
 		return -1;
 	}
@@ -304,12 +311,14 @@ int event_operator_associativity(char *module, int *ret) {
 		}
 		if(plua_operator_associativity_run(L, file, ret) == 0) {
 			lua_pop(L, -1);
+			assert(lua_gettop(L) == 0);
 			uv_mutex_unlock(&state->lock);
 			return -1;
 		}
 	}
 	lua_pop(L, -1);
 
+	assert(lua_gettop(L) == 0);
 	uv_mutex_unlock(&state->lock);
 
 	return 0;
@@ -324,6 +333,7 @@ int event_operator_callback(char *module, struct varcont_t *a, struct varcont_t 
 	}
 
 	if((L = state->L) == NULL) {
+		assert(lua_gettop(L) == 0);
 		uv_mutex_unlock(&state->lock);
 		return -1;
 	}
@@ -335,6 +345,7 @@ int event_operator_callback(char *module, struct varcont_t *a, struct varcont_t 
 
 	lua_getglobal(L, name);
 	if(lua_isnil(L, -1) != 0) {
+		assert(lua_gettop(L) == 0);
 		uv_mutex_unlock(&state->lock);
 		return -1;
 	}
@@ -351,12 +362,14 @@ int event_operator_callback(char *module, struct varcont_t *a, struct varcont_t 
 		}
 		if(plua_operator_module_run(L, file, a, b, v) == 0) {
 			lua_pop(L, -1);
+			assert(lua_gettop(L) == 0);
 			uv_mutex_unlock(&state->lock);
 			return -1;
 		}
 	}
 	lua_pop(L, -1);
 
+	assert(lua_gettop(L) == 0);
 	uv_mutex_unlock(&state->lock);
 
 	return 0;

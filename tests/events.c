@@ -21,10 +21,6 @@
 #include "../libs/pilight/events/events.h"
 #include "../libs/pilight/events/operator.h"
 #include "../libs/pilight/events/action.h"
-#include "../libs/pilight/events/actions/switch.h"
-#include "../libs/pilight/events/actions/dim.h"
-#include "../libs/pilight/events/actions/label.h"
-#include "../libs/pilight/events/actions/toggle.h"
 #include "../libs/pilight/events/function.h"
 #include "../libs/pilight/protocols/protocol.h"
 #include "../libs/pilight/protocols/generic/generic_switch.h"
@@ -119,7 +115,8 @@ static char *values[] = {
 	"{\"dimlevel\":2}",
 	NULL,
 	"{\"label\":\"21:01 21:00\"}",
-	"{\"label\":\"1010\"}"
+	"{\"label\":\"1010\"}",
+	NULL
 };
 
 static struct reason_control_device_t receives[] = {
@@ -127,7 +124,8 @@ static struct reason_control_device_t receives[] = {
 	{ "dimmer", "on", NULL },
 	{ "switch1", "on", NULL },
 	{ "label", NULL, NULL }, // Initialize struct JsonNode;
-	{ "testlabel", NULL, NULL }
+	{ "testlabel", NULL, NULL },
+	{ "dimmer", "on", NULL }
 };
 
 struct tests_t {
@@ -670,21 +668,21 @@ static struct tests_t get_tests[] = {
 		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		0, UV_RUN_DEFAULT,
 		0, &updates1[1],
-		{ &receives[1] },
+		{ &receives[5] },
 		{ 1, 0 }
 	},
 	{
 		/*
 		 * This rule is intentionally written without hooks.
 		 */
-		"valid device param",
+		"valid device param3",
 		"{\"devices\":{\"dimmer\":{\"protocol\":[\"generic_dimmer\"],\"id\":[{\"id\":100}],\"state\":\"off\",\"dimlevel\":10}}," \
 		"\"gui\":{},"\
 		"\"rules\":{\"switch\":{\"rule\":\"IF datetime.hour < datetime.hour + 10 THEN switch DEVICE dimmer TO on\",\"active\":1}},"\
 		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		0, UV_RUN_DEFAULT,
 		1, &updates2[1],
-		{ &receives[1] },
+		{ &receives[5] },
 		{ 1, 0 }
 	},
 	{
@@ -864,7 +862,7 @@ static struct tests_t get_tests[] = {
 		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		0, UV_RUN_NOWAIT,
 		0, &updates1[0],
-		{ &receives[2] },
+		{ &receives[0] },
 		{ 1, 0 }
 	},
 	{
@@ -1072,6 +1070,7 @@ static void test_events(CuTest *tc) {
 
 		char settings[1024] = "{"\
 			"\"operators-root\":\"%s../libs/pilight/events/operators/\","\
+			"\"actions-root\":\"%s../libs/pilight/events/actions/\","\
 			"\"functions-root\":\"%s../libs/pilight/events/functions/\""\
 		"}";
 		char settings1[1024], *p = settings1;
@@ -1079,7 +1078,7 @@ static void test_events(CuTest *tc) {
 		CuAssertPtrNotNull(tc, file);
 		memset(&settings1, '\0', 1024);
 		str_replace("events.c", "", &file);
-		snprintf(p, 1024, settings, file, file);
+		snprintf(p, 1024, settings, file, file, file);
 		FREE(file);
 
 		FILE *f = fopen("events.json", "w");
@@ -1091,15 +1090,13 @@ static void test_events(CuTest *tc) {
 
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("events.json", CONFIG_SETTINGS));
+		event_action_init();
 		event_operator_init();
 		event_function_init();
 		storage_gc();
 
 		storage_init();
-		actionSwitchInit();
-		actionToggleInit();
-		actionDimInit();
-		actionLabelInit();
+
 		arctechSwitchInit();
 		genericSwitchInit();
 		genericDimmerInit();

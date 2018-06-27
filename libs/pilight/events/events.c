@@ -145,20 +145,20 @@ static int get_associativity(char *symbol) {
 	return -1;
 }
 
-struct event_actions_t *get_action(char *symbol, int size) {
-	struct event_actions_t *tmp_actions = NULL;
+static int is_action(char *symbol, int size) {
+	struct plua_module_t *modules = plua_get_modules();
 	int len = 0;
-
-	tmp_actions = event_actions;
-	while(tmp_actions) {
-		len = strlen(tmp_actions->name);
-		if((size == -1 && strnicmp(symbol, tmp_actions->name, len) == 0) ||
-			(size == len && strnicmp(symbol, tmp_actions->name, len) == 0)) {
-			return tmp_actions;
+	while(modules) {
+		if(modules->type == ACTION) {
+			len = strlen(modules->name);
+			if((size == -1 && strnicmp(symbol, modules->name, len) == 0) ||
+				(size == len && strnicmp(symbol, modules->name, len) == 0)) {
+				return len;
+			}
 		}
-		tmp_actions = tmp_actions->next;
+		modules = modules->next;
 	}
-	return NULL;
+	return -1;
 }
 
 static int is_function(char *symbol, int size) {
@@ -769,7 +769,6 @@ static int lexer_next_token(struct lexer_t *lexer) {
 			if((m = min(pos, 3)) != NULL) {
 				len = m-lexer->current_char;
 			}
-			struct event_actions_t *action = NULL;
 			if((len1 = is_function(lexer->current_char, len)) > 0) {
 				for(x=0;x<len1;x++) {
 					dt_stack_push(t, sizeof(char *), &lexer->current_char[x]);
@@ -784,8 +783,7 @@ static int lexer_next_token(struct lexer_t *lexer) {
 				type = TOPERATOR;
 				lexer->current_char = &lexer->text[lexer->pos+(len1-1)];
 				lexer->pos += len1;
-			} else if((action = get_action(lexer->current_char, len)) != NULL) {
-				len1 = strlen(action->name);
+			} else if((len1 = is_action(lexer->current_char, len)) > 0) {
 				for(x=0;x<len1;x++) {
 					dt_stack_push(t, sizeof(char *), &lexer->current_char[x]);
 				}
@@ -1045,8 +1043,6 @@ error:
 static void print_ast(struct tree_t *tree);
 
 static int lexer_parse_action(struct lexer_t *lexer, struct tree_t *tree_in, struct tree_t **tree_out) {
-	struct event_actions_t *action = NULL;
-	struct options_t *options = NULL;
 	struct tree_t *node = NULL;
 	struct tree_t *p = NULL;
 	struct tree_t *p1 = NULL;
@@ -1057,8 +1053,7 @@ static int lexer_parse_action(struct lexer_t *lexer, struct tree_t *tree_in, str
 
 	p = ast_parent(token);
 
-	action = get_action(token->value, len);
-	if(action != NULL) {
+	if(is_action(token->value, len) > 0) {
 		if((err = lexer_eat(lexer, TACTION, &token_ret)) < 0) {
 			*tree_out = NULL;
 			return -1;
@@ -1107,13 +1102,16 @@ static int lexer_parse_action(struct lexer_t *lexer, struct tree_t *tree_in, str
 				goto error;
 			} else {
 				match = 0;
-				options = action->options;
-				while(options != NULL) {
-					if(stricmp(token_ret->value, options->name) == 0) {
-						match = 1;
-						break;
+				char **ret = NULL;
+				int nr = 0, i = 0;
+				if(event_action_get_parameters(token->value, &nr, &ret) == 0) {
+					for(i=0;i<nr;i++) {
+						if(stricmp(ret[i], token_ret->value) == 0 && match == 0) {
+							match = 1;
+						}
+						FREE(ret[i]);
 					}
-					options = options->next;
+					FREE(ret);
 				}
 				if(match == 0) {
 					char *tmp = "an action argument";
@@ -1201,7 +1199,7 @@ static int lexer_parse_action(struct lexer_t *lexer, struct tree_t *tree_in, str
 	return 0;
 
 error:
-		return print_error(lexer, p, NULL, NULL, err, expected, pos, lexer->ppos-1);
+	return print_error(lexer, p, NULL, NULL, err, expected, pos, lexer->ppos-1);
 }
 
 static int lexer_parse_if(struct lexer_t *lexer, struct tree_t *tree, struct tree_t **tree_out) {
@@ -1574,16 +1572,12 @@ static int run_function(struct tree_t *tree, int in_action, struct rules_t *obj,
 }
 
 static int run_action(struct tree_t *tree, struct rules_t *obj, unsigned short validate, struct varcont_t *v_out) {
-	struct JsonNode *jobject = json_mkobject();
-	struct JsonNode *jparam = NULL;
-	struct JsonNode *jvalues = NULL;
-	struct varcont_t v_res, v_res1, v1;
-	struct rules_actions_t *node = NULL;
-	struct event_actions_t *action = NULL;
+	struct event_action_args_t *args = NULL;
+	struct varcont_t v_res, v_res1, v1, v;
 	char *key = NULL;
-	int i = 0, x = 0, match = 0;
+	int i = 0, x = 0, len = 0;
 
-	action = get_action(tree->token->value, strlen(tree->token->value));
+	len = is_action(tree->token->value, strlen(tree->token->value));
 
 	for(i=0;i<tree->nrchildren;i++) {
 		if(tree->child[i]->token->type == TACTION) {
@@ -1597,10 +1591,6 @@ static int run_action(struct tree_t *tree, struct rules_t *obj, unsigned short v
 		memset(&v_res, '\0', sizeof(struct varcont_t));
 		memset(&v1, '\0', sizeof(struct varcont_t));
 
-		jparam = json_mkobject();
-		jvalues = json_mkarray();
-		json_append_member(jparam, "order", json_mknumber(i+1, 0));
-		json_append_member(jparam, "value", jvalues);
 		if(interpret(tree->child[i], 1, obj, validate, &v_res) == -1) {
 			v_out = NULL;
 			return -1;
@@ -1624,68 +1614,50 @@ static int run_action(struct tree_t *tree, struct rules_t *obj, unsigned short v
 					} else {
 						switch(v1.type_) {
 							case JSON_NUMBER: {
-								json_append_element(jvalues, json_mknumber(v1.number_, v1.decimals_));
+								memset(&v, 0, sizeof(struct varcont_t));
+								v.number_ = v1.number_; v.decimals_ = v1.decimals_; v.type_ = JSON_NUMBER;
+								args = event_action_add_argument(args, key, &v);
 							} break;
 							case JSON_STRING: {
-								json_append_element(jvalues, json_mkstring(v1.string_));
+								memset(&v, 0, sizeof(struct varcont_t));
+								v.string_ = STRDUP(v1.string_); v.type_ = JSON_STRING;
+								args = event_action_add_argument(args, key, &v);
+								FREE(v.string_);
 							} break;
 							case JSON_BOOL: {
-								json_append_element(jvalues, json_mkbool(v1.bool_));
+								memset(&v, 0, sizeof(struct varcont_t));
+								v.bool_ = v1.bool_; v.type_ = JSON_BOOL;
+								args = event_action_add_argument(args, key, &v);
 							} break;
 						}
 						varcont_free(&v1);
 					}
 				} break;
 				case JSON_NUMBER: {
-					json_append_element(jvalues, json_mknumber(v_res1.number_, v_res1.decimals_));
+					memset(&v, 0, sizeof(struct varcont_t));
+					v.number_ = v_res1.number_; v.decimals_ = v_res1.decimals_; v.type_ = JSON_NUMBER;
+					args = event_action_add_argument(args, key, &v);
 				} break;
 				case JSON_BOOL: {
-					json_append_element(jvalues, json_mkbool(v_res1.bool_));
+					memset(&v, 0, sizeof(struct varcont_t));
+					v.bool_ = v_res1.bool_; v.type_ = JSON_BOOL;
+					args = event_action_add_argument(args, key, &v);
+					FREE(v.string_);
 				} break;
 			}
 			varcont_free(&v_res1);
 		}
-		json_append_member(jobject, key, jparam);
 		varcont_free(&v_res);
 	}
 
-	node = obj->actions;
-	while(node) {
-		if(node->ptr == tree) {
-			match = 1;
-			break;
-		}
-		node = node->next;
-	}
-	if(match == 0) {
-		if((node = MALLOC(sizeof(struct rules_actions_t))) == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
-		node->ptr = tree;
-		node->rule = obj;
-		node->arguments = NULL;
-		node->next = obj->actions;
-		obj->actions = node;
-	}
-
-	if(node->arguments != NULL) {
-		json_delete(node->arguments);
-		node->arguments = NULL;
-	}
-
-	node->arguments = jobject;
-	if(action != NULL) {
+	if(len > 0) {
 		if(validate == 1) {
-			if(action->checkArguments != NULL) {
-				if(action->checkArguments(node) == -1) {
-					return -1;
-				}
+			if(event_action_check_arguments(tree->token->value, args) == -1) {
+				return -1;
 			}
 		} else {
-			if(action->run != NULL) {
-				if(action->run(node) == -1) {
-					return -1;
-				}
+			if(event_action_run(tree->token->value, args) == -1) {
+				return -1;
 			}
 		}
 	}

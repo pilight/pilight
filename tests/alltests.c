@@ -51,6 +51,14 @@ CuSuite *suite_webserver_rest(void);
 #endif
 CuSuite *suite_socket(void);
 CuSuite *suite_log(void);
+CuSuite *suite_lua_cast(void);
+CuSuite *suite_lua_datetime(void);
+CuSuite *suite_lua_c_metatable(void);
+CuSuite *suite_lua_common(void);
+CuSuite *suite_lua_async_thread(void);
+CuSuite *suite_lua_async_timer(void);
+CuSuite *suite_lua_network_mail(void);
+CuSuite *suite_lua_config(void);
 CuSuite *suite_protocols_433(void);
 CuSuite *suite_protocols_api(void);
 CuSuite *suite_protocols_api_openweathermap(void);
@@ -135,10 +143,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_common();
 	suites[nr++] = suite_network();
 	suites[nr++] = suite_binary(); // Ported (Missing signed tests)
-//	const char *s = getenv("CI");
-//	if((s == NULL || strcmp(s, "true") != 0) && !RUNNING_ON_VALGRIND) {
-		suites[nr++] = suite_proc();
-//	}
+	suites[nr++] = suite_proc();
 	suites[nr++] = suite_datetime(); // Ported
 	suites[nr++] = suite_json(); // Ported
 	suites[nr++] = suite_cast(); // Ported
@@ -154,6 +159,14 @@ int RunAllTests(void) {
 	suites[nr++] = suite_arp();
 	suites[nr++] = suite_http(); // ipv4 ported / ipv6 not ported
 	suites[nr++] = suite_mail(); // ipv4 ported / ipv6 not ported
+	suites[nr++] = suite_lua_cast();
+	suites[nr++] = suite_lua_c_metatable();
+	suites[nr++] = suite_lua_datetime();
+	suites[nr++] = suite_lua_common();
+	suites[nr++] = suite_lua_async_thread();
+	suites[nr++] = suite_lua_async_timer();
+	suites[nr++] = suite_lua_network_mail();
+	suites[nr++] = suite_lua_config();
 #ifdef WEBSERVER
 	suites[nr++] = suite_webserver(); // Ported
 	suites[nr++] = suite_webserver_rest();

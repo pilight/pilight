@@ -1574,7 +1574,7 @@ static void test_event_operator_modulus(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, event_operator_callback("%", &v1, &v2, &ret));
 	CuAssertIntEquals(tc, ret.type_, JSON_NUMBER);
 	CuAssertIntEquals(tc, ret.number_, 2.012345);
-	CuAssertIntEquals(tc, ret.decimals_, 6);
+	CuAssertIntEquals(tc, ret.decimals_, 13);
 
 	/*
 	 * Strings

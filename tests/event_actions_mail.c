@@ -20,10 +20,10 @@
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/eventpool.h"
+#include "../libs/pilight/lua/lua.h"
 #include "../libs/pilight/protocols/protocol.h"
 #include "../libs/pilight/events/action.h"
 #include "../libs/pilight/events/function.h"
-#include "../libs/pilight/events/actions/sendmail.h"
 #include "../libs/pilight/protocols/generic/generic_switch.h"
 #include "../libs/pilight/protocols/generic/generic_label.h"
 
@@ -32,13 +32,9 @@
 static int steps = 0;
 static int nrsteps = 0;
 static CuTest *gtc = NULL;
-// static int doquit = 0;
 static int check = 0;
 
-// static uv_tcp_t *client_req = NULL;
 static uv_timer_t *timer_req = NULL;
-
-static struct rules_actions_t *obj = NULL;
 
 static struct tests_t {
 	char *desc;
@@ -100,491 +96,640 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 }
 
 static void test_event_actions_mail_check_parameters(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
+	struct varcont_t v;
 	memtrack();
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	genericSwitchInit();
 	genericLabelInit();
-	actionSendmailInit();
-	CuAssertStrEquals(tc, "sendmail", action_sendmail->name);
 
-	FILE *f = fopen("event_actions_mail.json", "w");
-	fprintf(f,
-		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
+	char config[1024] = "{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
 		"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
 		"\"gui\":{},\"rules\":{},"\
-		"\"settings\":{\"smtp-host\":\"127.0.0.1\",\"smtp-port\":10025,\"smtp-user\":\"pilight\",\"smtp-password\":\"test\",\"smtp-sender\":\"info@pilight.org\"},"\
-		"\"hardware\":{},\"registry\":{}}"
-	);
+		"\"settings\":{"\
+		"\"smtp-host\":\"127.0.0.1\","\
+		"\"smtp-port\":10025,"\
+		"\"smtp-user\":\"pilight\","\
+		"\"smtp-password\":\"test\","\
+		"\"smtp-sender\":\"info@pilight.org\","\
+		"\"actions-root\":\"%s../libs/pilight/events/actions/\"," \
+		"\"operators-root\":\"%s../libs/pilight/events/operators/\"," \
+		"\"functions-root\":\"%s../libs/pilight/events/functions/\"" \
+		"},\"hardware\":{},\"registry\":{}}";
+	char *file = STRDUP(__FILE__);
+	if(file == NULL) {
+		OUT_OF_MEMORY
+	}
+	str_replace("event_actions_mail.c", "", &file);
+
+	FILE *f = fopen("event_actions_mail.json", "w");
+	fprintf(f, config, file, file, file);
 	fclose(f);
+	FREE(file);
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
+
+	plua_init();
 	storage_init();
-	CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_DEVICES | CONFIG_SETTINGS));
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+	event_action_init();
 
 	/*
 	 * Valid parameters
 	 */
 	{
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
-			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
-			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, 0, action_sendmail->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("info@pilight.org"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, 0, event_action_check_arguments("sendmail", args));
 	}
 
 	{
 		/*
 		 * No arguments
 		 */
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(NULL));
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", NULL));
+	}
 
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+	{
+		/*
+		 * Missing arguments
+		 */
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", args));
+	}
 
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
+	{
+		/*
+		 * Missing arguments
+		 */
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
 
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", args));
+	}
 
+	{
 		/*
 		 * Missing json parameters
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", args));
+	}
 
-		json_delete(obj->arguments);
-		FREE(obj);
-
+	{
 		/*
 		 * Missing json parameters
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", args));
+	}
 
-		json_delete(obj->arguments);
-		FREE(obj);
-
-		/*
-		 * Wrong order of parameters
-		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
-
-		obj->arguments = json_decode("{\
-			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
-			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2}\
-		}");
-
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
-
-		json_delete(obj->arguments);
-		FREE(obj);
-
+	{
 		/*
 		 * Missing arguments for a parameter
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		args = event_action_add_argument(args, "SUBJECT", NULL);
 
-		obj->arguments = json_decode("{\
-			\"SUBJECT\":{\"value\":[],\"order\":1},\
-			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
-			\"TO\":{\"value\":[\"Hello World!\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", args));
+	}
 
+	{
 		/*
 		 * Missing arguments for a parameter
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
-			\"MESSAGE\":{\"value\":[],\"order\":2},\
-			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
-		}");
+		args = event_action_add_argument(args, "MESSAGE", NULL);
 
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", args));
+	}
 
+	{
 		/*
 		 * Missing arguments for a parameter
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
-			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
-			\"TO\":{\"value\":[],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
+		args = event_action_add_argument(args, "TO", NULL);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", args));
+	}
 
+	{
 		/*
-		 * Too many parameters for argument
+		 * Missing arguments for a parameter
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"SUBJECT\":{\"value\":[\"Hello World!\",\"Hello World!\"],\"order\":1},\
-			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
-			\"TO\":{\"value\":[\"Hello World!\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", args));
+	}
+
+	{
 		/*
-		 * Too many parameters for argument
+		 * Missing arguments for a parameter
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
-			\"MESSAGE\":{\"value\":[,\"Hello World!\",\"Hello World!\"],\"order\":2},\
-			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", args));
+	}
+
+	{
 		/*
-		 * Too many parameters for argument
+		 * Missing arguments for a parameter
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
-			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
-			\"TO\":{\"value\":[\"info@pilight.org\",\"info@pilight.org\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", args));
+	}
+
+	{
 		/*
 		 * Invalid variable type for parameter
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
-			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
-			\"TO\":{\"value\":[1],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 1;
+		args = event_action_add_argument(args, "TO", &v);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", args));
+	}
 
+	{
 		/*
-		 * Invalid variable type for parameter
+		 * Missing arguments for a parameter
 		 */
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
-			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
-			\"TO\":{\"value\":[\"info\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
 
-/*
- * Due to missing regex capability
- */
-#if defined(__FreeBSD__) || defined(_WIN32)
-		CuAssertIntEquals(tc, 0, action_sendmail->checkArguments(obj));
-#else
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
-#endif
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("info"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", args));
+	}
 
-		uv_walk(uv_default_loop(), walk_cb, NULL);
-		uv_run(uv_default_loop(), UV_RUN_ONCE);
-
-		storage_gc();
-		eventpool_gc();
-
-		/*
-		 * Missing smtp-host setting
-		 */
-		FILE *f = fopen("event_actions_mail.json", "w");
-		fprintf(f,
-			"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
-			"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
-			"\"gui\":{},\"rules\":{},"\
-			"\"settings\":{\"smtp-port\":10025,\"smtp-user\":\"pilight\",\"smtp-password\":\"test\",\"smtp-sender\":\"info@pilight.org\"},"\
-			"\"hardware\":{},\"registry\":{}}"
-		);
-		fclose(f);
-
-		eventpool_init(EVENTPOOL_NO_THREADS);
-		storage_init();
-		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_DEVICES | CONFIG_SETTINGS));
-
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
-
-		obj->arguments = json_decode("{\
-			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
-			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
-			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
-		}");
-
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
-
-		json_delete(obj->arguments);
-		FREE(obj);
-
-		uv_walk(uv_default_loop(), walk_cb, NULL);
-		uv_run(uv_default_loop(), UV_RUN_ONCE);
-
-		storage_gc();
-		eventpool_gc();
-
-		/*
-		 * Missing smtp-port setting
-		 */
-		f = fopen("event_actions_mail.json", "w");
-		fprintf(f,
-			"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
-			"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
-			"\"gui\":{},\"rules\":{},"\
-			"\"settings\":{\"smtp-host\":\"127.0.0.1\",\"smtp-user\":\"pilight\",\"smtp-password\":\"test\",\"smtp-sender\":\"info@pilight.org\"},"\
-			"\"hardware\":{},\"registry\":{}}"
-		);
-		fclose(f);
-
-		eventpool_init(EVENTPOOL_NO_THREADS);
-		storage_init();
-		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_DEVICES | CONFIG_SETTINGS));
-
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
-
-		obj->arguments = json_decode("{\
-			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
-			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
-			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
-		}");
-
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
-
-		json_delete(obj->arguments);
-		FREE(obj);
-
-		uv_walk(uv_default_loop(), walk_cb, NULL);
-		uv_run(uv_default_loop(), UV_RUN_ONCE);
-
-		storage_gc();
-		eventpool_gc();
-
-		/*
-		 * Missing smtp-user setting
-		 */
-		f = fopen("event_actions_mail.json", "w");
-		fprintf(f,
-			"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
-			"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
-			"\"gui\":{},\"rules\":{},"\
-			"\"settings\":{\"smtp-host\":\"127.0.0.1\",\"smtp-port\":10025,\"smtp-password\":\"test\",\"smtp-sender\":\"info@pilight.org\"},"\
-			"\"hardware\":{},\"registry\":{}}"
-		);
-		fclose(f);
-
-		eventpool_init(EVENTPOOL_NO_THREADS);
-		storage_init();
-		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_DEVICES | CONFIG_SETTINGS));
-
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
-
-		obj->arguments = json_decode("{\
-			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
-			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
-			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
-		}");
-
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
-
-		json_delete(obj->arguments);
-		FREE(obj);
-
-		uv_walk(uv_default_loop(), walk_cb, NULL);
-		uv_run(uv_default_loop(), UV_RUN_ONCE);
-
-		storage_gc();
-		eventpool_gc();
-
-		/*
-		 * Missing smtp-user setting
-		 */
-		f = fopen("event_actions_mail.json", "w");
-		fprintf(f,
-			"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
-			"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
-			"\"gui\":{},\"rules\":{},"\
-			"\"settings\":{\"smtp-host\":\"127.0.0.1\",\"smtp-port\":10025,\"smtp-user\":\"pilight\",\"smtp-sender\":\"info@pilight.org\"},"\
-			"\"hardware\":{},\"registry\":{}}"
-		);
-		fclose(f);
-
-		eventpool_init(EVENTPOOL_NO_THREADS);
-		storage_init();
-		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_DEVICES | CONFIG_SETTINGS));
-
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
-
-		obj->arguments = json_decode("{\
-			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
-			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
-			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
-		}");
-
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
-
-		json_delete(obj->arguments);
-		FREE(obj);
-
-		uv_walk(uv_default_loop(), walk_cb, NULL);
-		uv_run(uv_default_loop(), UV_RUN_ONCE);
-
-		storage_gc();
-		eventpool_gc();
-
-		/*
-		 * Missing smtp-sender setting
-		 */
-		f = fopen("event_actions_mail.json", "w");
-		fprintf(f,
-			"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
-			"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
-			"\"gui\":{},\"rules\":{},"\
-			"\"settings\":{\"smtp-host\":\"127.0.0.1\",\"smtp-port\":10025,\"smtp-password\":\"test\",\"smtp-user\":\"pilight\"},"\
-			"\"hardware\":{},\"registry\":{}}"
-		);
-		fclose(f);
-
-		eventpool_init(EVENTPOOL_NO_THREADS);
-		storage_init();
-		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_DEVICES | CONFIG_SETTINGS));
-
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
-
-		obj->arguments = json_decode("{\
-			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
-			\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
-			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
-		}");
-
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
-
-		json_delete(obj->arguments);
-		FREE(obj);
-
-		uv_walk(uv_default_loop(), walk_cb, NULL);
-		uv_run(uv_default_loop(), UV_RUN_ONCE);
-
-		storage_gc();
-		eventpool_gc();
-
+	{
 		/*
 		 * Single dot as a message
 		 */
-		f = fopen("event_actions_mail.json", "w");
-		fprintf(f,
-			"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("."); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("info@pilight.org"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", args));
+	}
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+	storage_gc();
+	eventpool_gc();
+
+	{
+		/*
+		 * Missing smtp-host setting
+		 */
+		char config[1024] = "{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
 			"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
 			"\"gui\":{},\"rules\":{},"\
-			"\"settings\":{\"smtp-host\":\"127.0.0.1\",\"smtp-port\":10025,\"smtp-user\":\"pilight\",\"smtp-password\":\"test\",\"smtp-sender\":\"info@pilight.org\"},"\
-			"\"hardware\":{},\"registry\":{}}"
-		);
+			"\"settings\":{"\
+			"\"smtp-port\":10025,"\
+			"\"smtp-user\":\"pilight\","\
+			"\"smtp-password\":\"test\","\
+			"\"smtp-sender\":\"info@pilight.org\","\
+			"\"actions-root\":\"%s../libs/pilight/events/actions/\"," \
+			"\"operators-root\":\"%s../libs/pilight/events/operators/\"," \
+			"\"functions-root\":\"%s../libs/pilight/events/functions/\"" \
+			"},\"hardware\":{},\"registry\":{}}";
+		char *file = STRDUP(__FILE__);
+		if(file == NULL) {
+			OUT_OF_MEMORY
+		}
+		str_replace("event_actions_mail.c", "", &file);
+
+		FILE *f = fopen("event_actions_mail.json", "w");
+		fprintf(f, config, file, file, file);
 		fclose(f);
+		FREE(file);
 
 		eventpool_init(EVENTPOOL_NO_THREADS);
+
+		plua_init();
 		storage_init();
-		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_DEVICES | CONFIG_SETTINGS));
+		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+		event_action_init();
 
-		obj = MALLOC(sizeof(struct rules_actions_t));
-		CuAssertPtrNotNull(tc, obj);
-		memset(obj, 0, sizeof(struct rules_actions_t));
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
 
-		obj->arguments = json_decode("{\
-			\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
-			\"MESSAGE\":{\"value\":[\".\"],\"order\":2},\
-			\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
-		}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, action_sendmail->checkArguments(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("info@pilight.org"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
 
-		json_delete(obj->arguments);
-		FREE(obj);
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", args));
+
+		uv_walk(uv_default_loop(), walk_cb, NULL);
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		storage_gc();
+		eventpool_gc();
+	}
+
+	{
+		/*
+		 * Missing smtp-port setting
+		 */
+		char config[1024] = "{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
+			"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
+			"\"gui\":{},\"rules\":{},"\
+			"\"settings\":{"\
+			"\"smtp-host\":\"127.0.0.1\","\
+			"\"smtp-user\":\"pilight\","\
+			"\"smtp-password\":\"test\","\
+			"\"smtp-sender\":\"info@pilight.org\","\
+			"\"actions-root\":\"%s../libs/pilight/events/actions/\"," \
+			"\"operators-root\":\"%s../libs/pilight/events/operators/\"," \
+			"\"functions-root\":\"%s../libs/pilight/events/functions/\"" \
+			"},\"hardware\":{},\"registry\":{}}";
+		char *file = STRDUP(__FILE__);
+		if(file == NULL) {
+			OUT_OF_MEMORY
+		}
+		str_replace("event_actions_mail.c", "", &file);
+
+		FILE *f = fopen("event_actions_mail.json", "w");
+		fprintf(f, config, file, file, file);
+		fclose(f);
+		FREE(file);
+
+		eventpool_init(EVENTPOOL_NO_THREADS);
+
+		plua_init();
+		storage_init();
+		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+		event_action_init();
+
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("info@pilight.org"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", args));
+
+		uv_walk(uv_default_loop(), walk_cb, NULL);
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		storage_gc();
+		eventpool_gc();
+	}
+
+	{
+		/*
+		 * Missing smtp-user setting
+		 */
+		char config[1024] = "{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
+			"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
+			"\"gui\":{},\"rules\":{},"\
+			"\"settings\":{"\
+			"\"smtp-host\":\"127.0.0.1\","\
+			"\"smtp-port\":10025,"\
+			"\"smtp-password\":\"test\","\
+			"\"smtp-sender\":\"info@pilight.org\","\
+			"\"actions-root\":\"%s../libs/pilight/events/actions/\"," \
+			"\"operators-root\":\"%s../libs/pilight/events/operators/\"," \
+			"\"functions-root\":\"%s../libs/pilight/events/functions/\"" \
+			"},\"hardware\":{},\"registry\":{}}";
+		char *file = STRDUP(__FILE__);
+		if(file == NULL) {
+			OUT_OF_MEMORY
+		}
+		str_replace("event_actions_mail.c", "", &file);
+
+		FILE *f = fopen("event_actions_mail.json", "w");
+		fprintf(f, config, file, file, file);
+		fclose(f);
+		FREE(file);
+
+		eventpool_init(EVENTPOOL_NO_THREADS);
+
+		plua_init();
+		storage_init();
+		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+		event_action_init();
+
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("info@pilight.org"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", args));
+
+		uv_walk(uv_default_loop(), walk_cb, NULL);
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		storage_gc();
+		eventpool_gc();
+	}
+
+	{
+		/*
+		 * Missing smtp-password setting
+		 */
+		char config[1024] = "{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
+			"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
+			"\"gui\":{},\"rules\":{},"\
+			"\"settings\":{"\
+			"\"smtp-host\":\"127.0.0.1\","\
+			"\"smtp-port\":10025,"\
+			"\"smtp-user\":\"pilight\","\
+			"\"smtp-sender\":\"info@pilight.org\","\
+			"\"actions-root\":\"%s../libs/pilight/events/actions/\"," \
+			"\"operators-root\":\"%s../libs/pilight/events/operators/\"," \
+			"\"functions-root\":\"%s../libs/pilight/events/functions/\"" \
+			"},\"hardware\":{},\"registry\":{}}";
+		char *file = STRDUP(__FILE__);
+		if(file == NULL) {
+			OUT_OF_MEMORY
+		}
+		str_replace("event_actions_mail.c", "", &file);
+
+		FILE *f = fopen("event_actions_mail.json", "w");
+		fprintf(f, config, file, file, file);
+		fclose(f);
+		FREE(file);
+
+		eventpool_init(EVENTPOOL_NO_THREADS);
+
+		plua_init();
+		storage_init();
+		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+		event_action_init();
+
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("info@pilight.org"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", args));
+
+		uv_walk(uv_default_loop(), walk_cb, NULL);
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+		storage_gc();
+		eventpool_gc();
+	}
+	{
+		/*
+		 * Missing smtp-sender setting
+		 */
+		char config[1024] = "{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
+			"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
+			"\"gui\":{},\"rules\":{},"\
+			"\"settings\":{"\
+			"\"smtp-host\":\"127.0.0.1\","\
+			"\"smtp-port\":10025,"\
+			"\"smtp-user\":\"pilight\","\
+			"\"smtp-password\":\"test\","\
+			"\"actions-root\":\"%s../libs/pilight/events/actions/\"," \
+			"\"operators-root\":\"%s../libs/pilight/events/operators/\"," \
+			"\"functions-root\":\"%s../libs/pilight/events/functions/\"" \
+			"},\"hardware\":{},\"registry\":{}}";
+		char *file = STRDUP(__FILE__);
+		if(file == NULL) {
+			OUT_OF_MEMORY
+		}
+		str_replace("event_actions_mail.c", "", &file);
+
+		FILE *f = fopen("event_actions_mail.json", "w");
+		fprintf(f, config, file, file, file);
+		fclose(f);
+		FREE(file);
+
+		eventpool_init(EVENTPOOL_NO_THREADS);
+
+		plua_init();
+		storage_init();
+		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+		event_action_init();
+
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("info@pilight.org"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("sendmail", args));
 
 		uv_walk(uv_default_loop(), walk_cb, NULL);
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
@@ -595,6 +740,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 
 	event_action_gc();
 	protocol_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -618,41 +764,44 @@ static void write_cb(uv_write_t *req, int status) {
 	uv_tcp_t *client_req = req->data;
 	CuAssertIntEquals(gtc, 0, status);
 
-	int r = uv_read_start((uv_stream_t *)client_req, alloc, read_cb);
-	CuAssertIntEquals(gtc, 0, r);
-
+	if(check == 0) {
+		int r = uv_read_start((uv_stream_t *)client_req, alloc, read_cb);
+		CuAssertIntEquals(gtc, 0, r);
+	}
 	FREE(req);
 }
 
 static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
 	uv_read_stop(stream);
-	buf->base[nread] = '\0';	
+	buf->base[nread] = '\0';
 
 	uv_os_fd_t fd = 0;
 	int r = uv_fileno((uv_handle_t *)stream, &fd);
 	CuAssertIntEquals(gtc, 0, r);
 
 	CuAssertStrEquals(gtc, tests.recvmsg[tests.recvmsgnr++], buf->base);
-	if(strcmp(buf->base, "QUIT\r\n") != 0) {
-		uv_write_t *write_req = MALLOC(sizeof(uv_write_t));
-		CuAssertPtrNotNull(gtc, write_req);
-		
-		uv_buf_t buf1;
-		buf1.base = tests.sendmsg[tests.sendmsgnr];
-		buf1.len = strlen(tests.sendmsg[tests.sendmsgnr]);
 
-		tests.sendmsgnr++;
-		write_req->data = stream;
-		int r = uv_write(write_req, stream, &buf1, 1, write_cb);
-		CuAssertIntEquals(gtc, 0, r);
-	} else {
+	uv_write_t *write_req = MALLOC(sizeof(uv_write_t));
+	CuAssertPtrNotNull(gtc, write_req);
+
+	uv_buf_t buf1;
+	buf1.base = tests.sendmsg[tests.sendmsgnr];
+	buf1.len = strlen(tests.sendmsg[tests.sendmsgnr]);
+
+	tests.sendmsgnr++;
+	write_req->data = stream;
+
+	r = uv_write(write_req, stream, &buf1, 1, write_cb);
+	CuAssertIntEquals(gtc, 0, r);
+
+	if(strcmp(buf->base, "QUIT\r\n") == 0) {
 		uv_close((uv_handle_t *)stream, close_cb);
 
 		check = 1;
 #ifdef _WIN32
-	closesocket(fd);
+		closesocket(fd);
 #else
-	close(fd);
+		close(fd);
 #endif
 
 		if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
@@ -714,12 +863,15 @@ static void mail_start(int port) {
 }
 
 static void test_event_actions_mail_run(CuTest *tc) {
+	if(suiteFailed()) return;
+
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
 	steps = 0;
 	nrsteps = 2;
 
+	struct varcont_t v;
 	memtrack();
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
@@ -730,36 +882,79 @@ static void test_event_actions_mail_run(CuTest *tc) {
 
 	mail_start(10025);
 
-	FILE *f = fopen("event_actions_mail.json", "w");
-	fprintf(f,
-		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
-		"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
-		"\"gui\":{},\"rules\":{},"\
-		"\"settings\":{\"smtp-host\":\"127.0.0.1\",\"smtp-port\":10025,\"smtp-user\":\"pilight\",\"smtp-password\":\"test\",\"smtp-sender\":\"info@pilight.org\"},"\
-		"\"hardware\":{},\"registry\":{}}"
-	);
-	fclose(f);
-
 	genericSwitchInit();
 	genericLabelInit();
-	actionSendmailInit();
-	CuAssertStrEquals(tc, "sendmail", action_sendmail->name);
 
+	char config[1024] = "{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
+		"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
+		"\"gui\":{},\"rules\":{},"\
+		"\"settings\":{"\
+		"\"smtp-host\":\"127.0.0.1\","\
+		"\"smtp-port\":10025,"\
+		"\"smtp-user\":\"pilight\","\
+		"\"smtp-password\":\"test\","\
+		"\"smtp-sender\":\"info@pilight.org\","\
+		"\"actions-root\":\"%s../libs/pilight/events/actions/\"," \
+		"\"operators-root\":\"%s../libs/pilight/events/operators/\"," \
+		"\"functions-root\":\"%s../libs/pilight/events/functions/\"" \
+		"},\"hardware\":{},\"registry\":{}}";
+	char *file = STRDUP(__FILE__);
+	if(file == NULL) {
+		OUT_OF_MEMORY
+	}
+	str_replace("event_actions_mail.c", "", &file);
+
+	FILE *f = fopen("event_actions_mail.json", "w");
+	fprintf(f, config, file, file, file);
+	fclose(f);
+	FREE(file);
+
+	eventpool_init(EVENTPOOL_NO_THREADS);
+
+	plua_init();
 	storage_init();
-	CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_DEVICES | CONFIG_SETTINGS));
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+	event_action_init();
 
-	obj = MALLOC(sizeof(struct rules_actions_t));
-	CuAssertPtrNotNull(tc, obj);
-	memset(obj, 0, sizeof(struct rules_actions_t));
+	{
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
 
-	obj->arguments = json_decode("{\
-		\"SUBJECT\":{\"value\":[\"Hello World!\"],\"order\":1},\
-		\"MESSAGE\":{\"value\":[\"Hello World!\"],\"order\":2},\
-		\"TO\":{\"value\":[\"info@pilight.org\"],\"order\":3}\
-	}");
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
 
-	CuAssertIntEquals(tc, 0, action_sendmail->checkArguments(obj));
-	CuAssertIntEquals(tc, 0, action_sendmail->run(obj));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("info@pilight.org"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, 0, event_action_check_arguments("sendmail", args));
+	}
+
+	{
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "SUBJECT", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("Hello World!"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "MESSAGE", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("info@pilight.org"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, 0, event_action_run("sendmail", args));
+	}
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -769,9 +964,7 @@ static void test_event_actions_mail_run(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_ONCE);
 	}
 
-	json_delete(obj->arguments);
-	FREE(obj);
-
+	plua_gc();
 	event_action_gc();
 	event_function_gc();
 	protocol_gc();

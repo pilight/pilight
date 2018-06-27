@@ -14,7 +14,7 @@ function M.run(a, b)
 			return false;
 		end
 	else
-		if pilight.tonumber(a) >= pilight.tonumber(b) then
+		if pilight.cast.tonumber(a) >= pilight.cast.tonumber(b) then
 			return true;
 		else
 			return false;

@@ -17,38 +17,21 @@ typedef struct rules_actions_t rules_actions_t;
 #include "../core/common.h"
 #include "../storage/storage.h"
 
-struct event_actions_t {
-	char *name;
-	int nrthreads;
-	int (*run)(struct rules_actions_t *);
-	int (*checkArguments)(struct rules_actions_t *);
-	void *(*gc)(void *);
-	struct options_t *options;
+struct event_action_args_t {
+	char *key;
+	struct varcont_t **var;
+	int nrvalues;
+	struct event_action_args_t *next;
+} event_action_args_t;
 
-	struct event_actions_t *next;
-};
-
-struct event_action_thread_t {
-	int running;
-	void *userdata;
-
-	struct rules_actions_t *obj;
-	struct event_actions_t *action;
-	struct device_t *device;
-};
-
-struct event_actions_t *event_actions;
-
-void event_action_init(void);
-void event_action_register(struct event_actions_t **, const char *);
+struct event_action_args_t *event_action_add_argument(struct event_action_args_t *, char *, struct varcont_t *);
+int event_action_check_arguments(char *, struct event_action_args_t *);
+int event_action_get_parameters(char *, int *, char ***);
+int event_action_run(char *, struct event_action_args_t *);
+void event_action_free_argument(struct event_action_args_t *);
+int event_action_get_execution_id(char *name, unsigned long *ret);
+unsigned long event_action_set_execution_id(char *name);
 int event_action_gc(void);
-unsigned long event_action_set_execution_id(char *);
-int event_action_get_execution_id(char *, unsigned long *);
-void event_action_thread_init(struct device_t *);
-void event_action_thread_start(struct device_t *, struct event_actions_t *, void *(*)(void *), struct rules_actions_t *);
-void event_action_thread_stop(struct device_t *);
-void event_action_thread_free(struct device_t *);
-void event_action_stopped(struct event_action_thread_t *);
-void event_action_started(struct event_action_thread_t *);
+void event_action_init(void);
 
 #endif
