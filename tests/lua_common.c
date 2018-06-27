@@ -32,10 +32,11 @@ static int numbers[10];
 
 static int plua_print(lua_State* L) {
 	int nargs = lua_gettop(L);
+	int i = 0;
 
 	CuAssertIntEquals(gtc, nargs, nrvar);
 
-	for(int i=1; i <= nargs; ++i) {
+	for(i=1; i <= nargs; ++i) {
 		CuAssertIntEquals(gtc, lua_type(L, i), lua_return[i-1].type);
 
 		switch(lua_type(L, i)) {
