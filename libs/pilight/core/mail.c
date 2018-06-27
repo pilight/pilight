@@ -177,7 +177,7 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	}
 
 	if(*nread > 0) {
-		buf[*nread-1] = '\0';
+		buf[*nread] = '\0';
 	}
 
 	switch(request->step) {
