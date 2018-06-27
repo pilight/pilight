@@ -14,6 +14,7 @@ typedef struct mail_t {
 	char *to;
 	char *subject;
 	char *message;
+	void *data;
 } mail_t;
 
 int sendmail(char *, char *, char *, unsigned short, int, struct mail_t *, void (*)(int, struct mail_t *));
