@@ -2335,8 +2335,12 @@ int devices_select_struct(enum origin_t origin, char *id, struct device_t **dev)
 
 int devices_select_string_setting(enum origin_t origin, char *id, char *setting, char **out) {
 	struct JsonNode *tmp = NULL;
+	char *_out = NULL;
 	if(devices_select(origin, id, &tmp) == 0) {
-		if(json_find_string(tmp, setting, out) == 0) {
+		if(json_find_string(tmp, setting, &_out) == 0) {
+			if(out != NULL) {
+				*out = _out;
+			}
 			return 0;
 		}
 	}
@@ -2348,9 +2352,11 @@ int devices_select_number_setting(enum origin_t origin, char *id, char *setting,
 	struct JsonNode *tmp1 = NULL;
 	if(devices_select(origin, id, &tmp) == 0) {
 		if((tmp1 = json_find_member(tmp, setting)) != NULL) {
-			*out = tmp1->number_;
-			if(decimals != NULL) {
-				*decimals = tmp1->decimals_;
+			if(out != NULL && decimals != NULL) {
+				*out = tmp1->number_;
+				if(decimals != NULL) {
+					*decimals = tmp1->decimals_;
+				}
 			}
 			return 0;
 		}
@@ -2581,6 +2587,9 @@ int hardware_select_struct(enum origin_t origin, char *id, struct hardware_t **o
 }
 
 int settings_select(enum origin_t origin, char *id, struct JsonNode **jrespond) {
+	if(jsettings_cache == NULL) {
+		return -1;
+	}
 	*jrespond = jsettings_cache;
 	if(id != NULL) {
 		struct JsonNode *jchilds = json_first_child(*jrespond);
@@ -2684,6 +2693,9 @@ static int registry_get_value_recursive(struct JsonNode *root, const char *key, 
 }
 
 int registry_select(enum origin_t origin, char *id, struct JsonNode **jrespond) {
+	if(jregistry_cache == NULL) {
+		return -1;
+	}
 	*jrespond = jregistry_cache;
 	if(id != NULL) {
 		struct JsonNode *jchilds = json_first_child(*jrespond);
