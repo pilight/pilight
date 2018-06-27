@@ -643,3 +643,14 @@ void settings_init(void) {
 	config_settings->sync=&settings_sync;
 	config_settings->gc=&settings_gc;
 }
+
+/*
+ * Rewrite backported functions
+ */
+int settings_select_number(enum origin_t origin, char *id, double *out) {
+	return settings_find_number(id, (int *)out);
+}
+
+int settings_select_string(enum origin_t origin, char *id, char **out) {
+	return settings_find_string(id, out);
+}

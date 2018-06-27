@@ -42,6 +42,15 @@
 #include "action.h"
 #include "actions/action_header.h"
 
+typedef struct execution_t {
+	char *name;
+	unsigned long id;
+
+	struct execution_t *next;
+} execution_t;
+
+static struct execution_t *executions = NULL;
+
 #ifndef _WIN32
 void event_action_remove(char *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
@@ -192,6 +201,14 @@ void event_action_register(struct event_actions_t **act, const char *name) {
 
 int event_action_gc(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	struct execution_t *tmp = NULL;
+	while(executions) {
+		tmp = executions;
+		FREE(tmp->name);
+		executions = executions->next;
+		FREE(tmp);
+	}
 
 	struct event_actions_t *tmp_action = NULL;
 	while(event_actions) {
@@ -361,4 +378,52 @@ void event_action_stopped(struct event_action_thread_t *thread) {
 	pthread_mutex_lock(&thread->mutex);
 	thread->running = 0;
 	pthread_mutex_unlock(&thread->mutex);
+}
+
+unsigned long event_action_set_execution_id(char *name) {
+	struct timeval tv;
+#ifdef _WIN32
+	SleepEx(1, TRUE);
+#else
+	usleep(1);
+#endif
+	gettimeofday(&tv, NULL);
+
+	int match = 0;
+	struct execution_t *tmp = executions;
+	while(tmp) {
+		if(strcmp(name, tmp->name) == 0) {
+			tmp->id = (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+			match = 1;
+			break;
+		}
+		tmp = tmp->next;
+	}
+	if(match == 0) {
+		if((tmp = MALLOC(sizeof(struct execution_t))) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		if((tmp->name = MALLOC(strlen(name)+1)) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		strcpy(tmp->name, name);
+		tmp->id = (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+
+		tmp->next = executions;
+		executions = tmp;
+	}
+	return tmp->id;
+}
+
+int event_action_get_execution_id(char *name, unsigned long *ret) {
+	struct execution_t *tmp = executions;
+	while(tmp) {
+		if(strcmp(tmp->name, name) == 0) {
+			*ret = tmp->id;
+			return 0;
+			break;
+		}
+		tmp = tmp->next;
+	}
+	return -1;
 }

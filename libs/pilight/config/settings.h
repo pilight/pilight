@@ -28,4 +28,11 @@ int settings_find_number(const char *name, int *out);
 int settings_find_string(const char *name, char **out);
 void settings_init(void);
 
+/*
+ * Rewrite backported functions
+ */
+#include "../core/pilight.h"
+int settings_select_number(enum origin_t origin, char *id, double *out);
+int settings_select_string(enum origin_t origin, char *id, char **out);
+
 #endif

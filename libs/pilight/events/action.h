@@ -62,5 +62,7 @@ void event_action_thread_stop(struct devices_t *dev);
 void event_action_thread_free(struct devices_t *dev);
 void event_action_stopped(struct event_action_thread_t *thread);
 void event_action_started(struct event_action_thread_t *thread);
+int event_action_get_execution_id(char *name, unsigned long *ret);
+unsigned long event_action_set_execution_id(char *name);
 
 #endif
