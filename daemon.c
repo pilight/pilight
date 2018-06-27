@@ -1182,6 +1182,16 @@ static int control_device(struct devices_t *dev, char *state, struct JsonNode *v
 	return -1;
 }
 
+static void *control_device1(int reason, void *param) {
+	struct reason_control_device_t *data = param;
+	struct devices_t *dev = NULL;
+
+	if(devices_get(data->dev, &dev) == 0) {
+		control_device(dev, data->state, data->values, ORIGIN_ACTION);
+	}
+	return NULL;
+}
+
 /* Parse the incoming buffer from the client */
 static void socket_parse_data(int i, char *buffer) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
@@ -2963,7 +2973,8 @@ int start_pilight(int argc, char **argv) {
 	pilight.control = &control_device;
 	pilight.receive = &receive_parse_api;
 
-/* Rewrite */
+	/* Rewrite */
+	eventpool_callback(REASON_CONTROL_DEVICE, control_device1);
 	eventpool_callback(REASON_SOCKET_RECEIVED, socket_parse_data1);
 	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain1);
 

@@ -7,7 +7,7 @@
 local M = {}
 
 function M.run(a, b)
-	if pilight.toboolean(a) == true and pilight.toboolean(b) == true then
+	if pilight.cast.toboolean(a) == true and pilight.cast.toboolean(b) == true then
 		return true;
 	else
 		return false;

@@ -396,7 +396,7 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 									jchild = jchild->next;
 								}
 								if(match == 0) {
-#ifdef EVENTS
+#if defined(EVENTS) && defined(PILIGHT_STAGING)
 								/*
 								 * If the action itself it not triggering a device update, something
 								 * else is. We therefor need to abort the running action to let
@@ -1562,7 +1562,7 @@ static int devices_parse(JsonNode *root) {
 				dnode->next = NULL;
 				dnode->protocols = NULL;
 
-#ifdef EVENTS
+#if defined(EVENTS) && defined(PILIGHT_STAGING)
 				event_action_thread_init(dnode);
 #endif
 
@@ -1668,7 +1668,7 @@ int devices_gc(void) {
 	while(devices) {
 		dtmp = devices;
 
-#ifdef EVENTS
+#if defined(EVENTS) && defined(PILIGHT_STAGING)
 		event_action_thread_free(dtmp);
 #endif
 
@@ -1795,8 +1795,12 @@ int devices_select_number_setting(enum origin_t origin, char *id, char *setting,
 			if(strcmp(tmp_settings->name, setting) == 0) {
 				struct devices_values_t *tmp_values = tmp_settings->values;
 				if(tmp_values->type == JSON_NUMBER) {
-					*out = tmp_values->number_;
-					*decimals = tmp_values->decimals;
+					if(out != NULL) {
+						*out = tmp_values->number_;
+					}
+					if(decimals != NULL) {
+						*decimals = tmp_values->decimals;
+					}
 
 					return 0;
 				}
@@ -1815,7 +1819,9 @@ int devices_select_string_setting(enum origin_t origin, char *id, char *setting,
 			if(strcmp(tmp_settings->name, setting) == 0) {
 				struct devices_values_t *tmp_values = tmp_settings->values;
 				if(tmp_values->type == JSON_STRING) {
-					*out = tmp_values->string_;
+					if(out != NULL) {
+						*out = tmp_values->string_;
+					}
 
 					return 0;
 				}
@@ -1846,12 +1852,16 @@ int devices_select_settings(enum origin_t origin, char *id, int i, char **settin
 					if(y == i) {
 						*setting = state;
 						tmp_values = tmp_settings->values;
-						if(tmp_values->type == JSON_NUMBER) {
-							out->number_ = tmp_values->number_;
-							out->decimals_ = tmp_values->decimals;
-							return 0;
-						} else if(tmp_values->type == JSON_STRING) {
-							out->string_ = tmp_values->string_;
+						if(out != NULL) {
+							if(tmp_values->type == JSON_NUMBER) {
+								out->number_ = tmp_values->number_;
+								out->decimals_ = tmp_values->decimals;
+								return 0;
+							} else if(tmp_values->type == JSON_STRING) {
+								out->string_ = tmp_values->string_;
+								return 0;
+							}
+						} else {
 							return 0;
 						}
 					}
@@ -1911,6 +1921,9 @@ int devices_select(enum origin_t origin, char *id, struct JsonNode **jdevice) {
 
 	while(tmp_devices) {
 		if(strcmp(tmp_devices->id, id) == 0) {
+			if(jdevice == NULL) {
+				return 0;
+			}
 			struct protocols_t *tmp_protocols = tmp_devices->protocols;
 			struct JsonNode *jprotocols = json_mkarray();
 
