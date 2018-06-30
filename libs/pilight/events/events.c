@@ -1781,7 +1781,7 @@ static int interpret(struct tree_t *tree, int in_action, struct rules_t *obj, un
 					logprintf(LOG_ERR, "If condition did not result in a boolean expression");
 					return -1;
 				}
-				if(v_res.bool_ == 1) {
+				if(validate == 1 || v_res.bool_ == 1) {
 					varcont_free(&v_res);
 					if(interpret(tree->child[1], 0, obj, validate, &v_res) == -1) {
 						varcont_free(&v_res);
@@ -1789,8 +1789,11 @@ static int interpret(struct tree_t *tree, int in_action, struct rules_t *obj, un
 					}
 					memcpy(v_out, &v_res, sizeof(struct varcont_t));
 					varcont_free(&v_res);
-					return 0;
-				} else if(tree->nrchildren == 3) {
+					if(validate == 0) {
+						return 0;
+					}
+				}
+				if((validate == 1 || v_res.bool_ == 0) && tree->nrchildren == 3) {
 					varcont_free(&v_res);
 					if(interpret(tree->child[2], 0, obj, validate, &v_res) == -1) {
 						varcont_free(&v_res);
@@ -1798,8 +1801,11 @@ static int interpret(struct tree_t *tree, int in_action, struct rules_t *obj, un
 					}
 					memcpy(v_out, &v_res, sizeof(struct varcont_t));
 					varcont_free(&v_res);
-					return 0;
-				} else {
+					if(validate == 0) {
+						return 0;
+					}
+				}
+				if(validate == 1 || (v_res.bool_ == 0 && tree->nrchildren != 3)) {
 					v_out->bool_ = 1;
 					v_out->type_ = JSON_BOOL;
 					varcont_free(&v_res);
