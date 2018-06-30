@@ -461,6 +461,19 @@ static struct tests_t get_tests[] = {
 		{ NULL }, { 0 }
 	},
 	{
+		"invalid rule 26",
+		"{\"devices\":{"\
+			"\"testlabel\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":1}],\"label\":\"foo\",\"color\":\"black\"}"\
+		"},"\
+		"\"gui\":{},"\
+		"\"rules\":{"\
+			"\"switch\":{\"rule\":\"IF 1 == 0 THEN label DEVICE testlabel\",\"active\":1}"\
+		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
+		-1, UV_RUN_NOWAIT,
+		0, &updates1[0],
+		{ NULL }, { 0 }
+	},
+	{
 		"simple true formula",
 		"{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}}," \
 		"\"gui\":{},"\
