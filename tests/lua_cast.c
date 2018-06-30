@@ -240,6 +240,20 @@ static void test_lua_cast_tostring(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, luaL_dostring(state->L, "print(pilight.cast.tostring(true))"));
 	FREE(lua_return[0].var.string_);
 
+	lua_return[0].var.string_ = STRDUP("10.000000");
+	lua_return[0].type = LUA_TSTRING;
+	CuAssertPtrNotNull(tc, lua_return[0].var.string_);
+
+	CuAssertIntEquals(tc, 0, luaL_dostring(state->L, "print(pilight.cast.tostring(10))"));
+	FREE(lua_return[0].var.string_);
+
+	lua_return[0].var.string_ = STRDUP("10.000000");
+	lua_return[0].type = LUA_TSTRING;
+	CuAssertPtrNotNull(tc, lua_return[0].var.string_);
+
+	CuAssertIntEquals(tc, 0, luaL_dostring(state->L, "print(pilight.cast.tostring(10.00000000))"));
+	FREE(lua_return[0].var.string_);
+
 	uv_mutex_unlock(&state->lock);
 	plua_gc();
 	CuAssertIntEquals(tc, 0, xfree());

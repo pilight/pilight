@@ -20,7 +20,6 @@ function M.run(a, b, c)
 	return pilight.common.random(tonumber(a), tonumber(b));
 end
 
-
 function M.info()
 	return {
 		name = "RANDOM",

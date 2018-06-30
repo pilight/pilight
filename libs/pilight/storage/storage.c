@@ -2368,6 +2368,9 @@ int devices_select_settings(enum origin_t origin, char *id, int i, char **settin
 	struct JsonNode *tmp = NULL;
 	struct JsonNode *tmp1 = NULL;
 	struct protocol_t *protocol = NULL;
+	/*
+	 * FIXME: Only valid in local scope
+	 */
 	char *state = "state";
 	int x = 0;
 	int y = 0;

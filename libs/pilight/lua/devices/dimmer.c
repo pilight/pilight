@@ -15,6 +15,12 @@
 #include "../config.h"
 #include "dimmer.h"
 
+typedef struct dimmer_t {
+	char *state;
+	int dimlevel;
+	int has_dimlevel;
+} dimmer_t;
+
 static void *reason_control_device_free(void *param) {
 	struct reason_control_device_t *data = param;
 	if(data->state != NULL) {
@@ -28,19 +34,14 @@ static void *reason_control_device_free(void *param) {
 	return NULL;
 }
 
-static void plua_config_label_gc(void *data) {
-	struct stack_dt *values = data;
-	struct plua_device_value_t *value = NULL;
-
-	while((value = dt_stack_pop(values, 0)) != NULL) {
-		if(value->value.type_ == JSON_STRING) {
-			FREE(value->value.string_);
+static void plua_config_dimmer_gc(void *data) {
+	struct dimmer_t *values = data;
+	if(values != NULL) {
+		if(values->state != NULL) {
+			FREE(values->state);
 		}
-		FREE(value->key);
-		FREE(value);
+		FREE(values);
 	}
-
-	dt_stack_free(values, NULL);
 	values = NULL;
 }
 
@@ -65,31 +66,21 @@ static int plua_config_device_dimmer_send(lua_State *L) {
 	data1->state = NULL;
 	data1->values = json_mkobject();
 
-	struct plua_device_value_t *value = NULL;
-	while((value = dt_stack_pop(dev->values, 0)) != NULL) {
-		if(strcmp(value->key, "state") == 0) {
-			if(value->value.type_ == JSON_STRING) {
-				if((data1->state = STRDUP(value->value.string_)) == NULL) {
-					OUT_OF_MEMORY
-				}
-				FREE(value->value.string_);
+	struct dimmer_t *dimmer = dev->data;
+	if(dimmer != NULL) {
+		if(dimmer->state != NULL) {
+			if((data1->state = STRDUP(dimmer->state)) == NULL) {
+				OUT_OF_MEMORY
 			}
-		} else {
-			if(value->value.type_ == JSON_STRING) {
-				json_append_member(data1->values, value->key, json_mkstring(value->value.string_));
-				FREE(value->value.string_);
-			} else if(value->value.type_ == JSON_NUMBER) {
-				json_append_member(data1->values, value->key, json_mknumber(value->value.number_, value->value.decimals_));
-			}
+			FREE(dimmer->state);
 		}
-		FREE(value->key);
-		FREE(value);
+		if(dimmer->has_dimlevel) {
+			json_append_member(data1->values, "dimlevel", json_mknumber(dimmer->dimlevel, 0));
+		}
+		FREE(dimmer);
 	}
 
-	plua_gc_unreg(L, dev->values);
-	if(dev->values != NULL) {
-		dt_stack_free(dev->values, NULL);
-	}
+	plua_gc_unreg(L, dev->data);
 
 	eventpool_trigger(REASON_CONTROL_DEVICE, reason_control_device_free, data1);
 
@@ -223,26 +214,20 @@ static int plua_config_device_dimmer_set_state(lua_State *L) {
 		return 1;
 	}
 
-	struct plua_device_value_t *value = MALLOC(sizeof(struct plua_device_value_t));
-	if(value == NULL) {
-		OUT_OF_MEMORY
-	}
-	if((value->key = STRDUP("state")) == NULL) {
-		OUT_OF_MEMORY
-	}
-	value->value.type_ = JSON_STRING;
-	if((value->value.string_ = STRDUP((char *)state)) == NULL) {
-		OUT_OF_MEMORY
-	}
-
-	if(dev->values == NULL) {
-		if((dev->values = MALLOC(sizeof(struct stack_dt))) == NULL) {
+	if(dev->data == NULL) {
+		if((dev->data = MALLOC(sizeof(struct dimmer_t))) == NULL) {
 			OUT_OF_MEMORY
 		}
-		memset(dev->values, 0, sizeof(struct stack_dt));
-		plua_gc_reg(L, dev->values, plua_config_label_gc);
+		memset(dev->data, 0, sizeof(struct dimmer_t));
+		plua_gc_reg(L, dev->data, plua_config_dimmer_gc);
 	}
-	dt_stack_push(dev->values, sizeof(struct plua_device_value_t), value);
+	struct dimmer_t *dimmer = dev->data;
+	if(dimmer->state != NULL) {
+		FREE(dimmer->state);
+	}
+	if((dimmer->state = STRDUP((char *)state)) == NULL) {
+		OUT_OF_MEMORY
+	}
 
 	lua_pushboolean(L, 1);
 
@@ -395,25 +380,16 @@ static int plua_config_device_dimmer_set_dimlevel(lua_State *L) {
 		return 1;
 	}
 
-	struct plua_device_value_t *value = MALLOC(sizeof(struct plua_device_value_t));
-	if(value == NULL) {
-		OUT_OF_MEMORY
-	}
-	if((value->key = STRDUP("dimlevel")) == NULL) {
-		OUT_OF_MEMORY
-	}
-	value->value.type_ = JSON_NUMBER;
-	value->value.number_ = dimlevel;
-	value->value.decimals_ = 0;
-
-	if(dev->values == NULL) {
-		if((dev->values = MALLOC(sizeof(struct stack_dt))) == NULL) {
+	if(dev->data == NULL) {
+		if((dev->data = MALLOC(sizeof(struct dimmer_t))) == NULL) {
 			OUT_OF_MEMORY
 		}
-		memset(dev->values, 0, sizeof(struct stack_dt));
-		plua_gc_reg(L, dev->values, plua_config_label_gc);
+		memset(dev->data, 0, sizeof(struct dimmer_t));
+		plua_gc_reg(L, dev->data, plua_config_dimmer_gc);
 	}
-	dt_stack_push(dev->values, sizeof(struct plua_device_value_t), value);
+	struct dimmer_t *dimmer = dev->data;
+	dimmer->dimlevel = dimlevel;
+	dimmer->has_dimlevel = 1;
 
 	lua_pushboolean(L, 1);
 

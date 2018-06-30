@@ -202,83 +202,81 @@ static void mail_start(int port) {
 }
 
 static int plua_print(lua_State* L) {
-	if(test == 1) {
-		switch(run) {
-			case 0:
-			case 2:
-			case 4:
-			case 6:
-			case 8:
-			case 10:
-			case 12:
-			case 14:
-			case 16:
-			case 21:
-			case 22: {
-				CuAssertIntEquals(gtc, LUA_TBOOLEAN, lua_type(L, -1));
-				CuAssertIntEquals(gtc, 1, lua_toboolean(L, -1));
-				run++;
-			} break;
-			case 1: {
-				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
-				CuAssertStrEquals(gtc, "foo", lua_tostring(L, -1));
-				run++;
-			} break;
-			case 3: {
-				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
-				CuAssertStrEquals(gtc, "order@pilight.org", lua_tostring(L, -1));
-				run++;
-			} break;
-			case 5: {
-				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
-				CuAssertStrEquals(gtc, "info@pilight.nl", lua_tostring(L, -1));
-				run++;
-			} break;
-			case 7: {
-				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
-				CuAssertStrEquals(gtc, "bar", lua_tostring(L, -1));
-				run++;
-			} break;
-			case 9: {
-				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
-				CuAssertStrEquals(gtc, "127.0.0.1", lua_tostring(L, -1));
-				run++;
-			} break;
-			case 11: {
-				CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
-				CuAssertIntEquals(gtc, 10025, lua_tonumber(L, -1));
-				run++;
-			} break;
-			case 13: {
-				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
-				CuAssertStrEquals(gtc, "pilight", lua_tostring(L, -1));
-				run++;
-			} break;
-			case 15: {
-				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
-				CuAssertStrEquals(gtc, "test", lua_tostring(L, -1));
-				run++;
-			} break;
-			case 17: {
-				CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
-				CuAssertIntEquals(gtc, 0, lua_tonumber(L, -1));
-				run++;
-			} break;
-			case 18: {
-				CuAssertIntEquals(gtc, LUA_TBOOLEAN, lua_type(L, -1));
-				CuAssertIntEquals(gtc, 0, lua_tonumber(L, -1));
-				run++;
-			} break;
-			case 19: {
-				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
-				CuAssertStrEquals(gtc, "callback", lua_tostring(L, -1));
-				run++;
-			} break;
-			case 20: {
-				CuAssertIntEquals(gtc, LUA_TNIL, lua_type(L, -1));
-				run++;
-			} break;
-		}
+	switch(run) {
+		case 0:
+		case 2:
+		case 4:
+		case 6:
+		case 8:
+		case 10:
+		case 12:
+		case 14:
+		case 16:
+		case 21:
+		case 22: {
+			CuAssertIntEquals(gtc, LUA_TBOOLEAN, lua_type(L, -1));
+			CuAssertIntEquals(gtc, 1, lua_toboolean(L, -1));
+			run++;
+		} break;
+		case 1: {
+			CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
+			CuAssertStrEquals(gtc, "foo", lua_tostring(L, -1));
+			run++;
+		} break;
+		case 3: {
+			CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
+			CuAssertStrEquals(gtc, "order@pilight.org", lua_tostring(L, -1));
+			run++;
+		} break;
+		case 5: {
+			CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
+			CuAssertStrEquals(gtc, "info@pilight.nl", lua_tostring(L, -1));
+			run++;
+		} break;
+		case 7: {
+			CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
+			CuAssertStrEquals(gtc, "bar", lua_tostring(L, -1));
+			run++;
+		} break;
+		case 9: {
+			CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
+			CuAssertStrEquals(gtc, "127.0.0.1", lua_tostring(L, -1));
+			run++;
+		} break;
+		case 11: {
+			CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+			CuAssertIntEquals(gtc, 10025, lua_tonumber(L, -1));
+			run++;
+		} break;
+		case 13: {
+			CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
+			CuAssertStrEquals(gtc, "pilight", lua_tostring(L, -1));
+			run++;
+		} break;
+		case 15: {
+			CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
+			CuAssertStrEquals(gtc, "test", lua_tostring(L, -1));
+			run++;
+		} break;
+		case 17: {
+			CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+			CuAssertIntEquals(gtc, 0, lua_tonumber(L, -1));
+			run++;
+		} break;
+		case 18: {
+			CuAssertIntEquals(gtc, LUA_TBOOLEAN, lua_type(L, -1));
+			CuAssertIntEquals(gtc, 0, lua_tonumber(L, -1));
+			run++;
+		} break;
+		case 19: {
+			CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
+			CuAssertStrEquals(gtc, "callback", lua_tostring(L, -1));
+			run++;
+		} break;
+		case 20: {
+			CuAssertIntEquals(gtc, LUA_TNIL, lua_type(L, -1));
+			run++;
+		} break;
 	}
 
 	return 0;
@@ -488,13 +486,13 @@ static void test_lua_network_mail_nonexisting_callback(CuTest *tc) {
 	str_replace("lua_network_mail.c", "", &file);
 
 	memset(p, 0, 1024);
-	snprintf(p, 1024, "%smail.lua", file);
+	snprintf(p, 1024, "%smail1.lua", file);
 	FREE(file);
 	file = NULL;
 
 	plua_module_load(path, OPERATOR);
 
-	CuAssertIntEquals(tc, 0, plua_module_exists("mail", OPERATOR));
+	CuAssertIntEquals(tc, 0, plua_module_exists("sendmail", OPERATOR));
 
 	uv_mutex_unlock(&state->lock);
 
@@ -511,13 +509,13 @@ static void test_lua_network_mail_nonexisting_callback(CuTest *tc) {
 
 	p = name;
 
-	sprintf(name, "operator.%s", "mail");
+	sprintf(name, "operator.%s", "sendmail");
 	lua_getglobal(L, name);
 	CuAssertIntEquals(tc, LUA_TTABLE, lua_type(L, -1));
 
 	struct plua_module_t *tmp = plua_get_modules();
 	while(tmp) {
-		if(strcmp("mail", tmp->name) == 0) {
+		if(strcmp("sendmail", tmp->name) == 0) {
 			file = tmp->file;
 			state->module = tmp;
 			break;
@@ -540,7 +538,7 @@ static void test_lua_network_mail_nonexisting_callback(CuTest *tc) {
 	}
 
 	plua_gc();
-	CuAssertIntEquals(tc, 2, run);
+	CuAssertIntEquals(tc, 18, run);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -549,7 +547,7 @@ CuSuite *suite_lua_network_mail(void) {
 
 	SUITE_ADD_TEST(suite, test_lua_network_mail_missing_parameters);
 	SUITE_ADD_TEST(suite, test_lua_network_mail);
-	// SUITE_ADD_TEST(suite, test_lua_network_mail_nonexisting_callback);
+	SUITE_ADD_TEST(suite, test_lua_network_mail_nonexisting_callback);
 
 	return suite;
 }

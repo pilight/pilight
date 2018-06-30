@@ -12,14 +12,9 @@
 #include "lua.h"
 #include "../datatypes/stack.h"
 
-typedef struct plua_device_value_t {
-	char *key;
-	varcont_t value;
-} plua_device_value_t;
-
 typedef struct plua_device_t {
 	char *name;
-	struct stack_dt *values;
+	void *data;
 } plua_device_t;
 
 extern int plua_config_device(struct lua_State *L);
