@@ -19,6 +19,10 @@
 #include "../config.h"
 #include "switch.h"
 
+typedef struct switch_t {
+	char *state;
+} switch_t;
+
 static void *reason_control_device_free(void *param) {
 	struct reason_control_device_t *data = param;
 	FREE(data->state);
@@ -27,19 +31,14 @@ static void *reason_control_device_free(void *param) {
 	return NULL;
 }
 
-static void plua_config_label_gc(void *data) {
-	struct stack_dt *values = data;
-	struct plua_device_value_t *value = NULL;
-
-	while((value = dt_stack_pop(values, 0)) != NULL) {
-		if(value->value.type_ == JSON_STRING) {
-			FREE(value->value.string_);
+static void plua_config_switch_gc(void *data) {
+	struct switch_t *values = data;
+	if(values != NULL) {
+		if(values->state != NULL) {
+			FREE(values->state);
 		}
-		FREE(value->key);
-		FREE(value);
+		FREE(values);
 	}
-
-	dt_stack_free(values, NULL);
 	values = NULL;
 }
 
@@ -64,23 +63,18 @@ static int plua_config_device_switch_send(lua_State *L) {
 	data1->state = NULL;
 	data1->values = NULL;
 
-	struct plua_device_value_t *value = NULL;
-	while((value = dt_stack_pop(dev->values, 0)) != NULL) {
-		if(strcmp(value->key, "state") == 0 && value->value.type_ == JSON_STRING) {
-			if((data1->state = STRDUP(value->value.string_)) == NULL) {
+	struct switch_t *obj = dev->data;
+	if(obj != NULL) {
+		if(obj->state != NULL) {
+			if((data1->state = STRDUP(obj->state)) == NULL) {
 				OUT_OF_MEMORY
 			}
-			FREE(value->value.string_);
+			FREE(obj->state);
 		}
-		FREE(value->key);
-		FREE(value);
+		FREE(obj);
 	}
 
-	plua_gc_unreg(L, dev->values);
-	if(dev->values != NULL) {
-		dt_stack_free(dev->values, NULL);
-	}
-	dev->values = NULL;
+	plua_gc_unreg(L, dev->data);
 
 	eventpool_trigger(REASON_CONTROL_DEVICE, reason_control_device_free, data1);
 
@@ -214,26 +208,22 @@ static int plua_config_device_switch_set_state(lua_State *L) {
 		return 1;
 	}
 
-	struct plua_device_value_t *value = MALLOC(sizeof(struct plua_device_value_t));
-	if(value == NULL) {
-		OUT_OF_MEMORY
-	}
-	if((value->key = STRDUP("state")) == NULL) {
-		OUT_OF_MEMORY
-	}
-	value->value.type_ = JSON_STRING;
-	if((value->value.string_ = STRDUP((char *)state)) == NULL) {
-		OUT_OF_MEMORY
-	}
 
-	if(dev->values == NULL) {
-		if((dev->values = MALLOC(sizeof(struct stack_dt))) == NULL) {
+	if(dev->data == NULL) {
+		if((dev->data = MALLOC(sizeof(struct switch_t))) == NULL) {
 			OUT_OF_MEMORY
 		}
-		memset(dev->values, 0, sizeof(struct stack_dt));
-		plua_gc_reg(L, dev->values, plua_config_label_gc);
+		memset(dev->data, 0, sizeof(struct switch_t));
+		plua_gc_reg(L, dev->data, plua_config_switch_gc);
 	}
-	dt_stack_push(dev->values, sizeof(struct plua_device_value_t), value);
+
+	struct switch_t *obj = dev->data;
+	if(obj->state != NULL) {
+		FREE(obj->state);
+	}
+	if((obj->state = STRDUP((char *)state)) == NULL) {
+		OUT_OF_MEMORY
+	}
 
 	lua_pushboolean(L, 1);
 

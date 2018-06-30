@@ -19,32 +19,36 @@
 #include "../config.h"
 #include "label.h"
 
+typedef struct label_t {
+	char *label;
+	char *color;
+} label_t;
+
 static void *reason_control_device_free(void *param) {
 	struct reason_control_device_t *data = param;
-	FREE(data->dev);
 	if(data->state != NULL) {
 		FREE(data->state);
 	}
 	if(data->values != NULL) {
 		json_delete(data->values);
 	}
+	FREE(data->dev);
 	FREE(data);
 	return NULL;
 }
 
 static void plua_config_label_gc(void *data) {
-	struct stack_dt *values = data;
-	struct plua_device_value_t *value = NULL;
-
-	while((value = dt_stack_pop(values, 0)) != NULL) {
-		if(value->value.type_ == JSON_STRING) {
-			FREE(value->value.string_);
+	struct label_t *values = data;
+	if(values != NULL) {
+		if(values->color != NULL) {
+			FREE(values->color);
 		}
-		FREE(value->key);
-		FREE(value);
+		if(values->label != NULL) {
+			FREE(values->label);
+		}
+		FREE(values);
 	}
-
-	dt_stack_free(values, NULL);
+	values = NULL;
 }
 
 static int plua_config_device_label_send(lua_State *L) {
@@ -68,22 +72,20 @@ static int plua_config_device_label_send(lua_State *L) {
 	data1->state = NULL;
 	data1->values = json_mkobject();
 
-	struct plua_device_value_t *value = NULL;
-	while((value = dt_stack_pop(dev->values, 0)) != NULL) {
-		if(value->value.type_ == JSON_STRING) {
-			json_append_member(data1->values, value->key, json_mkstring(value->value.string_));
-			FREE(value->value.string_);
-		} else if(value->value.type_ == JSON_NUMBER) {
-			json_append_member(data1->values, value->key, json_mknumber(value->value.number_, value->value.decimals_));
+	struct label_t *label = dev->data;
+	if(label != NULL) {
+		if(label->color != NULL) {
+			json_append_member(data1->values, "color", json_mkstring(label->color));
+			FREE(label->color);
 		}
-		FREE(value->key);
-		FREE(value);
+		if(label->label != NULL) {
+			json_append_member(data1->values, "label", json_mkstring(label->label));
+			FREE(label->label);
+		}
+		FREE(label);
 	}
 
-	plua_gc_unreg(L, dev->values);
-	if(dev->values != NULL) {
-		dt_stack_free(dev->values, NULL);
-	}
+	plua_gc_unreg(L, dev->data);
 
 	eventpool_trigger(REASON_CONTROL_DEVICE, reason_control_device_free, data1);
 
@@ -178,26 +180,20 @@ static int plua_config_device_label_set_label(lua_State *L) {
 	label = lua_tostring(L, -1);
 	lua_remove(L, -1);
 
-	struct plua_device_value_t *value = MALLOC(sizeof(struct plua_device_value_t));
-	if(value == NULL) {
-		OUT_OF_MEMORY
-	}
-	if((value->key = STRDUP("label")) == NULL) {
-		OUT_OF_MEMORY
-	}
-	value->value.type_ = JSON_STRING;
-	if((value->value.string_ = STRDUP((char *)label)) == NULL) {
-		OUT_OF_MEMORY
-	}
-
-	if(dev->values == NULL) {
-		if((dev->values = MALLOC(sizeof(struct stack_dt))) == NULL) {
+	if(dev->data == NULL) {
+		if((dev->data = MALLOC(sizeof(struct label_t))) == NULL) {
 			OUT_OF_MEMORY
 		}
-		memset(dev->values, 0, sizeof(struct stack_dt));
-		plua_gc_reg(L, dev->values, plua_config_label_gc);
+		memset(dev->data, 0, sizeof(struct label_t));
+		plua_gc_reg(L, dev->data, plua_config_label_gc);
 	}
-	dt_stack_push(dev->values, sizeof(struct plua_device_value_t), value);
+	struct label_t *obj = dev->data;
+	if(obj->label != NULL) {
+		FREE(obj->label);
+	}
+	if((obj->label = STRDUP((char *)label)) == NULL) {
+		OUT_OF_MEMORY
+	}
 
 	lua_pushboolean(L, 1);
 
@@ -230,25 +226,20 @@ static int plua_config_device_label_set_color(lua_State *L) {
 	color = lua_tostring(L, -1);
 	lua_remove(L, -1);
 
-	struct plua_device_value_t *value = MALLOC(sizeof(struct plua_device_value_t));
-	if(value == NULL) {
-		OUT_OF_MEMORY
-	}
-	if((value->key = STRDUP("color")) == NULL) {
-		OUT_OF_MEMORY
-	}
-	value->value.type_ = JSON_STRING;
-	if((value->value.string_ = STRDUP((char *)color)) == NULL) {
-		OUT_OF_MEMORY
-	}
-	if(dev->values == NULL) {
-		if((dev->values = MALLOC(sizeof(struct stack_dt))) == NULL) {
+	if(dev->data == NULL) {
+		if((dev->data = MALLOC(sizeof(struct label_t))) == NULL) {
 			OUT_OF_MEMORY
 		}
-		memset(dev->values, 0, sizeof(struct stack_dt));
-		plua_gc_reg(L, dev->values, plua_config_label_gc);
+		memset(dev->data, 0, sizeof(struct label_t));
+		plua_gc_reg(L, dev->data, plua_config_label_gc);
 	}
-	dt_stack_push(dev->values, sizeof(struct plua_device_value_t), value);
+	struct label_t *obj = dev->data;
+	if(obj->color != NULL) {
+		FREE(obj->color);
+	}
+	if((obj->color = STRDUP((char *)color)) == NULL) {
+		OUT_OF_MEMORY
+	}
 
 	lua_pushboolean(L, 1);
 
