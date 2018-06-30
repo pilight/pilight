@@ -1,6 +1,20 @@
 Changelog
 =========
 
+.. versionadded:: nightly
+
+.. rubric:: Improvements
+
+- HTTP library correctly parses HTTP headers without Content-Length
+- Allow userdata to be passed to a mail callback
+- Ported all event actions to Lua
+- Massively improved the pilight Lua library. Refer to the Lua Development pages in this manual for more information.
+
+.. rubric:: Bugfixes
+
+- Allow multiple dots in rules for e.g. IP addresses.
+- Fixed bug in which didn't close opened files.
+
 .. versionadded:: 8.1.1
 
 .. rubric:: Improvements
