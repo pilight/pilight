@@ -81,6 +81,7 @@ typedef struct request_t {
 	int is_ssl;
 	int status_code;
 	int reading;
+	int error;
 	void *userdata;
 	uv_timer_t *timer_req;
 	uv_poll_t *poll_req;
@@ -234,6 +235,8 @@ static int prepare_request(struct request_t **request, int method, char *url, co
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset((*request), 0, sizeof(struct request_t));
+
+	(*request)->error = 1;
 
 	/* Check which port we need to use based on the http(s) protocol */
 	if(strncmp(url, "http://", 7) == 0) {
@@ -466,7 +469,6 @@ static void http_client_close(uv_poll_t *req) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct request_t *request = custom_poll_data->data;
 	uv_timer_t *timer_req = request->timer_req;
-
 	if(request->reading == 1) {
 		if(request->has_length == 0 && request->has_chunked == 0) {
 			if(request->callback != NULL) {
@@ -480,6 +482,10 @@ static void http_client_close(uv_poll_t *req) {
 			if(request->callback != NULL) {
 				request->callback(408, NULL, 0, NULL, request->userdata);
 			}
+		}
+	} else if(request->error == 1) {
+		if(request->callback != NULL) {
+			request->callback(404, NULL, 0, 0, request->userdata);
 		}
 	}
 	uv_timer_stop(timer_req);
@@ -646,6 +652,7 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 				goto close;
 			}
 		}
+		request->error = 0;
 	}
 
 	if(request->reading == 1) {
@@ -696,6 +703,7 @@ static void write_cb(uv_poll_t *req) {
 			request->steps = STEP_READ;
 		} break;
 		case STEP_READ:
+			request->error = 0;
 			uv_custom_read(req);
 			return;
 		break;
