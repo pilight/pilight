@@ -7,7 +7,7 @@ local M = {};
 
 function M.run()
 	local thread = pilight.async.thread();
-	local data = thread.getData();
+	local data = thread.getUserdata();
 	print(type(thread));
 	print(type(data));
 

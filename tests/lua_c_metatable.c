@@ -175,7 +175,7 @@ static void test_lua_c_metatable(CuTest *tc) {
 	CuAssertPtrNotNull(gtc, state);
 	CuAssertIntEquals(gtc, 0, luaL_dostring(state->L, " \
 		local thread = pilight.async.thread(); \
-		local data = thread.getData(); \
+		local data = thread.getUserdata(); \
 		data['a'] = 'b'; \
 		data['b'] = 'c'; \
 		print(data['a']); \
@@ -210,8 +210,8 @@ static void test_lua_c_metatable(CuTest *tc) {
 		print(data[3]); \
 		local thread1 = pilight.async.thread(); \
 		local foo = 1;\
-		thread1.setData(data()); \
-		local data1 = thread1.getData(); \
+		thread1.setUserdata(data()); \
+		local data1 = thread1.getUserdata(); \
 		print(data1['a']); \
 		print(data1['b']); \
 		print(data1['c']); \

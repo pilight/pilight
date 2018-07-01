@@ -7,7 +7,7 @@ local M = {};
 
 function M.run()
 	local timer = pilight.async.timer();
-	local data = timer.getData();
+	local data = timer.getUserdata();
 
 	print(type(timer));
 	print(type(data));

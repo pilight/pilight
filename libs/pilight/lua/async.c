@@ -108,7 +108,7 @@ static int plua_async_thread_set_data(lua_State *L) {
 	struct plua_metatable_t *cpy = NULL;
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "thread.setData requires 1 argument, %d given", lua_gettop(L));
+		luaL_error(L, "thread.setUserdata requires 1 argument, %d given", lua_gettop(L));
 	}
 
 	if(thread == NULL) {
@@ -142,7 +142,7 @@ static int plua_async_thread_get_data(lua_State *L) {
 	struct lua_thread_t *thread = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "thread.getData requires 0 arguments, %d given", lua_gettop(L));
+		luaL_error(L, "thread.getUserdata requires 0 arguments, %d given", lua_gettop(L));
 		return 0;
 	}
 
@@ -271,12 +271,12 @@ static void plua_async_thread_object(lua_State *L, struct lua_thread_t *thread) 
 	lua_pushcclosure(L, plua_async_thread_trigger, 1);
 	lua_settable(L, -3);
 
-	lua_pushstring(L, "getData");
+	lua_pushstring(L, "getUserdata");
 	lua_pushlightuserdata(L, thread);
 	lua_pushcclosure(L, plua_async_thread_get_data, 1);
 	lua_settable(L, -3);
 
-	lua_pushstring(L, "setData");
+	lua_pushstring(L, "setUserdata");
 	lua_pushlightuserdata(L, thread);
 	lua_pushcclosure(L, plua_async_thread_set_data, 1);
 	lua_settable(L, -3);
@@ -639,7 +639,7 @@ static int plua_async_timer_set_data(lua_State *L) {
 	struct plua_metatable_t *cpy = NULL;
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "timer.setData requires 1 argument, %d given", lua_gettop(L));
+		luaL_error(L, "timer.setUserdata requires 1 argument, %d given", lua_gettop(L));
 	}
 
 	if(timer == NULL) {
@@ -674,7 +674,7 @@ static int plua_async_timer_get_data(lua_State *L) {
 	struct lua_timer_t *timer = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "timer.getData requires 0 argument, %d given", lua_gettop(L));
+		luaL_error(L, "timer.getUserdata requires 0 argument, %d given", lua_gettop(L));
 		return 0;
 	}
 
@@ -751,12 +751,12 @@ static void plua_async_timer_object(lua_State *L, struct lua_timer_t *timer) {
 	lua_pushcclosure(L, plua_async_timer_stop, 1);
 	lua_settable(L, -3);
 
-	lua_pushstring(L, "getData");
+	lua_pushstring(L, "getUserdata");
 	lua_pushlightuserdata(L, timer);
 	lua_pushcclosure(L, plua_async_timer_get_data, 1);
 	lua_settable(L, -3);
 
-	lua_pushstring(L, "setData");
+	lua_pushstring(L, "setUserdata");
 	lua_pushlightuserdata(L, timer);
 	lua_pushcclosure(L, plua_async_timer_set_data, 1);
 	lua_settable(L, -3);

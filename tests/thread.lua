@@ -6,7 +6,7 @@
 local M = {};
 
 function M.thread(thread)
-	local data = thread.getData();
+	local data = thread.getUserdata();
 	if(data['status'] == 'main') then
 		data['status'] = "thread";
 	else
@@ -18,8 +18,8 @@ end
 function M.run()
 	local thread = pilight.async.thread();
 	local thread1 = pilight.async.thread();
-	local data = thread.getData();
-	local data1 = thread1.getData();
+	local data = thread.getUserdata();
+	local data1 = thread1.getUserdata();
 
 	print(type(thread));
 	print(type(thread1));

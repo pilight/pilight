@@ -120,7 +120,7 @@ function M.check(parameters)
 end
 
 function M.timer_for(timer)
-	local data = timer.getData();
+	local data = timer.getUserdata();
 	local devname = data['device'];
 	local devobj = pilight.config.device(devname);
 
@@ -150,14 +150,14 @@ function execute_for(data)
 		async.setTimeout(data['time_for']);
 	end
 
-	async.setData(data());
+	async.setUserdata(data());
 	async.setRepeat(0);
 	async.setCallback("timer_for");
 	async.start();
 end
 
 function M.thread(thread)
-	local data = thread.getData();
+	local data = thread.getUserdata();
 	local devname = data['device'];
 	local devobj = pilight.config.device(devname);
 
@@ -186,7 +186,7 @@ function M.thread(thread)
 end
 
 function M.timer_after(timer)
-	local data = timer.getData();
+	local data = timer.getUserdata();
 	local devname = data['device'];
 	local devobj = pilight.config.device(devname);
 
@@ -265,7 +265,7 @@ function M.run(parameters)
 			async = pilight.async.thread();
 		end
 
-		local data = async.getData();
+		local data = async.getUserdata();
 
 		data['device'] = devname;
 		data['time_after'] = 0;

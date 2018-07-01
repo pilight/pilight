@@ -6,7 +6,7 @@
 local M = {};
 
 function M.timer(timer)
-	local data = timer.getData();
+	local data = timer.getUserdata();
 	if(data['status'] == 'main') then
 		data['status'] = "timer";
 	else
@@ -19,8 +19,8 @@ end
 function M.run()
 	local timer = pilight.async.timer();
 	local timer1 = pilight.async.timer();
-	local data = timer.getData();
-	local data1 = timer1.getData();
+	local data = timer.getUserdata();
+	local data1 = timer1.getUserdata();
 
 	print(type(timer));
 	print(type(timer1));

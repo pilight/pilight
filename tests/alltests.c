@@ -58,6 +58,7 @@ CuSuite *suite_lua_common(void);
 CuSuite *suite_lua_async_thread(void);
 CuSuite *suite_lua_async_timer(void);
 CuSuite *suite_lua_network_mail(void);
+CuSuite *suite_lua_network_http(void);
 CuSuite *suite_lua_config(void);
 CuSuite *suite_protocols_433(void);
 CuSuite *suite_protocols_api(void);
@@ -159,14 +160,15 @@ int RunAllTests(void) {
 	suites[nr++] = suite_arp();
 	suites[nr++] = suite_http(); // ipv4 ported / ipv6 not ported
 	suites[nr++] = suite_mail(); // ipv4 ported / ipv6 not ported
-	suites[nr++] = suite_lua_cast();
-	suites[nr++] = suite_lua_c_metatable();
-	suites[nr++] = suite_lua_datetime();
-	suites[nr++] = suite_lua_common();
-	suites[nr++] = suite_lua_async_thread();
-	suites[nr++] = suite_lua_async_timer();
-	suites[nr++] = suite_lua_network_mail();
-	suites[nr++] = suite_lua_config();
+	suites[nr++] = suite_lua_cast(); // Ported
+	suites[nr++] = suite_lua_c_metatable(); // Ported
+	suites[nr++] = suite_lua_datetime(); // Ported
+	suites[nr++] = suite_lua_common(); // Ported
+	suites[nr++] = suite_lua_async_thread(); // Ported
+	suites[nr++] = suite_lua_async_timer(); // Ported
+	suites[nr++] = suite_lua_network_mail(); // Ported
+	suites[nr++] = suite_lua_network_http();
+	suites[nr++] = suite_lua_config(); // Ported
 #ifdef WEBSERVER
 	suites[nr++] = suite_webserver(); // Ported
 	suites[nr++] = suite_webserver_rest();
@@ -192,11 +194,11 @@ int RunAllTests(void) {
 #endif
 	suites[nr++] = suite_event_operators(); // Ported
 	suites[nr++] = suite_event_functions(); // Ported
-	suites[nr++] = suite_event_actions_switch();
-	suites[nr++] = suite_event_actions_toggle();
-	suites[nr++] = suite_event_actions_label();
-	suites[nr++] = suite_event_actions_dim();
-	suites[nr++] = suite_event_actions_mail();
+	suites[nr++] = suite_event_actions_switch(); // Ported
+	suites[nr++] = suite_event_actions_toggle(); // Ported
+	suites[nr++] = suite_event_actions_label(); // Ported
+	suites[nr++] = suite_event_actions_dim(); // Ported
+	suites[nr++] = suite_event_actions_mail(); // Ported
 	suites[nr++] = suite_events(); // Ported
 
 	for(i=0;i<nr;i++) {
