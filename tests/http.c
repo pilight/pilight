@@ -271,6 +271,10 @@ static struct tests_t {
 				"Connection: close\r\n\r\n",
 			NULL
 	},
+	{ "ip exists but no connection", GET, "http://127.0.0.1:10080/", 10081, 0, 0, 404, 0, NULL, NULL, NULL,
+			NULL,
+			NULL
+	},
 	{ "invalid url (getaddrinfo error)", GET, "http://WvQTxNJ13BJUBC62R8PM.com/", 10080, 0, 1, 404, 0, NULL, NULL, "",
 			NULL,
 			NULL
@@ -442,7 +446,9 @@ static void http_wait(void *param) {
 					r = recv(http_client, message, BUFSIZE, 0);
 				}
 				CuAssertTrue(gtc, r >= 0);
-				CuAssertStrEquals(gtc, message, tests[testnr].recvmsg);
+				if(tests[testnr].recvmsg != NULL) {
+					CuAssertStrEquals(gtc, message, tests[testnr].recvmsg);
+				}
 				if(tests[testnr].sendmsg != NULL) {
 					dowrite = 1;
 				}
@@ -598,7 +604,7 @@ static void test(void *param) {
 	is_ssl = 0;
 	doquit = 0;
 
-	if(testnr != 15) {
+	if(testnr != 16) {
 		http_start(tests[testnr].url, tests[testnr].port);
 		uv_thread_create(&pth, http_wait, NULL);
 	}
@@ -654,7 +660,7 @@ static void test_http(CuTest *tc) {
 
 	FREE(_userdata);
 
-	CuAssertIntEquals(tc, 16, testnr);
+	CuAssertIntEquals(tc, 17, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 
 }
@@ -714,7 +720,7 @@ static void test_http_threaded(CuTest *tc) {
 	eventpool_gc();
 
 	FREE(_userdata);
-	CuAssertIntEquals(tc, 16, testnr);
+	CuAssertIntEquals(tc, 17, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
