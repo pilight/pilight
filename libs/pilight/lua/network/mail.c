@@ -25,9 +25,9 @@
 	#include <unistd.h>
 #endif
 
-#include "../core/log.h"
-#include "../core/mail.h"
-#include "network.h"
+#include "../../core/log.h"
+#include "../../core/mail.h"
+#include "../network.h"
 
 typedef struct lua_mail_t {
 	struct plua_metatable_t *table;
@@ -47,6 +47,7 @@ typedef struct lua_mail_t {
 } lua_mail_t;
 
 static void plua_network_mail_object(lua_State *L, struct lua_mail_t *mail);
+static void plua_network_mail_gc(void *ptr);
 
 static int plua_network_mail_set_data(lua_State *L) {
 	struct lua_mail_t *mail = (void *)lua_topointer(L, lua_upvalueindex(1));
@@ -88,7 +89,7 @@ static int plua_network_mail_get_data(lua_State *L) {
 	struct lua_mail_t *mail = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "mail.getData requires 0 argument, %d given", lua_gettop(L));
+		luaL_error(L, "mail.setUserdata requires 0 argument, %d given", lua_gettop(L));
 		return 0;
 	}
 
@@ -618,6 +619,10 @@ static int plua_network_mail_send(lua_State *L) {
 		luaL_error(L, "mail message not set");
 	}
 
+	if(mail->callback == NULL) {
+		luaL_error(L, "mail callback not set");
+	}
+
 	mail->mail.data = mail;
 
 	if(sendmail(
@@ -630,6 +635,7 @@ static int plua_network_mail_send(lua_State *L) {
 		plua_network_mail_callback) != 0) {
 
 		plua_gc_unreg(mail->L, mail);
+		plua_network_mail_gc((void *)mail);
 
 		lua_pushboolean(L, 0);
 		assert(lua_gettop(L) == 1);
@@ -1031,7 +1037,7 @@ static void plua_network_mail_object(lua_State *L, struct lua_mail_t *mail) {
 	lua_pushcclosure(L, plua_network_mail_get_status, 1);
 	lua_settable(L, -3);
 
-	lua_pushstring(L, "getData");
+	lua_pushstring(L, "setUserdata");
 	lua_pushlightuserdata(L, mail);
 	lua_pushcclosure(L, plua_network_mail_get_data, 1);
 	lua_settable(L, -3);
