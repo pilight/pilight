@@ -1187,7 +1187,7 @@ static void *control_device1(int reason, void *param) {
 	struct devices_t *dev = NULL;
 
 	if(devices_get(data->dev, &dev) == 0) {
-		control_device(dev, data->state, data->values, ORIGIN_ACTION);
+		control_device(dev, data->state, json_first_child(data->values), ORIGIN_ACTION);
 	}
 	return NULL;
 }
