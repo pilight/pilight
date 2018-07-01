@@ -229,7 +229,7 @@ Example code:
    end
 
    function M.thread(thread)
-     local data = thread.getData();
+     local data = thread.getUserdata();
      local devname = data['device'];
      local devobj = pilight.config.device(devname);
 
@@ -255,7 +255,7 @@ Example code:
          end
        end
 
-       local data = async.getData();
+       local data = async.getUserdata();
 
        if parameters['BETWEEN']['value'][1] == old_state then
          new_state = parameters['BETWEEN']['value'][2]

@@ -18,7 +18,7 @@ API
 
    Creates a new timer object
 
-.. c:function:: userdata getData()
+.. c:function:: userdata getUserdata()
 
    Returns a persistent userdata table for the lifetime of the timer object.
 
@@ -26,9 +26,9 @@ API
 
    The name of the callback being triggered by the timer. The timer object will be passed as the only parameter of this callback function.
 
-.. c:function:: boolean setData(userdata table)
+.. c:function:: boolean setUserdata(userdata table)
 
-   Set a new persistent userdata table for the lifetime of the timer object. The userdata table cannot be of another type as returned from the getData functions.
+   Set a new persistent userdata table for the lifetime of the timer object. The userdata table cannot be of another type as returned from the getUserdata functions.
 
 .. c:function:: boolean setRepeat(numeric millisecond)
 
@@ -54,7 +54,7 @@ Example
    local M = {};
 
    function M.timer(timer)
-     local data = timer.getData();
+     local data = timer.getUserdata();
      print(data['msg']);
 
      timer.stop();
@@ -62,7 +62,7 @@ Example
 
    function M.run()
      local timer = pilight.async.timer();
-     local data = timer.getData();
+     local data = timer.getUserdata();
 
      data['status'] = "Hello World!";
 
@@ -88,7 +88,7 @@ API
 
    Creates a new thread object
 
-.. c:function:: userdata getData()
+.. c:function:: userdata getUserdata()
 
    Returns a persistent userdata table for the lifetime of the thread object.
 
@@ -96,9 +96,9 @@ API
 
    The name of the callback being triggered by the thread. The thread object will be passed as the only parameter of this callback function.
 
-.. c:function:: boolean setData(userdata table)
+.. c:function:: boolean setUserdata(userdata table)
 
-   Set a new persistent userdata table for the lifetime of the thread object. The userdata table cannot be of another type as returned from the getData functions.
+   Set a new persistent userdata table for the lifetime of the thread object. The userdata table cannot be of another type as returned from the getUserdata functions.
 
 .. c:function:: boolean trigger()
 
@@ -112,14 +112,14 @@ Example
    local M = {};
 
    function M.thread(thread)
-     local data = thread.getData();
+     local data = thread.getUserdata();
 
      print(data['status']);
    end
 
    function M.run()
      local thread = pilight.async.thread();
-     local data = thread.getData();
+     local data = thread.getUserdata();
 
      thread.setCallback("thread");
 

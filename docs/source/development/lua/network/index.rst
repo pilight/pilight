@@ -4,6 +4,7 @@ Network
 Various functions to do network communication
 
 - `Mail`_
+- `HTTP`_
 
 Mail
 ----
@@ -17,7 +18,7 @@ API
 
    Creates a new mail object
 
-.. c:function:: userdata getData()
+.. c:function:: userdata getUserdata()
 
    Returns a persistent userdata table for the lifetime of the mail object.
 
@@ -61,7 +62,7 @@ API
 
    The name of the callback being triggered by the mail library. The mail object will be passed as the only parameter of this callback function.
 
-.. c:function:: boolean setData(userdata table)
+.. c:function:: boolean setUserdata(userdata table)
 
    Set a new persistent userdata table for the lifetime of the mail object. The userdata table cannot be of another type as returned from the getData functions.
 
@@ -126,6 +127,102 @@ Example
      mailobj.setSSL(0);
      mailobj.setCallback("callback");
      mailobj.send();
+
+     return 1;
+   end
+
+   return M;
+
+HTTP
+----
+
+Do HTTP GET or POST requests
+
+API
+^^^
+
+.. c:function:: userdata pilight.network.http()
+
+   Creates a new http object
+
+.. c:function:: userdata getUserdata()
+
+   Returns a persistent userdata table for the lifetime of the mail object.
+
+.. c:function:: string getMimetype()
+
+   Returns the mimetype of the received data. This means it does not returns the mimetype set by the setMimetype() function.
+
+.. c:function:: string getData()
+
+   Returns the data received from the url. This means it does not returns the data set by the setData() function.
+
+.. c:function:: string getUrl()
+
+   Returns the url.
+
+.. c:function:: number getCode()
+
+   After the HTTP request was sent this function can be used in the callback to check if the return HTTP code.
+
+.. c:function:: number getSize()
+
+   After the HTTP request was sent this function can be used in the callback to get the size of the received content.
+
+.. c:function:: boolean setCallback(string callback)
+
+   The name of the callback being triggered by the http library. The http object will be passed as the only parameter of this callback function.
+
+.. c:function:: boolean setUserdata(userdata table)
+
+   Set a new persistent userdata table for the lifetime of the http object. The userdata table cannot be of another type as returned from the getUserdata functions.
+
+.. c:function:: boolean setUrl(string url)
+
+   Sets the request URL. Examples:
+
+     | http://127.0.0.1/
+     | https://127.0.0.1/
+     | http://127.0.0.1:8080/
+     | http://127.0.0.1/index.php?page=foo
+     | https://username:password@www.pilight.org:8080/index.php
+
+.. c:function:: boolean setMimetype(string mimetype)
+
+   Sets the mimetype of the data being posted.
+
+.. c:function:: boolean setData(string data)
+
+   Sets the data to be posted.
+
+.. c:function:: boolean get()
+
+   Send a GET request to the URL.
+
+.. c:function:: boolean post()
+
+   Send a POST request to the URL with the data set.
+
+Example
+^^^^^^^
+
+.. code-block:: lua
+
+   local M = {}
+
+   function M.callback(http)
+     print(http.getCode());
+     print(http.getMimetype());
+     print(http.getSize());
+     print(http.getData());
+   end
+
+   function M.run()
+     local httpobj = pilight.network.http();
+
+     httpobj.setUrl("http://127.0.0.1:10080/")
+     httpobj.setCallback("callback");
+     httpobj.get();
 
      return 1;
    end
