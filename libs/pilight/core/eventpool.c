@@ -490,7 +490,11 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 	 */
 	r = uv_fileno((uv_handle_t *)req, &fd);
 	if(status < 0 || events == 0) {
-		logprintf(LOG_ERR, "uv_custom_poll_cb: %s", uv_strerror(status));
+		if(status == -9) {
+			logprintf(LOG_ERR, "uv_custom_poll_cb: socket not responding");
+		} else {
+			logprintf(LOG_ERR, "uv_custom_poll_cb: %s", uv_strerror(status));
+		}
 		if(custom_poll_data->close_cb != NULL) {
 			custom_poll_data->close_cb(req);
 		}
