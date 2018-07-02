@@ -36,6 +36,7 @@ void log_level_set(int);
 int log_level_get(void);
 int log_gc(void);
 void log_init(void);
-void logerror(const char *, ...);
+// void logerror(const char *, ...);
+void logerror(char *);
 
 #endif

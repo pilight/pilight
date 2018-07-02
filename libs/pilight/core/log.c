@@ -467,9 +467,15 @@ int log_level_get(void) {
 	return loglevel;
 }
 
-void logerror(const char *format_str, ...) {
+/*
+ * We don't want a formatted string here
+ * because that will crash on strings like
+ * DATE_FORMAT(dt, "%H%M%S") due to the
+ * unescaped percentages.
+ */
+void logerror(char *str) {
 	char line[1024];
-	va_list ap;
+	// va_list ap;
 	struct stat sb;
 	FILE *f = NULL;
 	char fmt[64], buf[64];
@@ -482,7 +488,7 @@ void logerror(const char *format_str, ...) {
 	const char *errpath = "/var/log/pilight.err";
 #endif
 	memset(line, '\0', 1024);
-	memset(&ap, '\0', sizeof(va_list));
+	// memset(&ap, '\0', sizeof(va_list));
 	memset(&sb, '\0', sizeof(struct stat));
 	memset(&tv, '\0', sizeof(struct timeval));
 	memset(date, '\0', 128);
@@ -490,14 +496,9 @@ void logerror(const char *format_str, ...) {
 
 	gettimeofday(&tv, NULL);
 #ifdef _WIN32
-	struct tm *tm1 = NULL;
-	time_t long_time = tv.tv_sec;
-	if((tm1 = gmtime(&long_time)) != 0) {
-		memcpy(&tm, tm1, sizeof(struct tm));
-		strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
+		if((localtime(&tv.tv_sec)) != 0) {
 #else
-	if((gmtime_r(&tv.tv_sec, &tm)) != 0) {
-		strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
+		if((localtime_r(&tv.tv_sec, &tm)) != 0) {
 #endif
 		strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
 		snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
@@ -505,8 +506,9 @@ void logerror(const char *format_str, ...) {
 
 	sprintf(date, "[%22.22s] %s: ", buf, progname);
 	strcat(line, date);
-	va_start(ap, format_str);
-	vsprintf(&line[strlen(line)], format_str, ap);
+	// va_start(ap, format_str);
+	// vsprintf(&line[strlen(line)], format_str, ap);
+	memcpy(&line[strlen(line)], str, strlen(str));
 	strcat(line, "\n");
 
 	if((stat(errpath, &sb)) >= 0) {
@@ -523,14 +525,10 @@ void logerror(const char *format_str, ...) {
 			if(f != NULL) {
 				fclose(f);
 			}
-			char *tmp = MALLOC(strlen(errpath)+5);
-			if(tmp == NULL) {
-				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-			}
+			char tmp[strlen(errpath)+5];
 			strcpy(tmp, errpath);
 			strcat(tmp, ".old");
 			rename(errpath, tmp);
-			FREE(tmp);
 			if((f = fopen(errpath, "a")) == NULL) {
 				return;
 			}
@@ -542,5 +540,5 @@ void logerror(const char *format_str, ...) {
 		fclose(f);
 		f = NULL;
 	}
-	va_end(ap);
+	// va_end(ap);
 }
