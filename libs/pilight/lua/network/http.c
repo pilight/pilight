@@ -300,7 +300,7 @@ static void plua_network_http_callback(int code, char *content, int size, char *
 		}
 	}
 
-	if(data != NULL) {
+	if(content != NULL) {
 		if(data->data != NULL) {
 			FREE(data->data);
 		}
@@ -436,6 +436,8 @@ static int plua_network_http_get(lua_State *L) {
 
 		return 1;
 	}
+
+	plua_gc_unreg(http->L, http);
 
 	lua_pushboolean(L, 1);
 	assert(lua_gettop(L) == 1);
