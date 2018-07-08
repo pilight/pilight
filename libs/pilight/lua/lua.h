@@ -65,6 +65,7 @@ typedef struct lua_state_t {
 
 void plua_gc_unreg(lua_State *L, void *ptr);
 void plua_gc_reg(lua_State *L, void *ptr, void (*callback)(void *ptr));
+void plua_metatable_parse_set(lua_State *L, void *data);
 int plua_metatable_set(lua_State *L);
 int plua_metatable_get(lua_State *L);
 void plua_metatable_free(struct plua_metatable_t *table);
