@@ -375,3 +375,157 @@ int protocol_gc(void) {
 	logprintf(LOG_DEBUG, "garbage collected protocol library");
 	return EXIT_SUCCESS;
 }
+
+int protocol_get_type(char *id, int *out) {
+	struct protocols_t *tmp_protocols = protocols;
+	struct protocol_t *protocol = NULL;
+	while(tmp_protocols) {
+		protocol = tmp_protocols->listener;
+		if(strcmp(protocol->id, id) == 0 || protocol_device_exists(protocol, id) == 0) {
+			*out = protocol->devtype;
+			return 0;
+		}
+		tmp_protocols = tmp_protocols->next;
+	}
+	return -1;
+}
+
+int protocol_get_state(char *id, char **out) {
+	struct protocols_t *tmp_protocols = protocols;
+	struct protocol_t *protocol = NULL;
+	while(tmp_protocols) {
+		protocol = tmp_protocols->listener;
+		if(strcmp(protocol->id, id) == 0 || protocol_device_exists(protocol, id) == 0) {
+			struct options_t *opt = protocol->options;
+			while(opt) {
+				if(opt->conftype == DEVICES_STATE) {
+					if(out != NULL) {
+						*out = opt->name;
+					}
+					return 0;
+				}
+				opt = opt->next;
+			}
+			return 1;
+		}
+		tmp_protocols = tmp_protocols->next;
+	}
+	return -1;
+}
+
+int protocol_get_value(char *id, char *name, char **out) {
+	struct protocols_t *tmp_protocols = protocols;
+	struct protocol_t *protocol = NULL;
+	while(tmp_protocols) {
+		protocol = tmp_protocols->listener;
+		if(strcmp(protocol->id, id) == 0 || protocol_device_exists(protocol, id) == 0) {
+			struct options_t *opt = protocol->options;
+			while(opt) {
+				if(strcmp(opt->name, name) == 0) {
+					if(opt->conftype == DEVICES_VALUE) {
+						if(out != NULL) {
+							*out = opt->name;
+						}
+						return 0;
+					}
+				}
+				opt = opt->next;
+			}
+			return 1;
+		}
+		tmp_protocols = tmp_protocols->next;
+	}
+	return -1;
+}
+
+int protocol_get_string_setting(char *id, char *name, char **out) {
+	struct protocols_t *tmp_protocols = protocols;
+	struct protocol_t *protocol = NULL;
+	while(tmp_protocols) {
+		protocol = tmp_protocols->listener;
+		if(strcmp(protocol->id, id) == 0 || protocol_device_exists(protocol, id) == 0) {
+			struct options_t *opt = protocol->options;
+			while(opt) {
+				if(strcmp(opt->name, name) == 0) {
+					if(opt->conftype == DEVICES_SETTING || opt->conftype == GUI_SETTING) {
+						if(out != NULL) {
+							*out = (char *)opt->def;
+						}
+						return 0;
+					}
+				}
+				opt = opt->next;
+			}
+			return 1;
+		}
+		tmp_protocols = tmp_protocols->next;
+	}
+	return -1;
+}
+
+int protocol_get_number_setting(char *id, char *name, int *out) {
+	struct protocols_t *tmp_protocols = protocols;
+	struct protocol_t *protocol = NULL;
+	while(tmp_protocols) {
+		protocol = tmp_protocols->listener;
+		if(strcmp(protocol->id, id) == 0 || protocol_device_exists(protocol, id) == 0) {
+			struct options_t *opt = protocol->options;
+			while(opt) {
+				if(strcmp(opt->name, name) == 0) {
+					if(opt->conftype == DEVICES_SETTING || opt->conftype == GUI_SETTING) {
+						if(out != NULL) {
+							*out = (int)(intptr_t)opt->def;
+						}
+						return 0;
+					}
+				}
+				opt = opt->next;
+			}
+			return 1;
+		}
+		tmp_protocols = tmp_protocols->next;
+	}
+	return -1;
+}
+
+int protocol_is_state(char *id, char *name) {
+	struct protocols_t *tmp_protocols = protocols;
+	struct protocol_t *protocol = NULL;
+	while(tmp_protocols) {
+		protocol = tmp_protocols->listener;
+		if(strcmp(protocol->id, id) == 0 || protocol_device_exists(protocol, id) == 0) {
+			struct options_t *opt = protocol->options;
+			while(opt) {
+				if(strcmp(opt->name, name) == 0) {
+					if(opt->conftype == DEVICES_STATE) {
+						return 0;
+					}
+				}
+				opt = opt->next;
+			}
+			return 1;
+		}
+		tmp_protocols = tmp_protocols->next;
+	}
+	return -1;
+}
+
+int protocol_has_parameter(char *id, char *name) {
+	struct protocols_t *tmp_protocols = protocols;
+	struct protocol_t *protocol = NULL;
+	while(tmp_protocols) {
+		protocol = tmp_protocols->listener;
+		if(strcmp(protocol->id, id) == 0 || protocol_device_exists(protocol, id) == 0) {
+			struct options_t *opt = protocol->options;
+			while(opt) {
+				if(strcmp(opt->name, name) == 0) {
+					return 0;
+				}
+				opt = opt->next;
+			}
+			return 1;
+		}
+		tmp_protocols = tmp_protocols->next;
+	}
+	return -1;
+}

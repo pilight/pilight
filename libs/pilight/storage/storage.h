@@ -105,6 +105,10 @@ struct device_t {
 #endif
 	struct protocol_t **protocols;
 	int nrprotocols;
+
+	char **protocols1;
+	int nrprotocols1;
+
 	struct device_t *next;
 };
 
@@ -178,4 +182,15 @@ int registry_select_string(enum origin_t, char *, char **);
 int registry_update(enum origin_t origin, const char *key, struct JsonNode *jvalues);
 int registry_delete(enum origin_t origin, const char *key);
 
+/*
+ *
+ */
+
+int devices_get_type(enum origin_t, char *, int, int *);
+int devices_get_state(enum origin_t, char *, int, char **);
+int devices_get_value(enum origin_t, char *, int, char *, char **);
+int devices_get_string_setting(enum origin_t, char *, int, char *, char **);
+int devices_get_number_setting(enum origin_t, char *, int, char *, int *);
+int devices_is_state(enum origin_t, char *, int, char *);
+int devices_has_parameter(enum origin_t, char *, int, char *);
 #endif

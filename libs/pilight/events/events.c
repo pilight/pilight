@@ -353,7 +353,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varc
 	}
 
 	int len = (int)strlen(var);
-	int i = 0;
+	int i = 0, ret = 0;
 	int nrdots = 0;
 	for(i=0;i<len;i++) {
 		if(var[i] == '.') {
@@ -460,23 +460,56 @@ int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varc
 				if(origin == ORIGIN_RULE) {
 					event_cache_device(obj, device);
 				}
-				struct protocol_t *tmp = NULL;
-				i = 0;
-				while(devices_select_protocol(ORIGIN_MASTER, device, i++, &tmp) == 0) {
-					struct options_t *opt = tmp->options;
-					while(opt) {
-						if(opt->conftype == DEVICES_STATE && strcmp("state", name) == 0) {
+				char *tmp_state = NULL;
+				i = 0, ret = 0;
+				while(devices_get_state(ORIGIN_MASTER, device, i++, &tmp_state) != -1) {
+					if(strcmp("state", name) == 0) {
+						match1 = 1;
+						match2 = 1;
+						break;
+					}
+				}
+				if(match1 == 0) {
+					i = 0, ret = 0;
+					while((ret = devices_has_parameter(ORIGIN_MASTER, device, i++, name)) != -1) {
+						if(ret == 0) {
 							match1 = 1;
+							break;
+						}
+					}
+					i = 0, ret = 0;
+					while(devices_get_value(ORIGIN_MASTER, device, i++, name, NULL) != -1) {
+						if(ret == 0) {
 							match2 = 1;
 							break;
-						} else if(strcmp(opt->name, name) == 0) {
-							match1 = 1;
-							if(opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_STATE || opt->conftype == DEVICES_SETTING) {
+						}
+					}
+					if(match2 == 0) {
+						i = 0, ret = 0;
+						while(devices_is_state(ORIGIN_MASTER, device, i++, name) != -1) {
+							if(ret == 0) {
 								match2 = 1;
 								break;
 							}
 						}
-						opt = opt->next;
+					}
+					if(match2 == 0) {
+						i = 0, ret = 0;
+						while(devices_get_string_setting(ORIGIN_MASTER, device, i++, name, NULL) != -1) {
+							if(ret == 0) {
+								match2 = 1;
+								break;
+							}
+						}
+					}
+					if(match2 == 0) {
+						i = 0, ret = 0;
+						while(devices_get_number_setting(ORIGIN_MASTER, device, i++, name, NULL) != -1) {
+							if(ret == 0) {
+								match2 = 1;
+								break;
+							}
+						}
 					}
 				}
 				if(match1 == 0) {

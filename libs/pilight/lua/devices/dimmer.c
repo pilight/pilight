@@ -9,8 +9,6 @@
 #include <string.h>
 #include <assert.h>
 
-#include "../../protocols/protocol.h"
-
 #include "../../core/log.h"
 #include "../config.h"
 #include "dimmer.h"
@@ -120,7 +118,6 @@ static int plua_config_device_dimmer_get_state(lua_State *L) {
 
 static int plua_config_device_dimmer_has_state(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
-	struct protocol_t *protocol = NULL;
 	const char *state = NULL;
 	int i = 0;
 
@@ -145,20 +142,11 @@ static int plua_config_device_dimmer_has_state(lua_State *L) {
 	state = lua_tostring(L, -1);
 	lua_remove(L, -1);
 
-	while(devices_select_protocol(ORIGIN_ACTION, dev->name, i++, &protocol) == 0) {
-		struct options_t *opt = protocol->options;
-		while(opt) {
-			if(opt->conftype == DEVICES_STATE) {
-				if(strcmp(opt->name, state) == 0) {
-					lua_pushboolean(L, 1);
+	while(devices_is_state(ORIGIN_ACTION, dev->name, i++, (char *)state) == 0) {
+		lua_pushboolean(L, 1);
 
-					assert(lua_gettop(L) == 1);
-
-					return 1;
-				}
-			}
-			opt = opt->next;
-		}
+		assert(lua_gettop(L) == 1);
+		return 1;
 	}
 
 	lua_pushboolean(L, 0);
@@ -170,7 +158,6 @@ static int plua_config_device_dimmer_has_state(lua_State *L) {
 
 static int plua_config_device_dimmer_set_state(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
-	struct protocol_t *protocol = NULL;
 	const char *state = NULL;
 	int i = 0, match = 0;
 
@@ -194,18 +181,10 @@ static int plua_config_device_dimmer_set_state(lua_State *L) {
 	state = lua_tostring(L, -1);
 	lua_remove(L, -1);
 
-	while(devices_select_protocol(ORIGIN_ACTION, dev->name, i++, &protocol) == 0) {
-		struct options_t *opt = protocol->options;
-		while(opt) {
-			if(opt->conftype == DEVICES_STATE) {
-				if(strcmp(opt->name, state) == 0) {
-					match = 1;
-					break;
-				}
-			}
-			opt = opt->next;
-		}
+	while(devices_is_state(ORIGIN_ACTION, dev->name, i++, (char *)state) == 0) {
+		match = 1;
 	}
+
 	if(match == 0) {
 		lua_pushboolean(L, 0);
 
@@ -263,7 +242,6 @@ static int plua_config_device_dimmer_get_dimlevel(lua_State *L) {
 
 static int plua_config_device_dimmer_has_dimlevel(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
-	struct protocol_t *protocol = NULL;
 	int dimlevel = 0, max = 0, min = 0, has_max = 0, has_min = 0;
 	int i = 0;
 
@@ -288,24 +266,15 @@ static int plua_config_device_dimmer_has_dimlevel(lua_State *L) {
 	dimlevel = (int)lua_tonumber(L, -1);
 	lua_remove(L, -1);
 
-	while(devices_select_protocol(ORIGIN_ACTION, dev->name, i++, &protocol) == 0) {
-		struct options_t *opt = protocol->options;
-		while(opt) {
-			if(opt->conftype == DEVICES_SETTING) {
-				if(strcmp(opt->name, "dimlevel-maximum") == 0) {
-					has_max = 1;
-					max = (intptr_t)opt->def;
-				}
-				if(strcmp(opt->name, "dimlevel-minimum") == 0) {
-					has_min = 1;
-					min = (intptr_t)opt->def;
-				}
-				if(has_max == 1 && has_min == 1) {
-					break;
-				}
-			}
-			opt = opt->next;
-		}
+	i = 0;
+	while(devices_get_number_setting(ORIGIN_ACTION, dev->name, i++, "dimlevel-maximum", &max) == 0) {
+		has_max = 1;
+		break;
+	}
+	i = 0;
+	while(devices_get_number_setting(ORIGIN_ACTION, dev->name, i++, "dimlevel-minimum", &min) == 0) {
+		has_min = 1;
+		break;
 	}
 
 	if((
@@ -328,7 +297,6 @@ static int plua_config_device_dimmer_has_dimlevel(lua_State *L) {
 static int plua_config_device_dimmer_set_dimlevel(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
 
-	struct protocol_t *protocol = NULL;
 	int dimlevel = 0, max = 0, min = 0, has_max = 0, has_min = 0, i = 0;
 
 	if(dev == NULL) {
@@ -351,25 +319,17 @@ static int plua_config_device_dimmer_set_dimlevel(lua_State *L) {
 	dimlevel = (int)lua_tonumber(L, -1);
 	lua_remove(L, -1);
 
-	while(devices_select_protocol(ORIGIN_ACTION, dev->name, i++, &protocol) == 0) {
-		struct options_t *opt = protocol->options;
-		while(opt) {
-			if(opt->conftype == DEVICES_SETTING) {
-				if(strcmp(opt->name, "dimlevel-maximum") == 0) {
-					has_max = 1;
-					max = (intptr_t)opt->def;
-				}
-				if(strcmp(opt->name, "dimlevel-minimum") == 0) {
-					has_min = 1;
-					min = (intptr_t)opt->def;
-				}
-				if(has_max == 1 && has_min == 1) {
-					break;
-				}
-			}
-			opt = opt->next;
-		}
+	i = 0;
+	while(devices_get_number_setting(ORIGIN_ACTION, dev->name, i++, "dimlevel-maximum", &max) == 0) {
+		has_max = 1;
+		break;
 	}
+	i = 0;
+	while(devices_get_number_setting(ORIGIN_ACTION, dev->name, i++, "dimlevel-minimum", &min) == 0) {
+		has_min = 1;
+		break;
+	}
+
 	if(!((
 			(has_max == 1 && dimlevel <= max) || has_max == 0
 		) && (

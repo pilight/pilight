@@ -15,11 +15,12 @@
 
 #include "../libs/pilight/core/common.h"
 
-#define NRLUASTATES	5
+#define NRLUASTATES	4
 
 #define OPERATOR	1
 #define FUNCTION	2
 #define ACTION 		3
+#define PROTOCOL 	4
 
 typedef struct plua_metatable_t {
 	struct {

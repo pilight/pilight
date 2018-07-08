@@ -27,6 +27,7 @@
 
 #include "../core/log.h"
 #include "config.h"
+#include "../storage/storage.h"
 #include "../protocols/protocol.h"
 #include "devices/switch.h"
 #include "devices/label.h"
@@ -96,7 +97,7 @@ static int plua_config_device_get_name(lua_State *L) {
 
 static int plua_config_device_get_type(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
-	int x = 0;
+	int x = 0, type = 0;
 
 	if(dev == NULL) {
 		luaL_error(L, "internal error: device object not passed");
@@ -107,10 +108,9 @@ static int plua_config_device_get_type(lua_State *L) {
 	}
 
 	lua_newtable(L);
-	struct protocol_t *protocol = NULL;
-	while(devices_select_protocol(0, dev->name, x++, &protocol) == 0) {
+	while(devices_get_type(0, (char *)dev->name, x++, &type) == 0) {
 		lua_pushnumber(L, x);
-		lua_pushnumber(L, protocol->devtype);
+		lua_pushnumber(L, type);
 		lua_settable(L, -3);
 	}
 
@@ -216,11 +216,10 @@ static void plua_config_device_gc(void *ptr) {
 }
 
 int plua_config_device(lua_State *L) {
-	struct protocol_t *protocol = NULL;
 	char buf[128] = { '\0' }, *p = buf;
 	char *error = "string expected, got %s";
 	const char *name = NULL;
-	int x = 0;
+	int x = 0, type = 0;
 
 	sprintf(p, error, lua_typename(L, lua_type(L, -1)));
 
@@ -279,8 +278,8 @@ int plua_config_device(lua_State *L) {
 	lua_pushcclosure(L, plua_config_device_get_action_id, 1);
 	lua_settable(L, -3);
 
-	while(devices_select_protocol(0, (char *)name, x++, &protocol) == 0) {
-		switch(protocol->devtype) {
+	while(devices_get_type(0, (char *)name, x++, &type) == 0) {
+		switch(type) {
 			case DATETIME:
 				plua_config_device_datetime(L, dev);
 			break;

@@ -564,6 +564,9 @@ static int plua_module_init(struct lua_State *L, char *file, struct plua_module_
 		case ACTION: {
 			type = STRDUP("event action");
 		} break;
+		case PROTOCOL: {
+			type = STRDUP("protocol");
+		} break;
 	}
 	if(type == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -727,6 +730,9 @@ void plua_module_load(char *file, int type) {
 			case ACTION:
 				sprintf(p, "action.%s", module->name);
 			break;
+			case PROTOCOL:
+				sprintf(p, "protocol.%s", module->name);
+			break;
 		}
 
 		module->next = modules;
@@ -813,6 +819,9 @@ int plua_module_exists(char *module, int type) {
 		break;
 		case ACTION:
 			sprintf(p, "action.%s", module);
+		break;
+		case PROTOCOL:
+			sprintf(p, "protocol.%s", module);
 		break;
 	}
 

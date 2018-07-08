@@ -116,4 +116,12 @@ void protocol_device_add(protocol_t *proto, const char *id, const char *desc);
 int protocol_device_exists(protocol_t *proto, const char *id);
 int protocol_gc(void);
 
+int protocol_get_type(char *, int *);
+int protocol_get_state(char *, char **);
+int protocol_is_state(char *, char *);
+int protocol_get_value(char *, char *, char **);
+int protocol_get_number_setting(char *, char *, int *);
+int protocol_get_string_setting(char *, char *, char **);
+int protocol_has_parameter(char *, char *);
+
 #endif

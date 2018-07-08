@@ -491,7 +491,9 @@ void devices_struct_parse(struct JsonNode *jdevices, int i) {
 	node->timestamp = 0;
 	node->nrthreads = 0;
 	node->nrprotocols = 0;
+	node->nrprotocols1 = 0;
 	node->protocols = NULL;
+	node->protocols1 = NULL;
 #ifdef EVENTS
 	node->action_thread = NULL;
 #endif
@@ -510,6 +512,14 @@ void devices_struct_parse(struct JsonNode *jdevices, int i) {
 					}
 					node->protocols[node->nrprotocols] = protocol;
 					node->nrprotocols++;
+
+					if((node->protocols1 = REALLOC(node->protocols1, (sizeof(char *)*(size_t)(node->nrprotocols1+1)))) == NULL) {
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+					}
+					if((node->protocols1[node->nrprotocols1] = STRDUP(jchilds->string_)) == NULL) {
+						OUT_OF_MEMORY
+					}
+					node->nrprotocols1++;
 				}
 				tmp_protocols = tmp_protocols->next;
 			}
@@ -2919,6 +2929,7 @@ int rules_gc(void) {
 
 int devices_gc(void) {
 	struct device_t *tmp_device = NULL;
+	int i = 0;
 
 	while(device) {
 		tmp_device = device;
@@ -2929,6 +2940,12 @@ int devices_gc(void) {
 		}
 		if(tmp_device->protocols != NULL) {
 			FREE(tmp_device->protocols);
+		}
+		for(i=0;i<tmp_device->nrprotocols1;i++) {
+			FREE(tmp_device->protocols1[i]);
+		}
+		if(tmp_device->protocols1 != NULL) {
+			FREE(tmp_device->protocols1);
 		}
 		device = device->next;
 		FREE(tmp_device);
@@ -3209,4 +3226,112 @@ struct JsonNode *values_print(const char *media) {
 		}
 	}
 	return jroot;
+}
+
+/*
+ *
+ */
+int devices_get_type(enum origin_t origin, char *id, int element, int *out) {
+	struct device_t *nodes = device;
+	while(nodes) {
+		if(strcmp(id, nodes->id) == 0) {
+			if(nodes->nrprotocols1 > element) {
+				if(protocol_get_type(nodes->protocols1[element], out) == 0) {
+					return 0;
+				}
+			}
+		}
+		nodes = nodes->next;
+	}
+	return -1;
+}
+
+int devices_get_state(enum origin_t origin, char *id, int element, char **out) {
+	struct device_t *nodes = device;
+	while(nodes) {
+		if(strcmp(id, nodes->id) == 0) {
+			if(nodes->nrprotocols1 > element) {
+				if(protocol_get_state(nodes->protocols1[element], out) == 0) {
+					return 0;
+				}
+			}
+		}
+		nodes = nodes->next;
+	}
+	return -1;
+}
+
+int devices_is_state(enum origin_t origin, char *id, int element, char *in) {
+	struct device_t *nodes = device;
+	while(nodes) {
+		if(strcmp(id, nodes->id) == 0) {
+			if(nodes->nrprotocols1 > element) {
+				if(protocol_is_state(nodes->protocols1[element], in) == 0) {
+					return 0;
+				}
+			}
+		}
+		nodes = nodes->next;
+	}
+	return -1;
+}
+
+int devices_get_value(enum origin_t origin, char *id, int element, char *in, char **out) {
+	struct device_t *nodes = device;
+	while(nodes) {
+		if(strcmp(id, nodes->id) == 0) {
+			if(nodes->nrprotocols1 > element) {
+				if(protocol_get_value(nodes->protocols1[element], in, out) == 0) {
+					return 0;
+				}
+			}
+		}
+		nodes = nodes->next;
+	}
+	return -1;
+}
+
+int devices_get_string_setting(enum origin_t origin, char *id, int element, char *in, char **out) {
+	struct device_t *nodes = device;
+	while(nodes) {
+		if(strcmp(id, nodes->id) == 0) {
+			if(nodes->nrprotocols1 > element) {
+				if(protocol_get_string_setting(nodes->protocols1[element], in, out) == 0) {
+					return 0;
+				}
+			}
+		}
+		nodes = nodes->next;
+	}
+	return -1;
+}
+
+int devices_get_number_setting(enum origin_t origin, char *id, int element, char *in, int *out) {
+	struct device_t *nodes = device;
+	while(nodes) {
+		if(strcmp(id, nodes->id) == 0) {
+			if(nodes->nrprotocols1 > element) {
+				if(protocol_get_number_setting(nodes->protocols1[element], in, out) == 0) {
+					return 0;
+				}
+			}
+		}
+		nodes = nodes->next;
+	}
+	return -1;
+}
+
+int devices_has_parameter(enum origin_t origin, char *id, int element, char *in) {
+	struct device_t *nodes = device;
+	while(nodes) {
+		if(strcmp(id, nodes->id) == 0) {
+			if(nodes->nrprotocols1 > element) {
+				if(protocol_has_parameter(nodes->protocols1[element], in) == 0) {
+					return 0;
+				}
+			}
+		}
+		nodes = nodes->next;
+	}
+	return -1;
 }

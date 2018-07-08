@@ -9,8 +9,6 @@
 #include <string.h>
 #include <assert.h>
 
-#include "../../protocols/protocol.h"
-
 #include "../../core/log.h"
 #include "../config.h"
 #include "switch.h"
@@ -110,7 +108,6 @@ static int plua_config_device_switch_get_state(lua_State *L) {
 
 static int plua_config_device_switch_has_state(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
-	struct protocol_t *protocol = NULL;
 	const char *state = NULL;
 	int i = 0;
 
@@ -135,20 +132,11 @@ static int plua_config_device_switch_has_state(lua_State *L) {
 	state = lua_tostring(L, -1);
 	lua_remove(L, -1);
 
-	while(devices_select_protocol(ORIGIN_ACTION, dev->name, i++, &protocol) == 0) {
-		struct options_t *opt = protocol->options;
-		while(opt) {
-			if(opt->conftype == DEVICES_STATE) {
-				if(strcmp(opt->name, state) == 0) {
-					lua_pushboolean(L, 1);
+	while(devices_is_state(ORIGIN_ACTION, dev->name, i++, (char *)state) == 0) {
+		lua_pushboolean(L, 1);
 
-					assert(lua_gettop(L) == 1);
-
-					return 1;
-				}
-			}
-			opt = opt->next;
-		}
+		assert(lua_gettop(L) == 1);
+		return 1;
 	}
 
 	lua_pushboolean(L, 0);
@@ -160,7 +148,6 @@ static int plua_config_device_switch_has_state(lua_State *L) {
 
 static int plua_config_device_switch_set_state(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
-	struct protocol_t *protocol = NULL;
 	const char *state = NULL;
 	int i = 0, match = 0;
 
@@ -184,18 +171,11 @@ static int plua_config_device_switch_set_state(lua_State *L) {
 	state = lua_tostring(L, -1);
 	lua_remove(L, -1);
 
-	while(devices_select_protocol(ORIGIN_ACTION, dev->name, i++, &protocol) == 0) {
-		struct options_t *opt = protocol->options;
-		while(opt) {
-			if(opt->conftype == DEVICES_STATE) {
-				if(strcmp(opt->name, state) == 0) {
-					match = 1;
-					break;
-				}
-			}
-			opt = opt->next;
-		}
+	while(devices_is_state(ORIGIN_ACTION, dev->name, i++, (char *)state) == 0) {
+		match = 1;
+		break;
 	}
+
 	if(match == 0) {
 		lua_pushboolean(L, 0);
 
@@ -203,7 +183,6 @@ static int plua_config_device_switch_set_state(lua_State *L) {
 
 		return 1;
 	}
-
 
 	if(dev->data == NULL) {
 		if((dev->data = MALLOC(sizeof(struct switch_t))) == NULL) {
