@@ -20,6 +20,11 @@ function M.run()
 	local thread1 = pilight.async.thread();
 	local data = thread.getUserdata();
 	local data1 = thread1.getUserdata();
+	local a = {};
+	a[1] = {};
+	a[2] = 3;
+	a[1]['a'] = 4;
+	a[1]['b'] = 5;
 
 	print(type(thread));
 	print(type(thread1));
@@ -31,7 +36,11 @@ function M.run()
 
 	data['status'] = "main";
 	data1['status'] = "main1";
+	data['foo'] = a;
+	data1['bar'] = a;
+	print(data['foo'][1]['b']);
 	print(data['status']);
+	print(data1['bar'][1]['a']);
 	print(data1['status']);
 
 	print(type(thread1.trigger()));

@@ -35,39 +35,49 @@ static int plua_print(lua_State* L) {
 				CuAssertStrEquals(gtc, "table", lua_tostring(L, -1));
 				run++;
 			} break;
-			case 4:
+			case 4: {
+				CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+				CuAssertIntEquals(gtc, 5, lua_tonumber(L, -1));
+				run++;
+			} break;
+			case 5:
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
 				CuAssertStrEquals(gtc, "main", lua_tostring(L, -1));
 				run++;
 			break;
-			case 5:
+			case 6: {
+				CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+				CuAssertIntEquals(gtc, 4, lua_tonumber(L, -1));
+				run++;
+			} break;
+			case 7:
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
 				CuAssertStrEquals(gtc, "main1", lua_tostring(L, -1));
 				run++;
 			break;
-			case 6:
-			case 7:
-			case 8: 
+			case 8:
 			case 9:
 			case 10:
 			case 11:
 			case 12:
-			case 13: {
+			case 13:
+			case 14:
+			case 15: {
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
 				CuAssertStrEquals(gtc, "boolean", lua_tostring(L, -1));
 				run++;
 			} break;
-			case 14:
+			case 16:
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
 				CuAssertStrEquals(gtc, "timer", lua_tostring(L, -1));
 				run++;
 			break;
-			case 15:
+			case 17:
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
 				CuAssertStrEquals(gtc, "boolean", lua_tostring(L, -1));
 				run++;
 			break;
-			case 16:
+			case 18:
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
 				CuAssertStrEquals(gtc, "timer1", lua_tostring(L, -1));
 				run++;
@@ -276,7 +286,7 @@ static void test_lua_async_timer(CuTest *tc) {
 	}
 
 	plua_gc();
-	CuAssertIntEquals(tc, 17, run);
+	CuAssertIntEquals(tc, 19, run);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 

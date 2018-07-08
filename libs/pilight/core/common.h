@@ -22,6 +22,7 @@ typedef struct varcont_t {
 		char *string_;
 		double number_;
 		int bool_;
+		void *void_;
 	};
 	int decimals_;
 	int type_;

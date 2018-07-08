@@ -121,13 +121,24 @@ static int plua_async_thread_set_data(lua_State *L) {
 	sprintf(p, error, lua_typename(L, lua_type(L, -1)));
 
 	luaL_argcheck(L,
-		(lua_type(L, -1) == LUA_TLIGHTUSERDATA),
+		(lua_type(L, -1) == LUA_TLIGHTUSERDATA || lua_type(L, -1) == LUA_TTABLE),
 		1, buf);
 
 	if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
 		cpy = (void *)lua_topointer(L, -1);
 		lua_remove(L, -1);
 		plua_metatable_clone(&cpy, &thread->table);
+
+		plua_ret_true(L);
+		return 1;
+	}
+
+	if(lua_type(L, -1) == LUA_TTABLE) {
+		lua_pushnil(L);
+		while(lua_next(L, -2) != 0) {
+			plua_metatable_parse_set(L, thread->table);
+			lua_pop(L, 1);
+		}
 
 		plua_ret_true(L);
 		return 1;
@@ -652,7 +663,7 @@ static int plua_async_timer_set_data(lua_State *L) {
 	sprintf(p, error, lua_typename(L, lua_type(L, -1)));
 
 	luaL_argcheck(L,
-		(lua_type(L, -1) == LUA_TLIGHTUSERDATA),
+		(lua_type(L, -1) == LUA_TLIGHTUSERDATA || lua_type(L, -1) == LUA_TTABLE),
 		1, buf);
 
 	if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
@@ -662,6 +673,17 @@ static int plua_async_timer_set_data(lua_State *L) {
 
 		plua_ret_true(L);
 
+		return 1;
+	}
+
+	if(lua_type(L, -1) == LUA_TTABLE) {
+		lua_pushnil(L);
+		while(lua_next(L, -2) != 0) {
+			plua_metatable_parse_set(L, timer->table);
+			lua_pop(L, 1);
+		}
+
+		plua_ret_true(L);
 		return 1;
 	}
 

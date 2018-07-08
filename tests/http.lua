@@ -15,6 +15,19 @@ end
 
 function M.run()
 	local httpobj = pilight.network.http();
+	local data = httpobj.getUserdata();
+	local a = {};
+	a[1] = {};
+	a[2] = 3;
+	a[1]['a'] = 4;
+	a[1]['b'] = 5;
+
+	data['foo'] = a;
+	data['status'] = "main";
+
+	print(data['foo'][1]['b']);
+	print(data['status']);
+
 	print(httpobj.setUrl("http://127.0.0.1:10080/"));
 	print(httpobj.getCode());
 	print(httpobj.setCallback("callback"));

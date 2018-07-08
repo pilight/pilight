@@ -38,23 +38,33 @@ static int plua_print(lua_State* L) {
 			} break;
 			case 4: 
 			case 5:
-			case 8:
-			case 9: {
+			case 10:
+			case 11: {
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
 				CuAssertStrEquals(gtc, "boolean", lua_tostring(L, -1));
 				run++;
 			} break;
-			case 6:
+			case 6: {
+				CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+				CuAssertIntEquals(gtc, 5, lua_tonumber(L, -1));
+				run++;
+			} break;
+			case 7:
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
 				CuAssertStrEquals(gtc, "main", lua_tostring(L, -1));
 				run++;
 			break;
-			case 7:
+			case 8: {
+				CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+				CuAssertIntEquals(gtc, 4, lua_tonumber(L, -1));
+				run++;
+			} break;
+			case 9:
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
 				CuAssertStrEquals(gtc, "main1", lua_tostring(L, -1));
 				run++;
 			break;
-			case 10:
+			case 12:
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
 				if(check == 1 || strcmp("thread1", lua_tostring(L, -1)) == 0) {
 					CuAssertStrEquals(gtc, "thread1", lua_tostring(L, -1));
@@ -67,7 +77,7 @@ static int plua_print(lua_State* L) {
 				}
 				run++;
 			break;
-			case 11:
+			case 13:
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
 				if(check == 1 || strcmp("thread1", lua_tostring(L, -1)) == 0) {
 					CuAssertStrEquals(gtc, "thread1", lua_tostring(L, -1));
@@ -278,7 +288,7 @@ static void test_lua_async_thread(CuTest *tc) {
 	}
 
 	plua_gc();
-	CuAssertIntEquals(tc, 12, run);
+	CuAssertIntEquals(tc, 14, run);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 

@@ -11,6 +11,19 @@ end
 
 function M.run()
 	local mailobj = pilight.network.mail();
+	local data = mailobj.getUserdata();
+	local a = {};
+	a[1] = {};
+	a[2] = 3;
+	a[1]['a'] = 4;
+	a[1]['b'] = 5;
+
+	data['foo'] = a;
+	data['status'] = "main";
+
+	print(data['foo'][1]['b']);
+	print(data['status']);
+
 	print(mailobj.setSubject("foo"));
 	print(mailobj.getSubject());
 	print(mailobj.setFrom("order@pilight.org"));

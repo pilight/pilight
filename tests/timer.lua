@@ -21,16 +21,25 @@ function M.run()
 	local timer1 = pilight.async.timer();
 	local data = timer.getUserdata();
 	local data1 = timer1.getUserdata();
+	local a = {};
+	a[1] = {};
+	a[2] = 3;
+	a[1]['a'] = 4;
+	a[1]['b'] = 5;
 
 	print(type(timer));
 	print(type(timer1));
 	print(type(data));
 	print(type(data1));
 
+	data['foo'] = a;
 	data['status'] = "main";
+	data1['bar'] = a;
 	data1['status'] = "main1";
 
+	print(data['foo'][1]['b']);
 	print(data['status']);
+	print(data1['bar'][1]['a']);
 	print(data1['status']);
 
 	print(type(timer.setCallback("timer")));

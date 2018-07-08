@@ -67,38 +67,48 @@ static int plua_print(lua_State* L) {
 	switch(test) {
 		case 0: {
 			switch(run) {
-				case 0:
+				case 0: {
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 5, lua_tonumber(L, -1));
+					run++;
+				} break;
+				case 1: {
+					CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
+					CuAssertStrEquals(gtc, "main", lua_tostring(L, -1));
+					run++;
+				} break;
 				case 2:
-				case 3: {
+				case 4:
+				case 5: {
 					CuAssertIntEquals(gtc, LUA_TBOOLEAN, lua_type(L, -1));
 					CuAssertIntEquals(gtc, 1, lua_toboolean(L, -1));
 					run++;
 				} break;
-				case 1: {
+				case 3: {
 					CuAssertIntEquals(gtc, LUA_TNIL, lua_type(L, -1));
 					run++;
 				} break;
-				case 4: {
+				case 6: {
 					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
 					CuAssertIntEquals(gtc, 200, lua_tonumber(L, -1));
 					run++;
 				} break;
-				case 5: {
+				case 7: {
 					CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
 					CuAssertStrEquals(gtc, "Hello World!", lua_tostring(L, -1));
 					run++;
 				} break;
-				case 6: {
+				case 8: {
 					CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
 					CuAssertStrEquals(gtc, "http://127.0.0.1:10080/", lua_tostring(L, -1));
 					run++;
 				} break;
-				case 7: {
+				case 9: {
 					CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
 					CuAssertStrEquals(gtc, "text/html", lua_tostring(L, -1));
 					run++;
 				} break;
-				case 8: {
+				case 10: {
 					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
 					CuAssertIntEquals(gtc, 12, lua_tonumber(L, -1));
 					run++;
@@ -413,7 +423,7 @@ static void test_lua_network_http_get(CuTest *tc) {
 
 	http_gc();
 	plua_gc();
-	CuAssertIntEquals(tc, 9, run);
+	CuAssertIntEquals(tc, 11, run);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 

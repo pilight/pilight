@@ -67,7 +67,7 @@ static int plua_network_mail_set_data(lua_State *L) {
 	sprintf(p, error, lua_typename(L, lua_type(L, -1)));
 
 	luaL_argcheck(L,
-		(lua_type(L, -1) == LUA_TLIGHTUSERDATA),
+		(lua_type(L, -1) == LUA_TLIGHTUSERDATA || lua_type(L, -1) == LUA_TTABLE),
 		1, buf);
 
 	if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
@@ -77,6 +77,17 @@ static int plua_network_mail_set_data(lua_State *L) {
 
 		plua_ret_true(L);
 
+		return 1;
+	}
+
+	if(lua_type(L, -1) == LUA_TTABLE) {
+		lua_pushnil(L);
+		while(lua_next(L, -2) != 0) {
+			plua_metatable_parse_set(L, mail->table);
+			lua_pop(L, 1);
+		}
+
+		plua_ret_true(L);
 		return 1;
 	}
 
@@ -1037,12 +1048,12 @@ static void plua_network_mail_object(lua_State *L, struct lua_mail_t *mail) {
 	lua_pushcclosure(L, plua_network_mail_get_status, 1);
 	lua_settable(L, -3);
 
-	lua_pushstring(L, "setUserdata");
+	lua_pushstring(L, "getUserdata");
 	lua_pushlightuserdata(L, mail);
 	lua_pushcclosure(L, plua_network_mail_get_data, 1);
 	lua_settable(L, -3);
 
-	lua_pushstring(L, "setData");
+	lua_pushstring(L, "setUserdata");
 	lua_pushlightuserdata(L, mail);
 	lua_pushcclosure(L, plua_network_mail_set_data, 1);
 	lua_settable(L, -3);
