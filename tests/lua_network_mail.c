@@ -548,7 +548,7 @@ static void test_lua_network_mail_nonexisting_callback(CuTest *tc) {
 	}
 
 	plua_gc();
-	CuAssertIntEquals(tc, 18, run);
+	CuAssertIntEquals(tc, 20, run);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 

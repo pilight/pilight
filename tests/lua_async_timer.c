@@ -371,7 +371,7 @@ static void test_lua_async_timer_prematurely_stopped(CuTest *tc) {
 	}
 
 	plua_gc();
-	CuAssertIntEquals(tc, 16, run);
+	CuAssertIntEquals(tc, 18, run);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 

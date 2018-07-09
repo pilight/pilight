@@ -7,6 +7,13 @@ local M = {}
 
 function M.run()
 	local httpobj = pilight.network.http();
+
+	--
+	-- Keep prints in sync with http.lua
+	--
+	print(5);
+	print('main');
+
 	print(httpobj.setUrl("http://127.0.0.1:10080/index.php?foo=bar"));
 	print(httpobj.getCode());
 	print(httpobj.setData("{\"foo\":\"bar\"}"));

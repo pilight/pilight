@@ -7,6 +7,13 @@ local M = {}
 
 function M.run()
 	local mailobj = pilight.network.mail();
+
+	--
+	-- Keep prints in sync with mail.lua
+	--
+	print(5);
+	print('main');
+
 	print(mailobj.setSubject("foo"));
 	print(mailobj.getSubject());
 	print(mailobj.setFrom("order@pilight.org"));
