@@ -244,11 +244,12 @@ static void test_lua_c_metatable(CuTest *tc) {
 		thread.setUserdata(a); \
 		print(data['b'][1]); \
 		print(data['b']['d']); \
-		data['b'] = 1; \
+		data['b'] = nil; \
 		data['b'] = {}; \
 		data['b'] = 'a'; \
 		data['b'] = {}; \
 		data['b'] = {}; \
+		data['b'] = 1; \
 	"));
 
 	uv_mutex_unlock(&state->lock);
