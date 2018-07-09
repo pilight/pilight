@@ -82,6 +82,7 @@ typedef struct request_t {
 	int status_code;
 	int reading;
 	int error;
+	int called;
 	void *userdata;
 	uv_timer_t *timer_req;
 	uv_poll_t *poll_req;
@@ -103,8 +104,8 @@ typedef struct request_t {
 	void (*callback)(int code, char *data, int size, char *type, void *userdata);
 } request_t;
 
-int done = 0;
 
+static void timeout(uv_timer_t *req);
 static void http_client_close(uv_poll_t *req);
 
 static void free_request(struct request_t *request) {
@@ -468,10 +469,12 @@ static void http_client_close(uv_poll_t *req) {
 
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct request_t *request = custom_poll_data->data;
-	uv_timer_t *timer_req = request->timer_req;
+	uv_timer_stop(request->timer_req);
+
 	if(request->reading == 1) {
 		if(request->has_length == 0 && request->has_chunked == 0) {
-			if(request->callback != NULL) {
+			if(request->callback != NULL && request->called == 0) {
+				request->called = 1;
 				request->callback(request->status_code, request->content, strlen(request->content), request->mimetype, request->userdata);
 			}
 		} else {
@@ -479,16 +482,17 @@ static void http_client_close(uv_poll_t *req) {
 		 * Callback when we were receiving data
 		 * that was disrupted early.
 		 */
-			if(request->callback != NULL) {
+			if(request->callback != NULL && request->called == 0) {
+				request->called = 1;
 				request->callback(408, NULL, 0, NULL, request->userdata);
 			}
 		}
 	} else if(request->error == 1) {
-		if(request->callback != NULL) {
+		if(request->callback != NULL && request->called == 0) {
+			request->called = 1;
 			request->callback(404, NULL, 0, 0, request->userdata);
 		}
 	}
-	uv_timer_stop(timer_req);
 
 	if(request->fd > -1) {
 #ifdef _WIN32
@@ -530,7 +534,7 @@ static void timeout(uv_timer_t *req) {
 		uv_timer_stop(request->timer_req);
 	}
 	http_client_close(request->poll_req);
-	if(callback != NULL) {
+	if(callback != NULL && request->called == 0) {
 		callback(408, NULL, 0, NULL, userdata);
 	}
 }
@@ -574,7 +578,8 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			http_parse_request(header, &c);
 			if(c.status_code == 301 && (p = http_get_header(&c, "Location")) != NULL) {
 				uv_timer_stop(request->timer_req);
-				if(request->callback != NULL) {
+				if(request->callback != NULL && request->called == 0) {
+					request->called = 1;
 					request->callback(c.status_code, location, strlen(location), NULL, request->userdata);
 				}
 				FREE(header);
@@ -613,7 +618,8 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			FREE(header);
 			if(*nread == 0) {
 				uv_timer_stop(request->timer_req);
-				if(request->callback != NULL) {
+				if(request->callback != NULL && request->called == 0) {
+					request->called = 1;
 					request->callback(request->status_code, "", request->content_len, request->mimetype, request->userdata);
 					goto close;
 				}
@@ -647,7 +653,8 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			request->reading = 0;
 			request->content[request->content_len] = '\0';
 			uv_timer_stop(request->timer_req);
-			if(request->callback != NULL) {
+			if(request->callback != NULL && request->called == 0) {
+				request->called = 1;
 				request->callback(request->status_code, request->content, request->content_len, request->mimetype, request->userdata);
 				goto close;
 			}
@@ -852,7 +859,8 @@ freeuv:
 	if(request->timer_req != NULL) {
 		uv_timer_stop(request->timer_req);
 	}
-	if(request->callback != NULL) {
+	if(request->callback != NULL && request->called == 0) {
+		request->called = 1;
 		request->callback(404, NULL, 0, 0, request->userdata);
 	}
 	FREE(request->uri);
