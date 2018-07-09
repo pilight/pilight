@@ -273,12 +273,18 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 					if(node->table[x].val.type_ == LUA_TSTRING) {
 						FREE(node->table[x].val.string_);
 					}
+					if(node->table[x].val.type_ == LUA_TTABLE) {
+						plua_metatable_free(node->table[x].val.void_);
+					}
 					node->table[x].val.number_ = lua_tonumber(L, -1);
 					node->table[x].val.type_ = LUA_TNUMBER;
 				} break;
 				case LUA_TSTRING: {
-					if(node->table[x].val.string_ != NULL) {
+					if(node->table[x].val.type_ == LUA_TSTRING) {
 						FREE(node->table[x].val.string_);
+					}
+					if(node->table[x].val.type_ == LUA_TTABLE) {
+						plua_metatable_free(node->table[x].val.void_);
 					}
 					if((node->table[x].val.string_ = STRDUP((char *)lua_tostring(L, -1))) == NULL) {
 						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -286,8 +292,11 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 					node->table[x].val.type_ = LUA_TSTRING;
 				} break;
 				case LUA_TTABLE: {
-					if(node->table[x].val.string_ != NULL) {
+					if(node->table[x].val.type_ == LUA_TSTRING) {
 						FREE(node->table[x].val.string_);
+					}
+					if(node->table[x].val.type_ == LUA_TTABLE) {
+						plua_metatable_free(node->table[x].val.void_);
 					}
 					if((node->table[x].val.void_ = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
 						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -312,25 +321,34 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 					if(node->table[x].val.type_ == LUA_TSTRING) {
 						FREE(node->table[x].val.string_);
 					}
-					for(i=x;i<node->nrvar-1;i++) {
-						switch(node->table[i+1].val.type_) {
-							case LUA_TNUMBER: {
-								node->table[i].val.number_ = node->table[i+1].val.number_;
-								node->table[i].val.type_ = node->table[i+1].val.type_;
-							} break;
-							case LUA_TSTRING: {
-								node->table[i].val.string_ = node->table[i+1].val.string_;
-								node->table[i].val.type_ = node->table[i+1].val.type_;
-							} break;
-						}
-						switch(node->table[i+1].key.type_) {
-							case LUA_TNUMBER: {
-								node->table[i].key.number_ = node->table[i+1].key.number_;
-								node->table[i].key.type_ = node->table[i+1].key.type_;
-							} break;
-							case LUA_TSTRING: {
-								node->table[i].key.string_ = node->table[i+1].key.string_;
-								node->table[i].key.type_ = node->table[i+1].key.type_;
+					if(node->table[x].val.type_ == LUA_TTABLE) {
+						plua_metatable_free(node->table[x].val.void_);
+						FREE(node->table);
+					} else {
+						for(i=x;i<node->nrvar-1;i++) {
+							switch(node->table[i+1].val.type_) {
+								case LUA_TNUMBER: {
+									node->table[i].val.number_ = node->table[i+1].val.number_;
+									node->table[i].val.type_ = node->table[i+1].val.type_;
+								} break;
+								case LUA_TSTRING: {
+									node->table[i].val.string_ = node->table[i+1].val.string_;
+									node->table[i].val.type_ = node->table[i+1].val.type_;
+								} break;
+								case LUA_TTABLE: {
+									node->table[i].val.void_ = node->table[i+1].val.void_;
+									node->table[i].val.type_ = node->table[i+1].val.type_;
+								} break;
+							}
+							switch(node->table[i+1].key.type_) {
+								case LUA_TNUMBER: {
+									node->table[i].key.number_ = node->table[i+1].key.number_;
+									node->table[i].key.type_ = node->table[i+1].key.type_;
+								} break;
+								case LUA_TSTRING: {
+									node->table[i].key.string_ = node->table[i+1].key.string_;
+									node->table[i].key.type_ = node->table[i+1].key.type_;
+								}
 							}
 						}
 					}
