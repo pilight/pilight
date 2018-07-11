@@ -542,6 +542,9 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 		// mbedtls_debug_set_threshold(2);
 		mbedtls_ssl_set_bio(&custom_poll_data->ssl.ctx, &fd, mbedtls_net_send, mbedtls_net_recv, NULL);
 		mbedtls_ssl_conf_dbg(ssl_conf, my_debug, stdout);
+		if(custom_poll_data->host != NULL) {
+			mbedtls_ssl_set_hostname(&custom_poll_data->ssl.ctx, custom_poll_data->host);
+		}
 	}
 
 	if(custom_poll_data->is_ssl == 1 && custom_poll_data->ssl.handshake == 0) {
@@ -763,6 +766,9 @@ static void iobuf_free(struct iobuf_t *iobuf) {
 void uv_custom_poll_free(struct uv_custom_poll_t *data) {
 	if(data->is_ssl == 1) {
 		mbedtls_ssl_free(&data->ssl.ctx);
+	}
+	if(data->host != NULL) {
+		FREE(data->host);
 	}
 	if(data->send_iobuf.size > 0) {
 		iobuf_free(&data->send_iobuf);

@@ -833,6 +833,9 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 		custom_poll_data->write_cb = write_cb;
 		custom_poll_data->read_cb = read_cb;
 		custom_poll_data->close_cb = poll_close_cb;
+		if((custom_poll_data->host = STRDUP(request->host)) == NULL) {
+			OUT_OF_MEMORY
+		}
 
 		request->timer_req->data = request;
 
