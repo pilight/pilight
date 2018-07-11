@@ -495,6 +495,8 @@ static int plua_network_http_post(lua_State *L) {
 		return 1;
 	}
 
+	plua_gc_unreg(http->L, http);
+
 	lua_pushboolean(L, 1);
 	assert(lua_gettop(L) == 1);
 
