@@ -34,10 +34,12 @@
 #include "../config/devices.h"
 #include "config.h"
 #include "../protocols/protocol.h"
+
 #include "devices/switch.h"
 #include "devices/label.h"
 #include "devices/dimmer.h"
 #include "devices/datetime.h"
+#include "devices/program.h"
 
 static int plua_config_device_set_action_id(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
@@ -297,6 +299,9 @@ int plua_config_device(lua_State *L) {
 		switch(protocol->devtype) {
 			case DATETIME:
 				plua_config_device_datetime(L, dev);
+			break;
+			case PENDINGSW:
+				plua_config_device_program(L, dev);
 			break;
 			case DIMMER:
 				plua_config_device_dimmer(L, dev);
