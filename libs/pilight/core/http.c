@@ -72,6 +72,7 @@ struct http_clients_t *http_clients = NULL;
 static int http_lock_init = 0;
 
 typedef struct request_t {
+	int fd;
 	char *host;
   char *uri;
   char *query_string;
@@ -80,10 +81,16 @@ typedef struct request_t {
 	int is_ssl;
 	int status_code;
 	int reading;
+	int error;
+	int called;
 	void *userdata;
+	uv_timer_t *timer_req;
+	uv_poll_t *poll_req;
 
 	int steps;
 	int request_method;
+	int has_length;
+	int has_chunked;
 
   char *content;
 	char mimetype[255];
@@ -97,8 +104,8 @@ typedef struct request_t {
 	void (*callback)(int code, char *data, int size, char *type, void *userdata);
 } request_t;
 
-int done = 0;
 
+static void timeout(uv_timer_t *req);
 static void http_client_close(uv_poll_t *req);
 
 static void free_request(struct request_t *request) {
@@ -230,6 +237,8 @@ static int prepare_request(struct request_t **request, int method, char *url, co
 	}
 	memset((*request), 0, sizeof(struct request_t));
 
+	(*request)->error = 1;
+
 	/* Check which port we need to use based on the http(s) protocol */
 	if(strncmp(url, "http://", 7) == 0) {
 		(*request)->port = 80;
@@ -272,6 +281,7 @@ static int prepare_request(struct request_t **request, int method, char *url, co
 		if(((*request)->uri = MALLOC(2)) == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
+		memset((*request)->uri, 0, 2);
 		strncpy((*request)->uri, "/", 1);
 	}
 	if((tok = strstr((*request)->host, "@"))) {
@@ -296,31 +306,51 @@ static int prepare_request(struct request_t **request, int method, char *url, co
 		(*request)->content_len = strlen(post);
 	}
 
-	if((tok = strstr((*request)->host, ":"))) {
-		size_t pglen = strlen((*request)->host);
-		tlen = (size_t)(tok-(*request)->host)+1;
-		if(isNumeric(&(*request)->host[tlen]) == 0) {
-			(*request)->port = atoi(&(*request)->host[tlen]);
-		} else {
-			logprintf(LOG_ERR, "A custom URL port must be numeric");
-			FREE((*request)->host);
-			FREE((*request)->uri);
-			FREE((*request));
-			return -1;
+	len = strlen((*request)->host);
+	int i = 0;
+	while(i < len) {
+		if((tok = strstr(&(*request)->host[i], ":"))) {
+			size_t pglen = strlen((*request)->host);
+			tlen = (size_t)(tok-(*request)->host)+1;
+			if((*request)->host[tlen] == ':') {
+				i = tlen;
+				while(i < len && (*request)->host[i++] == ':');
+				continue;
+			}
+			if(isNumeric(&(*request)->host[tlen]) == 0) {
+				(*request)->port = atoi(&(*request)->host[tlen]);
+			} else {
+				logprintf(LOG_ERR, "A custom URL port must be numeric");
+				FREE((*request)->host);
+				FREE((*request)->uri);
+				FREE((*request));
+				return -1;
+			}
+			if(pglen == tlen) {
+				logprintf(LOG_ERR, "A custom URL port is missing");
+				FREE((*request)->host);
+				FREE((*request)->uri);
+				FREE((*request));
+				return -1;
+			}
+			(*request)->host[tlen-1] = '\0';
+			break;
 		}
-		if(pglen == tlen) {
-			logprintf(LOG_ERR, "A custom URL port is missing");
-			FREE((*request)->host);
-			FREE((*request)->uri);
-			FREE((*request));
-			return -1;
-		}
-		(*request)->host[tlen-1] = '\0';
+		i++;
+	}
+	len = strlen((*request)->host)-1;
+	if((*request)->host[0] == '[') {
+		memmove(&(*request)->host[0], &(*request)->host[1], len);
+		(*request)->host[len] = '\0';
+	}
+	if((*request)->host[len-1] == ']') {
+		(*request)->host[len-1] = '\0';
 	}
 
 	(*request)->userdata = userdata;
 	(*request)->callback = callback;
 	(*request)->request_method = method;
+
 	return 0;
 }
 
@@ -439,19 +469,38 @@ static void http_client_close(uv_poll_t *req) {
 
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct request_t *request = custom_poll_data->data;
-	int fd = -1, r = 0;
+	uv_timer_stop(request->timer_req);
 
-	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
-		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r)); /*LCOV_EXCL_LINE*/
+	if(request->reading == 1) {
+		if(request->has_length == 0 && request->has_chunked == 0) {
+			if(request->callback != NULL && request->called == 0) {
+				request->called = 1;
+				request->callback(request->status_code, request->content, strlen(request->content), request->mimetype, request->userdata);
+			}
+		} else {
+		/*
+		 * Callback when we were receiving data
+		 * that was disrupted early.
+		 */
+			if(request->callback != NULL && request->called == 0) {
+				request->called = 1;
+				request->callback(408, NULL, 0, NULL, request->userdata);
+			}
+		}
+	} else if(request->error == 1) {
+		if(request->callback != NULL && request->called == 0) {
+			request->called = 1;
+			request->callback(404, NULL, 0, 0, request->userdata);
+		}
 	}
 
-	if(fd > -1) {
+	if(request->fd > -1) {
 #ifdef _WIN32
-		shutdown(fd, SD_BOTH);
-		closesocket(fd);
+		shutdown(request->fd, SD_BOTH);
+		closesocket(request->fd);
 #else
-		shutdown(fd, SHUT_RDWR);
-		close(fd);
+		shutdown(request->fd, SHUT_RDWR);
+		close(request->fd);
 #endif
 	}
 
@@ -475,6 +524,19 @@ static void http_client_close(uv_poll_t *req) {
 
 static void poll_close_cb(uv_poll_t *req) {
 	http_client_close(req);
+}
+
+static void timeout(uv_timer_t *req) {
+	struct request_t *request = req->data;
+	void (*callback)(int, char *, int, char *, void *) = request->callback;
+	void *userdata = request->userdata;
+	if(request->timer_req != NULL) {
+		uv_timer_stop(request->timer_req);
+	}
+	http_client_close(request->poll_req);
+	if(callback != NULL && request->called == 0) {
+		callback(408, NULL, 0, NULL, userdata);
+	}
 }
 
 static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
@@ -515,7 +577,9 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			const char *p = location;
 			http_parse_request(header, &c);
 			if(c.status_code == 301 && (p = http_get_header(&c, "Location")) != NULL) {
-				if(request->callback != NULL) {
+				uv_timer_stop(request->timer_req);
+				if(request->callback != NULL && request->called == 0) {
+					request->called = 1;
 					request->callback(c.status_code, location, strlen(location), NULL, request->userdata);
 				}
 				FREE(header);
@@ -539,15 +603,23 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			}
 			if(http_get_header(&c, "Content-Length") != NULL) {
 				request->content_len = atoi(http_get_header(&c, "Content-Length"));
+				request->has_length = 1;
+			}
+			if(http_get_header(&c, "Content-length") != NULL) {
+				request->content_len = atoi(http_get_header(&c, "Content-length"));
+				request->has_length = 1;
 			}
 			if(http_get_header(&c, "Transfer-Encoding") != NULL) {
 				if(strcmp(http_get_header(&c, "Transfer-Encoding"), "chunked") == 0) {
 					request->chunked = 1;
+					request->has_chunked = 1;
 				}
 			}
 			FREE(header);
 			if(*nread == 0) {
-				if(request->callback != NULL) {
+				uv_timer_stop(request->timer_req);
+				if(request->callback != NULL && request->called == 0) {
+					request->called = 1;
 					request->callback(request->status_code, "", request->content_len, request->mimetype, request->userdata);
 					goto close;
 				}
@@ -575,15 +647,19 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			request->content_len = request->bytes_read;
 		}
 
-		if(request->chunked == 1 || request->bytes_read < request->content_len) {
+		if(request->chunked == 1 || (request->has_length == 0 && request->has_chunked == 0) || request->bytes_read < request->content_len) {
 			request->reading = 1;
 		} else if(request->content != NULL) {
+			request->reading = 0;
 			request->content[request->content_len] = '\0';
-			if(request->callback != NULL) {
+			uv_timer_stop(request->timer_req);
+			if(request->callback != NULL && request->called == 0) {
+				request->called = 1;
 				request->callback(request->status_code, request->content, request->content_len, request->mimetype, request->userdata);
 				goto close;
 			}
 		}
+		request->error = 0;
 	}
 
 	if(request->reading == 1) {
@@ -634,6 +710,7 @@ static void write_cb(uv_poll_t *req) {
 			request->steps = STEP_READ;
 		} break;
 		case STEP_READ:
+			request->error = 0;
 			uv_custom_read(req);
 			return;
 		break;
@@ -643,9 +720,10 @@ static void write_cb(uv_poll_t *req) {
 char *http_process(int type, char *url, const char *conttype, char *post, void (*callback)(int, char *, int, char *, void *), void *userdata) {
 	struct request_t *request = NULL;
 	struct uv_custom_poll_t *custom_poll_data = NULL;
-	struct sockaddr_in addr;
-	char ip[INET_ADDRSTRLEN+1], *p = ip;
-	int r = 0, sockfd = 0;
+	struct sockaddr_in addr4;
+	struct sockaddr_in6 addr6;
+	char *ip = NULL;
+	int r = 0;
 
 	if(http_lock_init == 0) {
 		http_lock_init = 1;
@@ -667,23 +745,44 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 	}
 #endif
 
+	memset(&addr4, 0, sizeof(addr4));
+	memset(&addr6, 0, sizeof(addr6));
 	if(prepare_request(&request, type, url, conttype, post, callback, userdata) == 0) {
-		r = host2ip(request->host, p);
-		
-		if(r != 0) {
-			logprintf(LOG_ERR, "host2ip");
-			goto freeuv;
+		int inet = host2ip(request->host, &ip);
+		switch(inet) {
+			case AF_INET: {
+				memset(&addr4, '\0', sizeof(struct sockaddr_in));
+				r = uv_ip4_addr(ip, request->port, &addr4);
+				if(r != 0) {
+					/*LCOV_EXCL_START*/
+					logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
+					goto freeuv;
+					/*LCOV_EXCL_END*/
+				}
+			} break;
+			case AF_INET6: {
+				memset(&addr6, '\0', sizeof(struct sockaddr_in6));
+				r = uv_ip6_addr(ip, request->port, &addr6);
+				if(r != 0) {
+					/*LCOV_EXCL_START*/
+					logprintf(LOG_ERR, "uv_ip6_addr: %s", uv_strerror(r));
+					goto freeuv;
+					/*LCOV_EXCL_END*/
+				}
+			} break;
+			default: {
+				/*LCOV_EXCL_START*/
+				logprintf(LOG_ERR, "host2ip");
+				goto freeuv;
+				/*LCOV_EXCL_END*/
+			} break;
 		}
+		FREE(ip);
 
-		r = uv_ip4_addr(ip, request->port, &addr);
-		if(r != 0) {
-			logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
-			goto freeuv;
-		}
 		/*
 		 * Partly bypass libuv in case of ssl connections
 		 */
-		if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+		if((request->fd = socket(inet, SOCK_STREAM, 0)) < 0){
 			/*LCOV_EXCL_START*/
 			logprintf(LOG_ERR, "socket: %s", strerror(errno));
 			goto freeuv;
@@ -692,13 +791,24 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 
 #ifdef _WIN32
 		unsigned long on = 1;
-		ioctlsocket(sockfd, FIONBIO, &on);
+		ioctlsocket(request->fd, FIONBIO, &on);
 #else
-		long arg = fcntl(sockfd, F_GETFL, NULL);
-		fcntl(sockfd, F_SETFL, arg | O_NONBLOCK);
+		long arg = fcntl(request->fd, F_GETFL, NULL);
+		fcntl(request->fd, F_SETFL, arg | O_NONBLOCK);
 #endif
 
-		if(connect(sockfd, (const struct sockaddr *)&addr, sizeof(struct sockaddr)) < 0) {
+		switch(inet) {
+			case AF_INET: {
+				r = connect(request->fd, (struct sockaddr *)&addr4, sizeof(addr4));
+			} break;
+			case AF_INET6: {
+				r = connect(request->fd, (struct sockaddr *)&addr6, sizeof(addr6));
+			} break;
+			default: {
+			} break;
+		}
+
+		if(r < 0) {
 #ifdef _WIN32
 			if(!(WSAGetLastError() == WSAEWOULDBLOCK || WSAGetLastError() == WSAEISCONN)) {
 #else
@@ -711,45 +821,62 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 			}
 		}
 
-		uv_poll_t *poll_req = NULL;
-		if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
+		request->poll_req = NULL;
+		if((request->poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
-		uv_custom_poll_init(&custom_poll_data, poll_req, (void *)request);
+		if((request->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		uv_custom_poll_init(&custom_poll_data, request->poll_req, (void *)request);
 		custom_poll_data->is_ssl = request->is_ssl;
 		custom_poll_data->write_cb = write_cb;
 		custom_poll_data->read_cb = read_cb;
 		custom_poll_data->close_cb = poll_close_cb;
+		if((custom_poll_data->host = STRDUP(request->host)) == NULL) {
+			OUT_OF_MEMORY
+		}
 
-		r = uv_poll_init_socket(uv_default_loop(), poll_req, sockfd);
+		request->timer_req->data = request;
+
+		r = uv_poll_init_socket(uv_default_loop(), request->poll_req, request->fd);
 		if(r != 0) {
 			/*LCOV_EXCL_START*/
 			logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
-			FREE(poll_req);
+			FREE(request->poll_req);
 			goto freeuv;
 			/*LCOV_EXCL_STOP*/
 		}
 
-		http_client_add(poll_req, custom_poll_data);
+		uv_timer_init(uv_default_loop(), request->timer_req);
+		uv_timer_start(request->timer_req, (void (*)(uv_timer_t *))timeout, 3000, 0);
+
+		http_client_add(request->poll_req, custom_poll_data);
 		request->steps = STEP_WRITE;
-		uv_custom_write(poll_req);		
+		uv_custom_write(request->poll_req);
 	}
 
 	return NULL;
 
 freeuv:
-	request->callback(404, NULL, 0, 0, request->userdata);
+	if(request->timer_req != NULL) {
+		uv_timer_stop(request->timer_req);
+	}
+	if(request->callback != NULL && request->called == 0) {
+		request->called = 1;
+		request->callback(404, NULL, 0, 0, request->userdata);
+	}
 	FREE(request->uri);
 	FREE(request->host);
-	FREE(request);
 
-	if(sockfd > 0) {
+	if(request->fd > 0) {
 #ifdef _WIN32
-		closesocket(sockfd);
+		closesocket(request->fd);
 #else
-		close(sockfd);
+		close(request->fd);
 #endif
 	}
+	FREE(request);
 	return NULL;
 }
 

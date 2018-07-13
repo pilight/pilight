@@ -101,4 +101,13 @@ struct JsonNode *devices_values(const char *media);
 void devices_init(void);
 int devices_gc(void);
 
+/*
+ * Rewrite backported functions
+ */
+int devices_select_protocol(enum origin_t origin, char *id, int element, struct protocol_t **out);
+int devices_select_number_setting(enum origin_t origin, char *id, char *setting, double *out, int *decimals);
+int devices_select_string_setting(enum origin_t origin, char *id, char *setting, char **out);
+int devices_select_settings(enum origin_t origin, char *id, int i, char **setting, struct varcont_t *out);
+int devices_select(enum origin_t origin, char *id, struct JsonNode **jdevice);
+
 #endif

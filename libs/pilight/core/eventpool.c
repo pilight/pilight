@@ -42,7 +42,6 @@
 #include <assert.h>
 
 #include "log.h"
-#include "gc.h"
 #include "../../libuv/uv.h"
 #include "mem.h"
 #include "network.h"
@@ -56,7 +55,11 @@ struct eventqueue_t {
 	struct eventqueue_t *next;
 } eventqueue_t;
 
+#ifdef _WIN32
+static volatile long nrlisteners[REASON_END] = {0};
+#else
 static int nrlisteners[REASON_END] = {0};
+#endif
 static struct eventqueue_t *eventqueue = NULL;
 
 static int threads = EVENTPOOL_NO_THREADS;
@@ -348,30 +351,33 @@ static void eventpool_execute(uv_async_t *handle) {
 int eventpool_gc(void) {
 	if(lockinit == 1) {
 		uv_mutex_lock(&listeners_lock);
-		struct eventqueue_t *queue = NULL;
-		while(eventqueue) {
-			queue = eventqueue;
-			if(eventqueue->data != NULL && eventqueue->done != NULL) {
-				eventqueue->done(eventqueue->data);
-			}
-			eventqueue = eventqueue->next;
-			FREE(queue);
+	}
+	struct eventqueue_t *queue = NULL;
+	while(eventqueue) {
+		queue = eventqueue;
+		if(eventqueue->data != NULL && eventqueue->done != NULL) {
+			eventqueue->done(eventqueue->data);
 		}
-		struct eventpool_listener_t *listeners = NULL;
-		while(eventpool_listeners) {
-			listeners = eventpool_listeners;
-			eventpool_listeners = eventpool_listeners->next;
-			FREE(listeners);
-		}
-		if(eventpool_listeners != NULL) {
-			FREE(eventpool_listeners);
-		}
-		threads = EVENTPOOL_NO_THREADS;
+		eventqueue = eventqueue->next;
+		FREE(queue);
+	}
+	struct eventpool_listener_t *listeners = NULL;
+	while(eventpool_listeners) {
+		listeners = eventpool_listeners;
+		eventpool_listeners = eventpool_listeners->next;
+		FREE(listeners);
+	}
+	if(eventpool_listeners != NULL) {
+		FREE(eventpool_listeners);
+	}
+	threads = EVENTPOOL_NO_THREADS;
 
-		int i = 0;
-		for(i=0;i<REASON_END;i++) {
-			nrlisteners[i] = 0;
-		}
+	int i = 0;
+	for(i=0;i<REASON_END;i++) {
+		nrlisteners[i] = 0;
+	}
+
+	if(lockinit == 1) {
 		uv_mutex_unlock(&listeners_lock);
 	}
 	eventpoolinit = 0;
@@ -478,10 +484,26 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 		return;
 	}
 
-	// r = uv_fileno((uv_handle_t *)req, &fd);
-	if(status < 0) {
-		logprintf(LOG_ERR, "uv_custom_poll_cb: %s", uv_strerror(status));
-		uv_poll_stop(req);
+	/*
+	 * Status == -9: Socket is unreachable
+	 * Events == 0: Client-end got disconnected
+	 */
+	r = uv_fileno((uv_handle_t *)req, &fd);
+	if(status < 0 || events == 0) {
+		if(status == -9) {
+			logprintf(LOG_ERR, "uv_custom_poll_cb: socket not responding");
+		} else {
+			logprintf(LOG_ERR, "uv_custom_poll_cb: %s", uv_strerror(status));
+		}
+		if(custom_poll_data->close_cb != NULL) {
+			custom_poll_data->close_cb(req);
+		}
+		if(!uv_is_closing((uv_handle_t *)req)) {
+			uv_poll_stop(req);
+		}
+		if(fd > 0) {
+			close(fd);
+		}
 		return;
 	}
 
@@ -500,19 +522,6 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
 		return;
 	}
-
-	/*
-	 * TESTME: Client-end got disconnected
-	 */
-	// if(events == 0) {
-		// if(custom_poll_data->close_cb != NULL) {
-			// custom_poll_data->close_cb(req);
-			// return;
-		// } else {
-			// uv_poll_stop(req);
-			// close(fd);
-		// }
-	// }
 
 	if(custom_poll_data->is_ssl == 1 && custom_poll_data->ssl.init == 0) {
 		custom_poll_data->ssl.init = 1;
@@ -537,6 +546,9 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 		// mbedtls_debug_set_threshold(2);
 		mbedtls_ssl_set_bio(&custom_poll_data->ssl.ctx, &fd, mbedtls_net_send, mbedtls_net_recv, NULL);
 		mbedtls_ssl_conf_dbg(ssl_conf, my_debug, stdout);
+		if(custom_poll_data->host != NULL) {
+			mbedtls_ssl_set_hostname(&custom_poll_data->ssl.ctx, custom_poll_data->host);
+		}
 	}
 
 	if(custom_poll_data->is_ssl == 1 && custom_poll_data->ssl.handshake == 0) {
@@ -681,7 +693,11 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 				if(custom_poll_data->is_udp == 1) {
 					n = (int)recv((unsigned int)fd, buffer, BUFFER_SIZE, 0);
 				} else {
+#ifdef _WIN32
+					n = recvfrom((SOCKET)fd, buffer, BUFFER_SIZE, 0, NULL, (socklen_t *)&fromlen);
+#else
 					n = recvfrom(fd, buffer, BUFFER_SIZE, 0, NULL, (socklen_t *)&fromlen);
+#endif
 				}
 			}
 		}
@@ -758,6 +774,9 @@ static void iobuf_free(struct iobuf_t *iobuf) {
 void uv_custom_poll_free(struct uv_custom_poll_t *data) {
 	if(data->is_ssl == 1) {
 		mbedtls_ssl_free(&data->ssl.ctx);
+	}
+	if(data->host != NULL) {
+		FREE(data->host);
 	}
 	if(data->send_iobuf.size > 0) {
 		iobuf_free(&data->send_iobuf);
@@ -856,12 +875,6 @@ void eventpool_init(enum eventpool_threads_t t) {
 	 */
 	const uv_thread_t pth_cur_id = uv_thread_self();
 	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
-
-#ifdef PILIGHT_REWRITE
-	if(running() == 0) {
-		return;
-	}
-#endif
 
 	if(eventpoolinit == 1) {
 		return;

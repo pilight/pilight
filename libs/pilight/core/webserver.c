@@ -813,6 +813,8 @@ static int file_read_cb(int fd, uv_poll_t *req) {
 		if(bytes < WEBSERVER_CHUNK_SIZE) {
 			iobuf_append(&custom_poll_data->send_iobuf, "0\r\n\r\n", 5);
 			uv_custom_close(req);
+			conn->fd = -1;
+			close(fd);
 		}
 		uv_custom_write(req);
 
@@ -821,6 +823,8 @@ static int file_read_cb(int fd, uv_poll_t *req) {
 		if(conn->flags == 1) {
 			iobuf_append(&custom_poll_data->send_iobuf, "0\r\n\r\n", 5);
 			uv_custom_close(req);
+			conn->fd = -1;
+			close(fd);
 		}
 		return 0;
 	} else if(bytes < 0) {
@@ -889,7 +893,7 @@ static int request_handler(uv_poll_t *req) {
 				}
 				jsend = NULL;
 				return MG_TRUE;
-			} else if(strcmp(&conn->uri[(rstrstr(conn->uri, "/")-conn->uri)], "/") == 0) {
+			} else if(strstr(conn->uri, "/") != NULL && strcmp(&conn->uri[(rstrstr(conn->uri, "/")-conn->uri)], "/") == 0) {
 				char indexes[2][11] = {"index.html","index.htm"};
 
 				unsigned q = 0;

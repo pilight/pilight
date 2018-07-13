@@ -23,7 +23,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#ifndef _WIN32
 #include <wiringx.h>
+#endif
 
 #include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"

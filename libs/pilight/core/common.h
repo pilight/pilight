@@ -27,6 +27,18 @@
 #include <pthread.h>
 #include <stdint.h>
 
+typedef struct varcont_t {
+	union {
+		char *string_;
+		double number_;
+		int bool_;
+		void *void_;
+	};
+	int decimals_;
+	int type_;
+	int free_;
+} varcont_t;
+
 #include "pilight.h"
 
 extern char *progname;
@@ -72,7 +84,10 @@ pid_t findproc(char *name, char *args, int loosely);
 
 int vercmp(char *val, char *ref);
 int str_replace(char *search, char *replace, char **str);
-int strcicmp(char const *a, char const *b);
+#ifndef _WIN32
+int stricmp(char const *a, char const *b);
+int strnicmp(char const *a, char const *b, size_t len);
+#endif
 int file_get_contents(char *file, char **content);
 int check_email_addr(const char *addr, int allow_lists, int check_domain_can_mail);
 

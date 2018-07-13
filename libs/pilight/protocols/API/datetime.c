@@ -24,6 +24,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <assert.h>
 #include <sys/stat.h>
 #include <signal.h>
 #ifdef _WIN32
@@ -59,6 +60,7 @@
 #include "../../core/datetime.h"
 #include "datetime.h"
 
+#ifdef PILIGHT_DEVELOPMENT
 static unsigned short loop = 1;
 static unsigned short threads = 0;
 static char *format = NULL;
@@ -75,7 +77,7 @@ static void *thread(void *param) {
 	struct tm tm;
 	char *tz = NULL;
 	time_t t;
-	int target_offset = 0, counter = 0, dst = 0, x = 0;
+	int counter = 0;
 	double longitude = 0.0, latitude = 0.0;
 
 	threads++;
@@ -105,14 +107,9 @@ static void *thread(void *param) {
 	}
 
 	t = time(NULL);
-	t -= getntpdiff();
-	dst = isdst(t, tz);
 	if(isntpsynced() == 0) {
-		x = 1;
+		t -= getntpdiff();
 	}
-
-	/* Check how many hours we differ from UTC? */
-	target_offset = tzoffset(UTC, tz);
 
 	while(loop) {
 		pthread_mutex_lock(&lock);
@@ -120,31 +117,15 @@ static void *thread(void *param) {
 		t -= getntpdiff();
 
 		/* Get UTC time */
-#ifdef _WIN32
-		struct tm *tm1;
-		if((tm1 = gmtime(&t)) != NULL) {
-			memcpy(&tm, tm1, sizeof(struct tm));
-#else
-		if(gmtime_r(&t, &tm) != NULL) {
-#endif
+		if(localtime_l(t, &tm, tz) == 0) {
 			int year = tm.tm_year+1900;
 			int month = tm.tm_mon+1;
 			int day = tm.tm_mday;
-			/* Add our hour difference to the UTC time */
-			tm.tm_hour += target_offset;
-			/* Add possible daylist savings time hour */
-			tm.tm_hour += dst;
 			int hour = tm.tm_hour;
 			int minute = tm.tm_min;
 			int second = tm.tm_sec;
 			int weekday = tm.tm_wday+1;
-
-			datefix(&year, &month, &day, &hour, &minute, &second);
-
-			if((minute == 0 && second == 0) || (isntpsynced() == 0 && x == 0)) {
-				x = 1;
-				dst = isdst(t, tz);
-			}
+			int dst = tm.tm_isdst;
 
 			datetime->message = json_mkobject();
 
@@ -180,8 +161,129 @@ static void *thread(void *param) {
 	threads--;
 	return (void *)NULL;
 }
+#else
 
+static char UTC[] = "UTC";
+static char *format = NULL;
+static int time_override = -1;
+
+typedef struct data_t {
+	char *name;
+	int id;
+	int interval;
+	uv_timer_t *timer_req;
+
+	double longitude;
+	double latitude;
+
+	char *tz;
+
+	struct data_t *next;
+} data_t;
+
+static struct data_t *data = NULL;
+
+#ifdef PILIGHT_REWRITE
+static void *reason_code_received_free(void *param) {
+	struct reason_code_received_t *data = param;
+	FREE(data);
+	return NULL;
+}
+
+static void *adaptDevice(int reason, void *param) {
+	struct JsonNode *jdevice = NULL;
+	struct JsonNode *jtime = NULL;
+
+	if(param == NULL) {
+		return NULL;
+	}
+
+	if((jdevice = json_first_child(param)) == NULL) {
+		return NULL;
+	}
+
+	if(strcmp(jdevice->key, "datetime") != 0) {
+		return NULL;
+	}
+
+	if((jtime = json_find_member(jdevice, "time-override")) != NULL) {
+		if(jtime->tag == JSON_NUMBER) {
+			time_override = jtime->number_;
+		}
+	}
+
+	return NULL;
+}
+#endif
+
+static void *thread(void *param) {
+	uv_timer_t *timer_req = param;
+	struct data_t *settings = timer_req->data;
+	struct tm tm;
+	time_t t;
+
+	if(time_override > -1) {
+		t = time_override;
+	} else {
+		t = time(NULL);
+		if(isntpsynced() == 0) {
+			t -= getntpdiff();
+		}
+	}
+
+	/* Get UTC time */
+	if(localtime_l(t, &tm, settings->tz) == 0) {
+		int year = tm.tm_year+1900;
+		int month = tm.tm_mon+1;
+		int day = tm.tm_mday;
+		int hour = tm.tm_hour;
+		int minute = tm.tm_min;
+		int second = tm.tm_sec;
+		int weekday = tm.tm_wday+1;
+		int dst = tm.tm_isdst;
+
+#ifdef PILIGHT_REWRITE
+		struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
+		if(data == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		snprintf(data->message, 1024,
+			"{\"longitude\":%.6f,\"latitude\":%.6f,\"year\":%d,\"month\":%d,\"day\":%d,\"weekday\":%d,\"hour\":%d,\"minute\":%d,\"second\":%d,\"dst\":%d}",
+			settings->longitude, settings->latitude, year, month, day, weekday, hour, minute, second, dst
+		);
+		strncpy(data->origin, "receiver", 255);
+		data->protocol = datetime->id;
+		if(strlen(pilight_uuid) > 0) {
+			data->uuid = pilight_uuid;
+		} else {
+			data->uuid = NULL;
+		}
+		data->repeat = 1;
+		eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
+#else
+	char message[1024];
+	snprintf(message, 1024,
+		"{\"origin\":\"receiver\",\"protocol\":\"%s\",\"message\":"\
+			"{\"longitude\":%.6f,\"latitude\":%.6f,\"year\":%d,\"month\":%d,\"day\":%d,\"weekday\":%d,\"hour\":%d,\"minute\":%d,\"second\":%d,\"dst\":%d}"\
+		"}",
+		datetime->id, settings->longitude, settings->latitude, year, month, day, weekday, hour, minute, second, dst
+	);
+
+	datetime->message = json_decode(message);
+
+	if(pilight.broadcast != NULL) {
+		pilight.broadcast(datetime->id, datetime->message, PROTOCOL);
+	}
+	json_delete(datetime->message);
+	datetime->message = NULL;
+#endif
+	}
+
+	return (void *)NULL;
+}
+#endif
 static struct threadqueue_t *initDev(JsonNode *jdevice) {
+#ifdef PILIGHT_DEVELOPMENT
 	loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
@@ -189,9 +291,100 @@ static struct threadqueue_t *initDev(JsonNode *jdevice) {
 
 	struct protocol_threads_t *node = protocol_thread_init(datetime, json);
 	return threads_register("datetime", &thread, (void *)node, 0);
+#else
+#ifdef PILIGHT_REWRITE
+	struct JsonNode *jdevice = NULL;
+#endif
+	struct JsonNode *jprotocols = NULL;
+	struct JsonNode *jid = NULL;
+	struct JsonNode *jchild = NULL;
+	struct JsonNode *jchild1 = NULL;
+	struct data_t *node = NULL;
+	int match = 0;
+
+#ifdef PILIGHT_REWRITE
+	if(param == NULL) {
+		return NULL;
+	}
+#endif
+
+	if(!(datetime->masterOnly == 0 || pilight.runmode == STANDALONE)) {
+		return NULL;
+	}
+
+#ifdef PILIGHT_REWRITE
+	if((jdevice = json_first_child(param)) == NULL) {
+		return NULL;
+	}
+#endif
+	if((jprotocols = json_find_member(jdevice, "protocol")) != NULL) {
+		jchild = json_first_child(jprotocols);
+		while(jchild) {
+			if(strcmp(datetime->id, jchild->string_) == 0) {
+				match = 1;
+				break;
+			}
+			jchild = jchild->next;
+		}
+	}
+
+	if(match == 0) {
+		return NULL;
+	}
+
+	if((node = MALLOC(sizeof(struct data_t)))== NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	memset(node, '\0', sizeof(struct data_t));
+	node->interval = 1;
+
+	if((jid = json_find_member(jdevice, "id"))) {
+		jchild = json_first_child(jid);
+		while(jchild) {
+			jchild1 = json_first_child(jchild);
+			while(jchild1) {
+				if(strcmp(jchild1->key, "longitude") == 0) {
+					node->longitude = jchild1->number_;
+				}
+				if(strcmp(jchild1->key, "latitude") == 0) {
+					node->latitude = jchild1->number_;
+				}
+				jchild1 = jchild1->next;
+			}
+			jchild = jchild->next;
+		}
+	}
+
+	if((node->tz = coord2tz(node->longitude, node->latitude)) == NULL) {
+		logprintf(LOG_INFO, "datetime %s, could not determine timezone, defaulting to UTC", jdevice->key);
+		node->tz = UTC;
+	} else {
+		logprintf(LOG_INFO, "datetime %s %.6f:%.6f seems to be in timezone: %s", jdevice->key, node->longitude, node->latitude, node->tz);
+	}
+
+	if((node->name = MALLOC(strlen(jdevice->key)+1)) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	strcpy(node->name, jdevice->key);
+
+	node->next = data;
+	node->timer_req = NULL;
+	data = node;
+
+	if((node->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	node->timer_req->data = node;
+	uv_timer_init(uv_default_loop(), node->timer_req);
+
+	assert(node->interval > 0);
+	uv_timer_start(node->timer_req, (void (*)(uv_timer_t *))thread, node->interval*1000, node->interval*1000);
+#endif
+	return NULL;
 }
 
 static void threadGC(void) {
+#ifdef PILIGHT_DEVELOPMENT
 	loop = 0;
 
 	protocol_thread_stop(datetime);
@@ -199,9 +392,33 @@ static void threadGC(void) {
 		usleep(10);
 	}
 	protocol_thread_free(datetime);
+#else
+	struct data_t *tmp = data;
+	while(tmp) {
+#ifndef PILIGHT_REWRITE
+		uv_timer_stop(tmp->timer_req);
+#endif
+		tmp = tmp->next;
+	}
+#endif
 }
 
 static void gc(void) {
+#ifndef PILIGHT_DEVELOPMENT
+	struct data_t *tmp = NULL;
+	while(data) {
+		tmp = data;
+#ifndef PILIGHT_REWRITE
+		uv_timer_stop(tmp->timer_req);
+#endif
+		FREE(tmp->name);
+		data = data->next;
+		FREE(tmp);
+	}
+	if(data != NULL) {
+		FREE(data);
+	}
+#endif
 	FREE(format);
 }
 
@@ -210,8 +427,11 @@ __attribute__((weak))
 #endif
 void datetimeInit(void) {
 
-	format = MALLOC(20);
-	strcpy(format, "HH:mm:ss YYYY-MM-DD");
+	if((format = MALLOC(20)) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	memset(format, 0, 20);
+	strncpy(format, "HH:mm:ss YYYY-MM-DD", 19);
 
 	protocol_register(&datetime);
 	protocol_set_id(datetime, "datetime");

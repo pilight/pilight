@@ -22,7 +22,7 @@
 #cmakedefine WEBSERVER
 #cmakedefine EVENTS
 
-#define PILIGHT_VERSION					"8.0.3"
+#define PILIGHT_VERSION					"8.1.1"
 #define PULSE_DIV								34
 #define MAXPULSESTREAMLENGTH		512
 #define EPSILON									0.00001
@@ -75,6 +75,7 @@
 #endif	
 #define LOG_MAX_SIZE 						1048576 // 1024*1024
 
+#define LOOPBACK								0
 #define UUID_LENGTH							21
 
 #define FIRMWARE_PATH				"c:/pilight/"

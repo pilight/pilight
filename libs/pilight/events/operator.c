@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -21,86 +11,48 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
-#include <libgen.h>
-#include <dirent.h>
 #include <limits.h>
+#include <assert.h>
+
+#ifndef _WIN32
+	#include <libgen.h>
+	#include <dirent.h>
+	#include <unistd.h>
+#endif
 
 #include "../core/pilight.h"
 #include "../core/common.h"
 #include "../core/dso.h"
 #include "../core/log.h"
 #include "../config/settings.h"
+#include "../lua/lua.h"
 
 #include "operator.h"
-#include "operators/operator_header.h"
 
-#ifndef _WIN32
-void event_operator_remove(char *name) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	struct event_operators_t *currP, *prevP;
-
-	prevP = NULL;
-
-	for(currP = event_operators; currP != NULL; prevP = currP, currP = currP->next) {
-
-		if(strcmp(currP->name, name) == 0) {
-			if(prevP == NULL) {
-				event_operators = currP->next;
-			} else {
-				prevP->next = currP->next;
-			}
-
-			logprintf(LOG_DEBUG, "removed operator %s", currP->name);
-			FREE(currP->name);
-			FREE(currP);
-
-			break;
-		}
-	}
-}
-#endif
+static int init = 0;
 
 void event_operator_init(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+	if(init == 1) {
+		return;
+	}
+	init = 1;
+	plua_init();
 
-	#include "operators/operator_init.h"
-
-#ifndef _WIN32
-	void *handle = NULL;
-	void (*init)(void);
-	void (*compatibility)(struct module_t *module);
 	char path[PATH_MAX];
-	struct module_t module;
-	char pilight_version[strlen(PILIGHT_VERSION)+1];
-	char pilight_commit[3];
-	char *operator_root = NULL;
-	int check1 = 0, check2 = 0, valid = 1, operator_root_free = 0;
-	strcpy(pilight_version, PILIGHT_VERSION);
-
+	char *f = STRDUP(__FILE__);
 	struct dirent *file = NULL;
 	DIR *d = NULL;
 	struct stat s;
+	char *operator_root = OPERATOR_ROOT;
 
-	memset(pilight_commit, '\0', 3);
+	if(f == NULL) {
+		OUT_OF_MEMORY
+	}
 
-	if(settings_find_string("operators-root", &operator_root) != 0) {
-		/* If no operator root was set, use the default operator root */
-		if((operator_root = MALLOC(strlen(OPERATOR_ROOT)+1)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
-		}
-		strcpy(operator_root, OPERATOR_ROOT);
-		operator_root_free = 1;
-	}
-	size_t len = strlen(operator_root);
-	if(operator_root[len-1] != '/') {
-		strcat(operator_root, "/");
-	}
+	settings_select_string(ORIGIN_MASTER, "operators-root", &operator_root);
 
 	if((d = opendir(operator_root))) {
 		while((file = readdir(d)) != NULL) {
@@ -109,95 +61,322 @@ void event_operator_init(void) {
 			if(stat(path, &s) == 0) {
 				/* Check if file */
 				if(S_ISREG(s.st_mode)) {
-					if(strstr(file->d_name, ".so") != NULL) {
-						valid = 1;
-
-						if((handle = dso_load(path)) != NULL) {
-							init = dso_function(handle, "init");
-							compatibility = dso_function(handle, "compatibility");
-							if(init != NULL && compatibility != NULL) {
-								compatibility(&module);
-								if(module.name != NULL && module.version != NULL && module.reqversion != NULL) {
-									char ver[strlen(module.reqversion)+1];
-									strcpy(ver, module.reqversion);
-
-									if((check1 = vercmp(ver, pilight_version)) > 0) {
-										valid = 0;
-									}
-
-									if(check1 == 0 && module.reqcommit != NULL) {
-										char com[strlen(module.reqcommit)+1];
-										strcpy(com, module.reqcommit);
-										sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
-
-										if(strlen(pilight_commit) > 0 && (check2 = vercmp(com, pilight_commit)) > 0) {
-											valid = 0;
-										}
-									}
-									if(valid == 1) {
-										char tmp[strlen(module.name)+1];
-										strcpy(tmp, module.name);
-										event_operator_remove(tmp);
-										init();
-										logprintf(LOG_DEBUG, "loaded operator %s v%s", file->d_name, module.version);
-									} else {
-										if(module.reqcommit != NULL) {
-											logprintf(LOG_ERR, "event operator %s requires at least pilight v%s (commit %s)", file->d_name, module.reqversion, module.reqcommit);
-										} else {
-											logprintf(LOG_ERR, "event operator %s requires at least pilight v%s", file->d_name, module.reqversion);
-										}
-									}
-								} else {
-									logprintf(LOG_ERR, "invalid module %s", file->d_name);
-								}
-							}
-						}
+					if(strstr(file->d_name, ".lua") != NULL) {
+						plua_module_load(path, OPERATOR);
 					}
 				}
 			}
 		}
-		closedir(d);
 	}
-	if(operator_root_free) {
-		FREE(operator_root);
-	}
-#endif
+	closedir(d);
+	FREE(f);
 }
 
-void event_operator_register(struct event_operators_t **op, const char *name) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if((*op = MALLOC(sizeof(struct event_operators_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+static int plua_operator_precedence_run(struct lua_State *L, char *file, int *ret) {
+#if LUA_VERSION_NUM <= 502
+	lua_getfield(L, -1, "precedence");
+	if(lua_type(L, -1) != LUA_TFUNCTION) {
+#else
+	if(lua_getfield(L, -1, "precedence") == 0) {
+#endif
+		logprintf(LOG_ERR, "%s: precedence function missing", file);
+		return 0;
 	}
-	if(((*op)->name = MALLOC(strlen(name)+1)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+
+	if(lua_pcall(L, 0, 1, 0) == LUA_ERRRUN) {
+		if(lua_type(L, -1) == LUA_TNIL) {
+			logprintf(LOG_ERR, "%s: syntax error", file);
+			return 0;
+		}
+		if(lua_type(L, -1) == LUA_TSTRING) {
+			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
+			lua_pop(L, 1);
+			return 0;
+		}
 	}
-	strcpy((*op)->name, name);
 
-	(*op)->callback_string = NULL;
-	(*op)->callback_number = NULL;
+	if(lua_isnumber(L, -1) == 0) {
+		logprintf(LOG_ERR, "%s: the precedence function returned %s, number expected", file, lua_typename(L, lua_type(L, -1)));
+		return 0;
+	}
 
-	(*op)->next = event_operators;
-	event_operators = (*op);
+	*ret = lua_tonumber(L, -1);
+
+	lua_pop(L, 1);
+
+	return 1;
+}
+
+static int plua_operator_associativity_run(struct lua_State *L, char *file, int *ret) {
+#if LUA_VERSION_NUM <= 502
+	lua_getfield(L, -1, "associativity");
+	if(lua_type(L, -1) != LUA_TFUNCTION) {
+#else
+	if(lua_getfield(L, -1, "associativity") == 0) {
+#endif
+		logprintf(LOG_ERR, "%s: associativity function missing", file);
+		return 0;
+	}
+
+	if(lua_pcall(L, 0, 1, 0) == LUA_ERRRUN) {
+		if(lua_type(L, -1) == LUA_TNIL) {
+			logprintf(LOG_ERR, "%s: syntax error", file);
+			return 0;
+		}
+		if(lua_type(L, -1) == LUA_TSTRING) {
+			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
+			lua_pop(L, 1);
+			return 0;
+		}
+	}
+
+	if(lua_isnumber(L, -1) == 0) {
+		logprintf(LOG_ERR, "%s: the associativity function returned %s, number expected", file, lua_typename(L, lua_type(L, -1)));
+		return 0;
+	}
+
+	*ret = lua_tonumber(L, -1);
+
+	lua_pop(L, 1);
+
+	return 1;
+}
+
+static int plua_operator_module_run(struct lua_State *L, char *file, struct varcont_t *a, struct varcont_t *b, struct varcont_t *v) {
+#if LUA_VERSION_NUM <= 502
+	lua_getfield(L, -1, "run");
+	if(lua_type(L, -1) != LUA_TFUNCTION) {
+#else
+	if(lua_getfield(L, -1, "run") == 0) {
+#endif
+		logprintf(LOG_ERR, "%s: run function missing", file);
+		return 0;
+	}
+
+	switch(a->type_) {
+		case JSON_NUMBER: {
+			lua_pushnumber(L, a->number_);
+		} break;
+		case JSON_STRING:
+			lua_pushstring(L, a->string_);
+		break;
+		case JSON_BOOL:
+			lua_pushboolean(L, a->bool_);
+		break;
+	}
+	switch(b->type_) {
+		case JSON_NUMBER: {
+			lua_pushnumber(L, b->number_);
+		} break;
+		case JSON_STRING:
+			lua_pushstring(L, b->string_);
+		break;
+		case JSON_BOOL:
+			lua_pushboolean(L, b->bool_);
+		break;
+	}
+
+	if(lua_pcall(L, 2, 1, 0) == LUA_ERRRUN) {
+		if(lua_type(L, -1) == LUA_TNIL) {
+			logprintf(LOG_ERR, "%s: syntax error", file);
+			return 0;
+		}
+		if(lua_type(L, -1) == LUA_TSTRING) {
+			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
+			lua_pop(L, 1);
+			return 0;
+		}
+	}
+
+	if(lua_isstring(L, -1) == 0 &&
+		lua_isnumber(L, -1) == 0 &&
+		lua_isboolean(L, -1) == 0) {
+		logprintf(LOG_ERR, "%s: the run function returned %s, string, number or boolean expected", file, lua_typename(L, lua_type(L, -1)));
+		return 0;
+	}
+
+	if(lua_isnumber(L, -1) == 1) {
+		char *p = (char *)lua_tostring(L, -1);
+		v->number_ = atof(p);
+		v->decimals_ = nrDecimals(p);
+		v->type_ = JSON_NUMBER;
+	} else if(lua_isstring(L, -1) == 1) {
+		int l = strlen(lua_tostring(L, -1));
+		if((v->string_ = REALLOC(v->string_, l+1)) == NULL) {
+			OUT_OF_MEMORY
+		}
+		strcpy(v->string_, lua_tostring(L, -1));
+		v->type_ = JSON_STRING;
+		v->free_ = 1;
+	} else if(lua_isboolean(L, -1) == 1) {
+		v->bool_ = (int)lua_toboolean(L, -1);
+		v->type_ = JSON_BOOL;
+	}
+
+	lua_pop(L, 1);
+
+	return 1;
+}
+
+int event_operator_exists(char *module) {
+	return plua_module_exists(module, OPERATOR);
+}
+
+int event_operator_precedence(char *module, int *ret) {
+	struct lua_state_t *state = plua_get_free_state();
+	struct lua_State *L = NULL;
+
+	if(state == NULL) {
+		return -1;
+	}
+
+	if((L = state->L) == NULL) {
+		assert(lua_gettop(L) == 0);
+		uv_mutex_unlock(&state->lock);
+		return -1;
+	}
+
+	char name[255], *p = name;
+	memset(name, '\0', 255);
+
+	sprintf(p, "operator.%s", module);
+
+	lua_getglobal(L, name);
+	if(lua_isnil(L, -1) != 0) {
+		assert(lua_gettop(L) == 0);
+		uv_mutex_unlock(&state->lock);
+		return -1;
+	}
+	if(lua_istable(L, -1) != 0) {
+		char *file = NULL;
+		struct plua_module_t *tmp = plua_get_modules();
+		while(tmp) {
+			if(strcmp(module, tmp->name) == 0) {
+				file = tmp->file;
+				state->module = tmp;
+				break;
+			}
+			tmp = tmp->next;
+		}
+		if(plua_operator_precedence_run(L, file, ret) == 0) {
+			lua_pop(L, -1);
+			assert(lua_gettop(L) == 0);
+			uv_mutex_unlock(&state->lock);
+			return -1;
+		}
+	}
+	lua_pop(L, -1);
+
+	assert(lua_gettop(L) == 0);
+	uv_mutex_unlock(&state->lock);
+
+	return 0;
+}
+
+int event_operator_associativity(char *module, int *ret) {
+	struct lua_state_t *state = plua_get_free_state();
+	struct lua_State *L = NULL;
+
+	if(state == NULL) {
+		return -1;
+	}
+
+	if((L = state->L) == NULL) {
+		assert(lua_gettop(L) == 0);
+		uv_mutex_unlock(&state->lock);
+		return -1;
+	}
+
+	char name[255], *p = name;
+	memset(name, '\0', 255);
+
+	sprintf(p, "operator.%s", module);
+
+	lua_getglobal(L, name);
+	if(lua_isnil(L, -1) != 0) {
+		assert(lua_gettop(L) == 0);
+		uv_mutex_unlock(&state->lock);
+		return -1;
+	}
+	if(lua_istable(L, -1) != 0) {
+		char *file = NULL;
+		struct plua_module_t *tmp = plua_get_modules();
+		while(tmp) {
+			if(strcmp(module, tmp->name) == 0) {
+				file = tmp->file;
+				state->module = tmp;
+				break;
+			}
+			tmp = tmp->next;
+		}
+		if(plua_operator_associativity_run(L, file, ret) == 0) {
+			lua_pop(L, -1);
+			assert(lua_gettop(L) == 0);
+			uv_mutex_unlock(&state->lock);
+			return -1;
+		}
+	}
+	lua_pop(L, -1);
+
+	assert(lua_gettop(L) == 0);
+	uv_mutex_unlock(&state->lock);
+
+	return 0;
+}
+
+int event_operator_callback(char *module, struct varcont_t *a, struct varcont_t *b, struct varcont_t *v) {
+	struct lua_state_t *state = plua_get_free_state();
+	struct lua_State *L = NULL;
+
+	if(state == NULL) {
+		return -1;
+	}
+
+	if((L = state->L) == NULL) {
+		assert(lua_gettop(L) == 0);
+		uv_mutex_unlock(&state->lock);
+		return -1;
+	}
+
+	char name[255], *p = name;
+	memset(name, '\0', 255);
+
+	sprintf(p, "operator.%s", module);
+
+	lua_getglobal(L, name);
+	if(lua_isnil(L, -1) != 0) {
+		assert(lua_gettop(L) == 0);
+		uv_mutex_unlock(&state->lock);
+		return -1;
+	}
+	if(lua_istable(L, -1) != 0) {
+		char *file = NULL;
+		struct plua_module_t *tmp = plua_get_modules();
+		while(tmp) {
+			if(strcmp(module, tmp->name) == 0) {
+				file = tmp->file;
+				state->module = tmp;
+				break;
+			}
+			tmp = tmp->next;
+		}
+		if(plua_operator_module_run(L, file, a, b, v) == 0) {
+			lua_pop(L, -1);
+			assert(lua_gettop(L) == 0);
+			uv_mutex_unlock(&state->lock);
+			return -1;
+		}
+	}
+	lua_pop(L, -1);
+
+	assert(lua_gettop(L) == 0);
+	uv_mutex_unlock(&state->lock);
+
+	return 0;
 }
 
 int event_operator_gc(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	struct event_operators_t *tmp_operator = NULL;
-	while(event_operators) {
-		tmp_operator = event_operators;
-		FREE(tmp_operator->name);
-		event_operators = event_operators->next;
-		FREE(tmp_operator);
-	}
-	if(event_operators != NULL) {
-		FREE(event_operators);
-	}
-
+	init = 0;
 	logprintf(LOG_DEBUG, "garbage collected event operator library");
 	return 0;
 }

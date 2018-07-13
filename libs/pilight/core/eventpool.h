@@ -157,6 +157,9 @@ struct uv_custom_poll_t {
 	int doclose;
 	int started;
 	int action;
+
+	char *host;
+
 	uv_timer_t *timer_req;
 	uv_poll_t *poll_req;
 

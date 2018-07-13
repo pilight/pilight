@@ -177,7 +177,7 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	}
 
 	if(*nread > 0) {
-		buf[*nread-1] = '\0';
+		buf[*nread] = '\0';
 	}
 
 	switch(request->step) {
@@ -530,9 +530,10 @@ static void write_cb(uv_poll_t *req) {
 int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ssl, struct mail_t *mail, void (*callback)(int, struct mail_t *)) {
 	struct request_t *request = NULL;
 	struct uv_custom_poll_t *custom_poll_data = NULL;
-	struct sockaddr_in addr;
-	char ip[INET_ADDRSTRLEN+1], *p = ip;
-	int r = 0, sockfd = 0;
+	struct sockaddr_in addr4;
+	struct sockaddr_in6 addr6;
+	char *ip = NULL;
+	int type = 0, sockfd = 0, r = 0;
 
 	if(mail->from == NULL) {
 		logprintf(LOG_ERR, "SMTP: sender not set");
@@ -548,6 +549,10 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 	}
 	if(mail->to == NULL) {
 		logprintf(LOG_ERR, "SMTP: recipient not set");
+		return -1;
+	}
+	if(strcmp(mail->message, ".") == 0) {
+		logprintf(LOG_ERR, "SMTP: message cannot be a single .");
 		return -1;
 	}
 
@@ -572,18 +577,38 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 	}
 #endif
 
-	r = host2ip(host, p);
-	if(r != 0) {
-		logprintf(LOG_ERR, "host2ip");
-		goto freeuv;
+	type = host2ip(host, &ip);
+	switch(type) {
+		case AF_INET: {
+			memset(&addr4, '\0', sizeof(struct sockaddr_in));
+			r = uv_ip4_addr(ip, port, &addr4);
+			if(r != 0) {
+				/*LCOV_EXCL_START*/
+				logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
+				goto free;
+				/*LCOV_EXCL_END*/
+			}
+		} break;
+		case AF_INET6: {
+			memset(&addr6, '\0', sizeof(struct sockaddr_in6));
+			r = uv_ip6_addr(ip, port, &addr6);
+			if(r != 0) {
+				/*LCOV_EXCL_START*/
+				logprintf(LOG_ERR, "uv_ip6_addr: %s", uv_strerror(r));
+				goto free;
+				/*LCOV_EXCL_END*/
+			}
+		} break;
+		default: {
+			/*LCOV_EXCL_START*/
+			logprintf(LOG_ERR, "host2ip");
+			goto free;
+			/*LCOV_EXCL_END*/
+		} break;
 	}
-	r = uv_ip4_addr(ip, port, &addr);
-	if(r != 0) {
-		logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
-		goto freeuv;
-	}
+	FREE(ip);
 
-	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+	if((sockfd = socket(type, SOCK_STREAM, 0)) < 0){
 		logprintf(LOG_ERR, "socket: %s", strerror(errno)); /*LCOV_EXCL_LINE*/
 		goto free;
 	}
@@ -596,7 +621,17 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 	fcntl(sockfd, F_SETFL, arg | O_NONBLOCK);
 #endif
 
-	if(connect(sockfd, (const struct sockaddr *)&addr, sizeof(struct sockaddr)) < 0) {
+	switch(type) {
+		case AF_INET: {
+			r = connect(sockfd, (struct sockaddr *)&addr4, sizeof(addr4));
+		} break;
+		case AF_INET6: {
+			r = connect(sockfd, (struct sockaddr *)&addr6, sizeof(addr6));
+		} break;
+		default: {
+		} break;
+	}
+	if(r < 0) {
 #ifdef _WIN32
 		if(!(WSAGetLastError() == WSAEWOULDBLOCK || WSAGetLastError() == WSAEISCONN)) {
 #else
@@ -632,7 +667,7 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
 		FREE(poll_req);
-		goto freeuv;
+		goto free;
 		/*LCOV_EXCL_STOP*/
 	}
 
@@ -641,9 +676,14 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 
 	return 0;
 
-freeuv:
-	FREE(request);
 free:
+	if(request != NULL && request->callback != NULL) {
+		request->callback(-1, request->mail);
+	}
+	FREE(request);
+	if(custom_poll_data != NULL) {
+		uv_custom_poll_free(custom_poll_data);
+	}
 	if(sockfd > 0) {
 #ifdef _WIN32
 		closesocket(sockfd);

@@ -130,7 +130,7 @@ div.ui-slider-switch, div.screen {
 }
 
 li.label .text {
-	position: absolute;
+	position: relative;
 	right: 0px;
 	margin: 2px 5px 0px 5px;
 	color: black;
@@ -143,10 +143,10 @@ li.label .marquee {
 	overflow: hidden;
 	font-weight: normal;
 	text-align: right;
-	width: 50%;
+	max-width: 95%;
 	padding: 4px 5px 0px 5px;
-	white-space: nowrap;
-	height: 25px;
+	white-space: normal;
+	min-height: 25px;
 	-moz-border-radius: 4px 4px 4px 4px;
 	border-radius: 4px 4px 4px 4px;
 }
@@ -357,4 +357,9 @@ ul.ui-listview li.switch div.name {
 .weather_values {
 	overflow: auto;
 	float: right;
+}
+
+.ui-li-static {
+        height: auto;
+        min-height: 27px;
 }

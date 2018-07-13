@@ -125,8 +125,12 @@ unsigned int explode(const char *str, const char *delimiter, char ***output) {
 	while(i < l) {
 		if(strncmp(&str[i], delimiter, p) == 0) {
 			if((i-y) > 0) {
-				*output = REALLOC(*output, sizeof(char *)*(n+1));
-				(*output)[n] = MALLOC((i-y)+1);
+				if((*output = REALLOC(*output, sizeof(char *)*(n+1))) == NULL) {
+					OUT_OF_MEMORY
+				}
+				if(((*output)[n] = MALLOC((i-y)+1)) == NULL) {
+					OUT_OF_MEMORY
+				}
 				strncpy((*output)[n], &str[y], i-y);
 				(*output)[n][(i-y)] = '\0';
 				n++;
@@ -136,8 +140,12 @@ unsigned int explode(const char *str, const char *delimiter, char ***output) {
 		i++;
 	}
 	if(strlen(&str[y]) > 0) {
-		*output = REALLOC(*output, sizeof(char *)*(n+1));
-		(*output)[n] = MALLOC((i-y)+1);
+		if((*output = REALLOC(*output, sizeof(char *)*(n+1))) == NULL) {
+			OUT_OF_MEMORY
+		}
+		if(((*output)[n] = MALLOC((i-y)+1)) == NULL) {
+			OUT_OF_MEMORY
+		}
 		strncpy((*output)[n], &str[y], i-y);
 		(*output)[n][(i-y)] = '\0';
 		n++;
@@ -953,18 +961,14 @@ char *uniq_space(char *str){
 }
 
 int str_replace(char *search, char *replace, char **str) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	char *target = *str;
 	unsigned short match = 0;
-	int len = (int)strlen(target);
+	int len = (int)strlen(*str);
 	int nlen = 0;
 	int slen = (int)strlen(search);
 	int rlen = (int)strlen(replace);
 	int x = 0;
-
 	while(x < len) {
-		if(strncmp(&target[x], search, (size_t)slen) == 0) {
+		if(strncmp(&(*str)[x], search, (size_t)slen) == 0) {
 			match = 1;
 			int rpos = (x + (slen - rlen));
 			if(rpos < 0) {
@@ -973,17 +977,15 @@ int str_replace(char *search, char *replace, char **str) {
 			}
 			nlen = len - (slen - rlen);
 			if(len < nlen) {
-				if((target = REALLOC(target, (size_t)nlen+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+				if(((*str) = REALLOC((*str), (size_t)nlen+1)) == NULL) { /*LCOV_EXCL_LINE*/
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
-				memset(&target[len], '\0', (size_t)(nlen-len));
+				memset(&(*str)[len], '\0', (size_t)(nlen-len));
 			}
 			len = nlen;
-
-			memmove(&target[x], &target[rpos], (size_t)(len-x));
-			strncpy(&target[x], replace, (size_t)rlen);
-			target[len] = '\0';
+			memmove(&(*str)[x], &(*str)[rpos], (size_t)(len-x));
+			strncpy(&(*str)[x], replace, (size_t)rlen);
+			(*str)[len] = '\0';
 			x += rlen-1;
 		}
 		x++;
@@ -995,8 +997,29 @@ int str_replace(char *search, char *replace, char **str) {
 	}
 }
 
+int strnicmp(char const *a, char const *b, size_t len) {
+	int i = 0;
+
+	if(a == NULL || b == NULL) {
+		return -1;
+	}
+	if(len == 0) {
+		return 0;
+	}
+
+	for(;i++<len; a++, b++) {
+		int d = tolower(*a) - tolower(*b);
+		if(d != 0 || !*a || i == len) {
+			return d;
+		}
+	}
+	return -1;
+}
+
 int stricmp(char const *a, char const *b) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+	if(a == NULL || b == NULL) {
+		return -1;
+	}
 
 	for(;; a++, b++) {
 			int d = tolower(*a) - tolower(*b);
