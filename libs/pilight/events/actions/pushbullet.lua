@@ -63,7 +63,7 @@ function M.info()
 	return {
 		name = "pushbullet",
 		version = "1.0",
-		reqversion = "8.1.2",
+		reqversion = "8.1.1",
 		reqcommit = "0"
 	}
 end
