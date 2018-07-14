@@ -812,6 +812,64 @@ static void test_event_actions_dim_check_parameters(CuTest *tc) {
 
 	{
 		/*
+		 * Invalid dimlevel vartype
+		 */
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("a"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "FROM", &v);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "IN", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
+		/*
+		 * Invalid dimlevel vartype
+		 */
+		struct event_action_args_t *args = NULL;
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("dimmer"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 10; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "TO", &v);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("a"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FROM", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "IN", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("dim", args));
+	}
+
+	{
+		/*
 		 * Device does not exist
 		 */
 		struct event_action_args_t *args = NULL;

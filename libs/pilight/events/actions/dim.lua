@@ -36,6 +36,10 @@ function M.check(parameters)
 		error("dim action \"TO\" only takes one argument");
 	end
 
+	if type(tonumber(parameters['TO']['value'][1])) ~= 'number' then
+		error("dim action \"TO\" must requires a numeric value got a \"" .. type(parameters['TO']['value'][1]) .. "\"");
+	end
+
 	nr1 = parameters['DEVICE']['order'];
 	nr2 = parameters['TO']['order'];
 
@@ -112,6 +116,11 @@ function M.check(parameters)
 		if #parameters['FROM']['value'] ~= 1 or parameters['FROM']['value'][2] ~= nil then
 			error("dim action \"FROM\" only takes one argument");
 		end
+
+		if type(tonumber(parameters['FROM']['value'][1])) ~= 'number' then
+			error("dim action \"FROM\" must requires a numeric value got a \"" .. type(parameters['FROM']['value'][1]) .. "\"");
+		end
+
 		nr5 = parameters['FROM']['order'];
 
 		if nr5 < nr2 then
