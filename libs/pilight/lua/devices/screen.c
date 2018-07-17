@@ -9,19 +9,13 @@
 #include <string.h>
 #include <assert.h>
 
-#ifndef PILIGHT_REWRITE
-#include "../../config/devices.h"
-#endif
-
-#include "../../protocols/protocol.h"
-
 #include "../../core/log.h"
 #include "../config.h"
 #include "switch.h"
 
-typedef struct switch_t {
+typedef struct screen_t {
 	char *state;
-} switch_t;
+} screen_t;
 
 static void *reason_control_device_free(void *param) {
 	struct reason_control_device_t *data = param;
@@ -31,8 +25,8 @@ static void *reason_control_device_free(void *param) {
 	return NULL;
 }
 
-static void plua_config_device_switch_gc(void *data) {
-	struct switch_t *values = data;
+static void plua_config_device_screen_gc(void *data) {
+	struct screen_t *values = data;
 	if(values != NULL) {
 		if(values->state != NULL) {
 			FREE(values->state);
@@ -42,7 +36,7 @@ static void plua_config_device_switch_gc(void *data) {
 	values = NULL;
 }
 
-static int plua_config_device_switch_send(lua_State *L) {
+static int plua_config_device_screen_send(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(dev == NULL) {
@@ -63,7 +57,7 @@ static int plua_config_device_switch_send(lua_State *L) {
 	data1->state = NULL;
 	data1->values = NULL;
 
-	struct switch_t *obj = dev->data;
+	struct screen_t *obj = dev->data;
 	if(obj != NULL) {
 		if(obj->state != NULL) {
 			if((data1->state = STRDUP(obj->state)) == NULL) {
@@ -85,7 +79,7 @@ static int plua_config_device_switch_send(lua_State *L) {
 	return 0;
 }
 
-static int plua_config_device_switch_get_state(lua_State *L) {
+static int plua_config_device_screen_get_state(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
 	char *state = NULL;
 
@@ -112,9 +106,8 @@ static int plua_config_device_switch_get_state(lua_State *L) {
 	return 0;
 }
 
-static int plua_config_device_switch_has_state(lua_State *L) {
+static int plua_config_device_screen_has_state(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
-	struct protocol_t *protocol = NULL;
 	const char *state = NULL;
 	int i = 0;
 
@@ -139,20 +132,11 @@ static int plua_config_device_switch_has_state(lua_State *L) {
 	state = lua_tostring(L, -1);
 	lua_remove(L, -1);
 
-	while(devices_select_protocol(ORIGIN_ACTION, dev->name, i++, &protocol) == 0) {
-		struct options_t *opt = protocol->options;
-		while(opt) {
-			if(opt->conftype == DEVICES_STATE) {
-				if(strcmp(opt->name, state) == 0) {
-					lua_pushboolean(L, 1);
+	while(devices_is_state(ORIGIN_ACTION, dev->name, i++, (char *)state) == 0) {
+		lua_pushboolean(L, 1);
 
-					assert(lua_gettop(L) == 1);
-
-					return 1;
-				}
-			}
-			opt = opt->next;
-		}
+		assert(lua_gettop(L) == 1);
+		return 1;
 	}
 
 	lua_pushboolean(L, 0);
@@ -162,9 +146,8 @@ static int plua_config_device_switch_has_state(lua_State *L) {
 	return 1;
 }
 
-static int plua_config_device_switch_set_state(lua_State *L) {
+static int plua_config_device_screen_set_state(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
-	struct protocol_t *protocol = NULL;
 	const char *state = NULL;
 	int i = 0, match = 0;
 
@@ -188,18 +171,11 @@ static int plua_config_device_switch_set_state(lua_State *L) {
 	state = lua_tostring(L, -1);
 	lua_remove(L, -1);
 
-	while(devices_select_protocol(ORIGIN_ACTION, dev->name, i++, &protocol) == 0) {
-		struct options_t *opt = protocol->options;
-		while(opt) {
-			if(opt->conftype == DEVICES_STATE) {
-				if(strcmp(opt->name, state) == 0) {
-					match = 1;
-					break;
-				}
-			}
-			opt = opt->next;
-		}
+	while(devices_is_state(ORIGIN_ACTION, dev->name, i++, (char *)state) == 0) {
+		match = 1;
+		break;
 	}
+
 	if(match == 0) {
 		lua_pushboolean(L, 0);
 
@@ -208,16 +184,15 @@ static int plua_config_device_switch_set_state(lua_State *L) {
 		return 1;
 	}
 
-
 	if(dev->data == NULL) {
-		if((dev->data = MALLOC(sizeof(struct switch_t))) == NULL) {
+		if((dev->data = MALLOC(sizeof(struct screen_t))) == NULL) {
 			OUT_OF_MEMORY
 		}
-		memset(dev->data, 0, sizeof(struct switch_t));
-		plua_gc_reg(L, dev->data, plua_config_device_switch_gc);
+		memset(dev->data, 0, sizeof(struct screen_t));
+		plua_gc_reg(L, dev->data, plua_config_device_screen_gc);
 	}
 
-	struct switch_t *obj = dev->data;
+	struct screen_t *obj = dev->data;
 	if(obj->state != NULL) {
 		FREE(obj->state);
 	}
@@ -232,25 +207,25 @@ static int plua_config_device_switch_set_state(lua_State *L) {
 	return 1;
 }
 
-int plua_config_device_switch(lua_State *L, struct plua_device_t *dev) {
+int plua_config_device_screen(lua_State *L, struct plua_device_t *dev) {
 	lua_pushstring(L, "getState");
 	lua_pushlightuserdata(L, dev);
-	lua_pushcclosure(L, plua_config_device_switch_get_state, 1);
+	lua_pushcclosure(L, plua_config_device_screen_get_state, 1);
 	lua_settable(L, -3);
 
 	lua_pushstring(L, "setState");
 	lua_pushlightuserdata(L, dev);
-	lua_pushcclosure(L, plua_config_device_switch_set_state, 1);
+	lua_pushcclosure(L, plua_config_device_screen_set_state, 1);
 	lua_settable(L, -3);
 
 	lua_pushstring(L, "hasState");
 	lua_pushlightuserdata(L, dev);
-	lua_pushcclosure(L, plua_config_device_switch_has_state, 1);
+	lua_pushcclosure(L, plua_config_device_screen_has_state, 1);
 	lua_settable(L, -3);
 
 	lua_pushstring(L, "send");
 	lua_pushlightuserdata(L, dev);
-	lua_pushcclosure(L, plua_config_device_switch_send, 1);
+	lua_pushcclosure(L, plua_config_device_screen_send, 1);
 	lua_settable(L, -3);
 
 	return 1;

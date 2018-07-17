@@ -309,6 +309,9 @@ int plua_config_device(lua_State *L) {
 			case SWITCH:
 				plua_config_device_switch(L, dev);
 			break;
+			case SCREEN:
+				plua_config_device_screen(L, dev);
+			break;
 			case LABEL:
 				plua_config_device_label(L, dev);
 			break;
