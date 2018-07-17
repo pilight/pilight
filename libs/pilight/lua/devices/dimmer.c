@@ -32,7 +32,7 @@ static void *reason_control_device_free(void *param) {
 	return NULL;
 }
 
-static void plua_config_dimmer_gc(void *data) {
+static void plua_config_device_dimmer_gc(void *data) {
 	struct dimmer_t *values = data;
 	if(values != NULL) {
 		if(values->state != NULL) {
@@ -198,7 +198,7 @@ static int plua_config_device_dimmer_set_state(lua_State *L) {
 			OUT_OF_MEMORY
 		}
 		memset(dev->data, 0, sizeof(struct dimmer_t));
-		plua_gc_reg(L, dev->data, plua_config_dimmer_gc);
+		plua_gc_reg(L, dev->data, plua_config_device_dimmer_gc);
 	}
 	struct dimmer_t *dimmer = dev->data;
 	if(dimmer->state != NULL) {
@@ -345,7 +345,7 @@ static int plua_config_device_dimmer_set_dimlevel(lua_State *L) {
 			OUT_OF_MEMORY
 		}
 		memset(dev->data, 0, sizeof(struct dimmer_t));
-		plua_gc_reg(L, dev->data, plua_config_dimmer_gc);
+		plua_gc_reg(L, dev->data, plua_config_device_dimmer_gc);
 	}
 	struct dimmer_t *dimmer = dev->data;
 	dimmer->dimlevel = dimlevel;

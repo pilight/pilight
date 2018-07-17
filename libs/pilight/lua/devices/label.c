@@ -33,7 +33,7 @@ static void *reason_control_device_free(void *param) {
 	return NULL;
 }
 
-static void plua_config_label_gc(void *data) {
+static void plua_config_device_label_gc(void *data) {
 	struct label_t *values = data;
 	if(values != NULL) {
 		if(values->color != NULL) {
@@ -181,7 +181,7 @@ static int plua_config_device_label_set_label(lua_State *L) {
 			OUT_OF_MEMORY
 		}
 		memset(dev->data, 0, sizeof(struct label_t));
-		plua_gc_reg(L, dev->data, plua_config_label_gc);
+		plua_gc_reg(L, dev->data, plua_config_device_label_gc);
 	}
 	struct label_t *obj = dev->data;
 	if(obj->label != NULL) {
@@ -227,7 +227,7 @@ static int plua_config_device_label_set_color(lua_State *L) {
 			OUT_OF_MEMORY
 		}
 		memset(dev->data, 0, sizeof(struct label_t));
-		plua_gc_reg(L, dev->data, plua_config_label_gc);
+		plua_gc_reg(L, dev->data, plua_config_device_label_gc);
 	}
 	struct label_t *obj = dev->data;
 	if(obj->color != NULL) {

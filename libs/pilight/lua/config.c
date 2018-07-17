@@ -29,6 +29,7 @@
 #include "config.h"
 #include "../storage/storage.h"
 #include "../protocols/protocol.h"
+
 #include "devices/switch.h"
 #include "devices/label.h"
 #include "devices/dimmer.h"
@@ -288,6 +289,9 @@ int plua_config_device(lua_State *L) {
 			break;
 			case SWITCH:
 				plua_config_device_switch(L, dev);
+			break;
+			case SCREEN:
+				plua_config_device_screen(L, dev);
 			break;
 			case LABEL:
 				plua_config_device_label(L, dev);
