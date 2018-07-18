@@ -1021,6 +1021,18 @@ void plua_ret_false(lua_State *L) {
 	lua_pushboolean(L, 0);
 }
 
+void plua_override_global(char *name, int (*func)(lua_State *L)) {
+	int i = 0;
+	for(i=0;i<NRLUASTATES;i++) {
+		uv_mutex_lock(&lua_state[i].lock);
+		lua_getglobal(lua_state[i].L, "_G");
+		lua_pushcfunction(lua_state[i].L, func);
+		lua_setfield(lua_state[i].L, -2, name);
+		lua_remove(lua_state[i].L, -1);
+		uv_mutex_unlock(&lua_state[i].lock);
+	}
+}
+
 int plua_gc(void) {
 	struct plua_module_t *tmp = NULL;
 	while(modules) {
