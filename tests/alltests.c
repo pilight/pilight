@@ -82,6 +82,7 @@ CuSuite *suite_event_actions_toggle(void);
 CuSuite *suite_event_actions_label(void);
 CuSuite *suite_event_actions_dim(void);
 CuSuite *suite_event_actions_mail(void);
+CuSuite *suite_event_actions_pushbullet(void);
 CuSuite *suite_events(void);
 
 CuString *output = NULL;
@@ -91,18 +92,18 @@ CuSuite *suites[NRSUITS];
 const uv_thread_t pth_main_id;
 int nr = 0;
 
-// void _logprintf(int prio, char *file, int line, const char *str, ...) {
-	// va_list ap;
-	// char buffer[1024];
+/*void _logprintf(int prio, char *file, int line, const char *str, ...) {
+	va_list ap;
+	char buffer[1024];
 
-	// memset(buffer, 0, 1024);
+	memset(buffer, 0, 1024);
 
-	// va_start(ap, str);
-	// vsnprintf(buffer, 1024, str, ap);
-	// va_end(ap);
+	va_start(ap, str);
+	vsnprintf(buffer, 1024, str, ap);
+	va_end(ap);
 
-	// printf("(%s #%d) %s\n", file, line, buffer);
-// }
+	printf("(%s #%d) %s\n", file, line, buffer);
+}*/
 
 int suiteFailed(void) {
 	int i = 0;
@@ -199,6 +200,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_event_actions_label(); // Ported
 	suites[nr++] = suite_event_actions_dim(); // Ported
 	suites[nr++] = suite_event_actions_mail(); // Ported
+	suites[nr++] = suite_event_actions_pushbullet(); // Ported
 	suites[nr++] = suite_events(); // Ported
 
 	for(i=0;i<nr;i++) {
