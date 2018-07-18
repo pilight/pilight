@@ -84,6 +84,7 @@ struct plua_module_t *plua_get_modules(void);
 void plua_init(void);
 void plua_ret_true(lua_State *L);
 void plua_ret_false(lua_State *L);
+void plua_override_global(char *name, int (*func)(lua_State *L));
 int plua_gc(void);
 
 #endif
