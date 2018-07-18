@@ -38,7 +38,7 @@ function M.check(parameters)
 	end
 
 	local address = parameters['TO']['value'][1];
-	if string.match(address, "^[%w.]+@[%w]+.[%w]?[%w]?[%w]?$") ~= address then
+	if string.match(address, "^[%w.]+@[%w]+[.][%w]+[%w]?[%w]?$") ~= address then
 		error("sendmail action \"TO\" must contain an e-mail address");
 	end
 
@@ -63,7 +63,7 @@ function M.check(parameters)
 		error("sendmail: setting \"smtp-sender\" is missing in config");
 	end
 
-	if string.match(address, "^[%w.]+@[%w]+[.][%w]?[%w]?[%w]?$") ~= address then
+	if string.match(address, "^[%w.]+@[%w]+[.][%w]+[%w]?[%w]?$") ~= address then
 		error("sendmail action \"FROM\" must contain an e-mail address");
 	end
 
