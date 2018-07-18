@@ -38,6 +38,7 @@
 #include "devices/switch.h"
 #include "devices/label.h"
 #include "devices/dimmer.h"
+#include "devices/screen.h"
 #include "devices/datetime.h"
 #include "devices/program.h"
 
