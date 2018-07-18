@@ -448,6 +448,7 @@ int event_action_get_parameters(char *module, int *nr, char ***ret) {
 	lua_getglobal(L, name);
 	if(lua_isnil(L, -1) != 0) {
 		lua_remove(L, -1);
+		lua_remove(L, -1);
 		assert(lua_gettop(L) == 0);
 		uv_mutex_unlock(&state->lock);
 		return -1;
