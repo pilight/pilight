@@ -1,4 +1,4 @@
-pilight version 7.0
+pilight version 8.1.1
 =======
 [![Build Status](https://travis-ci.org/pilight/pilight.svg?branch=rewrite)](https://travis-ci.org/pilight/pilight)[![Coverage Status](https://coveralls.io/repos/github/pilight/pilight/badge.svg?branch=rewrite)](https://coveralls.io/github/pilight/pilight?branch=rewrite)  
 <a class="donate" href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=curlymoo1%40gmail%2ecom&lc=US&item_name=curlymoo&no_note=0&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donate_SM%2egif%3aNonHostedGuest" target="_blank">
