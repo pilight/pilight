@@ -38,7 +38,7 @@ end
 
 function M.callback(http)
 	if http.getCode() == 200 then
-		error("pushbullet action succeeded with message \" " .. http.getData() .. "\"");
+		error("pushbullet action succeeded with message \"" .. http.getData() .. "\"");
 	else
 		error("pushbullet action failed (" .. http.getCode() .. ") with message \" " .. http.getData() .. "\"");
 	end
@@ -46,8 +46,17 @@ end
 
 function M.run(parameters)
 	local httpobj = pilight.network.http();
+	local url = "https://" .. parameters['TOKEN']['value'][1] .. "@api.pushbullet.com/v2/pushes";
+
+	--
+	-- Allow overriding the url for unittesting purposes
+	--
+	if parameters['URL']['value'][1] ~= nil then
+		url = parameters['URL']['value'][1];
+	end
+
 	httpobj.setCallback("callback");
-	httpobj.setUrl("https://" .. parameters['TOKEN']['value'][1] .. "@api.pushbullet.com/v2/pushes");
+	httpobj.setUrl(url);
 	httpobj.setMimetype("application/json");
 	httpobj.setData("{\"type\": \"note\", \"title\": \"" .. parameters['TITLE']['value'][1] .."\", \"body\": \"" .. parameters['BODY']['value'][1] .. "\"}");
 	httpobj.post();
