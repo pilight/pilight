@@ -1,7 +1,7 @@
 Changelog
 =========
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.2
 
 .. rubric:: Improvements
 
@@ -14,6 +14,9 @@ Changelog
 
 - Allow multiple dots in rules for e.g. IP addresses.
 - Fixed bug in which didn't close opened files.
+- Few fixes in mail library.
+- Fixed pushbullet SSL handshake error.
+- Improved Alecto WX500 
 
 .. versionadded:: 8.1.1
 

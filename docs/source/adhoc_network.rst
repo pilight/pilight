@@ -4,7 +4,7 @@ Adhoc Network
 - `Introduction`_
 - `Network of Senders and Receivers`_
 - `Network of (Conflicting) Sensors and Relays`_
-- `Stable Mail Daemon`_
+- `Stable Main Daemon`_
 
 Introduction
 ------------
@@ -314,7 +314,7 @@ Now we edit our configuration file incorporating the new UUID values:
 
 If you now want to turn the television set on, pilight knows that it should only control the relay connected to Node C with the UUID 0338-00-00-38-000300. The same would count for sensors connected to your Raspberry Pi. Just add proper UUID values to them, and pilight will know which sensor is connected to which pilight node.
 
-Stable Mail Daemon
+Stable Main Daemon
 ------------------
 
 As you might have noticed, the main daemon is very important in the pilight AdHoc network. Once the main daemon crashes, the whole network will be down. You can easily restore the network by just restarting the main daemon. However, you might also have noticed that a Raspberry Pi is a bit less stable than normal everyday computers and less stable then your regular NAS system. What about running the main daemon on there? You can!

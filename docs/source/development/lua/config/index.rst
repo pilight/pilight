@@ -8,6 +8,7 @@ The config library allows for interaction between pilight configuration and espe
    - `Dimmer`_
    - `Label`_
    - `Switch`_
+   - `Screen`_
 - `Settings`_
 
 .. warning::
@@ -165,6 +166,25 @@ Switch
 .. c:function:: string send()
 
    Sends the new settings to the switch.
+
+Screen
+^^^^^^
+
+.. c:function:: string getState()
+
+   Returns the state of the screen.
+
+.. c:function:: boolean hasState(string state)
+
+   Check if this screen can be set to a specific state.
+
+.. c:function:: boolean setState(string state)
+
+   Set the screen to a specific state.
+
+.. c:function:: string send()
+
+   Sends the new settings to the screen.
 
 Settings
 --------
