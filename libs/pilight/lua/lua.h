@@ -17,6 +17,7 @@
 
 #define NRLUASTATES	4
 
+#define UNITTEST	0
 #define OPERATOR	1
 #define FUNCTION	2
 #define ACTION 		3
@@ -86,7 +87,10 @@ struct plua_module_t *plua_get_modules(void);
 void plua_init(void);
 void plua_ret_true(lua_State *L);
 void plua_ret_false(lua_State *L);
+#ifdef PILIGHT_UNITTEST
+void plua_coverage_output(const char *);
 void plua_override_global(char *name, int (*func)(lua_State *L));
+#endif
 int plua_gc(void);
 
 #endif

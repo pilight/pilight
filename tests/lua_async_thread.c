@@ -138,32 +138,6 @@ static int call(struct lua_State *L, char *file, char *func) {
 	return 1;
 }
 
-static void plua_overwrite_print(void) {
-	struct lua_state_t *state[NRLUASTATES];
-	struct lua_State *L = NULL;
-	int i = 0;
-
-	for(i=0;i<NRLUASTATES;i++) {
-		state[i] = plua_get_free_state();
-
-		if(state[i] == NULL) {
-			return;
-		}
-		if((L = state[i]->L) == NULL) {
-			uv_mutex_unlock(&state[i]->lock);
-			return;
-		}
-
-		lua_getglobal(L, "_G");
-		lua_pushcfunction(L, plua_print);
-		lua_setfield(L, -2, "print");
-		lua_pop(L, 1);
-	}
-	for(i=0;i<NRLUASTATES;i++) {
-		uv_mutex_unlock(&state[i]->lock);
-	}
-}
-
 static void close_cb(uv_handle_t *handle) {
 	if(handle != NULL) {
 		FREE(handle);
@@ -193,7 +167,7 @@ static void test_lua_async_thread_missing_parameters(CuTest *tc) {
 	memtrack();
 
 	plua_init();
-	plua_overwrite_print();
+	plua_override_global("print", plua_print);
 
 	state = plua_get_free_state();
 	CuAssertPtrNotNull(tc, state);
@@ -225,7 +199,7 @@ static void test_lua_async_thread(CuTest *tc) {
 	memtrack();
 
 	plua_init();
-	plua_overwrite_print();
+	plua_override_global("print", plua_print);
 
 	file = STRDUP(__FILE__);
 	CuAssertPtrNotNull(tc, file);
@@ -240,9 +214,9 @@ static void test_lua_async_thread(CuTest *tc) {
 	FREE(file);
 	file = NULL;
 
-	plua_module_load(path, OPERATOR);
+	plua_module_load(path, UNITTEST);
 
-	CuAssertIntEquals(tc, 0, plua_module_exists("thread", OPERATOR));
+	CuAssertIntEquals(tc, 0, plua_module_exists("thread", UNITTEST));
 
 	uv_mutex_unlock(&state->lock);
 
@@ -259,7 +233,7 @@ static void test_lua_async_thread(CuTest *tc) {
 
 	p = name;
 
-	sprintf(name, "operator.%s", "thread");
+	sprintf(name, "unittest.%s", "thread");
 	lua_getglobal(L, name);
 	CuAssertIntEquals(tc, LUA_TTABLE, lua_type(L, -1));
 
@@ -308,7 +282,7 @@ static void test_lua_async_thread_nonexisting_callback(CuTest *tc) {
 	memtrack();
 
 	plua_init();
-	plua_overwrite_print();
+	plua_override_global("print", plua_print);
 
 	file = STRDUP(__FILE__);
 	CuAssertPtrNotNull(tc, file);
@@ -323,9 +297,9 @@ static void test_lua_async_thread_nonexisting_callback(CuTest *tc) {
 	FREE(file);
 	file = NULL;
 
-	plua_module_load(path, OPERATOR);
+	plua_module_load(path, UNITTEST);
 
-	CuAssertIntEquals(tc, 0, plua_module_exists("thread", OPERATOR));
+	CuAssertIntEquals(tc, 0, plua_module_exists("thread", UNITTEST));
 
 	uv_mutex_unlock(&state->lock);
 
@@ -342,7 +316,7 @@ static void test_lua_async_thread_nonexisting_callback(CuTest *tc) {
 
 	p = name;
 
-	sprintf(name, "operator.%s", "thread");
+	sprintf(name, "unittest.%s", "thread");
 	lua_getglobal(L, name);
 	CuAssertIntEquals(tc, LUA_TTABLE, lua_type(L, -1));
 

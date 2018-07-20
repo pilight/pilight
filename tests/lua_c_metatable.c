@@ -140,32 +140,6 @@ static int plua_print(lua_State* L) {
 	return 1;
 }
 
-static void plua_overwrite_print(void) {
-	struct lua_state_t *state[NRLUASTATES];
-	struct lua_State *L = NULL;
-	int i = 0;
-
-	for(i=0;i<NRLUASTATES;i++) {
-		state[i] = plua_get_free_state();
-
-		if(state[i] == NULL) {
-			return;
-		}
-		if((L = state[i]->L) == NULL) {
-			uv_mutex_unlock(&state[i]->lock);
-			return;
-		}
-
-		lua_getglobal(L, "_G");
-		lua_pushcfunction(L, plua_print);
-		lua_setfield(L, -2, "print");
-		lua_pop(L, 1);
-	}
-	for(i=0;i<NRLUASTATES;i++) {
-		uv_mutex_unlock(&state[i]->lock);
-	}
-}
-
 static void test_lua_c_metatable(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
@@ -179,7 +153,7 @@ static void test_lua_c_metatable(CuTest *tc) {
 	struct lua_state_t *state = NULL;
 
 	plua_init();
-	plua_overwrite_print();
+	plua_override_global("print", plua_print);
 
 	state = plua_get_free_state();
 	CuAssertPtrNotNull(gtc, state);
@@ -255,7 +229,7 @@ static void test_lua_c_metatable(CuTest *tc) {
 	uv_mutex_unlock(&state->lock);
 	plua_gc();
 
-	// CuAssertIntEquals(tc, 24, run);
+	CuAssertIntEquals(tc, 24, run);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 

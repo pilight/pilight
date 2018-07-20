@@ -86,11 +86,8 @@ static void test_lua_common_random(CuTest *tc) {
 	}
 
 	plua_init();
+	plua_override_global("print", plua_print);
 	struct lua_state_t *state = plua_get_free_state();
-	lua_getglobal(state->L, "_G");
-	lua_pushcfunction(state->L, plua_print);
-	lua_setfield(state->L, -2, "print");
-	lua_pop(state->L, 1);
 
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "print(pilight.common.random())"));
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "print(pilight.common.random('a'))"));
@@ -138,11 +135,8 @@ static void test_lua_common_explode(CuTest *tc) {
 	}
 
 	plua_init();
+	plua_override_global("print", plua_print);
 	struct lua_state_t *state = plua_get_free_state();
-	lua_getglobal(state->L, "_G");
-	lua_pushcfunction(state->L, plua_print);
-	lua_setfield(state->L, -2, "print");
-	lua_pop(state->L, 1);
 
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "print(pilight.common.explode())"));
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "print(pilight.common.explode('a'))"));

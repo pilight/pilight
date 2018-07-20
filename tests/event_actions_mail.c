@@ -136,6 +136,8 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 	eventpool_init(EVENTPOOL_NO_THREADS);
 
 	plua_init();
+	plua_coverage_output(__FUNCTION__);
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
 	event_action_init();
@@ -474,6 +476,8 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		eventpool_init(EVENTPOOL_NO_THREADS);
 
 		plua_init();
+		plua_coverage_output(__FUNCTION__);
+
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
 		event_action_init();
@@ -533,6 +537,8 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		eventpool_init(EVENTPOOL_NO_THREADS);
 
 		plua_init();
+		plua_coverage_output(__FUNCTION__);
+
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
 		event_action_init();
@@ -592,6 +598,8 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		eventpool_init(EVENTPOOL_NO_THREADS);
 
 		plua_init();
+		plua_coverage_output(__FUNCTION__);
+
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
 		event_action_init();
@@ -651,6 +659,8 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		eventpool_init(EVENTPOOL_NO_THREADS);
 
 		plua_init();
+		plua_coverage_output(__FUNCTION__);
+
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
 		event_action_init();
@@ -709,6 +719,8 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		eventpool_init(EVENTPOOL_NO_THREADS);
 
 		plua_init();
+		plua_coverage_output(__FUNCTION__);
+
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
 		event_action_init();
@@ -912,6 +924,8 @@ static void test_event_actions_mail_run(CuTest *tc) {
 	eventpool_init(EVENTPOOL_NO_THREADS);
 
 	plua_init();
+	plua_coverage_output(__FUNCTION__);
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
 	event_action_init();

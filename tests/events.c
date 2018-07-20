@@ -1101,6 +1101,8 @@ static void test_events(CuTest *tc) {
 		);
 		fclose(f);
 
+		plua_init();
+
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("events.json", CONFIG_SETTINGS));
 		event_action_init();

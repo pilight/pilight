@@ -54,6 +54,8 @@ static void test_event_actions_toggle_get_parameters(CuTest *tc) {
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	plua_init();
+	plua_coverage_output(__FUNCTION__);
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_toggle.json", CONFIG_SETTINGS));
 	event_action_init();
@@ -99,6 +101,8 @@ static void test_event_actions_toggle_check_parameters(CuTest *tc) {
 	genericLabelInit();
 
 	plua_init();
+	plua_coverage_output(__FUNCTION__);
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_toggle.json", CONFIG_SETTINGS | CONFIG_DEVICES));
 	event_action_init();
@@ -447,6 +451,9 @@ static void test_event_actions_toggle_run(CuTest *tc) {
 
 	genericSwitchInit();
 	genericLabelInit();
+
+	plua_init();
+	plua_coverage_output(__FUNCTION__);
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_toggle.json", CONFIG_SETTINGS | CONFIG_DEVICES));

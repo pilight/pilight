@@ -370,9 +370,9 @@ static void test_lua_network_http_get(CuTest *tc) {
 	FREE(file);
 	file = NULL;
 
-	plua_module_load(path, OPERATOR);
+	plua_module_load(path, UNITTEST);
 
-	CuAssertIntEquals(tc, 0, plua_module_exists("http", OPERATOR));
+	CuAssertIntEquals(tc, 0, plua_module_exists("http", UNITTEST));
 
 	uv_mutex_unlock(&state->lock);
 
@@ -393,7 +393,7 @@ static void test_lua_network_http_get(CuTest *tc) {
 
 	http_start(10080);
 
-	sprintf(name, "operator.%s", "http");
+	sprintf(name, "unittest.%s", "http");
 	lua_getglobal(L, name);
 	CuAssertIntEquals(tc, LUA_TTABLE, lua_type(L, -1));
 
@@ -458,9 +458,9 @@ static void test_lua_network_http_post(CuTest *tc) {
 	FREE(file);
 	file = NULL;
 
-	plua_module_load(path, OPERATOR);
+	plua_module_load(path, UNITTEST);
 
-	CuAssertIntEquals(tc, 0, plua_module_exists("http", OPERATOR));
+	CuAssertIntEquals(tc, 0, plua_module_exists("http", UNITTEST));
 
 	uv_mutex_unlock(&state->lock);
 
@@ -481,7 +481,7 @@ static void test_lua_network_http_post(CuTest *tc) {
 
 	http_start(10080);
 
-	sprintf(name, "operator.%s", "http");
+	sprintf(name, "unittest.%s", "http");
 	lua_getglobal(L, name);
 	CuAssertIntEquals(tc, LUA_TTABLE, lua_type(L, -1));
 
@@ -546,9 +546,9 @@ static void test_lua_network_http_nonexisting_callback(CuTest *tc) {
 	FREE(file);
 	file = NULL;
 
-	plua_module_load(path, OPERATOR);
+	plua_module_load(path, UNITTEST);
 
-	CuAssertIntEquals(tc, 0, plua_module_exists("http", OPERATOR));
+	CuAssertIntEquals(tc, 0, plua_module_exists("http", UNITTEST));
 
 	uv_mutex_unlock(&state->lock);
 
@@ -565,7 +565,7 @@ static void test_lua_network_http_nonexisting_callback(CuTest *tc) {
 
 	p = name;
 
-	sprintf(name, "operator.%s", "http");
+	sprintf(name, "unittest.%s", "http");
 	lua_getglobal(L, name);
 	CuAssertIntEquals(tc, LUA_TTABLE, lua_type(L, -1));
 

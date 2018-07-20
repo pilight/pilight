@@ -68,6 +68,8 @@ static void test_event_actions_label_get_parameters(CuTest *tc) {
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	plua_init();
+	plua_coverage_output(__FUNCTION__);
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_SETTINGS));
 	event_action_init();
@@ -122,6 +124,8 @@ static void test_event_actions_label_check_parameters(CuTest *tc) {
 	genericLabelInit();
 
 	plua_init();
+	plua_coverage_output(__FUNCTION__);
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_SETTINGS | CONFIG_DEVICES));
 	event_action_init();
@@ -802,6 +806,9 @@ static void test_event_actions_label_run(CuTest *tc) {
 	genericSwitchInit();
 	genericLabelInit();
 
+	plua_init();
+	plua_coverage_output(__FUNCTION__);
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_SETTINGS | CONFIG_DEVICES));
 	event_action_init();
@@ -865,6 +872,9 @@ static void test_event_actions_label_run1(CuTest *tc) {
 	genericSwitchInit();
 	genericLabelInit();
 
+	plua_init();
+	plua_coverage_output(__FUNCTION__);
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_SETTINGS | CONFIG_DEVICES));
 	event_action_init();
@@ -927,6 +937,9 @@ static void test_event_actions_label_run_delayed(CuTest *tc) {
 
 	genericSwitchInit();
 	genericLabelInit();
+
+	plua_init();
+	plua_coverage_output(__FUNCTION__);
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_SETTINGS | CONFIG_DEVICES));
@@ -1011,6 +1024,9 @@ static void test_event_actions_label_run_overlapped(CuTest *tc) {
 	genericSwitchInit();
 	genericLabelInit();
 
+	plua_init();
+	plua_coverage_output(__FUNCTION__);
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_SETTINGS | CONFIG_DEVICES));
 	event_action_init();
@@ -1077,6 +1093,9 @@ static void test_event_actions_label_run_override(CuTest *tc) {
 
 	genericSwitchInit();
 	genericLabelInit();
+
+	plua_init();
+	plua_coverage_output(__FUNCTION__);
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_label.json", CONFIG_SETTINGS));

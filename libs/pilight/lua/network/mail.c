@@ -450,6 +450,9 @@ static int plua_network_mail_set_callback(lua_State *L) {
 
 	p = name;
 	switch(mail->module->type) {
+		case UNITTEST: {
+			sprintf(p, "unittest.%s", mail->module->name);
+		} break;
 		case FUNCTION: {
 			sprintf(p, "function.%s", mail->module->name);
 		} break;
@@ -532,6 +535,9 @@ static void plua_network_mail_callback(int status, struct mail_t *mail) {
 	logprintf(LOG_DEBUG, "lua mail on state #%d", state->idx);
 
 	switch(state->module->type) {
+		case UNITTEST: {
+			sprintf(p, "unittest.%s", state->module->name);
+		} break;
 		case FUNCTION: {
 			sprintf(p, "function.%s", state->module->name);
 		} break;

@@ -237,6 +237,9 @@ static int plua_async_thread_set_callback(lua_State *L) {
 
 	p = name;
 	switch(thread->module->type) {
+		case UNITTEST: {
+			sprintf(p, "unittest.%s", thread->module->name);
+		} break;
 		case FUNCTION: {
 			sprintf(p, "function.%s", thread->module->name);
 		} break;
@@ -321,6 +324,9 @@ static void thread_callback(uv_work_t *req) {
 	logprintf(LOG_DEBUG, "lua thread on state #%d", state->idx);
 
 	switch(state->module->type) {
+		case UNITTEST: {
+			sprintf(p, "unittest.%s", state->module->name);
+		} break;
 		case FUNCTION: {
 			sprintf(p, "function.%s", state->module->name);
 		} break;
@@ -577,6 +583,9 @@ static int plua_async_timer_set_callback(lua_State *L) {
 
 	p = name;
 	switch(timer->module->type) {
+		case UNITTEST: {
+			sprintf(p, "unittest.%s", timer->module->name);
+		} break;
 		case FUNCTION: {
 			sprintf(p, "function.%s", timer->module->name);
 		} break;
@@ -798,6 +807,9 @@ static void timer_callback(uv_timer_t *req) {
 	logprintf(LOG_DEBUG, "lua timer on state #%d", state->idx);
 
 	switch(state->module->type) {
+		case UNITTEST: {
+			sprintf(p, "unittest.%s", state->module->name);
+		} break;
 		case FUNCTION: {
 			sprintf(p, "function.%s", state->module->name);
 		} break;

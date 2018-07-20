@@ -28,6 +28,9 @@ static void test_event_function_date_add(CuTest *tc) {
 	struct varcont_t v;
 	memtrack();
 
+	plua_init();
+	plua_coverage_output(__FUNCTION__);
+
 	protocol_init();
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_function.json", CONFIG_SETTINGS | CONFIG_DEVICES));
@@ -473,6 +476,9 @@ static void test_event_function_date_format(CuTest *tc) {
 	struct varcont_t ret;
 	memtrack();
 
+	plua_init();
+	plua_coverage_output(__FUNCTION__);
+
 	protocol_init();
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_function.json", CONFIG_SETTINGS | CONFIG_DEVICES));
@@ -750,6 +756,9 @@ static void test_event_function_random(CuTest *tc) {
 	struct varcont_t ret;
 	unsigned int res[2][11] = { { 0 }, { 0 } };
 	memtrack();
+
+	plua_init();
+	plua_coverage_output(__FUNCTION__);
 
 	protocol_init();
 	storage_init();

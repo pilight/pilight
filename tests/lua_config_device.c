@@ -102,11 +102,8 @@ static void test_lua_config_device_unknown(CuTest *tc) {
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	plua_init();
+	plua_override_global("print", plua_print);
 	struct lua_state_t *state = plua_get_free_state();
-	lua_getglobal(state->L, "_G");
-	lua_pushcfunction(state->L, plua_print);
-	lua_setfield(state->L, -2, "print");
-	lua_pop(state->L, 1);
 
 	/* print(dev); */
 	lua_return[0].type = LUA_TNIL;
@@ -160,11 +157,8 @@ static void test_lua_config_device_switch(CuTest *tc) {
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 10, 0);
 
 	plua_init();
+	plua_override_global("print", plua_print);
 	struct lua_state_t *state = plua_get_free_state();
-	lua_getglobal(state->L, "_G");
-	lua_pushcfunction(state->L, plua_print);
-	lua_setfield(state->L, -2, "print");
-	lua_pop(state->L, 1);
 
 	int i = 0;
 	/* print(dev); */
@@ -308,11 +302,8 @@ static void test_lua_config_device_screen(CuTest *tc) {
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 10, 0);
 
 	plua_init();
+	plua_override_global("print", plua_print);
 	struct lua_state_t *state = plua_get_free_state();
-	lua_getglobal(state->L, "_G");
-	lua_pushcfunction(state->L, plua_print);
-	lua_setfield(state->L, -2, "print");
-	lua_pop(state->L, 1);
 
 	int i = 0;
 	/* print(dev); */
@@ -456,11 +447,8 @@ static void test_lua_config_device_label(CuTest *tc) {
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 10, 0);
 
 	plua_init();
+	plua_override_global("print", plua_print);
 	struct lua_state_t *state = plua_get_free_state();
-	lua_getglobal(state->L, "_G");
-	lua_pushcfunction(state->L, plua_print);
-	lua_setfield(state->L, -2, "print");
-	lua_pop(state->L, 1);
 
 	int i = 0;
 	/* print(dev); */
@@ -593,11 +581,8 @@ static void test_lua_config_device_datetime(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, storage_read("lua_config.json", CONFIG_DEVICES));
 
 	plua_init();
+	plua_override_global("print", plua_print);
 	struct lua_state_t *state = plua_get_free_state();
-	lua_getglobal(state->L, "_G");
-	lua_pushcfunction(state->L, plua_print);
-	lua_setfield(state->L, -2, "print");
-	lua_pop(state->L, 1);
 
 	int i = 0;
 	/* print(dev); */
@@ -746,11 +731,8 @@ static void test_lua_config_device_dimmer(CuTest *tc) {
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 10, 0);
 
 	plua_init();
+	plua_override_global("print", plua_print);
 	struct lua_state_t *state = plua_get_free_state();
-	lua_getglobal(state->L, "_G");
-	lua_pushcfunction(state->L, plua_print);
-	lua_setfield(state->L, -2, "print");
-	lua_pop(state->L, 1);
 
 	int i = 0;
 	/* print(dev); */

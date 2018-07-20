@@ -247,9 +247,9 @@ static void test_lua_async_timer(CuTest *tc) {
 	FREE(file);
 	file = NULL;
 
-	plua_module_load(path, OPERATOR);
+	plua_module_load(path, UNITTEST);
 
-	CuAssertIntEquals(tc, 0, plua_module_exists("timer", OPERATOR));
+	CuAssertIntEquals(tc, 0, plua_module_exists("timer", UNITTEST));
 	
 	uv_mutex_unlock(&state->lock);
 
@@ -259,7 +259,7 @@ static void test_lua_async_timer(CuTest *tc) {
 
 	p = name;
 
-	sprintf(name, "operator.%s", "timer");
+	sprintf(name, "unittest.%s", "timer");
 	lua_getglobal(L, name);
 	CuAssertIntEquals(tc, LUA_TTABLE, lua_type(L, -1));
 
@@ -323,9 +323,9 @@ static void test_lua_async_timer_prematurely_stopped(CuTest *tc) {
 	FREE(file);
 	file = NULL;
 
-	plua_module_load(path, OPERATOR);
+	plua_module_load(path, UNITTEST);
 
-	CuAssertIntEquals(tc, 0, plua_module_exists("timer", OPERATOR));
+	CuAssertIntEquals(tc, 0, plua_module_exists("timer", UNITTEST));
 	
 	uv_mutex_unlock(&state->lock);
 
@@ -342,7 +342,7 @@ static void test_lua_async_timer_prematurely_stopped(CuTest *tc) {
 
 	p = name;
 
-	sprintf(name, "operator.%s", "timer");
+	sprintf(name, "unittest.%s", "timer");
 	lua_getglobal(L, name);
 	CuAssertIntEquals(tc, LUA_TTABLE, lua_type(L, -1));
 
@@ -406,9 +406,9 @@ static void test_lua_async_timer_nonexisting_callback(CuTest *tc) {
 	FREE(file);
 	file = NULL;
 
-	plua_module_load(path, OPERATOR);
+	plua_module_load(path, UNITTEST);
 
-	CuAssertIntEquals(tc, 0, plua_module_exists("timer", OPERATOR));
+	CuAssertIntEquals(tc, 0, plua_module_exists("timer", UNITTEST));
 
 	uv_mutex_unlock(&state->lock);
 
@@ -425,7 +425,7 @@ static void test_lua_async_timer_nonexisting_callback(CuTest *tc) {
 
 	p = name;
 
-	sprintf(name, "operator.%s", "timer");
+	sprintf(name, "unittest.%s", "timer");
 	lua_getglobal(L, name);
 	CuAssertIntEquals(tc, LUA_TTABLE, lua_type(L, -1));
 

@@ -413,9 +413,9 @@ static void test_lua_network_mail(CuTest *tc) {
 	FREE(file);
 	file = NULL;
 
-	plua_module_load(path, OPERATOR);
+	plua_module_load(path, UNITTEST);
 
-	CuAssertIntEquals(tc, 0, plua_module_exists("sendmail", OPERATOR));
+	CuAssertIntEquals(tc, 0, plua_module_exists("sendmail", UNITTEST));
 
 	uv_mutex_unlock(&state->lock);
 
@@ -436,7 +436,7 @@ static void test_lua_network_mail(CuTest *tc) {
 
 	mail_start(10025);
 
-	sprintf(name, "operator.%s", "sendmail");
+	sprintf(name, "unittest.%s", "sendmail");
 	lua_getglobal(L, name);
 	CuAssertIntEquals(tc, LUA_TTABLE, lua_type(L, -1));
 
@@ -500,9 +500,9 @@ static void test_lua_network_mail_nonexisting_callback(CuTest *tc) {
 	FREE(file);
 	file = NULL;
 
-	plua_module_load(path, OPERATOR);
+	plua_module_load(path, UNITTEST);
 
-	CuAssertIntEquals(tc, 0, plua_module_exists("sendmail", OPERATOR));
+	CuAssertIntEquals(tc, 0, plua_module_exists("sendmail", UNITTEST));
 
 	uv_mutex_unlock(&state->lock);
 
@@ -519,7 +519,7 @@ static void test_lua_network_mail_nonexisting_callback(CuTest *tc) {
 
 	p = name;
 
-	sprintf(name, "operator.%s", "sendmail");
+	sprintf(name, "unittest.%s", "sendmail");
 	lua_getglobal(L, name);
 	CuAssertIntEquals(tc, LUA_TTABLE, lua_type(L, -1));
 
