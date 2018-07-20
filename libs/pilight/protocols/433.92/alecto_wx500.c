@@ -83,7 +83,7 @@ static void parseCode(void) {
 		}
 	}
 
-	n8=binToDec(binary, 32, 36);
+	n8=binToDec(binary, 32, 35);
 	n7=binToDec(binary, 28, 31);
 	n6=binToDec(binary, 24, 27);
 	n5=binToDec(binary, 20, 23);
