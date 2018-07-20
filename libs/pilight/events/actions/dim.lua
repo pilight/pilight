@@ -62,7 +62,6 @@ function M.check(parameters)
 
 		if nr3 < nr2 then
 			error("dim actions are formatted as \"dim DEVICE ... TO ... FOR ...\"");
-			return -1;
 		end
 	end
 
@@ -85,7 +84,6 @@ function M.check(parameters)
 
 		if nr4 < nr2 then
 			error("dim actions are formatted as \"dim DEVICE ... TO ... AFTER ...\"");
-			return -1;
 		end
 	end
 
@@ -108,7 +106,6 @@ function M.check(parameters)
 
 		if nr6 < nr2 then
 			error("dim actions are formatted as \"dim DEVICE ... TO ... FROM ... IN ...\"");
-			return -1;
 		end
 	end
 
@@ -125,17 +122,14 @@ function M.check(parameters)
 
 		if nr5 < nr2 then
 			error("dim actions are formatted as \"dim DEVICE ... TO ... FROM ... IN ...\"");
-			return -1;
 		end
 
 		if nr6 == -1 then
 			error("dim actions are formatted as \"dim DEVICE ... TO ... FROM ... IN ...\"");
-			return -1;
 		end
 	else
 		if nr6 ~= -1 then
 			error("dim actions are formatted as \"dim DEVICE ... TO ... FROM ... IN ...\"");
-			return -1;
 		end
 	end
 
@@ -170,7 +164,6 @@ function M.timer_for(timer)
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		error("skipping overridden action dim for device " .. devname);
-		return;
 	end
 
 	if devobj.setState("on") == false then
@@ -185,7 +178,11 @@ function M.timer_for(timer)
 
 end
 
-function execute_for(data)
+function M.execute_for(data)
+	if data == nil then
+		return;
+	end
+
 	local async = pilight.async.timer();
 
 	if(data['type_for'] == 'SECOND') then
@@ -229,14 +226,18 @@ function M.timer_in(timer)
 
 	if (data['from_dimlevel'] + 1) == data['new_dimlevel'] then
 		if data['time_for'] ~= 0 and data['type_for'] ~= nil then
-			execute_for(data);
+			M.execute_for(data);
 		end
 		timer.stop();
 		return;
 	end
 end
 
-function execute_in(data)
+function M.execute_in(data)
+	if data == nil then
+		return;
+	end
+
 	local async = pilight.async.timer();
 	if(data['type_in'] == 'SECOND') then
 		async.setRepeat(data['time_in']*1000);
@@ -267,7 +268,6 @@ function M.thread(thread)
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		error("skipping overridden action dim for device " .. devname);
-		return;
 	end
 
 	if devobj.setState("on") == false then
@@ -281,7 +281,7 @@ function M.thread(thread)
 	devobj.send();
 
 	if data['time_for'] ~= 0 and data['type_for'] ~= nil then
-		execute_for(data);
+		M.execute_for(data);
 	end
 end
 
@@ -292,7 +292,6 @@ function M.timer_after(timer)
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		error("skipping overridden action dim for device " .. devname);
-		return;
 	end
 
 	if devobj.setState("on") == false then
@@ -306,9 +305,9 @@ function M.timer_after(timer)
 	devobj.send();
 
 	if data['time_in'] > 0 and data['type_in'] ~= nil then
-		execute_in(data);
+		M.execute_in(data);
 	elseif data['time_for'] > 0 and data['type_for'] ~= nil then
-		execute_for(data);
+		M.execute_for(data);
 	end
 
 end
@@ -410,7 +409,7 @@ function M.run(parameters)
 			async.setCallback("timer_after");
 			async.start();
 		elseif data['time_in'] > 0 and data['type_in'] ~= nil then
-			execute_in(data);
+			M.execute_in(data);
 		else
 			async.setCallback("thread");
 			async.trigger();

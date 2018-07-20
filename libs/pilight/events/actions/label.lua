@@ -61,11 +61,9 @@ function M.check(parameters)
 
 		if nr3 < nr2 then
 			error("label actions are formatted as \"label DEVICE ... TO ... FOR ...\"");
-			return -1;
 		end
 		if nr5 > 0 and nr3 < nr5 then
 			error("label actions are formatted as \"label DEVICE ... TO ... COLOR ... FOR ...\"");
-			return -1;
 		end
 	end
 
@@ -163,7 +161,6 @@ function M.thread(thread)
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		error("skipping overridden action label for device " .. devname);
-		return;
 	end
 
 	if data['new_color'] ~= nil then
@@ -192,7 +189,6 @@ function M.timer_after(timer)
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		error("skipping overridden action label for device " .. devname);
-		return;
 	end
 
 	if data['new_color'] ~= nil then
