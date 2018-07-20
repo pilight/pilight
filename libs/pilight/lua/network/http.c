@@ -275,6 +275,9 @@ static void plua_network_http_callback(int code, char *content, int size, char *
 	logprintf(LOG_DEBUG, "lua http on state #%d", state->idx);
 
 	switch(state->module->type) {
+		case UNITTEST: {
+			sprintf(p, "unittest.%s", state->module->name);
+		} break;
 		case FUNCTION: {
 			sprintf(p, "function.%s", state->module->name);
 		} break;
@@ -380,6 +383,9 @@ static int plua_network_http_set_callback(lua_State *L) {
 
 	p = name;
 	switch(http->module->type) {
+		case UNITTEST: {
+			sprintf(p, "unittest.%s", http->module->name);
+		} break;
 		case FUNCTION: {
 			sprintf(p, "function.%s", http->module->name);
 		} break;
