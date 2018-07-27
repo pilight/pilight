@@ -406,6 +406,13 @@ static void process_chunk(char **buf, ssize_t *size, struct request_t *request) 
 			}
 		}
 
+		if(request->chunksize == 0) {
+			request->chunked = 0;
+			request->reading = 0;
+			request->content_len = request->bytes_read;
+			break;
+		}
+
 		if((request->chunksize-request->chunkread) < *size) {
 			toread = request->chunksize-request->chunkread;
 		}

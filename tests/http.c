@@ -172,9 +172,9 @@ static struct tests_t {
 		"HTTP/1.1 200 OK\r\n"
 			"Keep-Alive: timeout=15, max=100\r\n"
 			"Transfer-Encoding: chunked\r\n\r\n"
-			"1E\r\n"
+			"0000001E\r\n"
 			"123456789012345678901234567890\r\n"
-			"0\r\n\r\n"
+			"00000000\r\n\r\n"
 	},
 	{ "multiple chunked get", GET, "http://127.0.0.1:10080/test.jpg", 10080, 0, 0, 200, 49, NULL, "1234567890123456789012345678901234567890123456789", "",
 		"GET /test.jpg HTTP/1.1\r\n"
