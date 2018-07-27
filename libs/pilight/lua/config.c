@@ -36,6 +36,7 @@
 #include "../protocols/protocol.h"
 
 #include "devices/switch.h"
+#include "devices/relay.h"
 #include "devices/label.h"
 #include "devices/dimmer.h"
 #include "devices/screen.h"
@@ -309,6 +310,9 @@ int plua_config_device(lua_State *L) {
 			break;
 			case SWITCH:
 				plua_config_device_switch(L, dev);
+			break;
+			case RELAY:
+				plua_config_device_relay(L, dev);
 			break;
 			case SCREEN:
 				plua_config_device_screen(L, dev);
