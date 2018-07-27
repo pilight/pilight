@@ -18,6 +18,7 @@ cd deb
 DEBVER=$(git describe --always | sed -e 's/^v//g');
 VERSION=$(echo $DEBVER | sed -e 's/-g.*//g');
 WEBGUI=$(cat ../libs/webgui/version.txt)
+WEBDEP=$(cat ../libs/webgui/depends.txt)
 
 dpkg -X pilight-8.1.2-Linux-pilight.deb source
 dpkg -e pilight-8.1.2-Linux-pilight.deb control
@@ -91,7 +92,7 @@ cp ../res/deb/webgui/* control/
 
 SIZE=$(du -sk source | cut -f1)
 
-sed -i "s/@version@/$DEBVER/g" control/control
+sed -i "s/@version@/$WEBDEP/g" control/control
 sed -i "s/@webgui@/$WEBGUI/g" control/control
 sed -i "s/@arch@/$ARCH/g" control/control
 sed -i "s/@size@/$SIZE/g" control/control
