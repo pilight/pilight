@@ -1961,7 +1961,7 @@ void *events_loop(void *param) {
 		eventslock_init = 1;
 	}
 
-	struct devices_t *dev = NULL;
+	// struct devices_t *dev = NULL;
 	struct JsonNode *jdevices = NULL, *jchilds = NULL;
 	struct rules_t *tmp_rules = NULL;
 	char *str = NULL, *origin = NULL, *protocol = NULL;
@@ -2011,17 +2011,17 @@ void *events_loop(void *param) {
 							for(i=0;i<tmp_rules->nrdevices;i++) {
 								if(jchilds->tag == JSON_STRING &&
 								   strcmp(jchilds->string_, tmp_rules->devices[i]) == 0) {
-									if(devices_get(jchilds->string_, &dev) == 0) {
-										if(dev->lastrule == tmp_rules->nr &&
-											 tmp_rules->nr == dev->prevrule &&
-											 dev->lastrule == dev->prevrule) {
-											logprintf(LOG_ERR, "skipped rule #%d because of an infinite loop triggered by device %s", tmp_rules->nr, jchilds->string_);
-										} else {
-											match = 1;
-										}
-									} else {
+									// if(devices_get(jchilds->string_, &dev) == 0) {
+										// if(dev->lastrule == tmp_rules->nr &&
+											 // tmp_rules->nr == dev->prevrule &&
+											 // dev->lastrule == dev->prevrule) {
+											// logprintf(LOG_ERR, "skipped rule #%d because of an infinite loop triggered by device %s", tmp_rules->nr, jchilds->string_);
+										// } else {
+											// match = 1;
+										// }
+									// } else {
 										match = 1;
-									}
+									// }
 									break;
 								}
 							}
