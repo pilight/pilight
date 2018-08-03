@@ -27,7 +27,7 @@
 #else
 	#include <execinfo.h>
 	#define UNW_LOCAL_ONLY
-	#ifndef __mips__
+	#if !defined(__mips__) && !defined(__aarch64__)
 		#include <libunwind.h>
 	#endif
 #endif
@@ -46,7 +46,7 @@ static int (*gc)(void) = NULL;
 
 void gc_handler(int sig) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-#if !defined(_WIN32) && !defined(__mips__)
+#if !defined(_WIN32) && !defined(__mips__) && !defined(__aarch64__)
 	char name[256];
 	unw_cursor_t cursor; unw_context_t uc;
 	unw_word_t ip, sp, offp;
@@ -60,7 +60,7 @@ void gc_handler(int sig) {
 		case SIGILL:
 		case SIGABRT:
 		case SIGFPE: {
-#if !defined(_WIN32) && !defined(__mips__)
+#if !defined(_WIN32) && !defined(__mips__) && !defined(__aarch64__)
 			log_shell_disable();
 			void *stack[50];
 			int n = backtrace(stack, 50);

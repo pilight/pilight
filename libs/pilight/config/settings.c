@@ -197,7 +197,7 @@ static int settings_parse(JsonNode *root) {
 			|| strcmp(jsettings->key, "firmware-gpio-sck") == 0
 			|| strcmp(jsettings->key, "firmware-gpio-mosi") == 0
 			|| strcmp(jsettings->key, "firmware-gpio-miso") == 0) {
-#if !defined(__arm__) || !defined(__mips__)
+#if !defined(__arm__) || !defined(__mips__) || !defined(__aarch64__)
 			return -1;
 #endif
 			if(jsettings->tag != JSON_NUMBER) {

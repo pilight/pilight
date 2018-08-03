@@ -2842,7 +2842,7 @@ int start_pilight(int argc, char **argv) {
 		MessageBox(NULL, help, "pilight :: info", MB_OK);
 #else
 		printf("%s", help);
-#if defined(__arm__) || defined(__mips__)
+#if defined(__arm__) || defined(__mips__) || defined(__aarch64__)
 		printf("\n\tThe following GPIO platforms are supported:\n");
 		char **out = NULL;
 		int z = 0, i = wiringXSupportedPlatforms(&out);

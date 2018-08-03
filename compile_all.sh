@@ -118,6 +118,30 @@ mv *.deb ../
 cd ..
 ./gen_package.sh mipsel debug
 
+sed -e"" 's/MODULESPACK ON/MODULESPACK OFF/g' CMakeLists.txt > CMakeLists.txt.tmp
+cp CMakeLists.txt.tmp CMakeLists.txt
+./setup.sh clear
+mkdir -p build
+cd build
+cmake .. -DCMAKE_TOOLCHAIN_FILE=/home/pilight/tools/toolchain-aarch64.cmake
+make -j4
+cpack -G DEB
+mv *.deb ../
+cd ..
+./gen_package.sh aarch64
+
+sed -e"" 's/MODULESPACK ON/MODULESPACK OFF/g' CMakeLists.txt > CMakeLists.txt.tmp
+cp CMakeLists.txt.tmp CMakeLists.txt
+./setup.sh clear
+mkdir -p build
+cd build
+cmake .. -DCMAKE_TOOLCHAIN_FILE=/home/pilight/tools/toolchain-aarch64.cmake -DCMAKE_BUILD_TYPE=Debug
+make -j4
+cpack -G DEB
+mv *.deb ../
+cd ..
+./gen_package.sh aarch64 debug
+
 mv CMakeLists.txt.original CMakeLists.txt
 rm CMakeLists.txt.tmp
 

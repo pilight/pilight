@@ -34,7 +34,7 @@ static int wait = 0;
 static int loopback = LOOPBACK;
 static int pollpri = UV_PRIORITIZED;
 
-#if defined(__arm__) || defined(__mips__) || defined(PILIGHT_UNITTEST)
+#if defined(__arm__) || defined(__mips__) || defined(__aarch64__) || defined(PILIGHT_UNITTEST)
 typedef struct timestamp_t {
 	unsigned long first;
 	unsigned long second;
@@ -143,7 +143,7 @@ static void *gpio433Send(int reason, void *param) {
 #endif
 
 static unsigned short int gpio433HwInit(void) {
-#if defined(__arm__) || defined(__mips__) || defined(PILIGHT_UNITTEST)
+#if defined(__arm__) || defined(__mips__) || defined(__aarch64__) || defined(PILIGHT_UNITTEST)
 
 	/* Make sure the pilight sender gets
 	   the highest priority available */
