@@ -1043,7 +1043,7 @@ static int lexer_parse_function(struct lexer_t *lexer, struct tree_t *tree_in, s
 	struct token_t *token = lexer->current_token, *token_ret = NULL;
 	struct tree_t *p = ast_parent(token);
 	char *expected = NULL;
-	int pos = 0, err = -1;
+	int pos = 0, err = -1, loop = 1;
 
 	if((err = lexer_eat(lexer, TFUNCTION, &token_ret)) < 0) {
 		*tree_out = NULL;
@@ -1064,7 +1064,11 @@ static int lexer_parse_function(struct lexer_t *lexer, struct tree_t *tree_in, s
 		return err;
 	}
 	pos = node->token->pos+1;
-	while(1) {
+
+	if(lexer_peek(lexer, 0, RPAREN, NULL) == 0) {
+		loop = 0;
+	}
+	while(loop) {
 		if((err = lexer_eat(lexer, TCOMMA, &token_ret)) < 0) {
 			char *tmp = "a comma or closing parenthesis";
 			pos -= strlen(node->token->value);
