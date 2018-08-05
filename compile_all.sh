@@ -128,6 +128,13 @@ make -j4
 cpack -G DEB
 mv *.deb ../
 cd ..
+for i in $(find *.deb); do
+	cp $i $i.cpy;
+done
+./gen_package.sh arm64
+for i in $(find *.cpy); do
+	mv $i  ${i/.cpy/};
+done
 ./gen_package.sh aarch64
 
 sed -e"" 's/MODULESPACK ON/MODULESPACK OFF/g' CMakeLists.txt > CMakeLists.txt.tmp
@@ -140,6 +147,13 @@ make -j4
 cpack -G DEB
 mv *.deb ../
 cd ..
+for i in $(find *.deb); do
+	cp $i $i.cpy;
+done
+./gen_package.sh arm64 debug
+for i in $(find *.cpy); do
+	mv $i  ${i/.cpy/};
+done
 ./gen_package.sh aarch64 debug
 
 mv CMakeLists.txt.original CMakeLists.txt
