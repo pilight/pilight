@@ -59,12 +59,16 @@ if [ $# -eq 1 ] || [ "$2" != "debug" ]; then
 		find source/usr -type f -exec strip {} \; 2>/dev/null;
 	elif [[ $ARCH =~ mips ]]; then
 		find source/usr -type f -exec mipsel-linux-gnu-strip {} \; 2>/dev/null;
+	elif [[ $ARCH =~ aarch64 ]]; then
+		find source/usr -type f -exec aarch64-linux-gnu-strip {} \; 2>/dev/null;
+	elif [[ $ARCH =~ arm64 ]]; then
+		find source/usr -type f -exec aarch64-linux-gnu-strip {} \; 2>/dev/null;
 	fi
 fi
 
 find source -type f -exec md5sum {} \; | sed -e 's@source/@@g' -e "s/ /  /g" > control/md5sums
 
-tar -C control -czf control.tar.gz control md5sums postinst postrm preinst prerm 
+tar -C control -czf control.tar.gz control md5sums postinst postrm preinst prerm
 
 chmod 755 source/usr/local/sbin/*
 chmod 755 source/usr/local/bin/*
