@@ -70,7 +70,7 @@ int plua_common_random(struct lua_State *L) {
 
 int plua_common_explode(struct lua_State *L) {
 	if(lua_gettop(L) != 2) {
-		luaL_error(L, "random requires 2 arguments, %d given", lua_gettop(L));
+		luaL_error(L, "explode requires 2 arguments, %d given", lua_gettop(L));
 	}
 
 	char **array = NULL;
