@@ -47,7 +47,7 @@ extern "C" {
 #include "../core/log.h"
 #include "../core/json.h"
 #include "../core/dso.h"
-#include "../storage/storage.h"
+#include "../config/config.h"
 #include "zwave.h"
 
 }
@@ -369,7 +369,7 @@ static unsigned short zwaveHwInit(void) {
 	char *logfile = NULL;
 	int free_log_file = 0;
 	const char *setting = "log-file";
-	if(settings_select_string(ORIGIN_HARDWARE, (char *)setting, &logfile) != 0) {
+	if(config_setting_get_string((char *)setting, 0, &logfile) != 0) {
 		if((logfile = (char *)MALLOC(strlen(LOG_FILE)+1)) == NULL) {
 			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);

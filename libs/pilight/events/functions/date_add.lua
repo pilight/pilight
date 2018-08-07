@@ -27,7 +27,8 @@ function M.run(a, b, c)
 	if c ~= nil then
 		error("DATE_ADD requires two arguments");
 	elseif a ~= nil and b ~= nil then
-		local dev = pilight.config.device(a);
+		local config = pilight.config();
+		local dev = config.getDevice(a);
 		if dev == nil then
 			tm = pilight.datetime.strptime(a, "%Y-%m-%d %H:%M:%S");
 		else

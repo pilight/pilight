@@ -133,6 +133,11 @@ static int plua_network_http_get_userdata(lua_State *L) {
 	lua_pushcclosure(L, plua_metatable_pairs, 1);
 	lua_settable(L, -3);
 
+	lua_pushstring(L, "__ipairs");
+	lua_pushlightuserdata(L, http->table);
+	lua_pushcclosure(L, plua_metatable_ipairs, 1);
+	lua_settable(L, -3);
+
 	lua_pushstring(L, "__next");
 	lua_pushlightuserdata(L, http->table);
 	lua_pushcclosure(L, plua_metatable_next, 1);

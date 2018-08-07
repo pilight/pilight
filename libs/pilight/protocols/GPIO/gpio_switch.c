@@ -22,6 +22,7 @@
 #include "../../core/dso.h"
 #include "../../core/log.h"
 #include "../../core/eventpool.h"
+#include "../../config/settings.h"
 #include "../protocol.h"
 #include "gpio_switch.h"
 
@@ -198,14 +199,21 @@ static int checkValues(struct JsonNode *jvalues) {
 #if defined(__arm__) || defined(__mips__) || defined(PILIGHT_UNITTEST)
 	struct JsonNode *jid = NULL;
 	char *platform = GPIO_PLATFORM;
-	if(settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+	if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
+		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
+		return -1;
+	}
+	if(strcmp(platform, "none") == 0) {
+		FREE(platform);
 		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
 		return -1;
 	}
 	if(wiringXSetup(platform, _logprintf) < 0) {
+		FREE(platform);
 		logprintf(LOG_ERR, "unable to setup wiringX") ;
 		return -1;
 	} else if((jid = json_find_member(jvalues, "id"))) {
+		FREE(platform);
 		struct JsonNode *jchild = NULL;
 		struct JsonNode *jchild1 = NULL;
 

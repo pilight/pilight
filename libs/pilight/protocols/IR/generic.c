@@ -21,7 +21,7 @@
 #include "../../core/dso.h"
 #include "../../core/log.h"
 #include "../../core/binary.h"
-#include "../../storage/storage.h"
+#include "../../config/config.h"
 #include "../protocol.h"
 #include "generic.h"
 
@@ -251,18 +251,17 @@ static void loadFiles(void) {
 	struct dirent *file = NULL;
 	struct stat s;
 	char path[PATH_MAX], *ir_remotes_root = NULL;
-	int i = 0, ir_remotes_root_free = 0;
+	int i = 0;
 	DIR *d = NULL;
 	FILE *fp = NULL;
 
-	if(settings_select_string(ORIGIN_MASTER, "protocol-root", &ir_remotes_root) != 0) {
+	if(config_setting_get_string("protocol-root", 0, &ir_remotes_root) != 0) {
 		/* If no protocol root was set, use the default protocol root */
 		if((ir_remotes_root = MALLOC(strlen(IR_REMOTES_ROOT)+1)) == NULL) {
 			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(ir_remotes_root, IR_REMOTES_ROOT);
-		ir_remotes_root_free = 1;
 	}
 	size_t len = strlen(ir_remotes_root);
 	if(ir_remotes_root[len-1] != '/') {
@@ -370,7 +369,7 @@ static void loadFiles(void) {
 		}
 		closedir(d);
 	}
-	if(ir_remotes_root_free) {
+	if(ir_remotes_root != NULL) {
 		FREE(ir_remotes_root);
 	}
 }

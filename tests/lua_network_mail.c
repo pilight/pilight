@@ -349,6 +349,7 @@ static void test_lua_network_mail_missing_parameters(CuTest *tc) {
 
 	plua_init();
 	plua_overwrite_print();
+	plua_pause_coverage(1);
 
 	state = plua_get_free_state();
 	CuAssertPtrNotNull(tc, state);
@@ -375,6 +376,8 @@ static void test_lua_network_mail_missing_parameters(CuTest *tc) {
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "local mail = pilight.network.mail(); mail.send();"));
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "local mail = pilight.network.mail(); mail.send(\"foo\");"));
 
+	plua_pause_coverage(0);
+
 	uv_mutex_unlock(&state->lock);
 
 	plua_gc();
@@ -399,6 +402,7 @@ static void test_lua_network_mail(CuTest *tc) {
 
 	plua_init();
 	plua_overwrite_print();
+	plua_pause_coverage(1);
 
 	file = STRDUP(__FILE__);
 	CuAssertPtrNotNull(tc, file);
@@ -464,6 +468,7 @@ static void test_lua_network_mail(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
+	plua_pause_coverage(0);
 	plua_gc();
 	CuAssertIntEquals(tc, 25, run);
 	CuAssertIntEquals(tc, 0, xfree());
@@ -486,6 +491,7 @@ static void test_lua_network_mail_nonexisting_callback(CuTest *tc) {
 
 	plua_init();
 	plua_overwrite_print();
+	plua_pause_coverage(1);
 
 	file = STRDUP(__FILE__);
 	CuAssertPtrNotNull(tc, file);
@@ -547,6 +553,7 @@ static void test_lua_network_mail_nonexisting_callback(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
+	plua_pause_coverage(0);
 	plua_gc();
 	CuAssertIntEquals(tc, 20, run);
 	CuAssertIntEquals(tc, 0, xfree());

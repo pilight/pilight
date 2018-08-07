@@ -14,6 +14,9 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	add_subdirectory(storage)
 	set(${PROJECT_NAME}_files	${${PROJECT_NAME}_files} ${${PROJECT_NAME}_storage_files} CACHE INTERNAL "")
 
+	add_subdirectory(config)
+	set(${PROJECT_NAME}_files	${${PROJECT_NAME}_files} ${${PROJECT_NAME}_config_files} CACHE INTERNAL "")
+
 	add_subdirectory(psutil)
 	set(${PROJECT_NAME}_files	${${PROJECT_NAME}_files} ${${PROJECT_NAME}_psutil_files} CACHE INTERNAL "")
 

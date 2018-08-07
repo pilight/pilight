@@ -67,9 +67,10 @@ function M.check(parameters)
 		end
 	end
 
+	local config = pilight.config();
 	local nrdev = #parameters['DEVICE']['value'];
 	for i = 1, nrdev, 1 do
-		local dev = pilight.config.device(parameters['DEVICE']['value'][i]);
+		local dev = config.getDevice(parameters['DEVICE']['value'][i]);
 		if dev == nil then
 			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" does not exist");
 		end
@@ -84,7 +85,8 @@ end
 function M.timer_for(timer)
 	local data = timer.getUserdata();
 	local devname = data['device'];
-	local devobj = pilight.config.device(devname);
+	local config = pilight.config();
+	local devobj = config.getDevice(devname);
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		error("skipping overridden action switch for device " .. devname);
@@ -122,7 +124,8 @@ end
 function M.thread(thread)
 	local data = thread.getUserdata();
 	local devname = data['device'];
-	local devobj = pilight.config.device(devname);
+	local config = pilight.config();
+	local devobj = config.getDevice(devname);
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		error("skipping overridden action switch for device " .. devname);
@@ -142,7 +145,8 @@ end
 function M.timer_after(timer)
 	local data = timer.getUserdata();
 	local devname = data['device'];
-	local devobj = pilight.config.device(devname);
+	local config = pilight.config();
+	local devobj = config.getDevice(devname);
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		error("skipping overridden action switch for device " .. devname);
@@ -164,7 +168,8 @@ function M.run(parameters)
 
 	for i = 1, nrdev, 1 do
 		local devname = parameters['DEVICE']['value'][i];
-		local devobj = pilight.config.device(devname);
+		local config = pilight.config();
+		local devobj = config.getDevice(devname);
 		local old_state = nil;
 		local new_state = parameters['TO']['value'][1];
 		local after = nil;

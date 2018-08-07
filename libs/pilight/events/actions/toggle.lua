@@ -26,8 +26,9 @@ function M.check(parameters)
 	end
 
 	local nrdev = #parameters['DEVICE']['value'];
+	local config = pilight.config();
 	for i = 1, nrdev, 1 do
-		local dev = pilight.config.device(parameters['DEVICE']['value'][i]);
+		local dev = config.getDevice(parameters['DEVICE']['value'][i]);
 		if dev == nil then
 			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" does not exist");
 		end
@@ -45,7 +46,8 @@ end
 function M.thread(thread)
 	local data = thread.getUserdata();
 	local devname = data['device'];
-	local devobj = pilight.config.device(devname);
+	local config = pilight.config();
+	local devobj = config.getDevice(devname);
 
 	if devobj.setState(data['new_state']) == false then
 		error("device \"" .. devname .. "\" could not be set to state \"" .. data['new_state'] .. "\"")
@@ -59,7 +61,8 @@ function M.run(parameters)
 
 	for i = 1, nrdev, 1 do
 		local devname = parameters['DEVICE']['value'][i];
-		local devobj = pilight.config.device(devname);
+		local config = pilight.config();
+		local devobj = config.getDevice(devname);
 		local old_state = nil;
 		local new_state = nil;
 		local async = pilight.async.thread();

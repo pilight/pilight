@@ -57,6 +57,7 @@
 #include "../libs/pilight/core/common.h"
 #include "../libs/pilight/core/json.h"
 #include "../libs/pilight/core/CuTest.h"
+#include "../libs/pilight/lua/lua.h"
 #include "../libs/pilight/protocols/protocol.h"
 #include "../libs/pilight/protocols/network/ping.h"
 
@@ -469,6 +470,7 @@ static void test_arp(CuTest *tc) {
 
 	eventpool_gc();
 	storage_gc();
+	plua_gc();
 	arp_gc();
 
 	for(i=0;i<4;i++) {

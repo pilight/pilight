@@ -19,6 +19,7 @@
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/ssdp.h"
+#include "../libs/pilight/lua/lua.h"
 
 static uv_timer_t *timer_req = NULL;
 static uv_async_t *async_close_req = NULL;
@@ -280,6 +281,7 @@ static void test_ssdp_server(CuTest *tc) {
 	ssdp_override(NULL, -1);
 	eventpool_gc();
 	storage_gc();
+	plua_gc();
 
 	CuAssertIntEquals(tc, 1, check);
 	CuAssertIntEquals(tc, 0, xfree());

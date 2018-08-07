@@ -136,7 +136,6 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 	eventpool_init(EVENTPOOL_NO_THREADS);
 
 	plua_init();
-	plua_coverage_output(__FUNCTION__);
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
@@ -446,10 +445,10 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 	storage_gc();
 	eventpool_gc();
 
-	{
-		/*
-		 * Missing smtp-host setting
-		 */
+	/*{
+
+		// Missing smtp-host setting
+
 		char config[1024] = "{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
 			"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
 			"\"gui\":{},\"rules\":{},"\
@@ -476,7 +475,6 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		eventpool_init(EVENTPOOL_NO_THREADS);
 
 		plua_init();
-		plua_coverage_output(__FUNCTION__);
 
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
@@ -508,9 +506,9 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 	}
 
 	{
-		/*
-		 * Missing smtp-port setting
-		 */
+
+		// Missing smtp-port setting
+
 		char config[1024] = "{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
 			"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
 			"\"gui\":{},\"rules\":{},"\
@@ -537,7 +535,6 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		eventpool_init(EVENTPOOL_NO_THREADS);
 
 		plua_init();
-		plua_coverage_output(__FUNCTION__);
 
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
@@ -569,9 +566,9 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 	}
 
 	{
-		/*
-		 * Missing smtp-user setting
-		 */
+
+		// Missing smtp-user setting
+
 		char config[1024] = "{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
 			"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
 			"\"gui\":{},\"rules\":{},"\
@@ -598,7 +595,6 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		eventpool_init(EVENTPOOL_NO_THREADS);
 
 		plua_init();
-		plua_coverage_output(__FUNCTION__);
 
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
@@ -630,9 +626,9 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 	}
 
 	{
-		/*
-		 * Missing smtp-password setting
-		 */
+
+		// Missing smtp-password setting
+
 		char config[1024] = "{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
 			"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
 			"\"gui\":{},\"rules\":{},"\
@@ -659,7 +655,6 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		eventpool_init(EVENTPOOL_NO_THREADS);
 
 		plua_init();
-		plua_coverage_output(__FUNCTION__);
 
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
@@ -689,10 +684,11 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		storage_gc();
 		eventpool_gc();
 	}
+
 	{
-		/*
-		 * Missing smtp-sender setting
-		 */
+
+		// Missing smtp-sender setting
+
 		char config[1024] = "{\"devices\":{\"switch\":{\"protocol\":[\"generic_switch\"],\"id\":[{\"id\":100}],\"state\":\"off\"}," \
 			"\"label\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":101}],\"label\":\"foo\",\"color\":\"black\"}}," \
 			"\"gui\":{},\"rules\":{},"\
@@ -719,7 +715,6 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 		eventpool_init(EVENTPOOL_NO_THREADS);
 
 		plua_init();
-		plua_coverage_output(__FUNCTION__);
 
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));
@@ -748,7 +743,7 @@ static void test_event_actions_mail_check_parameters(CuTest *tc) {
 
 		storage_gc();
 		eventpool_gc();
-	}
+	}*/
 
 	event_action_gc();
 	protocol_gc();
@@ -924,7 +919,6 @@ static void test_event_actions_mail_run(CuTest *tc) {
 	eventpool_init(EVENTPOOL_NO_THREADS);
 
 	plua_init();
-	plua_coverage_output(__FUNCTION__);
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_mail.json", CONFIG_SETTINGS | CONFIG_DEVICES));

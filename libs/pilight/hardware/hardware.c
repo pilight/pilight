@@ -32,6 +32,7 @@
 #include "../core/log.h"
 #include "../core/json.h"
 #include "../core/dso.h"
+#include "../config/settings.h"
 #include "hardware.h"
 
 struct hardware_t *hardware = NULL;
@@ -146,7 +147,7 @@ void hardware_init(void) {
 	char pilight_version[strlen(PILIGHT_VERSION)+1];
 	char pilight_commit[3];
 	char *hardware_root = NULL;
-	int check1 = 0, check2 = 0, valid = 1, hardware_root_free = 0;
+	int check1 = 0, check2 = 0, valid = 1;
 	strcpy(pilight_version, PILIGHT_VERSION);
 
 	struct dirent *file = NULL;
@@ -155,13 +156,12 @@ void hardware_init(void) {
 
 	memset(pilight_commit, '\0', 3);
 
-	if(settings_select_string(ORIGIN_MASTER, "hardware-root", &hardware_root) != 0) {
+	if(config_setting_get_string("hardware-root", 0, &hardware_root) != 0) {
 		/* If no hardware root was set, use the default hardware root */
 		if((hardware_root = MALLOC(strlen(HARDWARE_ROOT)+2)) == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(hardware_root, HARDWARE_ROOT);
-		hardware_root_free = 1;
 	}
 	size_t len = strlen(hardware_root);
 
@@ -225,7 +225,7 @@ void hardware_init(void) {
 		}
 		closedir(d);
 	}
-	if(hardware_root_free) {
+	if(hardware_root != NULL) {
 		FREE(hardware_root);
 	}
 #endif

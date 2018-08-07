@@ -132,6 +132,11 @@ static int plua_network_mail_get_data(lua_State *L) {
 	lua_pushcclosure(L, plua_metatable_pairs, 1);
 	lua_settable(L, -3);
 
+	lua_pushstring(L, "__ipairs");
+	lua_pushlightuserdata(L, mail->table);
+	lua_pushcclosure(L, plua_metatable_ipairs, 1);
+	lua_settable(L, -3);
+
 	lua_pushstring(L, "__next");
 	lua_pushlightuserdata(L, mail->table);
 	lua_pushcclosure(L, plua_metatable_next, 1);

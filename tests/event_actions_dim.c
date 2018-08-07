@@ -21,6 +21,7 @@
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/eventpool.h"
 #include "../libs/pilight/protocols/protocol.h"
+#include "../libs/pilight/config/settings.h"
 #include "../libs/pilight/lua/lua.h"
 #include "../libs/pilight/events/events.h"
 #include "../libs/pilight/events/action.h"
@@ -69,7 +70,6 @@ static void test_event_actions_dim_get_parameters(CuTest *tc) {
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	plua_init();
-	plua_coverage_output(__FUNCTION__);
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_SETTINGS));
@@ -128,7 +128,6 @@ static void test_event_actions_dim_check_parameters(CuTest *tc) {
 	genericLabelInit();
 
 	plua_init();
-	plua_coverage_output(__FUNCTION__);
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_SETTINGS | CONFIG_DEVICES));
@@ -1115,7 +1114,6 @@ static void test_event_actions_dim_run(CuTest *tc) {
 	genericLabelInit();
 
 	plua_init();
-	plua_coverage_output(__FUNCTION__);
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_SETTINGS | CONFIG_DEVICES));
@@ -1183,7 +1181,6 @@ static void test_event_actions_dim_run_delayed(CuTest *tc) {
 	genericLabelInit();
 
 	plua_init();
-	plua_coverage_output(__FUNCTION__);
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_SETTINGS | CONFIG_DEVICES));
@@ -1255,7 +1252,6 @@ static void test_event_actions_dim_run_stepped(CuTest *tc) {
 	genericLabelInit();
 
 	plua_init();
-	plua_coverage_output(__FUNCTION__);
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_SETTINGS | CONFIG_DEVICES));
@@ -1343,7 +1339,6 @@ static void test_event_actions_dim_run_overlapped(CuTest *tc) {
 	genericLabelInit();
 
 	plua_init();
-	plua_coverage_output(__FUNCTION__);
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_SETTINGS | CONFIG_DEVICES));
@@ -1413,7 +1408,6 @@ static void test_event_actions_dim_run_override(CuTest *tc) {
 	genericLabelInit();
 
 	plua_init();
-	plua_coverage_output(__FUNCTION__);
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_dimmer.json", CONFIG_SETTINGS));

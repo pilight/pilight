@@ -20,6 +20,7 @@
 #include "../core/log.h"
 #include "../core/json.h"
 #include "../core/eventpool.h"
+#include "../config/settings.h"
 #include "../hardware/hardware.h"
 #include "433gpio.h"
 
@@ -144,13 +145,20 @@ static unsigned short int gpio433HwInit(void) {
 	uv_poll_t *poll_req = NULL;
 	char *platform = GPIO_PLATFORM;
 
-	if(settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+	if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
+		logprintf(LOG_ERR, "no gpio-platform configured");
+		return EXIT_FAILURE;
+	}
+	if(strcmp(platform, "none") == 0) {
+		FREE(platform);
 		logprintf(LOG_ERR, "no gpio-platform configured");
 		return EXIT_FAILURE;
 	}
 	if(wiringXSetup(platform, _logprintf) < 0) {
+		FREE(platform);
 		return EXIT_FAILURE;
 	}
+	FREE(platform);
 	if(gpio_433_out >= 0) {
 		if(wiringXValidGPIO(gpio_433_out) != 0) {
 			logprintf(LOG_ERR, "invalid sender pin: %d", gpio_433_out);

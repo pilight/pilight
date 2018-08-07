@@ -27,6 +27,7 @@
 #include "../core/options.h"
 #include "../core/dso.h"
 #include "../core/log.h"
+#include "../config/settings.h"
 #include "../lua/lua.h"
 
 #include "action.h"
@@ -64,7 +65,7 @@ void event_action_init(void) {
 		OUT_OF_MEMORY
 	}
 
-	settings_select_string(ORIGIN_MASTER, "actions-root", &actions_root);
+	int ret = config_setting_get_string("actions-root", 0, &actions_root);
 
 	if((d = opendir(actions_root))) {
 		while((file = readdir(d)) != NULL) {
@@ -79,6 +80,9 @@ void event_action_init(void) {
 				}
 			}
 		}
+	}
+	if(ret == 0) {
+		FREE(actions_root);
 	}
 	closedir(d);
 	FREE(f);
@@ -302,6 +306,7 @@ void event_action_free_argument(struct event_action_args_t *args) {
 					FREE(tmp1->var[i]->string_);
 				break;
 			}
+			FREE(tmp1->var[i]);
 		}
 		if(tmp1->nrvalues > 0) {
 			FREE(tmp1->var);
@@ -444,7 +449,6 @@ int event_action_get_parameters(char *module, int *nr, char ***ret) {
 
 	lua_getglobal(L, name);
 	if(lua_isnil(L, -1) != 0) {
-		lua_remove(L, -1);
 		lua_remove(L, -1);
 		assert(lua_gettop(L) == 0);
 		uv_mutex_unlock(&state->lock);

@@ -35,7 +35,7 @@
 #include "pindefs.h"
 #include "pgm.h"
 #include "avrbitbang.h"
-#include "../pilight/storage/storage.h"
+#include "../pilight/config/settings.h"
 #include "../pilight/core/log.h"
 
 /*
@@ -153,13 +153,20 @@ void gpio_initpgm(PROGRAMMER *pgm)
 #if defined(__arm__) || defined(__mips__)
 	char *platform = GPIO_PLATFORM;
 	
-	if(settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+	if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
+		logprintf(LOG_ERR, "no gpio-platform configured");
+		exit(EXIT_FAILURE);
+	}
+	if(strcmp(platform, "none") == 0) {
+		FREE(platform);
 		logprintf(LOG_ERR, "no gpio-platform configured");
 		exit(EXIT_FAILURE);
 	}
 	if(wiringXSetup(platform, _logprintf) < 0) {
+		FREE(platform);
 		exit(EXIT_FAILURE);
 	}
+	FREE(platform);
 
   pgm->rdy_led        = bitbang_rdy_led;
   pgm->err_led        = bitbang_err_led;

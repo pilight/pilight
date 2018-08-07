@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <libgen.h>
 #include <mbedtls/sha256.h>
 #include <valgrind/valgrind.h>
 
@@ -17,7 +18,9 @@
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/network.h"
+#include "../libs/pilight/config/config.h"
 #include "../libs/pilight/protocols/protocol.h"
+#include "../libs/pilight/lua/lua.h"
 #include "../libs/libuv/uv.h"
 
 #include "alltests.h"
@@ -27,6 +30,7 @@
 
 static int dolist = 0;
 
+CuSuite *suite_storage_core(void);
 CuSuite *suite_common(void);
 CuSuite *suite_network(void);
 CuSuite *suite_binary(void);
@@ -125,6 +129,18 @@ int RunAllTests(void) {
 
 	memtrack();
 
+	plua_coverage_output("lua");
+
+	char path[PATH_MAX] = { 0 };
+	char *file = STRDUP(__FILE__);
+	if(file == NULL) {
+		OUT_OF_MEMORY
+	}
+	str_replace("alltests.c", "", &file);
+	snprintf(path, PATH_MAX, "%s%s", file, "../libs/pilight/config/");
+	config_root(path);
+	FREE(file);
+
 	/*
 	 * Logging is asynchronous. If the log is being filled
 	 * when a test is already finished, xfree() is called
@@ -142,6 +158,7 @@ int RunAllTests(void) {
 	/*
 	 * Storage should be tested first
 	 */
+	suites[nr++] = suite_storage_core();
 	suites[nr++] = suite_common();
 	suites[nr++] = suite_network();
 	suites[nr++] = suite_binary(); // Ported (Missing signed tests)
@@ -227,6 +244,9 @@ int RunAllTests(void) {
 	}
 	CuSuiteDelete(suite);
 	CuStringDelete(output);
+
+	plua_flush_coverage();
+
 	return r;
 }
 

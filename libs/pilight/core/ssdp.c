@@ -39,6 +39,8 @@
 #include "log.h"
 #include "ssdp.h"
 
+#include "../config/settings.h"
+
 #include "../../libuv/uv.h"
 
 #define CLIENT	0
@@ -166,8 +168,10 @@ static int ssdp_create_header(char ***header) {
 	}
 
 	char *name = NULL;
-	if(settings_select_string(ORIGIN_SSDP, "name", &name) != 0) {
-		name = hname;
+	if(config_setting_get_string("name", 0, &name) != 0) {
+		if((name = STRDUP(hname)) == NULL) {
+			OUT_OF_MEMORY
+		}
 	}
 
 	if((nrdevs = inetdevs(&devs)) > 0) {
@@ -205,6 +209,10 @@ static int ssdp_create_header(char ***header) {
 		}
 	} else {
 		/*LCOV_EXCL_START*/
+		if(name != NULL) {
+			FREE(name);
+		}
+		FREE(hname);
 		logprintf(LOG_ERR, "could not determine default network interface");
 		return -1;
 		/*LCOV_EXCL_STOP*/
@@ -216,6 +224,9 @@ static int ssdp_create_header(char ***header) {
 	}
 	FREE(distro);
 	FREE(hname);
+	if(name != NULL) {
+		FREE(name);
+	}
 
 	return nrheader;
 }

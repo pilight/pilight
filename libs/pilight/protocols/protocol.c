@@ -23,6 +23,7 @@
 #include "../core/dso.h"
 #include "../core/options.h"
 #include "../core/log.h"
+#include "../config/settings.h"
 
 #include "protocol.h"
 #include "protocol_header.h"
@@ -84,7 +85,7 @@ void protocol_init(void) {
 	char pilight_version[strlen(PILIGHT_VERSION)+1];
 	char pilight_commit[3];
 	char *protocol_root = NULL;
-	int check1 = 0, check2 = 0, valid = 1, protocol_root_free = 0;
+	int check1 = 0, check2 = 0, valid = 1;
 	strcpy(pilight_version, PILIGHT_VERSION);
 
 	struct dirent *file = NULL;
@@ -93,13 +94,12 @@ void protocol_init(void) {
 
 	memset(pilight_commit, '\0', 3);
 
-	if(settings_select_string(ORIGIN_MASTER, "protocol-root", &protocol_root) != 0) {
+	if(config_setting_get_string("protocol-root", 0, &protocol_root) != 0) {
 		/* If no protocol root was set, use the default protocol root */
 		if((protocol_root = MALLOC(strlen(PROTOCOL_ROOT)+1)) == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(protocol_root, PROTOCOL_ROOT);
-		protocol_root_free = 1;
 	}
 	size_t len = strlen(protocol_root);
 	if(protocol_root[len-1] != '/') {
@@ -164,7 +164,7 @@ void protocol_init(void) {
 		}
 		closedir(d);
 	}
-	if(protocol_root_free) {
+	if(protocol_root != NULL) {
 		FREE(protocol_root);
 	}
 #endif

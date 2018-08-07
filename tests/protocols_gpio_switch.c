@@ -16,6 +16,7 @@
 #include "../libs/pilight/core/mem.h"
 #include "../libs/pilight/core/common.h"
 #include "../libs/pilight/core/CuTest.h"
+#include "../libs/pilight/lua/lua.h"
 #include "../libs/pilight/protocols/protocol.h"
 #include "../libs/pilight/protocols/GPIO/gpio_switch.h"
 
@@ -303,12 +304,17 @@ static void test_protocols_gpio_switch_param4(CuTest *tc) {
 	}
 
 	storage_gc();
+	plua_gc();
 	protocol_gc();
 	eventpool_gc();
 	wiringXGC();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
+
+/*
+
+  This is already validated in the config
 
 static void test_protocols_gpio_switch_param5(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
@@ -353,12 +359,14 @@ static void test_protocols_gpio_switch_param5(CuTest *tc) {
 	}
 
 	storage_gc();
+	plua_gc();
 	protocol_gc();
 	eventpool_gc();
 	wiringXGC();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
+*/
 
 static void test_protocols_gpio_switch_param6(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
@@ -403,6 +411,7 @@ static void test_protocols_gpio_switch_param6(CuTest *tc) {
 	}
 
 	storage_gc();
+	plua_gc();
 	protocol_gc();
 	eventpool_gc();
 	wiringXGC();
@@ -453,6 +462,7 @@ static void test_protocols_gpio_switch_param7(CuTest *tc) {
 	}
 
 	storage_gc();
+	plua_gc();
 	protocol_gc();
 	eventpool_gc();
 	wiringXGC();
@@ -516,6 +526,7 @@ static void test_protocols_gpio_switch(CuTest *tc) {
 	}
 
 	storage_gc();
+	plua_gc();
 	protocol_gc();
 	eventpool_gc();
 	wiringXGC();
@@ -532,7 +543,7 @@ CuSuite *suite_protocols_gpio_switch(void) {
 	SUITE_ADD_TEST(suite, test_protocols_gpio_switch_param2);
 	SUITE_ADD_TEST(suite, test_protocols_gpio_switch_param3);
 	SUITE_ADD_TEST(suite, test_protocols_gpio_switch_param4);
-	SUITE_ADD_TEST(suite, test_protocols_gpio_switch_param5);
+	// SUITE_ADD_TEST(suite, test_protocols_gpio_switch_param5);
 	SUITE_ADD_TEST(suite, test_protocols_gpio_switch_param6);
 	SUITE_ADD_TEST(suite, test_protocols_gpio_switch_param7);
 	SUITE_ADD_TEST(suite, test_protocols_gpio_switch);

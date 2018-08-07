@@ -14,6 +14,7 @@
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/network.h"
+#include "../libs/pilight/lua/lua.h"
 
 #include "alltests.h"
 
@@ -158,6 +159,7 @@ static void test_whitelist_check(CuTest *tc) {
 		}
 
 		storage_gc();
+		plua_gc();
 		eventpool_gc();
 	}
 
@@ -188,6 +190,7 @@ static void test_whitelist_check(CuTest *tc) {
 		}
 
 		storage_gc();
+		plua_gc();
 		eventpool_gc();
 	}
 
@@ -216,6 +219,7 @@ static void test_whitelist_check(CuTest *tc) {
 		}
 
 		storage_gc();
+		plua_gc();
 		eventpool_gc();
 	}
 
@@ -248,6 +252,7 @@ static void test_whitelist_check(CuTest *tc) {
 		}
 
 		storage_gc();
+		plua_gc();
 		eventpool_gc();
 	}
 
@@ -280,6 +285,7 @@ static void test_whitelist_check(CuTest *tc) {
 		}
 
 		storage_gc();
+		plua_gc();
 		eventpool_gc();
 	}
 
@@ -313,6 +319,7 @@ static void test_whitelist_check(CuTest *tc) {
 		}
 
 		storage_gc();
+		plua_gc();
 		eventpool_gc();
 	}
 
@@ -347,6 +354,7 @@ static void test_whitelist_check(CuTest *tc) {
 		}
 
 		storage_gc();
+		plua_gc();
 		eventpool_gc();
 	}
 

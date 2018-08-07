@@ -51,7 +51,7 @@
 	#include <sys/time.h>
 #endif
 
-#include "../storage/storage.h"
+#include "../config/settings.h"
 #include "eventpool.h"
 #include "sha256cache.h"
 #include "pilight.h"
@@ -96,7 +96,6 @@ static char *authentication_username = NULL;
 static char *authentication_password = NULL;
 static unsigned short loop = 1;
 static char *root = NULL;
-static unsigned short root_free = 0;
 
 typedef struct broadcast_list_t {
 	char *out;
@@ -168,10 +167,6 @@ int webserver_gc(void) {
 
 	loop = 0;
 
-	if(root_free == 1) {
-		FREE(root);
-	}
-
 #ifdef _WIN32
 	uv_mutex_lock(&webserver_lock);
 #else
@@ -217,8 +212,18 @@ int webserver_gc(void) {
 		poll_close_cb(poll_https_req);
 	}
 
-	authentication_username = NULL;
-	authentication_password = NULL;
+	if(authentication_username != NULL) {
+		FREE(authentication_username);
+		authentication_username = NULL;
+	}
+	if(authentication_password != NULL) {
+		FREE(authentication_password);
+		authentication_password = NULL;
+	}
+	if(root != NULL) {
+		FREE(root);
+		root = NULL;
+	}
 
 	sha256cache_gc();
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
@@ -1839,7 +1844,8 @@ int webserver_start(void) {
 	}
 	uv_async_init(uv_default_loop(), async_req, webserver_process);
 
-	double itmp = 0.0;
+	// double itmp = 0.0;
+	int itmp = 0;
 	int webserver_enabled = 0;
 	loop = 1;
 
@@ -1854,26 +1860,25 @@ int webserver_start(void) {
 #endif
 	}
 
-	if(settings_select_number(ORIGIN_WEBSERVER, "webserver-http-port", &itmp) == 0) { http_port = (int)itmp; }
-	if(settings_select_number(ORIGIN_WEBSERVER, "webgui-websockets", &itmp) == 0) { websockets = (int)itmp; }
-	if(settings_select_number(ORIGIN_WEBSERVER, "webserver-cache", &itmp) == 0) { cache = (int)itmp; }
-	if(settings_select_number(ORIGIN_WEBSERVER, "webserver-enable", &itmp) == 0) { webserver_enabled = (int)itmp; }
+	if(config_setting_get_number("webserver-http-port", 0, &itmp) == 0) { http_port = itmp; }
+	if(config_setting_get_number("webgui-websockets", 0, &itmp) == 0) { websockets = itmp; }
+	if(config_setting_get_number("webserver-cache", 0, &itmp) == 0) { cache = itmp; }
+	if(config_setting_get_number("webserver-enable", 0, &itmp) == 0) { webserver_enabled = itmp; }
 #ifdef WEBSERVER_HTTPS
-	if(settings_select_number(ORIGIN_WEBSERVER, "webserver-https-port", &itmp) == 0) { https_port = (int)itmp; }
+	if(config_setting_get_number("webserver-https-port", 0, &itmp) == 0) { https_port = itmp; }
 #endif
 
-	if(settings_select_string(ORIGIN_WEBSERVER, "webserver-root", &root) != 0) {
+	if(config_setting_get_string("webserver-root", 0, &root) != 0) {
 		/*LCOV_EXCL_START*/
 		if((root = MALLOC(strlen(WEBSERVER_ROOT)+1)) == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(root, WEBSERVER_ROOT);
-		root_free = 1;
 		/*LCOV_EXCL_STOP*/
 	}
 
-	settings_select_string_element(ORIGIN_WEBSERVER, "webserver-authentication", 0, &authentication_username);
-	settings_select_string_element(ORIGIN_WEBSERVER, "webserver-authentication", 1, &authentication_password);
+	config_setting_get_string("webserver-authentication", 0, &authentication_username);
+	config_setting_get_string("webserver-authentication", 1, &authentication_password);
 
 	eventpool_callback(REASON_CONFIG_UPDATE, broadcast);
 	eventpool_callback(REASON_BROADCAST_CORE, broadcast);

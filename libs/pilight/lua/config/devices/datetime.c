@@ -9,11 +9,11 @@
 #include <string.h>
 #include <assert.h>
 
-#include "../../core/log.h"
-#include "../config.h"
+#include "../../../core/log.h"
+#include "../../config.h"
 #include "switch.h"
 
-#include "../../core/datetime.h"
+#include "../../../core/datetime.h"
 
 static int plua_config_device_datetime_get_year(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));

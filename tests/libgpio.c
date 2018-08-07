@@ -45,7 +45,7 @@ int wiringXSetup(char *name, void (*func)(int, char *, int, const char *, ...)) 
 }
 
 int wiringXValidGPIO(int gpio) {
-	if(gpio == 0 || gpio == 1 || gpio == 2) {
+	if(gpio == 0 || gpio == 1 || gpio == 2 || gpio == 14 || gpio == 10) {
 		return 0;
 	}
 	return -1;
@@ -53,6 +53,10 @@ int wiringXValidGPIO(int gpio) {
 
 int digitalWrite(int gpio, int mode) {
 	return ((send(fd[gpio], "a", 1, 0) == 1) ? 0 : -1);
+}
+
+char *wiringXPlatform(void) {
+	return "gpio-stub";
 }
 
 int digitalRead(int gpio) {

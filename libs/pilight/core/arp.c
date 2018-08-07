@@ -55,7 +55,7 @@
 #include "eventpool.h"
 
 #include "../../libuv/uv.h"
-#include "../storage/storage.h"
+#include "../config/settings.h"
 
 #define ARP_REQUEST 	1
 #define ARP_REPLY 		2
@@ -388,7 +388,8 @@ void arp_scan(void) {
 	char error[PCAP_ERRBUF_SIZE], *e = error;
 	char ip[17], netmask[17], min[17], max[17];
 	int count = 0, i = 0, x = 0, has_mac = 0;
-	double itmp = 0.0;
+	// double itmp = 0.0;
+	int itmp = 0.0;
 	uv_interface_address_t *interfaces = NULL;
 	struct in_addr in_ip, in_netmask, in_min, in_max;
 
@@ -525,8 +526,9 @@ void arp_scan(void) {
 
 			data[nrdata]->interval = 10;
 			data[nrdata]->timeout = 3;
-			if(settings_select_number(ORIGIN_WEBSERVER, "arp-interval", &itmp) == 0) { data[nrdata]->interval = (int)itmp; }
-			if(settings_select_number(ORIGIN_WEBSERVER, "arp-timeout", &itmp) == 0) { data[nrdata]->timeout = (int)itmp; }
+
+			if(config_setting_get_number("arp-interval", 0, &itmp) == 0) { data[nrdata]->interval = itmp; };
+			if(config_setting_get_number("arp-timeout", 0, &itmp) == 0) { data[nrdata]->timeout = itmp; };
 
 			data[nrdata]->timer_req->data = data[nrdata];
 

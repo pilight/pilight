@@ -20,6 +20,7 @@
 #include "../libs/pilight/core/network.h"
 #include "../libs/pilight/core/log.h"
 #include "../libs/pilight/core/ssl.h"
+#include "../libs/pilight/lua/lua.h"
 #include "../libs/libuv/uv.h"
 
 #include "alltests.h"
@@ -675,6 +676,7 @@ static void test_mail(CuTest *tc) {
 
 	ssl_gc();
 	storage_gc();
+	plua_gc();
 	eventpool_gc();
 
 	CuAssertIntEquals(tc, 9, testnr);
@@ -733,6 +735,7 @@ static void test_mail_threaded(CuTest *tc) {
 
 	ssl_gc();
 	storage_gc();
+	plua_gc();
 	eventpool_gc();
 
 	CuAssertIntEquals(tc, 9, testnr);
@@ -818,6 +821,7 @@ static void test_mail_inactive_server(CuTest *tc) {
 
 	ssl_gc();
 	storage_gc();
+	plua_gc();
 	eventpool_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
@@ -826,13 +830,20 @@ static void test_mail_inactive_server(CuTest *tc) {
 CuSuite *suite_mail(void) {
 	CuSuite *suite = CuSuiteNew();
 
+	char config[1024] = "{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"pem-file\":\"%s../res/pilight.pem\"},"\
+		"\"hardware\":{},\"registry\":{}}";
+
+	char *file = STRDUP(__FILE__);
+	if(file == NULL) {
+		OUT_OF_MEMORY
+	}
+	str_replace("mail.c", "", &file);
+
 	FILE *f = fopen("mail.json", "w");
-	fprintf(f,
-		"{\"devices\":{},\"gui\":{},\"rules\":{},"\
-		"\"settings\":{\"pem-file\":\"../res/pilight.pem\"},"\
-		"\"hardware\":{},\"registry\":{}}"
-	);
+	fprintf(f, config, file);
 	fclose(f);
+	FREE(file);
 
 	SUITE_ADD_TEST(suite, test_mail);
 	SUITE_ADD_TEST(suite, test_mail_threaded);

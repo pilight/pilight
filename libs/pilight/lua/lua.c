@@ -33,10 +33,10 @@
 
 #ifdef PILIGHT_UNITTEST
 static struct info_t {
-	char module[255];
-	char function[255];
+	char *module;
+	char *function;
 } info = {
-	{ 0 }, { 0 }
+	NULL, NULL
 };
 
 struct coverage_t {
@@ -53,6 +53,7 @@ struct coverage_t {
 } **coverage = NULL;
 static int nrcoverage = 0;
 
+static int covpause = 0;
 static const char *covfile = NULL;
 #endif
 
@@ -90,6 +91,48 @@ void plua_stack_dump(lua_State *L) {
 }
 /* LCOV_EXCL_STOP */
 
+void plua_metatable_push(lua_State *L, struct plua_metatable_t *table) {
+	lua_newtable(L);
+	lua_newtable(L);
+
+	lua_pushstring(L, "__index");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable_get, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "__newindex");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable_set, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "__gc");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable_gc, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "__pairs");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable_pairs, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "__ipairs");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable_ipairs, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "__next");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable_next, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "__call");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable_call, 1);
+	lua_settable(L, -3);
+
+	lua_setmetatable(L, -2);
+}
+
 void plua_metatable_free(struct plua_metatable_t *table) {
 	int x = 0;
 	for(x=0;x<table->nrvar;x++) {
@@ -122,6 +165,9 @@ int plua_metatable_call(lua_State *L) {
 	return 1;
 }
 
+/*
+ * Implement cloning nested tables
+ */
 void plua_metatable_clone(struct plua_metatable_t **src, struct plua_metatable_t **dst) {
 	int i = 0;
 	struct plua_metatable_t *a = *src;
@@ -162,14 +208,75 @@ void plua_metatable_clone(struct plua_metatable_t **src, struct plua_metatable_t
 	(*dst)->nrvar = a->nrvar;
 }
 
-int plua_metatable_pairs(lua_State *L) {
-	logprintf(LOG_NOTICE, "pilight lua metatables do not support pairs");
-  return 0;
+int plua_metatable_next(lua_State *L) {
+	struct lua_state_t *state = plua_get_current_state(L);
+	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	if(node == NULL) {
+		logprintf(LOG_ERR, "internal error: table object not passed");
+		return 0;
+	}
+
+	int iter = node->iter[state->idx]++;
+	if(node->nrvar > iter) {
+		switch(node->table[iter].key.type_) {
+			case LUA_TNUMBER: {
+				lua_pushnumber(L, node->table[iter].key.number_);
+			} break;
+			case LUA_TSTRING: {
+				lua_pushstring(L, node->table[iter].key.string_);
+			}
+		}
+		switch(node->table[iter].val.type_) {
+			case LUA_TNUMBER: {
+				lua_pushnumber(L, node->table[iter].val.number_);
+			} break;
+			case LUA_TSTRING: {
+				lua_pushstring(L, node->table[iter].val.string_);
+			} break;
+			case LUA_TTABLE: {
+				plua_metatable_push(L, (struct plua_metatable_t *)node->table[iter].val.void_);
+			} break;
+		}
+		return 2;
+	}
+
+	lua_pushnil(L);
+  return 1;
 }
 
-int plua_metatable_next(lua_State *L) {
-	logprintf(LOG_NOTICE, "pilight lua metatables do not support next");
-  return 0;
+int plua_metatable_pairs(lua_State *L) {
+	struct lua_state_t *state = plua_get_current_state(L);
+	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	if(node == NULL) {
+		logprintf(LOG_ERR, "internal error: table object not passed");
+		return 0;
+	}
+	node->iter[state->idx] = 0;
+	lua_pushlightuserdata(L, node);
+  lua_pushcclosure(L, plua_metatable_next, 1);
+  lua_pushvalue(L, 1);
+	lua_pushnil(L);
+
+  return 3;
+}
+
+int plua_metatable_ipairs(lua_State *L) {
+	struct lua_state_t *state = plua_get_current_state(L);
+	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	if(node == NULL) {
+		logprintf(LOG_ERR, "internal error: table object not passed");
+		return 0;
+	}
+	node->iter[state->idx] = 0;
+	lua_pushlightuserdata(L, node);
+  lua_pushcclosure(L, plua_metatable_next, 1);
+  lua_pushvalue(L, 1);
+	lua_pushinteger(L, 0);
+
+  return 3;
 }
 
 int plua_metatable_get(lua_State *L) {
@@ -214,40 +321,7 @@ int plua_metatable_get(lua_State *L) {
 					lua_pushstring(L, node->table[x].val.string_);
 				} break;
 				case LUA_TTABLE: {
-					lua_newtable(L);
-					lua_newtable(L);
-
-					lua_pushstring(L, "__index");
-					lua_pushlightuserdata(L, node->table[x].val.void_);
-					lua_pushcclosure(L, plua_metatable_get, 1);
-					lua_settable(L, -3);
-
-					lua_pushstring(L, "__newindex");
-					lua_pushlightuserdata(L, node->table[x].val.void_);
-					lua_pushcclosure(L, plua_metatable_set, 1);
-					lua_settable(L, -3);
-
-					lua_pushstring(L, "__gc");
-					lua_pushlightuserdata(L, node->table[x].val.void_);
-					lua_pushcclosure(L, plua_metatable_gc, 1);
-					lua_settable(L, -3);
-
-					lua_pushstring(L, "__pairs");
-					lua_pushlightuserdata(L, node->table[x].val.void_);
-					lua_pushcclosure(L, plua_metatable_pairs, 1);
-					lua_settable(L, -3);
-
-					lua_pushstring(L, "__next");
-					lua_pushlightuserdata(L, node->table[x].val.void_);
-					lua_pushcclosure(L, plua_metatable_next, 1);
-					lua_settable(L, -3);
-
-					lua_pushstring(L, "__call");
-					lua_pushlightuserdata(L, node->table[x].val.void_);
-					lua_pushcclosure(L, plua_metatable_call, 1);
-					lua_settable(L, -3);
-
-					lua_setmetatable(L, -2);
+					plua_metatable_push(L, (struct plua_metatable_t *)node->table[x].val.void_);
 				} break;
 			}
 			return 1;
@@ -432,6 +506,7 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 }
 
 int plua_metatable_set(lua_State *L) {
+
 	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(node == NULL) {
@@ -482,7 +557,9 @@ void plua_clear_state(struct lua_state_t *state) {
 	state->gc.nr = 0;
 	state->gc.size = 0;
 
-	assert(lua_gettop(state->L) == 0);
+	if(state->L != NULL) {
+		assert(lua_gettop(state->L) == 0);
+	}
 	uv_mutex_unlock(&state->lock);
 }
 
@@ -899,8 +976,18 @@ void plua_module_load(char *file, int type) {
 			while(lua_next(L, -2)) {
 				lua_pushvalue(L, -2);
 
-				strcpy(info.module, name);
-				strcpy(info.function, lua_tostring(L, -1));
+				if(info.module != NULL) {
+					FREE(info.module);
+				}
+				if(info.function != NULL) {
+					FREE(info.function);
+				}
+				if((info.module = STRDUP((char *)name)) == NULL) {
+					OUT_OF_MEMORY
+				}
+				if((info.function = STRDUP((char *)lua_tostring(L, -1))) == NULL) {
+					OUT_OF_MEMORY
+				}
 				lua_pop(L, 1);
 
 				if(lua_type(L, -1) == LUA_TFUNCTION) {
@@ -917,8 +1004,12 @@ void plua_module_load(char *file, int type) {
 		lua_pop(L, -1);
 	}
 
-	memset(&info.module, 0, 255);
-	memset(&info.function, 0, 255);
+	if(info.module != NULL) {
+		FREE(info.module);
+	}
+	if(info.function != NULL) {
+		FREE(info.function);
+	}
 #endif
 }
 
@@ -938,12 +1029,20 @@ struct plua_module_t *plua_get_modules(void) {
 // }
 
 #ifdef PILIGHT_UNITTEST
+void plua_pause_coverage(int status) {
+	covpause = status;
+}
+
 static void hook(lua_State *L, lua_Debug *ar) {
 	if(covfile == NULL) {
 		return;
 	}
 
 	lua_getinfo(L, "nSfLl", ar);
+
+	if(covpause == 1) {
+		return;
+	}
 
 	int i = 0, match = -1;
 	for(i=0;i<nrcoverage;i++) {
@@ -952,41 +1051,47 @@ static void hook(lua_State *L, lua_Debug *ar) {
 			break;
 		}
 	}
+
 	if(match == -1) {
-		if((coverage = REALLOC(coverage, sizeof(struct coverage_t *)*(nrcoverage+1))) == NULL) {
+		if((coverage = realloc(coverage, sizeof(struct coverage_t *)*(nrcoverage+1))) == NULL) {
 			OUT_OF_MEMORY
 		}
-		if((coverage[nrcoverage] = MALLOC(sizeof(struct coverage_t))) == NULL) {
+		if((coverage[nrcoverage] = malloc(sizeof(struct coverage_t))) == NULL) {
 			OUT_OF_MEMORY
 		}
 		memset(coverage[nrcoverage], 0, sizeof(struct coverage_t));
 
-		if((coverage[nrcoverage]->file = STRDUP((char *)ar->source)) == NULL) {
+		if((coverage[nrcoverage]->file = strdup((char *)ar->source)) == NULL) {
 			OUT_OF_MEMORY
 		}
 
 		match = nrcoverage;
+
 		nrcoverage++;
 	}
 
-	if(ar->currentline >= coverage[match]->nrlstat || ar->linedefined >= coverage[match]->nrlstat) {
-		if((coverage[match]->lstat = REALLOC(coverage[match]->lstat, sizeof(int)*(coverage[match]->nrlstat+512))) == NULL) {
+	while(ar->currentline >= coverage[match]->nrlstat || ar->linedefined >= coverage[match]->nrlstat) {
+		if((coverage[match]->lstat = realloc(coverage[match]->lstat, sizeof(int)*(coverage[match]->nrlstat+512))) == NULL) {
 			OUT_OF_MEMORY
 		}
-		memset(&coverage[match]->lstat[coverage[match]->nrlstat], -1, sizeof(int)*(coverage[match]->nrlstat+512));
+		for(i=coverage[match]->nrlstat;i<coverage[match]->nrlstat+512;i++) {
+			coverage[match]->lstat[i] = -1;
+		}
 		coverage[match]->nrlstat += 512;
 	}
 
-	if(ar->currentline >= coverage[match]->nrfstat || ar->linedefined >= coverage[match]->nrfstat) {
-		if((coverage[match]->fstat = REALLOC(coverage[match]->fstat, sizeof(int)*(coverage[match]->nrfstat+512))) == NULL) {
+	while(ar->currentline >= coverage[match]->nrfstat || ar->linedefined >= coverage[match]->nrfstat) {
+		if((coverage[match]->fstat = realloc(coverage[match]->fstat, sizeof(int)*(coverage[match]->nrfstat+512))) == NULL) {
 			OUT_OF_MEMORY
 		}
-		memset(&coverage[match]->fstat[coverage[match]->nrfstat], -1, sizeof(int)*(coverage[match]->nrfstat+512));
+		for(i=coverage[match]->nrfstat;i<coverage[match]->nrfstat+512;i++) {
+			coverage[match]->fstat[i] = -1;
+		}
 		coverage[match]->nrfstat += 512;
 	}
 
-	if(ar->currentline >= coverage[match]->nrfunctions || ar->linedefined >= coverage[match]->nrfunctions) {
-		if((coverage[match]->functions = REALLOC(coverage[match]->functions, sizeof(char *)*(coverage[match]->nrfunctions+12))) == NULL) {
+	while(ar->currentline >= coverage[match]->nrfunctions || ar->linedefined >= coverage[match]->nrfunctions) {
+		if((coverage[match]->functions = realloc(coverage[match]->functions, sizeof(char *)*(coverage[match]->nrfunctions+12))) == NULL) {
 			OUT_OF_MEMORY
 		}
 		for(i=coverage[match]->nrfunctions;i<coverage[match]->nrfunctions+12;i++) {
@@ -1003,22 +1108,23 @@ static void hook(lua_State *L, lua_Debug *ar) {
 		coverage[match]->lstat[ar->linedefined] = 0;
 	}
 
-	if(coverage[match]->fstat[ar->linedefined] == -1) {
-		coverage[match]->fstat[ar->linedefined] = 0;
-	}
-
 	coverage[match]->lstat[ar->currentline]++;
-	coverage[match]->fstat[ar->linedefined]++;
 
-	if(strlen(info.module) > 0 && coverage[match]->module == NULL) {
-		if((coverage[match]->module = STRDUP(info.module)) == NULL) {
+	if(info.module != NULL && coverage[match]->module == NULL) {
+		if((coverage[match]->module = strdup(info.module)) == NULL) {
 			OUT_OF_MEMORY
 		}
 	}
-	if(strlen(info.function) > 0 && coverage[match]->functions[ar->linedefined] == NULL) {
-		if((coverage[match]->functions[ar->linedefined] = STRDUP(info.function)) == NULL) {
+	if(info.function != NULL && coverage[match]->functions[ar->linedefined] == NULL) {
+		if((coverage[match]->functions[ar->linedefined] = strdup(info.function)) == NULL) {
 			OUT_OF_MEMORY
 		}
+
+		if(coverage[match]->fstat[ar->linedefined] == -1) {
+			coverage[match]->fstat[ar->linedefined] = 0;
+		}
+
+		coverage[match]->fstat[ar->linedefined]++;
 	}
 
 	if(lua_type(L, -1) == LUA_TTABLE) {
@@ -1030,11 +1136,13 @@ static void hook(lua_State *L, lua_Debug *ar) {
 
 			int line = lua_tonumber(L, -1);
 
-			if(line >= coverage[match]->nrlstat) {
-				if((coverage[match]->lstat = REALLOC(coverage[match]->lstat, sizeof(int)*(coverage[match]->nrlstat+512))) == NULL) {
+			while(line >= coverage[match]->nrlstat) {
+				if((coverage[match]->lstat = realloc(coverage[match]->lstat, sizeof(int)*(coverage[match]->nrlstat+512))) == NULL) {
 					OUT_OF_MEMORY
 				}
-				memset(&coverage[match]->lstat[coverage[match]->nrlstat], -1, sizeof(int)*(coverage[match]->nrlstat+512));
+				for(i=coverage[match]->nrlstat;i<coverage[match]->nrlstat+512;i++) {
+					coverage[match]->lstat[i] = -1;
+				}
 				coverage[match]->nrlstat += 512;
 			}
 
@@ -1053,6 +1161,53 @@ void plua_coverage_output(const char *file) {
 	covfile = file;
 }
 #endif
+
+/*
+ * Backported from lua5.2
+ */
+static int pairsmeta (lua_State *L, const char *method, int iszero,
+                      lua_CFunction iter) {
+  if (!luaL_getmetafield(L, 1, method)) {  /* no metamethod? */
+    luaL_checktype(L, 1, LUA_TTABLE);  /* argument must be a table */
+    lua_pushcfunction(L, iter);  /* will return generator, */
+    lua_pushvalue(L, 1);  /* state, */
+    if (iszero) lua_pushinteger(L, 0);  /* and initial value */
+    else lua_pushnil(L);
+  }
+  else {
+    lua_pushvalue(L, 1);  /* argument 'self' to metamethod */
+    lua_call(L, 1, 3);  /* get 3 values from metamethod */
+  }
+  return 3;
+}
+
+static int luaB_next (lua_State *L) {
+  luaL_checktype(L, 1, LUA_TTABLE);
+  lua_settop(L, 2);  /* create a 2nd argument if there isn't one */
+  if (lua_next(L, 1))
+    return 2;
+  else {
+    lua_pushnil(L);
+    return 1;
+  }
+}
+
+static int luaB_pairs (lua_State *L) {
+  return pairsmeta(L, "__pairs", 0, luaB_next);
+}
+
+static int ipairsaux (lua_State *L) {
+  int i = luaL_checkint(L, 2);
+  luaL_checktype(L, 1, LUA_TTABLE);
+  i++;  /* next value */
+  lua_pushinteger(L, i);
+  lua_rawgeti(L, 1, i);
+  return (lua_isnil(L, -1)) ? 1 : 2;
+}
+
+static int luaB_ipairs (lua_State *L) {
+  return pairsmeta(L, "__ipairs", 1, ipairsaux);
+}
 
 void plua_init(void) {
 	if(init == 1) {
@@ -1077,6 +1232,10 @@ void plua_init(void) {
 		lua_sethook(L, hook, LUA_MASKLINE, 0);
 #endif
 	}
+
+	plua_override_global("pairs", luaB_pairs);
+	plua_override_global("ipairs", luaB_ipairs);
+	plua_override_global("next", luaB_next);
 	/*
 	 * Initialize global state garbage collector
 	 */
@@ -1134,6 +1293,7 @@ int plua_module_exists(char *module, int type) {
 
 	assert(lua_gettop(L) == 0);
 	plua_clear_state(state);
+
 	return 0;
 }
 
@@ -1218,19 +1378,79 @@ void plua_ret_false(lua_State *L) {
 	lua_pushboolean(L, 0);
 }
 
-#ifdef PILIGHT_UNITTEST
+//#ifdef PILIGHT_UNITTEST
 void plua_override_global(char *name, int (*func)(lua_State *L)) {
 	int i = 0;
 	for(i=0;i<NRLUASTATES;i++) {
 		uv_mutex_lock(&lua_state[i].lock);
+
 		lua_getglobal(lua_state[i].L, "_G");
 		lua_pushcfunction(lua_state[i].L, func);
 		lua_setfield(lua_state[i].L, -2, name);
 		lua_remove(lua_state[i].L, -1);
+
 		uv_mutex_unlock(&lua_state[i].lock);
 	}
 }
+//#endif
+
+
+int plua_get_method(struct lua_State *L, char *file, char *method) {
+#if LUA_VERSION_NUM <= 502
+	lua_getfield(L, -1, method);
+	if(lua_type(L, -1) != LUA_TFUNCTION) {
+#else
+	if(lua_getfield(L, -1, method) == 0) {
 #endif
+		logprintf(LOG_ERR, "%s: %s function missing", file, method);
+		return -1;
+	}
+	return 0;
+}
+
+int plua_pcall(struct lua_State *L, char *file, int args, int ret) {
+	if(lua_pcall(L, args, ret, 0) == LUA_ERRRUN) {
+		if(lua_type(L, -1) == LUA_TNIL) {
+			logprintf(LOG_ERR, "%s: syntax error", file);
+			return -1;
+		}
+		if(lua_type(L, -1) == LUA_TSTRING) {
+			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
+			lua_pop(L, 1);
+			lua_pop(L, 1);
+			return -1;
+		}
+	}
+	return 0;
+}
+
+void plua_json_to_table(struct lua_State *L, struct JsonNode *jnode) {
+	struct JsonNode *jchild = json_first_child(jnode);
+
+	lua_newtable(L);
+	int i = 0;
+	while(jchild) {
+		if(jnode->tag == JSON_OBJECT) {
+			lua_pushstring(L, jchild->key);
+		} else {
+			lua_pushnumber(L, ++i);
+		}
+		switch(jchild->tag) {
+			case JSON_STRING:
+				lua_pushstring(L, jchild->string_);
+			break;
+			case JSON_NUMBER:
+				lua_pushnumber(L, jchild->number_);
+			break;
+			case JSON_ARRAY:
+			case JSON_OBJECT:
+				plua_json_to_table(L, jchild);
+			break;
+		}
+		lua_settable(L, -3);
+		jchild = jchild->next;
+	}
+}
 
 int plua_gc(void) {
 	struct plua_module_t *tmp = NULL;
@@ -1260,10 +1480,20 @@ int plua_gc(void) {
 		lua_state[i].gc.size = 0;
 	}
 
+	init = 0;
+	logprintf(LOG_DEBUG, "garbage collected lua library");
+	return 0;
+}
+
 #ifdef PILIGHT_UNITTEST
+int plua_flush_coverage(void) {
+	int x = 0, i = 0;
 	if(covfile != NULL) {
 		FILE *fp = NULL;
-		char *name = MALLOC(strlen(covfile)+6);
+		char *name = malloc(strlen(covfile)+6);
+		if(name == NULL) {
+			OUT_OF_MEMORY
+		}
 		strcpy(name, covfile);
 		strcat(name, ".info");
 
@@ -1293,7 +1523,7 @@ int plua_gc(void) {
 				if(coverage[i]->fstat[x] >= 0) {
 					if(coverage[i]->functions[x] != NULL) {
 						fprintf(fp, "FNDA:%d,%s\n", coverage[i]->fstat[x], coverage[i]->functions[x]);
-						FREE(coverage[i]->functions[x]);
+						free(coverage[i]->functions[x]);
 					} else {
 						fprintf(fp, "FNDA:%d,%d\n", coverage[i]->fstat[x], x);
 					}
@@ -1307,30 +1537,27 @@ int plua_gc(void) {
 			fprintf(fp, "end_of_record\n");
 
 			if(coverage[i]->nrfunctions > 0) {
-				FREE(coverage[i]->functions);
+				free(coverage[i]->functions);
 			}
 			if(coverage[i]->nrfstat > 0) {
-				FREE(coverage[i]->fstat);
+				free(coverage[i]->fstat);
 			}
 			if(coverage[i]->nrlstat > 0) {
-				FREE(coverage[i]->lstat);
+				free(coverage[i]->lstat);
 			}
-			FREE(coverage[i]->file);
+			free(coverage[i]->file);
 			if(coverage[i]->module != NULL) {
-				FREE(coverage[i]->module);
+				free(coverage[i]->module);
 			}
-			FREE(coverage[i]);
+			free(coverage[i]);
 		}
 		if(coverage != NULL) {
-			FREE(coverage);
+			free(coverage);
 		}
 		fclose(fp);
-		FREE(name);
+		free(name);
 		nrcoverage = 0;
 	}
-#endif
-
-	init = 0;
-	logprintf(LOG_DEBUG, "garbage collected lua library");
 	return 0;
 }
+#endif

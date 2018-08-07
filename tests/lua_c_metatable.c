@@ -154,6 +154,7 @@ static void test_lua_c_metatable(CuTest *tc) {
 
 	plua_init();
 	plua_override_global("print", plua_print);
+	plua_pause_coverage(1);
 
 	state = plua_get_free_state();
 	CuAssertPtrNotNull(gtc, state);
@@ -227,6 +228,8 @@ static void test_lua_c_metatable(CuTest *tc) {
 	"));
 
 	uv_mutex_unlock(&state->lock);
+
+	plua_pause_coverage(0);
 	plua_gc();
 
 	CuAssertIntEquals(tc, 24, run);

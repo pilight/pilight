@@ -18,7 +18,7 @@
 #include "../core/dso.h"
 #include "../core/log.h"
 #include "../core/json.h"
-#include "../hardware/hardware.h"
+#include "../config/config.h"
 #include "IRgpio.h"
 
 #ifndef __useconds_t
@@ -109,7 +109,7 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 static unsigned short int gpioIRHwInit(void) {
 #if defined(__arm__) || defined(__mips__)
 	// char *platform = GPIO_PLATFORM;
-	// if(settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+	// if(config_setting_get_string("gpio-platform", 0, &platform) != 0 || strcmp(platform, "none") == 0) {
 		// logprintf(LOG_ERR, "no gpio-platform configured");
 		// return EXIT_FAILURE;
 	// }

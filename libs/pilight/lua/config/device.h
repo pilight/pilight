@@ -6,11 +6,11 @@
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
-#ifndef _LUA_CONFIG_DEVICE_DATETIME_H_
-#define _LUA_CONFIG_DEVICE_DATETIME_H_
+#ifndef _LUA_CONFIG_DEVICE_H_
+#define _LUA_CONFIG_DEVICE_H_
 
 #include "../lua.h"
 
-int plua_config_device_datetime(lua_State *L, struct plua_device_t *dve);
+int plua_config_device(lua_State *L);
 
 #endif

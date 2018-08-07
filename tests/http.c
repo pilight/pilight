@@ -653,6 +653,7 @@ static void test_http(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
+	plua_gc();
 	http_gc();
 	ssl_gc();
 	storage_gc();
@@ -714,6 +715,7 @@ static void test_http_threaded(CuTest *tc) {
 		}
 	}
 
+	plua_gc();
 	http_gc();
 	ssl_gc();
 	storage_gc();

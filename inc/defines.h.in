@@ -44,6 +44,7 @@
 #define EOSS										"\n\n" // End Of Socket Stream
 
 #ifdef _WIN32
+	#define STORAGE_ROOT						"c:/pilight/storage/"
 	#define PROTOCOL_ROOT						"c:/pilight/protocols/"
 	#define HARDWARE_ROOT						"c:/pilight/hardware/"
 	#define OPERATOR_ROOT						"c:/pilight/operators/"
@@ -54,6 +55,7 @@
 	#define LOG_FILE								"c:/pilight/pilight.log"
 	#define PEM_FILE								"c:/pilight/pilight.pem"
 #else
+	#define STORAGE_ROOT						"/usr/local/lib/pilight/storage/"
 	#define PROTOCOL_ROOT						"/usr/local/lib/pilight/protocols/"
 	#define HARDWARE_ROOT						"/usr/local/lib/pilight/hardware/"
 	#define OPERATOR_ROOT						"/usr/local/lib/pilight/operators/"

@@ -185,6 +185,11 @@ static int plua_async_thread_get_data(lua_State *L) {
 	lua_pushcclosure(L, plua_metatable_pairs, 1);
 	lua_settable(L, -3);
 
+	lua_pushstring(L, "__ipairs");
+	lua_pushlightuserdata(L, thread->table);
+	lua_pushcclosure(L, plua_metatable_ipairs, 1);
+	lua_settable(L, -3);
+
 	lua_pushstring(L, "__next");
 	lua_pushlightuserdata(L, thread->table);
 	lua_pushcclosure(L, plua_metatable_next, 1);
@@ -735,6 +740,11 @@ static int plua_async_timer_get_data(lua_State *L) {
 	lua_pushstring(L, "__pairs");
 	lua_pushlightuserdata(L, timer->table);
 	lua_pushcclosure(L, plua_metatable_pairs, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "__ipairs");
+	lua_pushlightuserdata(L, timer->table);
+	lua_pushcclosure(L, plua_metatable_ipairs, 1);
 	lua_settable(L, -3);
 
 	lua_pushstring(L, "__next");

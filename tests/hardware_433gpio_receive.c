@@ -18,6 +18,7 @@
 #include "../libs/pilight/core/mem.h"
 #include "../libs/pilight/core/common.h"
 #include "../libs/pilight/core/CuTest.h"
+#include "../libs/pilight/lua/lua.h"
 #include "../libs/pilight/hardware/hardware.h"
 #include "../libs/pilight/hardware/433gpio.h"
 
@@ -213,6 +214,7 @@ static void test_hardware_433gpio_receive(CuTest *tc) {
 	uv_thread_join(&pth[1]);
 
 	storage_gc();
+	plua_gc();
 	hardware_gc();
 	eventpool_gc();
 	wiringXGC();
@@ -220,6 +222,10 @@ static void test_hardware_433gpio_receive(CuTest *tc) {
 	CuAssertTrue(tc, check >= 3);
 	CuAssertIntEquals(tc, 0, xfree());
 }
+
+
+/*
+  This is already checked in the config
 
 static void test_hardware_433gpio_param(CuTest *tc) {
 	if(wiringXSetup("test", foo) != -999) {
@@ -275,13 +281,13 @@ static void test_hardware_433gpio_param(CuTest *tc) {
 	}
 
 	storage_gc();
+	plua_gc();
 	hardware_gc();
 	eventpool_gc();
 	wiringXGC();
 
 	CuAssertIntEquals(tc, 0, xfree());
-}
-
+}*/
 
 static void test_hardware_433gpio_param1(CuTest *tc) {
 	if(wiringXSetup("test", foo) != -999) {
@@ -327,6 +333,7 @@ static void test_hardware_433gpio_param1(CuTest *tc) {
 	}
 
 	storage_gc();
+	plua_gc();
 	hardware_gc();
 	eventpool_gc();
 	wiringXGC();
@@ -387,6 +394,7 @@ static void test_hardware_433gpio_param2(CuTest *tc) {
 	}
 
 	storage_gc();
+	plua_gc();
 	hardware_gc();
 	eventpool_gc();
 	wiringXGC();
@@ -447,6 +455,7 @@ static void test_hardware_433gpio_param3(CuTest *tc) {
 	}
 
 	storage_gc();
+	plua_gc();
 	hardware_gc();
 	eventpool_gc();
 	wiringXGC();
@@ -507,6 +516,7 @@ static void test_hardware_433gpio_param4(CuTest *tc) {
 	}
 
 	storage_gc();
+	plua_gc();
 	hardware_gc();
 	eventpool_gc();
 	wiringXGC();
@@ -567,6 +577,7 @@ static void test_hardware_433gpio_param5(CuTest *tc) {
 	}
 
 	storage_gc();
+	plua_gc();
 	hardware_gc();
 	eventpool_gc();
 	wiringXGC();
@@ -577,7 +588,7 @@ static void test_hardware_433gpio_param5(CuTest *tc) {
 CuSuite *suite_hardware_433gpio(void) {
 	CuSuite *suite = CuSuiteNew();
 
-	SUITE_ADD_TEST(suite, test_hardware_433gpio_param);
+	// SUITE_ADD_TEST(suite, test_hardware_433gpio_param);
 	SUITE_ADD_TEST(suite, test_hardware_433gpio_param1);
 	SUITE_ADD_TEST(suite, test_hardware_433gpio_param2);
 	SUITE_ADD_TEST(suite, test_hardware_433gpio_param3);

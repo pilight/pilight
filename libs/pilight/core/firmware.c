@@ -61,7 +61,7 @@
 #include "../../avrdude/avrconfig.h"
 #include "../../avrdude/avrupd.h"
 #include "../../avrdude/safemode.h"
-#include "../storage/storage.h"
+#include "../config/settings.h"
 #include "firmware.h"
 #include "pilight.h"
 #include "common.h"
@@ -553,7 +553,8 @@ static void firmware_attiny85(struct avrpart **p) {
 static void firmware_init_pgm(PROGRAMMER **pgm) {
 	*pgm = pgm_new();
 #ifndef _WIN32
-	double itmp = 0.0;
+	// double itmp = 0.0;
+	int itmp = 0;
 	if(strlen(comport) == 0) {
 		gpio_initpgm(*pgm);
 		(*pgm)->pinno[3] = FIRMWARE_GPIO_RESET;
@@ -562,10 +563,10 @@ static void firmware_init_pgm(PROGRAMMER **pgm) {
 		(*pgm)->pinno[6] = FIRMWARE_GPIO_MISO;
 		// (*pgm)->ispdelay = 50;
 
-		if(settings_select_number(ORIGIN_MASTER, "firmware-gpio-reset", &itmp) == 0) { (*pgm)->pinno[3] = (int)itmp; }
-		if(settings_select_number(ORIGIN_MASTER, "firmware-gpio-sck", &itmp) == 0) { (*pgm)->pinno[4] = (int)itmp; }
-		if(settings_select_number(ORIGIN_MASTER, "firmware-gpio-mosi", &itmp) == 0) { (*pgm)->pinno[5] = (int)itmp; }
-		if(settings_select_number(ORIGIN_MASTER, "firmware-gpio-miso", &itmp) == 0) { (*pgm)->pinno[6] = (int)itmp; }
+		if(config_setting_get_number("firmware-gpio-reset", 0, &itmp) == 0) { (*pgm)->pinno[3] = itmp; }
+		if(config_setting_get_number("firmware-gpio-sck", 0, &itmp) == 0) { (*pgm)->pinno[4] = itmp; }
+		if(config_setting_get_number("firmware-gpio-mosi", 0, &itmp) == 0) { (*pgm)->pinno[5] = itmp; }
+		if(config_setting_get_number("firmware-gpio-miso", 0, &itmp) == 0) { (*pgm)->pinno[6] = itmp; }
 	} else {
 #endif
 		arduino_initpgm(*pgm);

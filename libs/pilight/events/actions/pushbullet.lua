@@ -9,6 +9,10 @@
 local M = {}
 
 function M.check(parameters)
+	if parameters == nil then
+		return 0;
+	end
+
 	if parameters['TITLE'] == nil then
 		error("pushbullet action is missing a \"TITLE\" statement");
 	else
@@ -37,14 +41,20 @@ function M.check(parameters)
 end
 
 function M.callback(http)
-	if http.getCode() == 200 then
-		error("pushbullet action succeeded with message \"" .. http.getData() .. "\"");
-	else
-		error("pushbullet action failed (" .. http.getCode() .. ") with message \" " .. http.getData() .. "\"");
+	if http ~= nil then
+		if http.getCode() == 200 then
+			error("pushbullet action succeeded with message \"" .. http.getData() .. "\"");
+		else
+			error("pushbullet action failed (" .. http.getCode() .. ") with message \" " .. http.getData() .. "\"");
+		end
 	end
 end
 
 function M.run(parameters)
+	if parameters == nil then
+		return 0;
+	end
+
 	local httpobj = pilight.network.http();
 	local url = "https://" .. parameters['TOKEN']['value'][1] .. "@api.pushbullet.com/v2/pushes";
 

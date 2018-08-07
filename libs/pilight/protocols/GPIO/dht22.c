@@ -29,6 +29,7 @@
 #include "../../core/eventpool.h"
 #include "../../core/binary.h"
 #include "../../core/json.h"
+#include "../../config/settings.h"
 #include "../protocol.h"
 #include "dht22.h"
 
@@ -263,17 +264,25 @@ static int checkValues(struct JsonNode *code) {
 				int gpio = (int)itmp;
 				char *platform = GPIO_PLATFORM;
 
-				if(settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+				if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
+					logprintf(LOG_ERR, "dht22: no gpio-platform configured");
+					return -1;
+				}
+				if(strcmp(platform, "none") == 0) {
+					FREE(platform);
 					logprintf(LOG_ERR, "dht22: no gpio-platform configured");
 					return -1;
 				}
 				if(wiringXSetup(platform, _logprintf) < 0) {
+					FREE(platform);
 					logprintf(LOG_ERR, "unable to setup wiringX") ;
 					return -1;
 				} else if(wiringXValidGPIO(gpio) != 0) {
+					FREE(platform);
 					logprintf(LOG_ERR, "dht22: invalid gpio range");
 					return -1;
 				}
+				FREE(platform);
 #endif
 			}
 		}

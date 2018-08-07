@@ -23,6 +23,7 @@
 #include "../libs/pilight/core/ssl.h"
 #include "../libs/pilight/core/log.h"
 #include "../libs/pilight/core/socket.h"
+#include "../libs/pilight/lua/lua.h"
 
 #include "alltests.h"
 
@@ -115,6 +116,7 @@ static void test_webserver(CuTest *tc) {
 
 	ssl_gc();
 	storage_gc();
+	plua_gc();
 	eventpool_gc();
 
 	CuAssertIntEquals(tc, 1, check);
@@ -129,14 +131,21 @@ static void test_webserver_core_api(CuTest *tc) {
 		return;
 	}
 
-	FILE *f = fopen("webserver.json", "w");
-	fprintf(f,
-		"{\"devices\":{},\"gui\":{},\"rules\":{},"\
-		"\"settings\":{\"pem-file\":\"../res/pilight.pem\",\"webserver-root\":\"../libs/webgui/\","\
+	char config[1024] = "{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"pem-file\":\"%s../res/pilight.pem\",\"webserver-root\":\"%s../libs/webgui/\","\
 		"\"webserver-enable\":1,\"webserver-http-port\":10080,\"webserver-https-port\":10443},"\
-		"\"hardware\":{},\"registry\":{}}"
-	);
+		"\"hardware\":{},\"registry\":{}}";
+
+	char *file = strdup(__FILE__);
+	if(file == NULL) {
+		OUT_OF_MEMORY
+	}
+	str_replace("webserver_rest.c", "", &file);
+
+	FILE *f = fopen("webserver.json", "w");
+	fprintf(f, config, file, file);
 	fclose(f);
+	strdup(file);
 
 	gtc = tc;
 	check = 0;

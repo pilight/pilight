@@ -20,6 +20,7 @@
 #include "../../core/common.h"
 #include "../../core/dso.h"
 #include "../../core/log.h"
+#include "../../config/settings.h"
 #include "../protocol.h"
 #include "relay.h"
 
@@ -63,13 +64,14 @@ static int createCode(struct JsonNode *code, char **message) {
 
 #if defined(__arm__) || defined(__mips__)
 	char *platform = GPIO_PLATFORM;
-	if(settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform) != 0) {
+	if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
 		logprintf(LOG_ERR, "relay: no gpio-platform configured");
 		have_error = 1;
 		goto clear;
 	} else if(strcmp(platform, "none") == 0) {
 		logprintf(LOG_ERR, "relay: no gpio-platform configured");
 		have_error = 1;
+		FREE(platform);
 		goto clear;
 	} else
 #endif
@@ -79,9 +81,11 @@ static int createCode(struct JsonNode *code, char **message) {
 		goto clear;
 #if defined(__arm__) || defined(__mips__)
 	} else if(wiringXSetup(platform, _logprintf) < 0) {
+		FREE(platform);
 		logprintf(LOG_ERR, "unable to setup wiringX") ;
 		return EXIT_FAILURE;
 	} else {
+		FREE(platform);
 		if(wiringXValidGPIO(gpio) != 0) {
 			logprintf(LOG_ERR, "relay: invalid gpio range");
 			have_error = 1;
@@ -161,7 +165,7 @@ static int checkValues(struct JsonNode *code) {
 #if defined(__arm__) || defined(__mips__)					
 				int gpio = (int)itmp;
 				char *platform = GPIO_PLATFORM;
-				if(settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+				if(config_setting_get_string("gpio-platform", 0, &platform) != 0 || strcmp(platform, "none") == 0) {
 					logprintf(LOG_ERR, "relay: no gpio-platform configured");
 					return -1;
 				} else if(wiringXSetup(platform, _logprintf) < 0) {

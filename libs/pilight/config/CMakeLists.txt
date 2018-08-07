@@ -1,4 +1,4 @@
-project(pilight_lua_devices)
+project(pilight_config)
 
 file(GLOB ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/*.c")
 file(GLOB ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/*.h")

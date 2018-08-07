@@ -27,7 +27,7 @@
 #include "../core/common.h"
 #include "../core/dso.h"
 #include "../core/log.h"
-#include "../storage/storage.h"
+#include "../config/settings.h"
 #include "../lua/lua.h"
 
 #include "operator.h"
@@ -52,7 +52,7 @@ void event_operator_init(void) {
 		OUT_OF_MEMORY
 	}
 
-	settings_select_string(ORIGIN_MASTER, "operators-root", &operator_root);
+	int ret = config_setting_get_string("operators-root", 0, &operator_root);
 
 	if((d = opendir(operator_root))) {
 		while((file = readdir(d)) != NULL) {
@@ -68,6 +68,11 @@ void event_operator_init(void) {
 			}
 		}
 	}
+
+	if(ret == 0) {
+		FREE(operator_root);
+	}
+
 	closedir(d);
 	FREE(f);
 }

@@ -104,19 +104,22 @@ static void test_lua_config_device_unknown(CuTest *tc) {
 
 	plua_init();
 	plua_override_global("print", plua_print);
+	plua_pause_coverage(1);
 	struct lua_state_t *state = plua_get_free_state();
 
 	/* print(dev); */
 	lua_return[0].type = LUA_TNIL;
 
 	luaL_dostring(state->L, "\
-		local dev = pilight.config.device(\"test\");\
+		local config = pilight.config(); \
+		local dev = config.getDevice(\"test\");\
 		print(dev);\
 	");
 
 	uv_mutex_unlock(&state->lock);
 
 	eventpool_gc();
+	plua_pause_coverage(0);
 	plua_gc();
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -159,6 +162,7 @@ static void test_lua_config_device_switch(CuTest *tc) {
 
 	plua_init();
 	plua_override_global("print", plua_print);
+	plua_pause_coverage(1);
 	struct lua_state_t *state = plua_get_free_state();
 
 	int i = 0;
@@ -226,7 +230,8 @@ static void test_lua_config_device_switch(CuTest *tc) {
 	lua_return[i++].var.number_ = 1;
 
 	int ret = luaL_dostring(state->L, "\
-		local dev = pilight.config.device(\"switch\");\
+		local config = pilight.config(); \
+		local dev = config.getDevice(\"switch\");\
 		print(dev);\
 		print(dev.getType()[1]);\
 		print(dev.getName());\
@@ -259,6 +264,7 @@ static void test_lua_config_device_switch(CuTest *tc) {
 
 	uv_mutex_unlock(&state->lock);
 
+	plua_pause_coverage(0);
 	storage_gc();
 	protocol_gc();
 	eventpool_gc();
@@ -304,6 +310,7 @@ static void test_lua_config_device_screen(CuTest *tc) {
 
 	plua_init();
 	plua_override_global("print", plua_print);
+	plua_pause_coverage(1);
 	struct lua_state_t *state = plua_get_free_state();
 
 	int i = 0;
@@ -371,7 +378,8 @@ static void test_lua_config_device_screen(CuTest *tc) {
 	lua_return[i++].var.number_ = 1;
 
 	int ret = luaL_dostring(state->L, "\
-		local dev = pilight.config.device(\"screen\");\
+		local config = pilight.config(); \
+		local dev = config.getDevice(\"screen\");\
 		print(dev);\
 		print(dev.getType()[1]);\
 		print(dev.getName());\
@@ -404,6 +412,7 @@ static void test_lua_config_device_screen(CuTest *tc) {
 
 	uv_mutex_unlock(&state->lock);
 
+	plua_pause_coverage(0);
 	storage_gc();
 	protocol_gc();
 	eventpool_gc();
@@ -449,6 +458,7 @@ static void test_lua_config_device_relay(CuTest *tc) {
 
 	plua_init();
 	plua_override_global("print", plua_print);
+	plua_pause_coverage(1);
 	struct lua_state_t *state = plua_get_free_state();
 
 	int i = 0;
@@ -504,7 +514,8 @@ static void test_lua_config_device_relay(CuTest *tc) {
 	lua_return[i++].var.number_ = 1;
 
 	int ret = luaL_dostring(state->L, "\
-		local dev = pilight.config.device(\"foo\");\
+		local config = pilight.config();\
+		local dev = config.getDevice(\"foo\");\
 		print(dev);\
 		print(dev.getType()[1]);\
 		print(dev.getName());\
@@ -534,6 +545,7 @@ static void test_lua_config_device_relay(CuTest *tc) {
 
 	uv_mutex_unlock(&state->lock);
 
+	plua_pause_coverage(0);
 	storage_gc();
 	protocol_gc();
 	eventpool_gc();
@@ -579,6 +591,7 @@ static void test_lua_config_device_label(CuTest *tc) {
 
 	plua_init();
 	plua_override_global("print", plua_print);
+	plua_pause_coverage(1);
 	struct lua_state_t *state = plua_get_free_state();
 
 	int i = 0;
@@ -643,7 +656,8 @@ static void test_lua_config_device_label(CuTest *tc) {
 	lua_return[i++].var.number_ = 1;
 
 	int ret = luaL_dostring(state->L, "\
-		local dev = pilight.config.device(\"label\");\
+		local config = pilight.config(); \
+		local dev = config.getDevice(\"label\");\
 		print(dev);\
 		print(dev.getType()[1]);\
 		print(dev.getName());\
@@ -676,6 +690,7 @@ static void test_lua_config_device_label(CuTest *tc) {
 
 	uv_mutex_unlock(&state->lock);
 
+	plua_pause_coverage(0);
 	storage_gc();
 	protocol_gc();
 	eventpool_gc();
@@ -713,6 +728,7 @@ static void test_lua_config_device_datetime(CuTest *tc) {
 
 	plua_init();
 	plua_override_global("print", plua_print);
+	plua_pause_coverage(1);
 	struct lua_state_t *state = plua_get_free_state();
 
 	int i = 0;
@@ -790,7 +806,8 @@ static void test_lua_config_device_datetime(CuTest *tc) {
 	lua_return[i++].var.number_ = 0;
 
 	int ret = luaL_dostring(state->L, "\
-		local dev = pilight.config.device(\"test\");\
+		local config = pilight.config(); \
+		local dev = config.getDevice(\"test\");\
 		print(dev);\
 		print(dev.getType()[1]);\
 		print(dev.getName());\
@@ -818,6 +835,7 @@ static void test_lua_config_device_datetime(CuTest *tc) {
 
 	uv_mutex_unlock(&state->lock);
 
+	plua_pause_coverage(0);
 	storage_gc();
 	protocol_gc();
 	eventpool_gc();
@@ -863,6 +881,7 @@ static void test_lua_config_device_dimmer(CuTest *tc) {
 
 	plua_init();
 	plua_override_global("print", plua_print);
+	plua_pause_coverage(1);
 	struct lua_state_t *state = plua_get_free_state();
 
 	int i = 0;
@@ -942,7 +961,8 @@ static void test_lua_config_device_dimmer(CuTest *tc) {
 	lua_return[i++].var.number_ = 0;
 
 	int ret = luaL_dostring(state->L, "\
-		local dev = pilight.config.device(\"dimmer\");\
+		local config = pilight.config(); \
+		local dev = config.getDevice(\"dimmer\");\
 		print(dev);\
 		print(dev.getType()[1]);\
 		print(dev.getName());\
@@ -978,6 +998,7 @@ static void test_lua_config_device_dimmer(CuTest *tc) {
 
 	uv_mutex_unlock(&state->lock);
 
+	plua_pause_coverage(0);
 	storage_gc();
 	protocol_gc();
 	eventpool_gc();

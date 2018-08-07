@@ -28,7 +28,7 @@
 #include "../core/dso.h"
 #include "../core/log.h"
 #include "../lua/lua.h"
-#include "../storage/storage.h"
+#include "../config/settings.h"
 
 #include "function.h"
 
@@ -52,7 +52,7 @@ void event_function_init(void) {
 		OUT_OF_MEMORY
 	}
 
-	settings_select_string(ORIGIN_MASTER, "functions-root", &functions_root);
+	int ret = config_setting_get_string("functions-root", 0, &functions_root);
 
 	if((d = opendir(functions_root))) {
 		while((file = readdir(d)) != NULL) {
@@ -67,6 +67,9 @@ void event_function_init(void) {
 				}
 			}
 		}
+	}
+	if(ret == 0) {
+		FREE(functions_root);
 	}
 	closedir(d);
 	FREE(f);

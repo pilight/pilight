@@ -37,6 +37,7 @@
 #include "../events/events.h"
 #include "../events/action.h"
 #include "../datatypes/stack.h"
+#include "../config/config.h"
 #include "storage.h"
 
 #include "json.h"
@@ -65,7 +66,7 @@ static struct JsonNode *jdevices_cache = NULL;
 	static struct JsonNode *jrules_cache = NULL;
 #endif
 static struct JsonNode *jgui_cache = NULL;
-static struct JsonNode *jsettings_cache = NULL;
+// static struct JsonNode *jsettings_cache = NULL;
 static struct JsonNode *jhardware_cache = NULL;
 static struct JsonNode *jregistry_cache = NULL;
 
@@ -469,6 +470,8 @@ void storage_register(struct storage_t **s, const char *id) {
  * FIXME
  */
 void storage_init(void) {
+	config_init();
+
 	eventpool_callback(REASON_CONFIG_UPDATE, devices_update_cache);
 	eventpool_callback(REASON_CODE_RECEIVED, config_values_update);
 	eventpool_callback(REASON_CODE_SENT, config_values_update);
@@ -1399,500 +1402,499 @@ int gui_validate_media(struct JsonNode *jgui, int i) {
 	return 0;
 }
 
-int settings_validate_duplicates(struct JsonNode *jsettings, int i) {
-	struct JsonNode *jsettings1 = json_first_child(jsettings->parent);
-	int x = 0;
+// int settings_validate_duplicates(struct JsonNode *jsettings, int i) {
+	// struct JsonNode *jsettings1 = json_first_child(jsettings->parent);
+	// int x = 0;
 
-	while(jsettings1) {
-		x++;
-		if(x > i) {
-			if(strcmp(jsettings1->key, jsettings->key) == 0) {
-				if(i > 0) {
-					logprintf(LOG_ERR, "config settings #%d \"%s\", duplicate", i, jsettings->key);
-				}
-				return -1;
-			}
-		}
-		jsettings1 = jsettings1->next;
-	}
-	return 0;
-}
+	// while(jsettings1) {
+		// x++;
+		// if(x > i) {
+			// if(strcmp(jsettings1->key, jsettings->key) == 0) {
+				// if(i > 0) {
+					// logprintf(LOG_ERR, "config settings #%d \"%s\", duplicate", i, jsettings->key);
+				// }
+				// return -1;
+			// }
+		// }
+		// jsettings1 = jsettings1->next;
+	// }
+	// return 0;
+// }
 
-int settings_validate_settings(struct JsonNode *jsettings, int i) {
-#if !defined(__FreeBSD__) && !defined(_WIN32)
-	/* Regex variables */
-	regex_t regex;
-	int reti = 0;
-	memset(&regex, '\0', sizeof(regex));
-#endif
+// int settings_validate_settings(struct JsonNode *jsettings, int i) {
+// #if !defined(__FreeBSD__) && !defined(_WIN32)
+	// /* Regex variables */
+	// regex_t regex;
+	// int reti = 0;
+	// memset(&regex, '\0', sizeof(regex));
+// #endif
 
-	if(strcmp(jsettings->key, "port") == 0 ||
-	   strcmp(jsettings->key, "arp-interval") == 0 ||
-		 strcmp(jsettings->key, "arp-timeout") == 0) {
-		if(jsettings->tag != JSON_NUMBER) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number larger than 0", i, jsettings->key);
-			}
-			return -1;
-		} else if((int)jsettings->number_ == 0) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number larger than 0", i, jsettings->key);
-			}
-			return -1;
-		}
-	} else if(strcmp(jsettings->key, "firmware-gpio-reset") == 0
-		|| strcmp(jsettings->key, "firmware-gpio-sck") == 0
-		|| strcmp(jsettings->key, "firmware-gpio-mosi") == 0
-		|| strcmp(jsettings->key, "firmware-gpio-miso") == 0) {
-#if !defined(__arm__) || !defined(__mips__)				
-		return -1;
-#endif
-		if(jsettings->tag != JSON_NUMBER) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number larger than 0", i, jsettings->key);
-			}
-			return -1;
-		} else if(wiringXValidGPIO((int)jsettings->number_) != 0) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a valid GPIO number", i, jsettings->key);
-			}
-			return -1;
-		}
-	} else if(strcmp(jsettings->key, "gpio-platform") == 0) {
-		if(jsettings->tag != JSON_STRING) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a supported gpio platform", i, jsettings->key);
-			}
-			return -1;
-		} else if(jsettings->string_ == NULL) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a supported gpio platform", i, jsettings->key);
-			}
-			return -1;
-		} else {
-			if(strcmp(jsettings->string_, "none") != 0) { 				
-				if(wiringXSetup(jsettings->string_, _logprintf) != 0 && i > 0) {
-					logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a supported gpio platform", i, jsettings->key);
-				}
-			}
-		}		
-	} else if(strcmp(jsettings->key, "standalone") == 0 ||
-						strcmp(jsettings->key, "watchdog-enable") == 0 ||
-						strcmp(jsettings->key, "stats-enable") == 0) {
-		if(jsettings->tag != JSON_NUMBER) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must be either 0 or 1", i, jsettings->key);
-			}
-			return -1;
-		} else if(jsettings->number_ < 0 || jsettings->number_ > 1) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must be either 0 or 1", i, jsettings->key);
-			}
-			return -1;
-		}
-	} else if(strcmp(jsettings->key, "log-level") == 0) {
-		if(jsettings->tag != JSON_NUMBER) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number from 0 till 6", i, jsettings->key);
-			}
-			return -1;
-		} else if((int)jsettings->number_ < 0 || (int)jsettings->number_ > 6) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number from 0 till 6", i, jsettings->key);
-			}
-			return -1;
-		}
-	} else if(strcmp(jsettings->key, "log-file") == 0
-#ifndef _WIN32
-			|| strcmp(jsettings->key, "pid-file") == 0
-#endif
-			|| strcmp(jsettings->key, "pem-file") == 0
-#ifdef WEBSERVER
-			|| strcmp(jsettings->key, "webserver-root") == 0
-#endif
-		) {
-		if(jsettings->tag != JSON_STRING) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain an existing file", i, jsettings->key);
-			}
-			return -1;
-		} else if(jsettings->string_ == NULL) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain an existing file", i, jsettings->key);
-			}
-			return -1;
-		} else {
-			char *dir = NULL;
-			char *cpy = STRDUP(jsettings->string_);
-			if(cpy == NULL) {
-				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-			}
+	// if(strcmp(jsettings->key, "port") == 0 ||
+	   // strcmp(jsettings->key, "arp-interval") == 0 ||
+		 // strcmp(jsettings->key, "arp-timeout") == 0) {
+		// if(jsettings->tag != JSON_NUMBER) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number larger than 0", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if((int)jsettings->number_ == 0) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number larger than 0", i, jsettings->key);
+			// }
+			// return -1;
+		// }
+	// } else if(strcmp(jsettings->key, "firmware-gpio-reset") == 0
+		// || strcmp(jsettings->key, "firmware-gpio-sck") == 0
+		// || strcmp(jsettings->key, "firmware-gpio-mosi") == 0
+		// || strcmp(jsettings->key, "firmware-gpio-miso") == 0) {
+// #if !defined(__arm__) || !defined(__mips__)
+		// return -1;
+// #endif
+		// if(jsettings->tag != JSON_NUMBER) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number larger than 0", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if(wiringXValidGPIO((int)jsettings->number_) != 0) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a valid GPIO number", i, jsettings->key);
+			// }
+			// return -1;
+		// }
+	// } else if(strcmp(jsettings->key, "gpio-platform") == 0) {
+		// if(jsettings->tag != JSON_STRING) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a supported gpio platform", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if(jsettings->string_ == NULL) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a supported gpio platform", i, jsettings->key);
+			// }
+			// return -1;
+		// } else {
+			// if(strcmp(jsettings->string_, "none") != 0) {
+				// if(wiringXSetup(jsettings->string_, _logprintf) != 0 && i > 0) {
+					// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a supported gpio platform", i, jsettings->key);
+				// }
+			// }
+		// }
+	// } else if(strcmp(jsettings->key, "standalone") == 0 ||
+						// strcmp(jsettings->key, "watchdog-enable") == 0 ||
+						// strcmp(jsettings->key, "stats-enable") == 0) {
+		// if(jsettings->tag != JSON_NUMBER) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must be either 0 or 1", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if(jsettings->number_ < 0 || jsettings->number_ > 1) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must be either 0 or 1", i, jsettings->key);
+			// }
+			// return -1;
+		// }
+	// } else if(strcmp(jsettings->key, "log-level") == 0) {
+		// if(jsettings->tag != JSON_NUMBER) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number from 0 till 6", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if((int)jsettings->number_ < 0 || (int)jsettings->number_ > 6) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number from 0 till 6", i, jsettings->key);
+			// }
+			// return -1;
+		// }
+	// } else if(strcmp(jsettings->key, "log-file") == 0
+// #ifndef _WIN32
+			// || strcmp(jsettings->key, "pid-file") == 0
+// #endif
+			// || strcmp(jsettings->key, "pem-file") == 0
+// #ifdef WEBSERVER
+			// || strcmp(jsettings->key, "webserver-root") == 0
+// #endif
+		// ) {
+		// if(jsettings->tag != JSON_STRING) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain an existing file", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if(jsettings->string_ == NULL) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain an existing file", i, jsettings->key);
+			// }
+			// return -1;
+		// } else {
+			// char *dir = NULL;
+			// char *cpy = STRDUP(jsettings->string_);
+			// if(cpy == NULL) {
+				// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+			// }
 
+			// if((dir = _dirname(cpy)) == NULL) {
+				// logprintf(LOG_ERR, "could not open logfile %s", log);
+				// atomicunlock();
+				// return -1;
+			// }
 
-			if((dir = _dirname(cpy)) == NULL) {
-				logprintf(LOG_ERR, "could not open logfile %s", log);
-				atomicunlock();
-				return -1;
-			}
+			// if(path_exists(dir) != EXIT_SUCCESS) {
+				// if(i > 0) {
+					// logprintf(LOG_ERR, "config setting #%d \"%s\" must point to an existing folder", i, jsettings->key);
+				// }
+				// FREE(cpy);
+				// return -1;
+			// }
+			// FREE(cpy);
+		// }
+	// } else if(strcmp(jsettings->key, "whitelist") == 0) {
+		// if(jsettings->tag != JSON_STRING) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a valid ip address", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if(!jsettings->string_) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a valid ip addresses", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if(strlen(jsettings->string_) > 0) {
+// #if !defined(__FreeBSD__) && !defined(_WIN32)
+			// char validate[] = "^((\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\\.(\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\\.(\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\\.(\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))(,[\\ ]|,|$))+$";
+			// reti = regcomp(&regex, validate, REG_EXTENDED);
+			// if(reti) {
+				// if(i > 0) {
+					// logprintf(LOG_ERR, "could not compile regex");
+				// }
+				// return -1;
+			// }
+			// reti = regexec(&regex, jsettings->string_, 0, NULL, 0);
+			// if(reti == REG_NOMATCH || reti != 0) {
+				// if(i > 0) {
+					// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain valid ip addresses", i, jsettings->key);
+				// }
+				// regfree(&regex);
+				// return -1;
+			// }
+			// regfree(&regex);
+// #endif
+			// int l = (int)strlen(jsettings->string_)-1;
+			// if(jsettings->string_[l] == ' ' || jsettings->string_[l] == ',') {
+				// if(i > 0) {
+					// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain valid ip addresses", i, jsettings->key);
+				// }
+				// return -1;
+			// }
+		// }
+// #ifdef WEBSERVER
+	// #ifdef WEBSERVER_HTTPS
+	// } else if(strcmp(jsettings->key, "webserver-https-port") == 0) {
+		// if(jsettings->tag != JSON_NUMBER) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number larget than 0", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if(jsettings->number_ < -1) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number larger than 0", i, jsettings->key);
+			// }
+			// return -1;
+		// }
+	// #endif
+	// } else if(strcmp(jsettings->key, "webserver-http-port") == 0) {
+		// if(jsettings->tag != JSON_NUMBER) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number larget than 0", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if(jsettings->number_ < -1) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number larger than 0", i, jsettings->key);
+			// }
+			// return -1;
+		// }
+	// } else if(strcmp(jsettings->key, "webserver-enable") == 0) {
+		// if(jsettings->tag != JSON_NUMBER) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must be either 0 or 1", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if(jsettings->number_ < 0 || jsettings->number_ > 1) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must be either 0 or 1", i, jsettings->key);
+			// }
+			// return -1;
+		// }
+	// } else if(strcmp(jsettings->key, "webserver-cache") == 0 ||
+						// strcmp(jsettings->key, "webgui-websockets") == 0) {
+		// if(jsettings->tag != JSON_NUMBER) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must be either 0 or 1", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if(jsettings->number_ < 0 || jsettings->number_ > 1) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must be either 0 or 1", i, jsettings->key);
+			// }
+			// return -1;
+		// }
+	// } else if(strcmp(jsettings->key, "webserver-authentication") == 0 && jsettings->tag == JSON_ARRAY) {
+		// struct JsonNode *jtmp = json_first_child(jsettings);
+		// unsigned short x = 0;
+		// while(jtmp) {
+			// x++;
+			// if(jtmp->tag != JSON_STRING || x > 2) {
+				// if(i > 0) {
+					// logprintf(LOG_ERR, "config setting #%d \"%s\" must be in the format of [ \"username\", \"password\" ]", i, jsettings->key);
+				// }
+				// return -1;
+			// }
+			// jtmp = jtmp->next;
+		// }
+// #endif // WEBSERVER
+	// } else if(strcmp(jsettings->key, "ntp-servers") == 0 && jsettings->tag == JSON_ARRAY) {
+		// struct JsonNode *jtmp = json_first_child(jsettings);
+		// int nrntp = 0;
 
-			if(path_exists(dir) != EXIT_SUCCESS) {
-				if(i > 0) {
-					logprintf(LOG_ERR, "config setting #%d \"%s\" must point to an existing folder", i, jsettings->key);
-				}
-				FREE(cpy);
-				return -1;
-			}
-			FREE(cpy);
-		}
-	} else if(strcmp(jsettings->key, "whitelist") == 0) {
-		if(jsettings->tag != JSON_STRING) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a valid ip address", i, jsettings->key);
-			}
-			return -1;
-		} else if(!jsettings->string_) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a valid ip addresses", i, jsettings->key);
-			}
-			return -1;
-		} else if(strlen(jsettings->string_) > 0) {
-#if !defined(__FreeBSD__) && !defined(_WIN32)
-			char validate[] = "^((\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\\.(\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\\.(\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\\.(\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))(,[\\ ]|,|$))+$";
-			reti = regcomp(&regex, validate, REG_EXTENDED);
-			if(reti) {
-				if(i > 0) {
-					logprintf(LOG_ERR, "could not compile regex");
-				}
-				return -1;
-			}
-			reti = regexec(&regex, jsettings->string_, 0, NULL, 0);
-			if(reti == REG_NOMATCH || reti != 0) {
-				if(i > 0) {
-					logprintf(LOG_ERR, "config setting #%d \"%s\" must contain valid ip addresses", i, jsettings->key);
-				}
-				regfree(&regex);
-				return -1;
-			}
-			regfree(&regex);
-#endif
-			int l = (int)strlen(jsettings->string_)-1;
-			if(jsettings->string_[l] == ' ' || jsettings->string_[l] == ',') {
-				if(i > 0) {
-					logprintf(LOG_ERR, "config setting #%d \"%s\" must contain valid ip addresses", i, jsettings->key);
-				}
-				return -1;
-			}
-		}
-#ifdef WEBSERVER
-	#ifdef WEBSERVER_HTTPS
-	} else if(strcmp(jsettings->key, "webserver-https-port") == 0) {
-		if(jsettings->tag != JSON_NUMBER) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number larget than 0", i, jsettings->key);
-			}
-			return -1;
-		} else if(jsettings->number_ < -1) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number larger than 0", i, jsettings->key);
-			}
-			return -1;
-		}
-	#endif
-	} else if(strcmp(jsettings->key, "webserver-http-port") == 0) {
-		if(jsettings->tag != JSON_NUMBER) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number larget than 0", i, jsettings->key);
-			}
-			return -1;
-		} else if(jsettings->number_ < -1) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number larger than 0", i, jsettings->key);
-			}
-			return -1;
-		}
-	} else if(strcmp(jsettings->key, "webserver-enable") == 0) {
-		if(jsettings->tag != JSON_NUMBER) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must be either 0 or 1", i, jsettings->key);
-			}
-			return -1;
-		} else if(jsettings->number_ < 0 || jsettings->number_ > 1) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must be either 0 or 1", i, jsettings->key);
-			}
-			return -1;
-		}
-	} else if(strcmp(jsettings->key, "webserver-cache") == 0 ||
-						strcmp(jsettings->key, "webgui-websockets") == 0) {
-		if(jsettings->tag != JSON_NUMBER) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must be either 0 or 1", i, jsettings->key);
-			}
-			return -1;
-		} else if(jsettings->number_ < 0 || jsettings->number_ > 1) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must be either 0 or 1", i, jsettings->key);
-			}
-			return -1;
-		}
-	} else if(strcmp(jsettings->key, "webserver-authentication") == 0 && jsettings->tag == JSON_ARRAY) {
-		struct JsonNode *jtmp = json_first_child(jsettings);
-		unsigned short x = 0;
-		while(jtmp) {
-			x++;
-			if(jtmp->tag != JSON_STRING || x > 2) {
-				if(i > 0) {
-					logprintf(LOG_ERR, "config setting #%d \"%s\" must be in the format of [ \"username\", \"password\" ]", i, jsettings->key);
-				}
-				return -1;
-			}
-			jtmp = jtmp->next;
-		}
-#endif // WEBSERVER
-	} else if(strcmp(jsettings->key, "ntp-servers") == 0 && jsettings->tag == JSON_ARRAY) {
-		struct JsonNode *jtmp = json_first_child(jsettings);
-		int nrntp = 0;
+		// while(jtmp) {
+			// nrntp++;
+			// if(jtmp->tag != JSON_STRING) {
+				// if(i > 0) {
+					// logprintf(LOG_ERR, "config setting #%d \"%s\" must be in the format of [ \"0.eu.pool.ntp.org\", ... ]", i, jsettings->key);
+				// }
+				// return -1;
+			// }
+			// jtmp = jtmp->next;
+		// }
+		// if(nrntp > 5) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" can only take a maximum of 5 servers", i, jsettings->key);
+			// }
+			// return -1;
+		// }
+	// } else if(strcmp(jsettings->key, "protocol-root") == 0 ||
+						// strcmp(jsettings->key, "hardware-root") == 0 ||
+						// strcmp(jsettings->key, "actions-root") == 0 ||
+						// strcmp(jsettings->key, "functions-root") == 0 ||
+						// strcmp(jsettings->key, "operators-root") == 0) {
+		// if(jsettings->tag != JSON_STRING) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a valid path", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if(jsettings->string_ == NULL || path_exists(jsettings->string_) != 0) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a valid path", i, jsettings->key);
+			// }
+			// return -1;
+		// }
+// #ifdef EVENTS
+	// } else if(strcmp(jsettings->key, "smtp-sender") == 0) {
+		// if(jsettings->tag != JSON_STRING) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain an e-mail address", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if(jsettings->string_ == NULL) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting \"%s\" must contain an e-mail address", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if(strlen(jsettings->string_) > 0) {
+// #if !defined(__FreeBSD__) && !defined(_WIN32)
+			// char validate[] = "^[a-zA-Z0-9_.]+@([a-zA-Z0-9]+\\.)+([a-zA-Z0-9]{2,3}){1,2}$";
+			// reti = regcomp(&regex, validate, REG_EXTENDED);
+			// if(reti) {
+				// if(i > 0) {
+					// logprintf(LOG_ERR, "could not compile regex for %s", jsettings->key);
+				// }
+				// return -1;
+			// }
+			// reti = regexec(&regex, jsettings->string_, 0, NULL, 0);
+			// if(reti == REG_NOMATCH || reti != 0) {
+				// if(i > 0) {
+					// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain an e-mail address", i, jsettings->key);
+				// }
+				// regfree(&regex);
+				// return -1;
+			// }
+			// regfree(&regex);
+// #endif
+		// }
+	// } else if(strcmp(jsettings->key, "smtp-user") == 0) {
+		// if(jsettings->tag != JSON_STRING) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting \"%s\" must contain a user id", jsettings->key);
+			// }
+			// return -1;
+		// } else if(jsettings->string_ == NULL) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting \"%s\" must contain a user id", jsettings->key);
+			// }
+			// return -1;
+		// }
+	// } else if(strcmp(jsettings->key, "smtp-password") == 0) {
+		// if(jsettings->tag != JSON_STRING) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a password string", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if(jsettings->string_ == NULL) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a password string", i, jsettings->key);
+			// }
+			// return -1;
+		// }
+	// } else if(strcmp(jsettings->key, "smtp-ssl") == 0) {
+		// if(jsettings->tag != JSON_NUMBER) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must be either 0 or 1", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if(jsettings->number_ < 0 || jsettings->number_ > 1) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must be either 0 or 1", i, jsettings->key);
+			// }
+			// return -1;
+		// }
+	// } else if(strcmp(jsettings->key, "smtp-host") == 0) {
+		// if(jsettings->tag != JSON_STRING) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain an smtp host address", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if(jsettings->string_ == NULL) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain an smtp host address", i, jsettings->key);
+			// }
+			// return -1;
+		// } /*else if(strlen(jsettings->string_) > 0) {
+// #if !defined(__FreeBSD__) && !defined(_WIN32)
+			// char validate[] = "^([a-zA-Z0-9\\_\\-]){2,20}(\\.([a-zA-Z0-9\\_\\-]){2,20}){2,3}$";
+			// reti = regcomp(&regex, validate, REG_EXTENDED);
+			// if(reti) {
+				// if(i > 0) {
+					// logprintf(LOG_ERR, "could not compile regex for %s", jsettings->key);
+				// }
+				// return -1;
+			// }
+			// reti = regexec(&regex, jsettings->string_, 0, NULL, 0);
+			// if(reti == REG_NOMATCH || reti != 0) {
+				// if(i > 0) {
+					// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain an smtp host address", i, jsettings->key);
+				// }
+				// regfree(&regex);
+				// return -1;
+			// }
+			// regfree(&regex);
+// #endif
+		// }*/
+	// } else if(strcmp(jsettings->key, "smtp-port") == 0) {
+		// if(jsettings->tag != JSON_NUMBER) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must be 25, 465 or 587", i, jsettings->key);
+			// }
+			// return -1;
+		// }
+// #endif //EVENTS
+	// } else if(strcmp(jsettings->key, "name") == 0 ||
+					  // strcmp(jsettings->key, "adhoc-master") == 0) {
+		// if(jsettings->tag != JSON_STRING) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a string", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if(strlen(jsettings->string_) > 16) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" can not be more than 16 characters", i, jsettings->key);
+			// }
+			// return -1;
+		// }
+	// } else if(strcmp(jsettings->key, "adhoc-mode") == 0) {
+		// if(jsettings->tag != JSON_STRING) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a string", i, jsettings->key);
+			// }
+			// return -1;
+		// } else if(!(strcmp(jsettings->string_, "server") == 0 || strcmp(jsettings->string_, "client") == 0)) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting #%d \"%s\" must be either \"server\" or \"client\"", i, jsettings->key);
+			// }
+			// return -1;
+		// }
+	// } else {
+		// if(i > 0) {
+			// logprintf(LOG_ERR, "config setting #%d \"%s\" is invalid", i, jsettings->key);
+		// }
+		// return -1;
+	// }
+	// return 0;
+// }
 
-		while(jtmp) {
-			nrntp++;
-			if(jtmp->tag != JSON_STRING) {
-				if(i > 0) {
-					logprintf(LOG_ERR, "config setting #%d \"%s\" must be in the format of [ \"0.eu.pool.ntp.org\", ... ]", i, jsettings->key);
-				}
-				return -1;
-			}
-			jtmp = jtmp->next;
-		}
-		if(nrntp > 5) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" can only take a maximum of 5 servers", i, jsettings->key);
-			}
-			return -1;
-		}
-	} else if(strcmp(jsettings->key, "protocol-root") == 0 ||
-						strcmp(jsettings->key, "hardware-root") == 0 ||
-						strcmp(jsettings->key, "actions-root") == 0 ||
-						strcmp(jsettings->key, "functions-root") == 0 ||
-						strcmp(jsettings->key, "operators-root") == 0) {
-		if(jsettings->tag != JSON_STRING) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a valid path", i, jsettings->key);
-			}
-			return -1;
-		} else if(jsettings->string_ == NULL || path_exists(jsettings->string_) != 0) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a valid path", i, jsettings->key);
-			}
-			return -1;
-		}
-#ifdef EVENTS
-	} else if(strcmp(jsettings->key, "smtp-sender") == 0) {
-		if(jsettings->tag != JSON_STRING) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain an e-mail address", i, jsettings->key);
-			}
-			return -1;
-		} else if(jsettings->string_ == NULL) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting \"%s\" must contain an e-mail address", i, jsettings->key);
-			}
-			return -1;
-		} else if(strlen(jsettings->string_) > 0) {
-#if !defined(__FreeBSD__) && !defined(_WIN32)
-			char validate[] = "^[a-zA-Z0-9_.]+@([a-zA-Z0-9]+\\.)+([a-zA-Z0-9]{2,3}){1,2}$";
-			reti = regcomp(&regex, validate, REG_EXTENDED);
-			if(reti) {
-				if(i > 0) {
-					logprintf(LOG_ERR, "could not compile regex for %s", jsettings->key);
-				}
-				return -1;
-			}
-			reti = regexec(&regex, jsettings->string_, 0, NULL, 0);
-			if(reti == REG_NOMATCH || reti != 0) {
-				if(i > 0) {
-					logprintf(LOG_ERR, "config setting #%d \"%s\" must contain an e-mail address", i, jsettings->key);
-				}
-				regfree(&regex);
-				return -1;
-			}
-			regfree(&regex);
-#endif
-		}
-	} else if(strcmp(jsettings->key, "smtp-user") == 0) {
-		if(jsettings->tag != JSON_STRING) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting \"%s\" must contain a user id", jsettings->key);
-			}
-			return -1;
-		} else if(jsettings->string_ == NULL) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting \"%s\" must contain a user id", jsettings->key);
-			}
-			return -1;
-		}
-	} else if(strcmp(jsettings->key, "smtp-password") == 0) {
-		if(jsettings->tag != JSON_STRING) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a password string", i, jsettings->key);
-			}
-			return -1;
-		} else if(jsettings->string_ == NULL) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a password string", i, jsettings->key);
-			}
-			return -1;
-		}
-	} else if(strcmp(jsettings->key, "smtp-ssl") == 0) {
-		if(jsettings->tag != JSON_NUMBER) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must be either 0 or 1", i, jsettings->key);
-			}
-			return -1;
-		} else if(jsettings->number_ < 0 || jsettings->number_ > 1) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must be either 0 or 1", i, jsettings->key);
-			}
-			return -1;
-		}
-	} else if(strcmp(jsettings->key, "smtp-host") == 0) {
-		if(jsettings->tag != JSON_STRING) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain an smtp host address", i, jsettings->key);
-			}
-			return -1;
-		} else if(jsettings->string_ == NULL) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain an smtp host address", i, jsettings->key);
-			}
-			return -1;
-		} /*else if(strlen(jsettings->string_) > 0) {
-#if !defined(__FreeBSD__) && !defined(_WIN32)
-			char validate[] = "^([a-zA-Z0-9\\_\\-]){2,20}(\\.([a-zA-Z0-9\\_\\-]){2,20}){2,3}$";
-			reti = regcomp(&regex, validate, REG_EXTENDED);
-			if(reti) {
-				if(i > 0) {
-					logprintf(LOG_ERR, "could not compile regex for %s", jsettings->key);
-				}
-				return -1;
-			}
-			reti = regexec(&regex, jsettings->string_, 0, NULL, 0);
-			if(reti == REG_NOMATCH || reti != 0) {
-				if(i > 0) {
-					logprintf(LOG_ERR, "config setting #%d \"%s\" must contain an smtp host address", i, jsettings->key);
-				}
-				regfree(&regex);
-				return -1;
-			}
-			regfree(&regex);
-#endif
-		}*/
-	} else if(strcmp(jsettings->key, "smtp-port") == 0) {
-		if(jsettings->tag != JSON_NUMBER) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must be 25, 465 or 587", i, jsettings->key);
-			}
-			return -1;
-		}
-#endif //EVENTS
-	} else if(strcmp(jsettings->key, "name") == 0 ||
-					  strcmp(jsettings->key, "adhoc-master") == 0) {
-		if(jsettings->tag != JSON_STRING) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a string", i, jsettings->key);
-			}
-			return -1;
-		} else if(strlen(jsettings->string_) > 16) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" can not be more than 16 characters", i, jsettings->key);
-			}
-			return -1;
-		}
-	} else if(strcmp(jsettings->key, "adhoc-mode") == 0) {
-		if(jsettings->tag != JSON_STRING) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a string", i, jsettings->key);
-			}
-			return -1;
-		} else if(!(strcmp(jsettings->string_, "server") == 0 || strcmp(jsettings->string_, "client") == 0)) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting #%d \"%s\" must be either \"server\" or \"client\"", i, jsettings->key);
-			}
-			return -1;
-		}
-	} else {
-		if(i > 0) {
-			logprintf(LOG_ERR, "config setting #%d \"%s\" is invalid", i, jsettings->key);
-		}
-		return -1;
-	}
-	return 0;
-}
+// int settings_validate_values(struct JsonNode *jsettings, int i) {
+	// struct JsonNode *jparent = jsettings->parent;
+	// double itmp = 0.0;
+	// char *adhoc_mode = NULL, *adhoc_master = NULL;
 
-int settings_validate_values(struct JsonNode *jsettings, int i) {
-	struct JsonNode *jparent = jsettings->parent;
-	double itmp = 0.0;
-	char *adhoc_mode = NULL, *adhoc_master = NULL;
+// #ifdef WEBSERVER
+	// int web_http_port = WEBSERVER_HTTP_PORT;
 
-#ifdef WEBSERVER
-	int web_http_port = WEBSERVER_HTTP_PORT;
+	// #ifdef WEBSERVER_HTTPS
+		// int web_https_port = WEBSERVER_HTTPS_PORT;
+	// #endif
 
-	#ifdef WEBSERVER_HTTPS
-		int web_https_port = WEBSERVER_HTTPS_PORT;
-	#endif
+	// int pilight_daemon_port = -1;
+	// if(strcmp(jsettings->key, "port") == 0 ||
+// #ifdef WEBSERVER_HTTPS
+	   // strcmp(jsettings->key, "webserver-https-port") == 0 ||
+// #endif
+	   // strcmp(jsettings->key, "webserver-http-port") == 0) {
+		// if(json_find_number(jparent, "webserver-http-port", &itmp) == 0) {
+			// web_http_port = (int)itmp;
+		// }
+// #ifdef WEBSERVER_HTTPS
+		// if(json_find_number(jparent, "webserver-https-port", &itmp) == 0) {
+			// web_https_port = (int)itmp;
+		// }
+// #endif
+		// if(json_find_number(jparent, "port", &itmp) == 0) {
+			// pilight_daemon_port = (int)itmp;
+		// }
+		// if(web_http_port == pilight_daemon_port) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting \"port\" and \"webserver-http-port\" cannot be the same");
+			// }
+			// return -1;
+		// }
+// #ifdef WEBSERVER_HTTPS
+		// if(web_https_port == pilight_daemon_port) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting \"port\" and \"webserver-https-port\" cannot be the same");
+			// }
+			// return -1;
+		// }
+		// if(web_https_port == web_http_port) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting \"webserver-http-port\" and \"webserver-https-port\" cannot be the same");
+			// }
+			// return -1;
+		// }
+// #endif
+	// }
+// #endif
+	// if(strcmp(jsettings->key, "adhoc-mode") == 0 ||
+		 // strcmp(jsettings->key, "name") == 0) {
+		// json_find_string(jparent, "adhoc-mode", &adhoc_mode);
+		// json_find_string(jparent, "adhoc-master", &adhoc_master);
+		// if(adhoc_mode != NULL && adhoc_master != NULL && strcmp(adhoc_mode, "server") == 0) {
+			// if(i > 0) {
+				// logprintf(LOG_ERR, "config setting \"adhoc-master\" can not be used when \"adhoc-mode\" is \"server\"");
+			// }
 
-	int pilight_daemon_port = -1;
-	if(strcmp(jsettings->key, "port") == 0 ||
-#ifdef WEBSERVER_HTTPS
-	   strcmp(jsettings->key, "webserver-https-port") == 0 ||
-#endif
-	   strcmp(jsettings->key, "webserver-http-port") == 0) {
-		if(json_find_number(jparent, "webserver-http-port", &itmp) == 0) {
-			web_http_port = (int)itmp;
-		}
-#ifdef WEBSERVER_HTTPS
-		if(json_find_number(jparent, "webserver-https-port", &itmp) == 0) {
-			web_https_port = (int)itmp;
-		}
-#endif
-		if(json_find_number(jparent, "port", &itmp) == 0) {
-			pilight_daemon_port = (int)itmp;
-		}
-		if(web_http_port == pilight_daemon_port) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting \"port\" and \"webserver-http-port\" cannot be the same");
-			}
-			return -1;
-		}
-#ifdef WEBSERVER_HTTPS
-		if(web_https_port == pilight_daemon_port) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting \"port\" and \"webserver-https-port\" cannot be the same");
-			}
-			return -1;
-		}
-		if(web_https_port == web_http_port) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting \"webserver-http-port\" and \"webserver-https-port\" cannot be the same");
-			}
-			return -1;
-		}
-#endif
-	}
-#endif
-	if(strcmp(jsettings->key, "adhoc-mode") == 0 ||
-		 strcmp(jsettings->key, "name") == 0) {
-		json_find_string(jparent, "adhoc-mode", &adhoc_mode);
-		json_find_string(jparent, "adhoc-master", &adhoc_master);
-		if(adhoc_mode != NULL && adhoc_master != NULL && strcmp(adhoc_mode, "server") == 0) {
-			if(i > 0) {
-				logprintf(LOG_ERR, "config setting \"adhoc-master\" can not be used when \"adhoc-mode\" is \"server\"");
-			}
-
-			return -1;
-		}
-	}
-	return 0;
-}
+			// return -1;
+		// }
+	// }
+	// return 0;
+// }
 
 int hardware_validate_id(struct JsonNode *jhardware, int i) {
 	struct hardware_t *tmp_hardware = hardware;
@@ -2160,20 +2162,20 @@ int storage_hardware_validate(struct JsonNode *jhardware) {
 	return 0;
 }
 
-int storage_settings_validate(struct JsonNode *jsettings) {
-	int i = 0;
-	jsettings = json_first_child(jsettings);
-	while(jsettings) {
-		i++;
+// int storage_settings_validate(struct JsonNode *jsettings) {
+	// int i = 0;
+	// jsettings = json_first_child(jsettings);
+	// while(jsettings) {
+		// i++;
 
-		if(settings_validate_duplicates(jsettings, i) == -1) { return -1; }
-		if(settings_validate_settings(jsettings, i) == -1) { return -1; }
-		if(settings_validate_values(jsettings, i) == -1) { return -1; }
+		// if(settings_validate_duplicates(jsettings, i) == -1) { return -1; }
+		// if(settings_validate_settings(jsettings, i) == -1) { return -1; }
+		// if(settings_validate_values(jsettings, i) == -1) { return -1; }
 
-		jsettings = jsettings->next;
-	}
-	return 0;
-}
+		// jsettings = jsettings->next;
+	// }
+	// return 0;
+// }
 
 int storage_read(char *file, unsigned long objects) {
 	struct JsonNode *json = NULL;
@@ -2190,10 +2192,13 @@ int storage_read(char *file, unsigned long objects) {
 	 */
 	if(((objects & CONFIG_SETTINGS) == CONFIG_SETTINGS || (objects & CONFIG_ALL) == CONFIG_ALL) &&
 		storage->settings_select(ORIGIN_CONFIG, NULL, &json) == 0) {
-		json_clone(json, &jsettings_cache);
-		if(storage_settings_validate(jsettings_cache) == -1) {
+		if(config_read(file, CONFIG_SETTINGS) != 0) {
 			return -1;
 		}
+		// json_clone(json, &jsettings_cache);
+		// if(storage_settings_validate(jsettings_cache) == -1) {
+			// return -1;
+		// }
 	}
 
 	if(((objects & CONFIG_DEVICES) == CONFIG_DEVICES || (objects & CONFIG_ALL) == CONFIG_ALL) &&
@@ -2256,7 +2261,7 @@ int storage_import(struct JsonNode *jconfig) {
 #ifdef EVENTS
 	struct JsonNode *jrules = NULL;
 #endif
-	struct JsonNode *jsettings = NULL;
+	// struct JsonNode *jsettings = NULL;
 
 	if((jdevices = json_find_member(jconfig, "devices")) != NULL) {
 		if(storage_devices_validate(jdevices) == -1) {
@@ -2290,13 +2295,13 @@ int storage_import(struct JsonNode *jconfig) {
 		json_clone(jhardware, &jhardware_cache);
 	}
 
-	if((jsettings = json_find_member(jconfig, "settings")) != NULL) {
-		if(storage_settings_validate(jsettings) == -1) {
-			logprintf(LOG_DEBUG, "failed to import foreign config");
-			return -1;
-		}
-		json_clone(jsettings, &jsettings_cache);
-	}
+	// if((jsettings = json_find_member(jconfig, "settings")) != NULL) {
+		// if(storage_settings_validate(jsettings) == -1) {
+			// logprintf(LOG_DEBUG, "failed to import foreign config");
+			// return -1;
+		// }
+		// json_clone(jsettings, &jsettings_cache);
+	// }
 	logprintf(LOG_DEBUG, "foreign config successfully imported");
 	return 0;
 }
@@ -2599,78 +2604,78 @@ int hardware_select_struct(enum origin_t origin, char *id, struct hardware_t **o
 	return -1;
 }
 
-int settings_select(enum origin_t origin, char *id, struct JsonNode **jrespond) {
-	if(jsettings_cache == NULL) {
-		return -1;
-	}
-	*jrespond = jsettings_cache;
-	if(id != NULL) {
-		struct JsonNode *jchilds = json_first_child(*jrespond);
-		while(jchilds) {
-			if(strcmp(jchilds->key, id) == 0) {
-				*jrespond = jchilds;
-				return 0;
-			}
-			jchilds = jchilds->next;
-		}
-		return -1;
-	}
-	return 0;
-}
+// int settings_select(enum origin_t origin, char *id, struct JsonNode **jrespond) {
+	// if(jsettings_cache == NULL) {
+		// return -1;
+	// }
+	// *jrespond = jsettings_cache;
+	// if(id != NULL) {
+		// struct JsonNode *jchilds = json_first_child(*jrespond);
+		// while(jchilds) {
+			// if(strcmp(jchilds->key, id) == 0) {
+				// *jrespond = jchilds;
+				// return 0;
+			// }
+			// jchilds = jchilds->next;
+		// }
+		// return -1;
+	// }
+	// return 0;
+// }
 
-int settings_select_string(enum origin_t origin, char *id, char **out) {
-	struct JsonNode *jrespond = NULL;
-	if(settings_select(origin, id, &jrespond) == 0) {
-		if(jrespond->tag == JSON_STRING) {
-			*out = jrespond->string_;
-			return 0;
-		}
-	}
-	return -1;
-}
+// static int settings_select_string(enum origin_t origin, char *id, char **out) {
+	// struct JsonNode *jrespond = NULL;
+	// if(settings_select(origin, id, &jrespond) == 0) {
+		// if(jrespond->tag == JSON_STRING) {
+			// *out = jrespond->string_;
+			// return 0;
+		// }
+	// }
+	// return -1;
+// }
 
-int settings_select_number(enum origin_t origin, char *id, double *out) {
-	struct JsonNode *jrespond = NULL;
-	if(settings_select(origin, id, &jrespond) == 0) {
-		if(jrespond->tag == JSON_NUMBER) {
-			*out = jrespond->number_;
-			return 0;
-		}
-	}
-	return -1;
-}
+// static int settings_select_number(enum origin_t origin, char *id, double *out) {
+	// struct JsonNode *jrespond = NULL;
+	// if(settings_select(origin, id, &jrespond) == 0) {
+		// if(jrespond->tag == JSON_NUMBER) {
+			// *out = jrespond->number_;
+			// return 0;
+		// }
+	// }
+	// return -1;
+// }
 
-int settings_select_string_element(enum origin_t origin, char *id, int element, char **out) {
-	struct JsonNode *jrespond = NULL;
-	struct JsonNode *jelement = NULL;
-	if(settings_select(origin, id, &jrespond) == 0) {
-		if(jrespond->tag == JSON_ARRAY) {
-			if((jelement = json_find_element(jrespond, element)) != NULL) {
-				if(jelement->tag == JSON_STRING) {
-					*out = jelement->string_;
-					return 0;
-				}
-			}
-		}
-	}
-	return -1;
-}
+// static int settings_select_string_element(enum origin_t origin, char *id, int element, char **out) {
+	// struct JsonNode *jrespond = NULL;
+	// struct JsonNode *jelement = NULL;
+	// if(settings_select(origin, id, &jrespond) == 0) {
+		// if(jrespond->tag == JSON_ARRAY) {
+			// if((jelement = json_find_element(jrespond, element)) != NULL) {
+				// if(jelement->tag == JSON_STRING) {
+					// *out = jelement->string_;
+					// return 0;
+				// }
+			// }
+		// }
+	// }
+	// return -1;
+// }
 
-int settings_select_number_element(enum origin_t origin, char *id, int element, double *out) {
-	struct JsonNode *jrespond = NULL;
-	struct JsonNode *jelement = NULL;
-	if(settings_select(origin, id, &jrespond) == 0) {
-		if(jrespond->tag == JSON_ARRAY) {
-			if((jelement = json_find_element(jrespond, element)) != NULL) {
-				if(jelement->tag == JSON_NUMBER) {
-					*out = jelement->number_;
-					return 0;
-				}
-			}
-		}
-	}
-	return -1;
-}
+// static int settings_select_number_element(enum origin_t origin, char *id, int element, double *out) {
+	// struct JsonNode *jrespond = NULL;
+	// struct JsonNode *jelement = NULL;
+	// if(settings_select(origin, id, &jrespond) == 0) {
+		// if(jrespond->tag == JSON_ARRAY) {
+			// if((jelement = json_find_element(jrespond, element)) != NULL) {
+				// if(jelement->tag == JSON_NUMBER) {
+					// *out = jelement->number_;
+					// return 0;
+				// }
+			// }
+		// }
+	// }
+	// return -1;
+// }
 
 static int registry_get_value_recursive(struct JsonNode *root, const char *key, void **value, void **decimals, int type) {
 	char *sub = strstr(key, ".");
@@ -2957,6 +2962,7 @@ int devices_gc(void) {
 }
 
 int storage_gc(void) {
+	config_gc();
 	struct storage_t *tmp_storage = NULL;
 
 	if(storage != NULL) {
@@ -2979,10 +2985,10 @@ int storage_gc(void) {
 		jgui_cache = NULL;
 	}
 
-	if(jsettings_cache != NULL) {
-		json_delete(jsettings_cache);
-		jsettings_cache = NULL;
-	}
+	// if(jsettings_cache != NULL) {
+		// json_delete(jsettings_cache);
+		// jsettings_cache = NULL;
+	// }
 
 	if(jhardware_cache != NULL) {
 		json_delete(jhardware_cache);
@@ -3163,13 +3169,13 @@ struct JsonNode *config_print(int level, const char *media) {
 	} else {
 		json_append_member(jroot, "gui", json_mkobject());
 	}
-	if(jsettings_cache != NULL) {
-		char *out = json_stringify(jsettings_cache, NULL);
-		json_append_member(jroot, "settings", json_decode(out));
-		json_free(out);
-	} else {
-		json_append_member(jroot, "settings", json_mkobject());
-	}
+	// if(jsettings_cache != NULL) {
+		// char *out = json_stringify(jsettings_cache, NULL);
+		// json_append_member(jroot, "settings", json_decode(out));
+		// json_free(out);
+	// } else {
+		// json_append_member(jroot, "settings", json_mkobject());
+	// }
 	if(jhardware_cache != NULL) {
 		char *out = json_stringify(jhardware_cache, NULL);
 		json_append_member(jroot, "hardware", json_decode(out));

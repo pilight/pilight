@@ -168,6 +168,7 @@ static void test_lua_async_thread_missing_parameters(CuTest *tc) {
 
 	plua_init();
 	plua_override_global("print", plua_print);
+	plua_pause_coverage(1);
 
 	state = plua_get_free_state();
 	CuAssertPtrNotNull(tc, state);
@@ -178,6 +179,7 @@ static void test_lua_async_thread_missing_parameters(CuTest *tc) {
 
 	uv_mutex_unlock(&state->lock);
 
+	plua_pause_coverage(0);
 	plua_gc();
 	CuAssertIntEquals(tc, 0, run);
 	CuAssertIntEquals(tc, 0, xfree());
@@ -200,6 +202,7 @@ static void test_lua_async_thread(CuTest *tc) {
 
 	plua_init();
 	plua_override_global("print", plua_print);
+	plua_pause_coverage(1);
 
 	file = STRDUP(__FILE__);
 	CuAssertPtrNotNull(tc, file);
@@ -261,6 +264,7 @@ static void test_lua_async_thread(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
+	plua_pause_coverage(0);
 	plua_gc();
 	CuAssertIntEquals(tc, 14, run);
 	CuAssertIntEquals(tc, 0, xfree());
@@ -283,6 +287,7 @@ static void test_lua_async_thread_nonexisting_callback(CuTest *tc) {
 
 	plua_init();
 	plua_override_global("print", plua_print);
+	plua_pause_coverage(1);
 
 	file = STRDUP(__FILE__);
 	CuAssertPtrNotNull(tc, file);
@@ -344,6 +349,7 @@ static void test_lua_async_thread_nonexisting_callback(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
+	plua_pause_coverage(0);
 	plua_gc();
 	CuAssertIntEquals(tc, 2, run);
 	CuAssertIntEquals(tc, 0, xfree());

@@ -79,6 +79,8 @@ static void test_lua_cast_toboolean(CuTest *tc) {
 
 	plua_init();
 	plua_override_global("print", plua_print);
+	plua_pause_coverage(1);
+
 	struct lua_state_t *state = plua_get_free_state();
 
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "print(pilight.cast.toboolean())"));
@@ -131,6 +133,8 @@ static void test_lua_cast_toboolean(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, luaL_dostring(state->L, "print(pilight.cast.toboolean(true))"));
 
 	uv_mutex_unlock(&state->lock);
+
+	plua_pause_coverage(0);
 	plua_gc();
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -144,6 +148,7 @@ static void test_lua_cast_tostring(CuTest *tc) {
 
 	plua_init();
 	plua_override_global("print", plua_print);
+	plua_pause_coverage(1);
 	struct lua_state_t *state = plua_get_free_state();
 
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "print(pilight.cast.tostring())"));
@@ -249,6 +254,8 @@ static void test_lua_cast_tostring(CuTest *tc) {
 	FREE(lua_return[0].var.string_);
 
 	uv_mutex_unlock(&state->lock);
+
+	plua_pause_coverage(0);
 	plua_gc();
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -262,6 +269,7 @@ static void test_lua_cast_tonumber(CuTest *tc) {
 
 	plua_init();
 	plua_override_global("print", plua_print);
+	plua_pause_coverage(1);
 	struct lua_state_t *state = plua_get_free_state();
 
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "print(pilight.cast.tonumber())"));
@@ -329,6 +337,8 @@ static void test_lua_cast_tonumber(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, luaL_dostring(state->L, "print(pilight.cast.tonumber(true))"));
 
 	uv_mutex_unlock(&state->lock);
+
+	plua_pause_coverage(0);
 	plua_gc();
 	CuAssertIntEquals(tc, 0, xfree());
 }

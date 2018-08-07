@@ -9,10 +9,8 @@
 #include <string.h>
 #include <assert.h>
 
-#include "../../protocols/protocol.h"
-
-#include "../../core/log.h"
-#include "../config.h"
+#include "../../../core/log.h"
+#include "../../config.h"
 #include "label.h"
 
 typedef struct label_t {

@@ -57,6 +57,7 @@
 #include "../libs/pilight/core/log.h"
 #include "../libs/pilight/core/json.h"
 #include "../libs/pilight/core/CuTest.h"
+#include "../libs/pilight/lua/lua.h"
 #include "../libs/pilight/protocols/protocol.h"
 #include "../libs/pilight/protocols/network/arping.h"
 
@@ -485,6 +486,7 @@ static void test_protocols_network_arping(CuTest *tc) {
 
 	arp_gc();
 	storage_gc();
+	plua_gc();
 	eventpool_gc();
 	protocol_gc();
 

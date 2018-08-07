@@ -54,7 +54,7 @@
 	#include <net/if_dl.h>
 #endif
 
-#include "../storage/storage.h"
+#include "../config/settings.h"
 #include "mem.h"
 #include "network.h"
 #include "log.h"
@@ -527,12 +527,13 @@ int whitelist_check(char *ip) {
 	char wip[16] = {'\0'};
 
 	/* Check if there are any whitelisted ip address */
-	if(settings_select_string(ORIGIN_MASTER, "whitelist", &whitelist) != 0) {
+	if(config_setting_get_string("whitelist", 0, &whitelist) != 0) {
 		return 0;
 	}
 
 	if(strlen(whitelist) == 0) {
 		/*LCOV_EXCL_START*/
+		FREE(whitelist);
 		return 0;
 		/*LCOV_EXCL_STOP*/
 	}
@@ -625,6 +626,9 @@ int whitelist_check(char *ip) {
 		}
 	}
 
+	if(whitelist != NULL) {
+		FREE(whitelist);
+	}
 	return error;
 }
 

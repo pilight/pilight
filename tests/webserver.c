@@ -22,6 +22,7 @@
 #include "../libs/pilight/core/http.h"
 #include "../libs/pilight/core/ssl.h"
 #include "../libs/pilight/core/log.h"
+#include "../libs/pilight/lua/lua.h"
 
 #include "alltests.h"
 
@@ -93,7 +94,7 @@ static struct tests_t get_tests[] = {
 	{ "http://127.0.0.1:10080/pilight.css", 6261, "text/css", 200 },
 	{ "http://127.0.0.1:10080/pilight.jquery.theme.css", 25683, "text/css", 200 },
 	{ "http://127.0.0.1:10080/images/ajax-loader.gif", 6242, "image/gif", 200 },
-	{ "http://127.0.0.1:10080/config", 220, "application/json", 200 },
+	{ "http://127.0.0.1:10080/config", 62, "application/json", 200 },
 	/*
 	 * Regular pilight ssl webgui loading until config call
 	 */
@@ -106,7 +107,7 @@ static struct tests_t get_tests[] = {
 	{ "https://127.0.0.1:10443/pilight.css", 6261, "text/css", 200 },
 	{ "https://127.0.0.1:10443/pilight.jquery.theme.css", 25683, "text/css", 200 },
 	{ "https://127.0.0.1:10443/images/ajax-loader.gif", 6242, "image/gif", 200 },
-	{ "https://127.0.0.1:10443/config", 220, "application/json", 200 },
+	{ "https://127.0.0.1:10443/config", 62, "application/json", 200 },
 	{ "https://127.0.0.1:10443/nonexisting", 214, "text/html", 404 }
 };
 
@@ -478,6 +479,7 @@ static void test_webserver(CuTest *tc) {
 	}
 	ssl_gc();
 	storage_gc();
+	plua_gc();
 	eventpool_gc();
 
 	switch(run) {
@@ -499,14 +501,21 @@ static void test_webserver_get(CuTest *tc) {
 		return;
 	}
 
-	FILE *f = fopen("webserver.json", "w");
-	fprintf(f,
-		"{\"devices\":{},\"gui\":{},\"rules\":{},"\
-		"\"settings\":{\"pem-file\":\"../res/pilight.pem\",\"webserver-root\":\"../libs/webgui/\","\
+	char config[1024] = "{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"pem-file\":\"%s../res/pilight.pem\",\"webserver-root\":\"%s../libs/webgui/\","\
 		"\"webserver-enable\":1,\"webserver-http-port\":10080,\"webserver-https-port\":10443},"\
-		"\"hardware\":{},\"registry\":{}}"
-	);
+		"\"hardware\":{},\"registry\":{}}";
+
+	char *file = strdup(__FILE__);
+	if(file == NULL) {
+		OUT_OF_MEMORY
+	}
+	str_replace("webserver.c", "", &file);
+
+	FILE *f = fopen("webserver.json", "w");
+	fprintf(f, config, file, file);
 	fclose(f);
+	strdup(file);
 
 	gtc = tc;
 	steps = 0;
@@ -523,14 +532,21 @@ static void test_webserver_whitelist(CuTest *tc) {
 		return;
 	}
 
-	FILE *f = fopen("webserver.json", "w");
-	fprintf(f,
-		"{\"devices\":{},\"gui\":{},\"rules\":{},"\
-		"\"settings\":{\"pem-file\":\"../res/pilight.pem\",\"webserver-root\":\"../libs/webgui/\","\
+	char config[1024] = "{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"pem-file\":\"%s../res/pilight.pem\",\"webserver-root\":\"%s../libs/webgui/\","\
 		"\"webserver-enable\":1,\"webserver-http-port\":10080,\"webserver-https-port\":10443,\"whitelist\":\"0.0.0.0\"},"\
-		"\"hardware\":{},\"registry\":{}}"
-	);
+		"\"hardware\":{},\"registry\":{}}";
+
+	char *file = strdup(__FILE__);
+	if(file == NULL) {
+		OUT_OF_MEMORY
+	}
+	str_replace("webserver.c", "", &file);
+
+	FILE *f = fopen("webserver.json", "w");
+	fprintf(f, config, file, file);
 	fclose(f);
+	free(file);
 
 	gtc = tc;
 	steps = 0;
@@ -547,15 +563,22 @@ static void test_webserver_auth(CuTest *tc) {
 		return;
 	}
 
-	FILE *f = fopen("webserver.json", "w");
-	fprintf(f,
-		"{\"devices\":{},\"gui\":{},\"rules\":{},"\
-		"\"settings\":{\"pem-file\":\"../res/pilight.pem\",\"webserver-root\":\"../libs/webgui/\","\
+	char config[1024] = "{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"pem-file\":\"%s../res/pilight.pem\",\"webserver-root\":\"%s../libs/webgui/\","\
 		"\"webserver-enable\":1,\"webserver-http-port\":10080,\"webserver-https-port\":10443,"\
 		"\"webserver-authentication\":[\"test\",\"5cc87eb5ab20e91ba99d213869f431a7aa701fc0cd548caccb076eb4712d4962\"]},"\
-		"\"hardware\":{},\"registry\":{}}"
-	);
+		"\"hardware\":{},\"registry\":{}}";
+
+	char *file = strdup(__FILE__);
+	if(file == NULL) {
+		OUT_OF_MEMORY
+	}
+	str_replace("webserver.c", "", &file);
+
+	FILE *f = fopen("webserver.json", "w");
+	fprintf(f, config, file, file);
 	fclose(f);
+	free(file);
 
 	gtc = tc;
 	steps = 0;
@@ -572,14 +595,21 @@ static void test_webserver_websocket1(CuTest *tc) {
 		return;
 	}
 
-	FILE *f = fopen("webserver.json", "w");
-	fprintf(f,
-		"{\"devices\":{},\"gui\":{},\"rules\":{},"\
-		"\"settings\":{\"pem-file\":\"../res/pilight.pem\",\"webserver-root\":\"../libs/webgui/\","\
+	char config[1024] = "{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"pem-file\":\"%s../res/pilight.pem\",\"webserver-root\":\"%s../libs/webgui/\","\
 		"\"webserver-enable\":1,\"webserver-http-port\":10080,\"webserver-https-port\":10443},"\
-		"\"hardware\":{},\"registry\":{}}"
-	);
+		"\"hardware\":{},\"registry\":{}}";
+
+	char *file = strdup(__FILE__);
+	if(file == NULL) {
+		OUT_OF_MEMORY
+	}
+	str_replace("webserver.c", "", &file);
+
+	FILE *f = fopen("webserver.json", "w");
+	fprintf(f, config, file, file);
 	fclose(f);
+	free(file);
 
 	gtc = tc;
 	steps = 0;
@@ -596,14 +626,21 @@ static void test_webserver_websocket2(CuTest *tc) {
 		return;
 	}
 
-	FILE *f = fopen("webserver.json", "w");
-	fprintf(f,
-		"{\"devices\":{},\"gui\":{},\"rules\":{},"\
-		"\"settings\":{\"pem-file\":\"../res/pilight.pem\",\"webserver-root\":\"../libs/webgui/\","\
+	char config[1024] = "{\"devices\":{},\"gui\":{},\"rules\":{},"\
+		"\"settings\":{\"pem-file\":\"%s../res/pilight.pem\",\"webserver-root\":\"%s../libs/webgui/\","\
 		"\"webserver-enable\":1,\"webserver-http-port\":10080,\"webserver-https-port\":10443},"\
-		"\"hardware\":{},\"registry\":{}}"
-	);
+		"\"hardware\":{},\"registry\":{}}";
+
+	char *file = strdup(__FILE__);
+	if(file == NULL) {
+		OUT_OF_MEMORY
+	}
+	str_replace("webserver.c", "", &file);
+
+	FILE *f = fopen("webserver.json", "w");
+	fprintf(f, config, file, file);
 	fclose(f);
+	strdup(file);
 
 	gtc = tc;
 	steps = 0;
