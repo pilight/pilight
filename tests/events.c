@@ -1017,6 +1017,20 @@ static struct tests_t get_tests[] = {
 		{ &receives[4] },
 		{ 1, 0 }
 	},
+	{
+		"single function argument test",
+		"{\"devices\":{"\
+			"\"testlabel\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":1}],\"label\":\"foo\",\"color\":\"black\"}"\
+		"},"\
+		"\"gui\":{},"\
+		"\"rules\":{"\
+			"\"switch\":{\"rule\":\"IF 1 == 1 THEN label DEVICE testlabel TO SINGLEARGFUNC(1010)\",\"active\":1}"\
+		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
+		0, UV_RUN_DEFAULT,
+		0, &updates1[0],
+		{ &receives[4] },
+		{ 1, 0 }
+	},
 };
 
 static void close_cb(uv_handle_t *handle) {
