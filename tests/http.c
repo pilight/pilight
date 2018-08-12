@@ -735,7 +735,7 @@ static void test_http_threaded(CuTest *tc) {
 	eventpool_gc();
 
 	FREE(_userdata);
-	CuAssertIntEquals(tc, 17, testnr);
+	CuAssertIntEquals(tc, 18, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
