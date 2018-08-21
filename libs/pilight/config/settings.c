@@ -648,7 +648,10 @@ void settings_init(void) {
  * Rewrite backported functions
  */
 int settings_select_number(enum origin_t origin, char *id, double *out) {
-	return settings_find_number(id, (int *)out);
+	int x = 0, ret = 0;
+	ret = settings_find_number(id, &x);
+	*out = (double)x;
+	return ret;
 }
 
 int settings_select_string(enum origin_t origin, char *id, char **out) {
