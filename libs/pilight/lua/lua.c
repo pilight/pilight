@@ -1200,7 +1200,6 @@ void plua_ret_false(lua_State *L) {
 	lua_pushboolean(L, 0);
 }
 
-#ifdef PILIGHT_UNITTEST
 void plua_override_global(char *name, int (*func)(lua_State *L)) {
 	int i = 0;
 	for(i=0;i<NRLUASTATES;i++) {
@@ -1212,6 +1211,13 @@ void plua_override_global(char *name, int (*func)(lua_State *L)) {
 		uv_mutex_unlock(&lua_state[i].lock);
 	}
 }
+
+int plua_get_method(struct lua_State *L, char *file, char *method) {
+#if LUA_VERSION_NUM <= 502
+	lua_getfield(L, -1, method);
+	if(lua_type(L, -1) != LUA_TFUNCTION) {
+#else
+	if(lua_getfield(L, -1, method) == 0) {
 #endif
 
 int plua_gc(void) {

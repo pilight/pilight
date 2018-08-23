@@ -1082,10 +1082,10 @@ int plua_network_mail(struct lua_State *L) {
 	}
 	memset(lua_mail, '\0', sizeof(struct lua_mail_t));
 
-	if((lua_mail->table = MALLOC(sizeof(struct lua_mail_t))) == NULL) {
+	if((lua_mail->table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
-	memset(lua_mail->table, 0, sizeof(struct lua_mail_t));
+	memset(lua_mail->table, 0, sizeof(struct plua_metatable_t));
 
 	lua_mail->module = state->module;
 	lua_mail->L = L;

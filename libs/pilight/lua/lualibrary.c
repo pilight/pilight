@@ -38,6 +38,7 @@
 #include "config.h"
 #include "async.h"
 #include "network.h"
+#include "io.h"
 
 static const struct {
 	const char *name;
@@ -49,6 +50,7 @@ static const struct {
 	{ "async", pilight_async_lib },
 	{ "config", pilight_config_lib },
 	{ "network", pilight_network_lib },
+	{ "io", pilight_io_lib },
 	{ NULL, NULL }
 };
 

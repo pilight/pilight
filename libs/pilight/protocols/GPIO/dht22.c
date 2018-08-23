@@ -231,16 +231,24 @@ static int checkValues(JsonNode *code) {
 		if((jchild = json_find_element(jid, 0)) != NULL) {
 			if(json_find_number(jchild, "gpio", &itmp) == 0) {
 				char *platform = GPIO_PLATFORM;
-				if(settings_find_string("gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
-					logprintf(LOG_ERR, "dht22: no gpio-platform configured");
-					exit(EXIT_FAILURE);
+
+				if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
+					logprintf(LOG_ERR, "no gpio-platform configured");
+					return NULL;
 				}
-				if(wiringXSetup(platform, logprintf1) == 0) {
-					int gpio = (int)itmp;
-					if(wiringXValidGPIO(gpio) != 0) {
-						logprintf(LOG_ERR, "dht22: invalid gpio range");
-						return -1;
-					}
+				if(strcmp(platform, "none") == 0) {
+					FREE(platform);
+					logprintf(LOG_ERR, "no gpio-platform configured");
+					return NULL;
+				}
+				if(wiringXSetup(platform, logprintf1) < 0) {
+					FREE(platform);
+					return NULL;
+				}
+				if(wiringXValidGPIO(gpio) != 0) {
+					FREE(platform);
+					logprintf(LOG_ERR, "dht22: invalid gpio range");
+					return NULL;
 				}
 			}
 		}
