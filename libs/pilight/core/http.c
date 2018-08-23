@@ -582,9 +582,8 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 			struct connection_t c;
 			char *location = NULL;
-			const char *p = location;
 			http_parse_request(header, &c);
-			if(c.status_code == 301 && (p = http_get_header(&c, "Location")) != NULL) {
+			if(c.status_code == 301 && (location = (char *)http_get_header(&c, "Location")) != NULL) {
 				uv_timer_stop(request->timer_req);
 				if(request->callback != NULL && request->called == 0) {
 					request->called = 1;
