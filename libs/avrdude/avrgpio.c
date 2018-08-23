@@ -191,5 +191,5 @@ void gpio_initpgm(PROGRAMMER *pgm)
 #else		
 	logprintf(LOG_WARNING, "gpio firmware flashing is not supported on this hardware");
 	exit(EXIT_FAILURE);
-#endif	
+#endif
 }

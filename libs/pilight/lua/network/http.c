@@ -758,10 +758,10 @@ int plua_network_http(struct lua_State *L) {
 	}
 	memset(lua_http, '\0', sizeof(struct lua_http_t));
 
-	if((lua_http->table = MALLOC(sizeof(struct lua_http_t))) == NULL) {
+	if((lua_http->table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
-	memset(lua_http->table, 0, sizeof(struct lua_http_t));
+	memset(lua_http->table, 0, sizeof(struct plua_metatable_t));
 
 	lua_http->module = state->module;
 	lua_http->L = L;

@@ -761,7 +761,16 @@ struct settings_t {
 	}
 };
 
+static void foo(int prio, char *file, int line, const char *format_str, ...) {
+}
+
 static void test_storage_core(CuTest *tc) {
+	if(wiringXSetup("test", foo) != -999) {
+		printf("[ %-31.31s (preload libgpio)]\n", __FUNCTION__);
+		fflush(stdout);
+		wiringXGC();
+		return;
+	}
 
 	memtrack();
 	char *file = STRDUP(__FILE__);

@@ -1394,7 +1394,6 @@ void plua_override_global(char *name, int (*func)(lua_State *L)) {
 }
 //#endif
 
-
 int plua_get_method(struct lua_State *L, char *file, char *method) {
 #if LUA_VERSION_NUM <= 502
 	lua_getfield(L, -1, method);

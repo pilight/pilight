@@ -261,22 +261,22 @@ static int checkValues(struct JsonNode *code) {
 				char *platform = GPIO_PLATFORM;
 
 				if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
-					logprintf(LOG_ERR, "dht22: no gpio-platform configured");
-					return -1;
+					logprintf(LOG_ERR, "no gpio-platform configured");
+					return NULL;
 				}
 				if(strcmp(platform, "none") == 0) {
 					FREE(platform);
-					logprintf(LOG_ERR, "dht22: no gpio-platform configured");
-					return -1;
+					logprintf(LOG_ERR, "no gpio-platform configured");
+					return NULL;
 				}
-				if(wiringXSetup(platform, _logprintf) < 0) {
+				if(wiringXSetup(platform, logprintf1) < 0) {
 					FREE(platform);
-					logprintf(LOG_ERR, "unable to setup wiringX") ;
-					return -1;
-				} else if(wiringXValidGPIO(gpio) != 0) {
+					return NULL;
+				}
+				if(wiringXValidGPIO(gpio) != 0) {
 					FREE(platform);
 					logprintf(LOG_ERR, "dht22: invalid gpio range");
-					return -1;
+					return NULL;
 				}
 				FREE(platform);
 #endif

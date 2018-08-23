@@ -38,6 +38,7 @@
 #include "config.h"
 #include "async.h"
 #include "network.h"
+#include "io.h"
 
 #include "wiringx.h"
 
@@ -70,6 +71,7 @@ static const struct {
 	{ "datetime", pilight_datetime_lib },
 	{ "async", pilight_async_lib },
 	{ "network", pilight_network_lib },
+	{ "io", pilight_io_lib },
 	{ NULL, NULL }
 };
 
