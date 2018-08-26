@@ -28,14 +28,25 @@ static int plua_print(lua_State* L) {
 			CuAssertIntEquals(gtc, lua_type(L, -1), LUA_TTABLE);
 		} break;
 		case 1: {
+			CuAssertIntEquals(gtc, lua_type(L, -1), LUA_TTABLE);
+		} break;
+		case 2: {
+			CuAssertIntEquals(gtc, lua_type(L, -1), LUA_TBOOLEAN);
+			CuAssertIntEquals(gtc, 1, lua_toboolean(L, -1));
+		} break;
+		case 3: {
+			CuAssertIntEquals(gtc, lua_type(L, -1), LUA_TBOOLEAN);
+			CuAssertIntEquals(gtc, 0, lua_toboolean(L, -1));
+		} break;
+		case 4: {
 			CuAssertIntEquals(gtc, lua_type(L, -1), LUA_TNUMBER);
 			CuAssertIntEquals(gtc, 461, lua_tonumber(L, -1));
 		} break;
-		case 2: {
+		case 5: {
 			CuAssertIntEquals(gtc, lua_type(L, -1), LUA_TNUMBER);
 			CuAssertIntEquals(gtc, 0, lua_tonumber(L, -1));
 		} break;
-		case 3: {
+		case 6: {
 			CuAssertIntEquals(gtc, lua_type(L, -1), LUA_TSTRING);
 			const char *str = lua_tostring(L, -1);
 
@@ -82,11 +93,16 @@ static void test_lua_io_file(CuTest *tc) {
 	plua_pause_coverage(1);
 	struct lua_state_t *state = plua_get_free_state();
 
+	remove("lua_io_c.txt");
+
 	int ret = luaL_dostring(state->L, "\
-		local file = pilight.io.file(); \
-		local file1 = pilight.io.file(); \
+		local file = pilight.io.file(\"../res/config/config.json-default\"); \
+		local file1 = pilight.io.file(\"lua_io_c.txt\"); \
 		print(file); \
-		file.open(\"../res/config/config.json-default\", \"r\"); \
+		print(file1); \
+		print(file.exists()); \
+		print(file1.exists()); \
+		file.open(\"r\"); \
 		print(file.seek(0, \"end\")); \
 		print(file.seek(0, \"set\")); \
 		local content = ''; \
@@ -94,7 +110,7 @@ static void test_lua_io_file(CuTest *tc) {
 			content = content .. line; \
 		end \
 		print(content); \
-		file1.open(\"lua_io_c.txt\", \"w+\"); \
+		file1.open(\"w+\"); \
 		file1.write(content); \
 		file.close(); \
 		file1.close(); \
@@ -109,10 +125,46 @@ static void test_lua_io_file(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
+static void test_lua_io_dir(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	memtrack();
+
+	gtc = tc;
+
+	plua_init();
+	plua_override_global("print", plua_print);
+	plua_pause_coverage(1);
+	struct lua_state_t *state = plua_get_free_state();
+
+	remove("lua_io_c.txt");
+
+	int ret = luaL_dostring(state->L, "\
+		local path = pilight.io.dir(\"/tmp\"); \
+		local path1 = pilight.io.dir(\"/foo\"); \
+		print(path); \
+		print(path1); \
+		print(path.exists());\
+		print(path1.exists());\
+		path.close(); \
+	");
+	CuAssertIntEquals(tc, 0, ret);
+
+	plua_clear_state(state);
+
+	plua_pause_coverage(0);
+	plua_gc();
+
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
+
 CuSuite *suite_lua_io(void) {
 	CuSuite *suite = CuSuiteNew();
 
 	SUITE_ADD_TEST(suite, test_lua_io_file);
+	SUITE_ADD_TEST(suite, test_lua_io_dir);
 
 	return suite;
 }
