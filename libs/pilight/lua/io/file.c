@@ -63,6 +63,33 @@ void plua_io_file_gc(void *ptr) {
 	FREE(data);
 }
 
+static int plua_io_file_exists(struct lua_State *L) {
+	struct lua_file_t *file = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	if(lua_gettop(L) != 0) {
+		luaL_error(L, "file.exists requires 0 arguments, %d given", lua_gettop(L));
+		return 0;
+	}
+
+	if(file == NULL) {
+		luaL_error(L, "internal error: file object not passed");
+	}
+
+	if(file->file == NULL) {
+		luaL_error(L, "file.exists: file has not been opened");
+	}
+
+	if(file_exists(file->file) == 0) {
+    lua_pushboolean(L, 1);
+	} else {
+		lua_pushboolean(L, 0);
+	}
+
+	assert(lua_gettop(L) == 1);
+
+	return 1;
+}
+
 static int plua_io_file_close(struct lua_State *L) {
 	struct lua_file_t *file = (void *)lua_topointer(L, lua_upvalueindex(1));
 
@@ -76,7 +103,7 @@ static int plua_io_file_close(struct lua_State *L) {
 	}
 
 	if(file->file == NULL) {
-		luaL_error(L, "file.close: file has not been opened");
+		luaL_error(L, "file.close: file has not been set");
 	}
 
 	if(file->fp == NULL) {
@@ -158,7 +185,7 @@ int plua_io_file_readline(struct lua_State *L) {
 	}
 
 	if(file->file == NULL) {
-		luaL_error(L, "file.close: file has not been opened");
+		luaL_error(L, "file.close: file has not been set");
 	}
 
 	if(file->fp == NULL) {
@@ -197,7 +224,7 @@ static int plua_io_file_write(lua_State *L) {
 	}
 
 	if(file->file == NULL) {
-		luaL_error(L, "file.close: file has not been opened");
+		luaL_error(L, "file.close: file has not been set");
 	}
 
 	if(file->fp == NULL) {
@@ -254,7 +281,7 @@ static int plua_io_file_read(lua_State *L) {
 	}
 
 	if(file->file == NULL) {
-		luaL_error(L, "file.close: file has not been opened");
+		luaL_error(L, "file.close: file has not been set");
 	}
 
 	if(file->fp == NULL) {
@@ -309,20 +336,19 @@ static int plua_io_file_read(lua_State *L) {
 
 static int plua_io_file_open(lua_State *L) {
 	struct lua_file_t *file = (void *)lua_topointer(L, lua_upvalueindex(1));
-	char *name = NULL, *mode = "r";
+	char *mode = "r";
 	char list[6][3] = { "r", "r+", "w", "w+", "a", "a+" };
-	char exists[2][3] = { "r", "r+" };
 	int nrargs = lua_gettop(L);
 
-	if(nrargs > 2 || nrargs <= 0) {
-		luaL_error(L, "file.open requires 1 or 2 arguments, %d given", lua_gettop(L));
+	if(nrargs > 1 || nrargs < 0) {
+		luaL_error(L, "file.open requires 0 or 1 arguments, %d given", lua_gettop(L));
 	}
 
 	if(file == NULL) {
 		luaL_error(L, "internal error: file object not passed");
 	}
 
-	if(nrargs == 2) {
+	if(nrargs == 1) {
 		char buf[128] = { '\0' }, *p = buf;
 		char *error = "string expected, got %s";
 
@@ -345,33 +371,6 @@ static int plua_io_file_open(lua_State *L) {
 		OUT_OF_MEMORY
 	}
 
-	{
-		char buf[128] = { '\0' }, *p = buf;
-		char *error = "string expected, got %s";
-
-		sprintf(p, error, lua_typename(L, lua_type(L, nrargs)));
-
-		luaL_argcheck(L,
-			(lua_type(L, nrargs) == LUA_TSTRING),
-			1, buf);
-
-		name = (void *)lua_tostring(L, nrargs);
-		if(file->file != NULL) {
-			if(file->fp != NULL) {
-				if(fclose(file->fp) != 0) {
-					logprintf(LOG_ERR, "file.open: could not close file %s with fd (%p)", file->file, file->fp);
-				}
-				file->fp = NULL;
-			}
-			FREE(file->file);
-		}
-		if((file->file = STRDUP(name)) == NULL) {
-			OUT_OF_MEMORY
-		}
-		lua_remove(L, nrargs);
-		nrargs--;
-	}
-
 	int i = 0, match = 0;
 	for(i=0;i<6;i++) {
 		if(strcmp(mode, list[i]) == 0) {
@@ -381,21 +380,6 @@ static int plua_io_file_open(lua_State *L) {
 	}
 	if(match == 0) {
 		luaL_error(L, "file.open: %s is not a valid open mode", mode);
-	}
-
-	match = 0;
-	for(i=0;i<2;i++) {
-		if(strcmp(mode, exists[i]) == 0) {
-			match = 1;
-			break;
-		}
-	}
-
-	if(match == 1) {
-		int n = file_exists(name);
-		if(n == -1) {
-			luaL_error(L, "file.open: %s does not exists", name);
-		}
 	}
 
 	if((file->fp = fopen(file->file, file->mode)) == NULL) {
@@ -423,7 +407,7 @@ int plua_io_file_seek(struct lua_State *L) {
 	}
 
 	if(file->file == NULL) {
-		luaL_error(L, "file.close: file has not been opened");
+		luaL_error(L, "file.close: file has not been set");
 	}
 
 	if(file->fp == NULL) {
@@ -493,6 +477,11 @@ static void plua_io_file_object(lua_State *L, struct lua_file_t *file) {
 	lua_pushcclosure(L, plua_io_file_open, 1);
 	lua_settable(L, -3);
 
+	lua_pushstring(L, "exists");
+	lua_pushlightuserdata(L, file);
+	lua_pushcclosure(L, plua_io_file_exists, 1);
+	lua_settable(L, -3);
+
 	lua_pushstring(L, "read");
 	lua_pushlightuserdata(L, file);
 	lua_pushcclosure(L, plua_io_file_read, 1);
@@ -520,9 +509,25 @@ static void plua_io_file_object(lua_State *L, struct lua_file_t *file) {
 }
 
 int plua_io_file(struct lua_State *L) {
-	if(lua_gettop(L) != 0) {
+	if(lua_gettop(L) != 1) {
 		luaL_error(L, "file requires 0 arguments, %d given", lua_gettop(L));
 		return 0;
+	}
+
+	char *name = NULL;
+
+	{
+		char buf[128] = { '\0' }, *p = buf;
+		char *error = "string expected, got %s";
+
+		sprintf(p, error, lua_typename(L, lua_type(L, -1)));
+
+		luaL_argcheck(L,
+			(lua_type(L, -1) == LUA_TSTRING),
+			1, buf);
+
+		name = (void *)lua_tostring(L, -1);
+		lua_remove(L, -1);
 	}
 
 	struct lua_state_t *state = plua_get_current_state(L);
@@ -540,6 +545,10 @@ int plua_io_file(struct lua_State *L) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(lua_file->table, 0, sizeof(struct plua_metatable_t));
+
+	if((lua_file->file = STRDUP(name)) == NULL) {
+		OUT_OF_MEMORY
+	}
 
 	lua_file->module = state->module;
 	lua_file->L = L;
