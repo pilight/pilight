@@ -39,6 +39,7 @@
 #include "async.h"
 #include "network.h"
 #include "io.h"
+#include "table.h"
 
 #include "wiringx.h"
 
@@ -77,6 +78,7 @@ static const struct {
 
 static const luaL_Reg pilight_one_lib[] = {
 	{ "config", plua_config },
+	{ "table", plua_table },
 	{NULL, NULL}
 };
 

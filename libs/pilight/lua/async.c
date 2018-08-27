@@ -162,45 +162,7 @@ static int plua_async_thread_get_data(lua_State *L) {
 		return 0;
 	}
 
-	lua_newtable(L);
-	lua_newtable(L);
-
-	lua_pushstring(L, "__index");
-	lua_pushlightuserdata(L, thread->table);
-	lua_pushcclosure(L, plua_metatable_get, 1);
-	lua_settable(L, -3);
-
-	lua_pushstring(L, "__newindex");
-	lua_pushlightuserdata(L, thread->table);
-	lua_pushcclosure(L, plua_metatable_set, 1);
-	lua_settable(L, -3);
-
-	lua_pushstring(L, "__gc");
-	lua_pushlightuserdata(L, thread->table);
-	lua_pushcclosure(L, plua_metatable_gc, 1);
-	lua_settable(L, -3);
-
-	lua_pushstring(L, "__pairs");
-	lua_pushlightuserdata(L, thread->table);
-	lua_pushcclosure(L, plua_metatable_pairs, 1);
-	lua_settable(L, -3);
-
-	lua_pushstring(L, "__ipairs");
-	lua_pushlightuserdata(L, thread->table);
-	lua_pushcclosure(L, plua_metatable_ipairs, 1);
-	lua_settable(L, -3);
-
-	lua_pushstring(L, "__next");
-	lua_pushlightuserdata(L, thread->table);
-	lua_pushcclosure(L, plua_metatable_next, 1);
-	lua_settable(L, -3);
-
-	lua_pushstring(L, "__call");
-	lua_pushlightuserdata(L, thread->table);
-	lua_pushcclosure(L, plua_metatable_call, 1);
-	lua_settable(L, -3);
-
-	lua_setmetatable(L, -2);
+	plua_metatable_push(L, thread->table);
 
 	assert(lua_gettop(L) == 1);
 
@@ -719,45 +681,7 @@ static int plua_async_timer_get_data(lua_State *L) {
 		return 0;
 	}
 
-	lua_newtable(L);
-	lua_newtable(L);
-
-	lua_pushstring(L, "__index");
-	lua_pushlightuserdata(L, timer->table);
-	lua_pushcclosure(L, plua_metatable_get, 1);
-	lua_settable(L, -3);
-
-	lua_pushstring(L, "__newindex");
-	lua_pushlightuserdata(L, timer->table);
-	lua_pushcclosure(L, plua_metatable_set, 1);
-	lua_settable(L, -3);
-
-	lua_pushstring(L, "__gc");
-	lua_pushlightuserdata(L, timer->table);
-	lua_pushcclosure(L, plua_metatable_gc, 1);
-	lua_settable(L, -3);
-
-	lua_pushstring(L, "__pairs");
-	lua_pushlightuserdata(L, timer->table);
-	lua_pushcclosure(L, plua_metatable_pairs, 1);
-	lua_settable(L, -3);
-
-	lua_pushstring(L, "__ipairs");
-	lua_pushlightuserdata(L, timer->table);
-	lua_pushcclosure(L, plua_metatable_ipairs, 1);
-	lua_settable(L, -3);
-
-	lua_pushstring(L, "__next");
-	lua_pushlightuserdata(L, timer->table);
-	lua_pushcclosure(L, plua_metatable_next, 1);
-	lua_settable(L, -3);
-
-	lua_pushstring(L, "__call");
-	lua_pushlightuserdata(L, timer->table);
-	lua_pushcclosure(L, plua_metatable_call, 1);
-	lua_settable(L, -3);
-
-	lua_setmetatable(L, -2);
+	plua_metatable_push(L, timer->table);
 
 	assert(lua_gettop(L) == 1);
 

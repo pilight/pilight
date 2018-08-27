@@ -136,6 +136,16 @@ static int plua_print(lua_State* L) {
 			CuAssertIntEquals(gtc, 2, lua_tonumber(L, -1));
 			run++;
 		break;
+		case 24:
+			CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+			CuAssertIntEquals(gtc, 1, lua_tonumber(L, -1));
+			run++;
+		break;
+		case 25:
+			CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+			CuAssertIntEquals(gtc, 2, lua_tonumber(L, -1));
+			run++;
+		break;
 	}
 	return 1;
 }
@@ -227,12 +237,23 @@ static void test_lua_c_metatable(CuTest *tc) {
 		data['b'] = 1; \
 	"));
 
+	CuAssertIntEquals(gtc, 0, luaL_dostring(state->L, " \
+		local z = pilight.table(); \
+		local y = pilight.table(); \
+		local x = pilight.table(); \
+		z['a'] = 1; \
+		z['b'] = 2; \
+		y['c'] = z; \
+		x['d'] = y; \
+		print(x['d']['c']['a']); \
+		print(x['d']['c']['b']); \
+	"));
 	uv_mutex_unlock(&state->lock);
 
 	plua_pause_coverage(0);
 	plua_gc();
 
-	CuAssertIntEquals(tc, 24, run);
+	CuAssertIntEquals(tc, 26, run);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 

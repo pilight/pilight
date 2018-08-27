@@ -91,6 +91,53 @@ void plua_stack_dump(lua_State *L) {
 }
 /* LCOV_EXCL_STOP */
 
+/*
+ * Backported from lua5.2
+ */
+static int pairsmeta (lua_State *L, const char *method, int iszero,
+                      lua_CFunction iter) {
+  if (!luaL_getmetafield(L, 1, method)) {  /* no metamethod? */
+    luaL_checktype(L, 1, LUA_TTABLE);  /* argument must be a table */
+    lua_pushcfunction(L, iter);  /* will return generator, */
+    lua_pushvalue(L, 1);  /* state, */
+    if (iszero) lua_pushinteger(L, 0);  /* and initial value */
+    else lua_pushnil(L);
+  }
+  else {
+    lua_pushvalue(L, 1);  /* argument 'self' to metamethod */
+    lua_call(L, 1, 3);  /* get 3 values from metamethod */
+  }
+  return 3;
+}
+
+static int luaB_next (lua_State *L) {
+  luaL_checktype(L, 1, LUA_TTABLE);
+  lua_settop(L, 2);  /* create a 2nd argument if there isn't one */
+  if (lua_next(L, 1))
+    return 2;
+  else {
+    lua_pushnil(L);
+    return 1;
+  }
+}
+
+static int luaB_pairs (lua_State *L) {
+  return pairsmeta(L, "__pairs", 0, luaB_next);
+}
+
+static int ipairsaux (lua_State *L) {
+  int i = luaL_checkint(L, 2);
+  luaL_checktype(L, 1, LUA_TTABLE);
+  i++;  /* next value */
+  lua_pushinteger(L, i);
+  lua_rawgeti(L, 1, i);
+  return (lua_isnil(L, -1)) ? 1 : 2;
+}
+
+static int luaB_ipairs (lua_State *L) {
+  return pairsmeta(L, "__ipairs", 1, ipairsaux);
+}
+
 void plua_metatable_push(lua_State *L, struct plua_metatable_t *table) {
 	lua_newtable(L);
 	lua_newtable(L);
@@ -203,6 +250,9 @@ void plua_metatable_clone(struct plua_metatable_t **src, struct plua_metatable_t
 		}
 		if(a->table[i].val.type_ == LUA_TNUMBER) {
 			(*dst)->table[i].val.number_ = a->table[i].val.number_;
+		}
+		if(a->table[i].val.type_ == LUA_TTABLE) {
+			plua_metatable_clone((struct plua_metatable_t **)&a->table[i].val.void_, (struct plua_metatable_t **)&(*dst)->table[i].val.void_);
 		}
 	}
 	(*dst)->nrvar = a->nrvar;
@@ -391,6 +441,7 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 					node->table[x].val.type_ = LUA_TSTRING;
 				} break;
 				case LUA_TTABLE: {
+					int is_metatable = 0;
 					if(node->table[x].val.type_ == LUA_TSTRING) {
 						FREE(node->table[x].val.string_);
 					}
@@ -402,10 +453,31 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 					}
 					memset(node->table[x].val.void_, 0, sizeof(struct plua_metatable_t));
 					node->table[x].val.type_ = LUA_TTABLE;
-					lua_pushnil(L);
-					while(lua_next(L, -2) != 0) {
-						plua_metatable_parse_set(L, node->table[x].val.void_);
-						lua_pop(L, 1);
+					if((is_metatable = lua_getmetatable(L, -1)) == 1) {
+						lua_remove(L, -1);
+						if(luaL_getmetafield(L, -1, "__call")) {
+							if(lua_pcall(L, 1, 1, 0) == LUA_ERRRUN) {
+								if(lua_type(L, -1) == LUA_TSTRING) {
+									logprintf(LOG_ERR, "%s", lua_tostring(L, -1));
+									lua_remove(L, -1);
+								}
+							} else {
+								if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
+									struct plua_metatable_t *table = lua_touserdata(L, -1);
+									plua_metatable_clone(&table, (struct plua_metatable_t **)&node->table[x].val.void_);
+								} else {
+									logprintf(LOG_ERR, "metatable metafield __call does not return userdata");
+								}
+							}
+						} else {
+							logprintf(LOG_ERR, "metatable does not the call metafield");
+						}
+					} else {
+						lua_pushnil(L);
+						while(lua_next(L, -2) != 0) {
+							plua_metatable_parse_set(L, node->table[x].val.void_);
+							lua_pop(L, 1);
+						}
 					}
 				} break;
 				/*
@@ -476,15 +548,37 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 					node->table[idx].val.type_ = LUA_TSTRING;
 				} break;
 				case LUA_TTABLE: {
+					int is_metatable = 0;
 					if((node->table[idx].val.void_ = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
 						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					memset(node->table[idx].val.void_, 0, sizeof(struct plua_metatable_t));
 					node->table[idx].val.type_ = LUA_TTABLE;
-					lua_pushnil(L);
-					while(lua_next(L, -2) != 0) {
-						plua_metatable_parse_set(L, node->table[x].val.void_);
-						lua_pop(L, 1);
+					if((is_metatable = lua_getmetatable(L, -1)) == 1) {
+						lua_remove(L, -1);
+						if(luaL_getmetafield(L, -1, "__call")) {
+							if(lua_pcall(L, 1, 1, 0) == LUA_ERRRUN) {
+								if(lua_type(L, -1) == LUA_TSTRING) {
+									logprintf(LOG_ERR, "%s", lua_tostring(L, -1));
+									lua_remove(L, -1);
+								}
+							} else {
+								if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
+									struct plua_metatable_t *table = lua_touserdata(L, -1);
+									plua_metatable_clone(&table, (struct plua_metatable_t **)&node->table[x].val.void_);
+								} else {
+									logprintf(LOG_ERR, "metatable metafield __call does not return userdata");
+								}
+							}
+						} else {
+							logprintf(LOG_ERR, "metatable does not the call metafield");
+						}
+					} else {
+						lua_pushnil(L);
+						while(lua_next(L, -2) != 0) {
+							plua_metatable_parse_set(L, node->table[x].val.void_);
+							lua_pop(L, 1);
+						}
 					}
 				} break;
 			}
@@ -778,7 +872,7 @@ static int plua_module_init(struct lua_State *L, char *file, struct plua_module_
 	 */
 	if(lua_pcall(L, 0, 1, 0) == LUA_ERRRUN) {
 		if(lua_type(L, -1) != LUA_TSTRING) {
-			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
+			logprintf(LOG_ERR, "%s", lua_tostring(L, -1));
 			lua_pop(L, 1);
 			return 0;
 		}
@@ -1162,53 +1256,6 @@ void plua_coverage_output(const char *file) {
 }
 #endif
 
-/*
- * Backported from lua5.2
- */
-static int pairsmeta (lua_State *L, const char *method, int iszero,
-                      lua_CFunction iter) {
-  if (!luaL_getmetafield(L, 1, method)) {  /* no metamethod? */
-    luaL_checktype(L, 1, LUA_TTABLE);  /* argument must be a table */
-    lua_pushcfunction(L, iter);  /* will return generator, */
-    lua_pushvalue(L, 1);  /* state, */
-    if (iszero) lua_pushinteger(L, 0);  /* and initial value */
-    else lua_pushnil(L);
-  }
-  else {
-    lua_pushvalue(L, 1);  /* argument 'self' to metamethod */
-    lua_call(L, 1, 3);  /* get 3 values from metamethod */
-  }
-  return 3;
-}
-
-static int luaB_next (lua_State *L) {
-  luaL_checktype(L, 1, LUA_TTABLE);
-  lua_settop(L, 2);  /* create a 2nd argument if there isn't one */
-  if (lua_next(L, 1))
-    return 2;
-  else {
-    lua_pushnil(L);
-    return 1;
-  }
-}
-
-static int luaB_pairs (lua_State *L) {
-  return pairsmeta(L, "__pairs", 0, luaB_next);
-}
-
-static int ipairsaux (lua_State *L) {
-  int i = luaL_checkint(L, 2);
-  luaL_checktype(L, 1, LUA_TTABLE);
-  i++;  /* next value */
-  lua_pushinteger(L, i);
-  lua_rawgeti(L, 1, i);
-  return (lua_isnil(L, -1)) ? 1 : 2;
-}
-
-static int luaB_ipairs (lua_State *L) {
-  return pairsmeta(L, "__ipairs", 1, ipairsaux);
-}
-
 void plua_init(void) {
 	if(init == 1) {
 		return;
@@ -1414,7 +1461,7 @@ int plua_pcall(struct lua_State *L, char *file, int args, int ret) {
 			return -1;
 		}
 		if(lua_type(L, -1) == LUA_TSTRING) {
-			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
+			logprintf(LOG_ERR, "%s", lua_tostring(L, -1));
 			lua_pop(L, 1);
 			lua_pop(L, 1);
 			return -1;
