@@ -39,6 +39,7 @@
 #include "async.h"
 #include "network.h"
 #include "io.h"
+#include "table.h"
 
 static const struct {
 	const char *name;
@@ -52,6 +53,12 @@ static const struct {
 	{ "network", pilight_network_lib },
 	{ "io", pilight_io_lib },
 	{ NULL, NULL }
+};
+
+static const luaL_Reg pilight_one_lib[] = {
+	{ "config", plua_config },
+	{ "table", plua_table },
+	{NULL, NULL}
 };
 
 void plua_register_library(struct lua_State *L) {

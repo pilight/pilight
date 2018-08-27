@@ -510,7 +510,7 @@ static void plua_io_file_object(lua_State *L, struct lua_file_t *file) {
 
 int plua_io_file(struct lua_State *L) {
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "file requires 0 arguments, %d given", lua_gettop(L));
+		luaL_error(L, "file requires 1 argument, %d given", lua_gettop(L));
 		return 0;
 	}
 
