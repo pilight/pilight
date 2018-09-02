@@ -138,8 +138,27 @@ static int luaB_ipairs (lua_State *L) {
   return pairsmeta(L, "__ipairs", 1, ipairsaux);
 }
 
+static int plua_metatable_len(lua_State *L) {
+	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	if(node == NULL) {
+		logprintf(LOG_ERR, "internal error: table object not passed");
+		return 0;
+	}
+
+	lua_pushnumber(L, node->nrvar);
+
+	return 1;
+}
+
 void plua_metatable_push(lua_State *L, struct plua_metatable_t *table) {
 	lua_newtable(L);
+
+	lua_pushstring(L, "__len");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable_len, 1);
+	lua_settable(L, -3);
+
 	lua_newtable(L);
 
 	lua_pushstring(L, "__index");
@@ -193,7 +212,7 @@ void plua_metatable_free(struct plua_metatable_t *table) {
 			plua_metatable_free(table->table[x].val.void_);
 		}
 	}
-	if(table->nrvar > 0) {
+	if(table->table != NULL) {
 		FREE(table->table);
 	}
 	FREE(table);

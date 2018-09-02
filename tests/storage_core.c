@@ -409,7 +409,7 @@ struct settings_t {
 	},
 	{
 		{
-			{ "storage-root", "/foo", 0, JSON_STRING },
+			{ "storage-root", "/foo/", 0, JSON_STRING },
 		}, 1, -1
 	},
 	{
@@ -419,7 +419,7 @@ struct settings_t {
 	},
 	{
 		{
-			{ "protocol-root", "/foo", 0, JSON_STRING },
+			{ "protocol-root", "/foo/", 0, JSON_STRING },
 		}, 1, -1
 	},
 	{
@@ -429,7 +429,7 @@ struct settings_t {
 	},
 	{
 		{
-			{ "hardware-root", "/foo", 0, JSON_STRING },
+			{ "hardware-root", "/foo/", 0, JSON_STRING },
 		}, 1, -1
 	},
 	{
@@ -439,7 +439,7 @@ struct settings_t {
 	},
 	{
 		{
-			{ "actions-root", "/foo", 0, JSON_STRING },
+			{ "actions-root", "/foo/", 0, JSON_STRING },
 		}, 1, -1
 	},
 	{
@@ -449,7 +449,7 @@ struct settings_t {
 	},
 	{
 		{
-			{ "functions-root", "/foo", 0, JSON_STRING },
+			{ "functions-root", "/foo/", 0, JSON_STRING },
 		}, 1, -1
 	},
 	{
@@ -459,7 +459,7 @@ struct settings_t {
 	},
 	{
 		{
-			{ "operators-root", "/foo", 0, JSON_STRING },
+			{ "operators-root", "/foo/", 0, JSON_STRING },
 		}, 1, -1
 	},
 	{

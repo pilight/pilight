@@ -5,15 +5,6 @@
 -- file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 local M = {}
-
-function is_dir(path)
-	f = io.open(path)
-	if f == nil then
-		return false;
-	end
-	return (f:seek("end") ~= 0)
-end
-
 local json = {}
 
 -- Internal functions.
@@ -136,7 +127,7 @@ function json.parse(str, pos, end_delim)
   local pos = pos + #str:match('^%s*', pos)  -- Skip whitespace.
   local first = str:sub(pos, pos)
   if first == '{' then  -- Parse an object.
-    local obj, key, delim_found = {}, true, true
+    local obj, key, delim_found = pilight.table(), true, true
     pos = pos + 1
     while true do
       key, pos = json.parse(str, pos, '}')
@@ -191,10 +182,13 @@ function M.read(f)
 		return 0;
 	end
 
-	content = "";
-	for line in io.lines(f) do
+	local file = pilight.io.file(f);
+	file.open("r");
+	local content = '';
+	for line in file.readline() do
 		content = content .. line;
 	end
+	file.close();
 
 	local k = nil;
 	local s = nil;
@@ -272,8 +266,13 @@ function M.read(f)
 	for k, v in pairs(keys) do
 		if settings[v] ~= nil then
 			s = settings[v];
-			if s ~= nil and not is_dir(s) then
-				error('config setting "' .. v .. '" must contain a valid path');
+			if s ~= nil then
+				local dir = pilight.io.dir(s:match("(.*[\\/])"));
+				if dir.exists() == false then
+					dir.close();
+					error('config setting "' .. v .. '" must contain a valid path');
+				end
+				dir.close();
 			end
 		end
 	end
@@ -344,7 +343,7 @@ function M.read(f)
 
 	v = 'webserver-authentication';
 	if settings[v] ~= nil then
-		if #settings[v] ~= 2 then
+		if type(settings[v]) ~= 'table' or settings[v].__len() ~= 2 then
 			error('config setting "' .. v .. '" must be in the format of [ "username", "password" ]');
 		end
 		if type(settings[v][1]) ~= 'string' or type(settings[v][2]) ~= 'string' then
@@ -359,7 +358,7 @@ function M.read(f)
 	--
 	v = 'ntp-servers';
 	if settings[v] ~= nil then
-		if #settings[v] == 0 then
+		if settings[v].__len() == 0 then
 			error('config setting "' .. v .. '" must be in the format of [ \"0.eu.pool.ntp.org\", ... ]');
 		end
 		if type(settings[v]) == 'table' then
@@ -387,9 +386,6 @@ function M.read(f)
 	v = 'whitelist'
 	if settings[v] ~= nil then
 		s = settings[v]
-		if #s == 0 then
-			error('config setting "' .. v .. '" must contain a valid ip address');
-		end
 		if type(s) == 'string' then
 			for k, x in pairs(pilight.common.explode(s, ',')) do
 				x = x:gsub("%s+", "");
@@ -495,7 +491,7 @@ function M.read(f)
 		s = settings[v];
 		if type(v) ~= 'string' then
 		end
-		if wiringX.setup(s) ~= true then
+		if s ~= "none" and wiringX.setup(s) ~= true then
 			error('config setting "' .. v .. '" must contain a supported gpio platform');
 		end
 	end
