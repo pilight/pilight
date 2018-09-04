@@ -210,7 +210,7 @@ function M.read(f)
 	end
 
 	local keys = {
-		'port',
+		'port', 'loopback',
 
 		'name', 'adhoc-master', 'adhoc-mode', 'standalone',
 
@@ -322,7 +322,7 @@ function M.read(f)
 	-- These settings should be either 0 or 1
 	--
 	keys = {
-		'standalone', 'watchdog-enable', 'stats-enable',
+		'standalone', 'watchdog-enable', 'stats-enable', 'loopback',
 		'webserver-enable', 'webserver-cache', 'webgui-websockets', 'smtp-ssl' }
 	for k, v in pairs(keys) do
 		if settings[v] ~= nil then

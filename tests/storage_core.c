@@ -189,6 +189,31 @@ struct settings_t {
 	},
 	{
 		{
+			{ "loopback", "1", 0, JSON_NUMBER }
+		}, 1, 0
+	},
+	{
+		{
+			{ "loopback", "0", 0, JSON_NUMBER }
+		}, 1, 0
+	},
+	{
+		{
+			{ "loopback", "-1", 0, JSON_NUMBER }
+		}, 1, -1
+	},
+	{
+		{
+			{ "loopback", "2", 0, JSON_NUMBER }
+		}, 1, -1
+	},
+	{
+		{
+			{ "loopback", "a", 0, JSON_STRING }
+		}, 1, -1
+	},
+	{
+		{
 			{ "webserver-enable", "1", 0, JSON_NUMBER }
 		}, 1, 0
 	},

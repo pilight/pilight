@@ -35,6 +35,10 @@ int plua_wiringx_setup(struct lua_State *L) {
 		luaL_error(L, "wiringX setup requires 1 argument, %d given", lua_gettop(L));
 	}
 
+#if !defined(__arm__) && !defined(__mips__) && !defined(PILIGHT_UNITTEST)
+	lua_pushboolean(L, 0);
+#else
+
 	char buf[128] = { '\0' }, *p = buf;
 	char *error = "string expected, got %s";
 	sprintf(p, error, lua_typename(L, lua_type(L, 1)));
@@ -49,9 +53,6 @@ int plua_wiringx_setup(struct lua_State *L) {
 		lua_pop(L, 1);
 	}
 
-#if (!defined(__arm__) || !defined(__mips__)) && !defined(PILIGHT_UNITTEST)
-	lua_pushboolean(L, 0);
-#else
 	if(wiringXSetup((char *)platform, _logprintf) == 0) {
 		lua_pushboolean(L, 1);
 	} else {
@@ -69,6 +70,10 @@ int plua_wiringx_has_gpio(struct lua_State *L) {
 		luaL_error(L, "wiringX hasGPIO requires 1 argument, %d given", lua_gettop(L));
 	}
 
+#if !defined(__arm__) && !defined(__mips__) && !defined(PILIGHT_UNITTEST)
+	lua_pushboolean(L, 0);
+#else
+
 	char buf[128] = { '\0' }, *p = buf;
 	char *error = "number expected, got %s";
 	sprintf(p, error, lua_typename(L, lua_type(L, 1)));
@@ -83,9 +88,6 @@ int plua_wiringx_has_gpio(struct lua_State *L) {
 		lua_pop(L, 1);
 	}
 
-#if (!defined(__arm__) || !defined(__mips__)) && !defined(PILIGHT_UNITTEST)
-	lua_pushboolean(L, 0);
-#else
 	if(wiringXPlatform() == NULL) {
 		lua_pushboolean(L, 0);
 	} else if(wiringXValidGPIO(gpio) == 0) {
