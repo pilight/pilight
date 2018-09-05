@@ -36,6 +36,7 @@ int plua_wiringx_setup(struct lua_State *L) {
 	}
 
 #if !defined(__arm__) && !defined(__mips__) && !defined(PILIGHT_UNITTEST)
+	lua_remove(L, -1);
 	lua_pushboolean(L, 0);
 #else
 
@@ -71,6 +72,7 @@ int plua_wiringx_has_gpio(struct lua_State *L) {
 	}
 
 #if !defined(__arm__) && !defined(__mips__) && !defined(PILIGHT_UNITTEST)
+	lua_remove(L, -1);
 	lua_pushboolean(L, 0);
 #else
 
