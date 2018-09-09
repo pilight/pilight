@@ -119,7 +119,7 @@ int main(int argc, char **argv) {
 
 	protocol_init();
 	config_init();
-	if(config_read() != EXIT_SUCCESS) {
+	if(config_read(CONFIG_ALL) != EXIT_SUCCESS) {
 		FREE(configtmp);
 		goto close;
 	}

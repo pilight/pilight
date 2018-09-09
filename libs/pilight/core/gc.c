@@ -39,7 +39,7 @@
 #include "log.h"
 #include "mem.h"
 #include "common.h"
-#include "config.h"
+#include "../config/config.h"
 
 static unsigned short gc_enable = 1;
 static int (*gc)(void) = NULL;

@@ -33,10 +33,10 @@
 #include "../core/common.h"
 #include "../core/log.h"
 #include "../core/options.h"
-#include "../core/config.h"
 #include "../core/ssdp.h"
 #include "../core/firmware.h"
 #include "../core/datetime.h"
+#include "../config/config.h"
 
 #include "../protocols/protocol.h"
 
@@ -634,7 +634,7 @@ struct JsonNode *devices_values(const char *media) {
 	return jroot;
 }
 
-struct JsonNode *devices_sync(int level, const char *media) {
+struct JsonNode *config_devices_sync(int level, const char *media) {
 	/* Temporary pointer to the different structure */
 	struct devices_t *tmp_devices = NULL;
 	struct devices_settings_t *tmp_settings = NULL;
@@ -1739,7 +1739,7 @@ int devices_gc(void) {
 	return EXIT_SUCCESS;
 }
 
-static int devices_read(JsonNode *root) {
+int config_devices_parse(struct JsonNode *root) {
 	if(devices_parse(root) == 0 && devices_validate_settings() == 0) {
 		return 0;
 	} else {
@@ -1751,14 +1751,6 @@ void devices_init(void) {
 	pthread_mutexattr_init(&mutex_attr);
 	pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&mutex_lock, &mutex_attr);
-
-	/* Request hardware json object in main configuration */
-	config_register(&config_devices, "devices");
-	config_devices->readorder = 1;
-	config_devices->writeorder = 0;
-	config_devices->parse=&devices_read;
-	config_devices->sync=&devices_sync;
-	config_devices->gc=&devices_gc;
 }
 
 /*

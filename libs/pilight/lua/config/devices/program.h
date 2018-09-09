@@ -9,7 +9,7 @@
 #ifndef _LUA_CONFIG_DEVICE_PROGRAM_H_
 #define _LUA_CONFIG_DEVICE_PROGRAM_H_
 
-#include "../lua.h"
+#include "../../lua.h"
 
 int plua_config_device_program(lua_State *L, struct plua_device_t *dev);
 

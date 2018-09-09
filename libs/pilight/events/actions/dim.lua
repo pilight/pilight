@@ -137,9 +137,10 @@ function M.check(parameters)
 		error("dim actions are formatted as \"dim DEVICE ... TO ...\"");
 	end
 
+	local config = pilight.config();
 	local nrdev = #parameters['DEVICE']['value'];
 	for i = 1, nrdev, 1 do
-		local dev = pilight.config.device(parameters['DEVICE']['value'][i]);
+		local dev = config.getDevice(parameters['DEVICE']['value'][i]);
 		if dev == nil then
 			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" does not exist");
 		end
@@ -160,10 +161,12 @@ end
 function M.timer_for(timer)
 	local data = timer.getUserdata();
 	local devname = data['device'];
-	local devobj = pilight.config.device(devname);
+	local config = pilight.config();
+	local devobj = config.getDevice(devname);
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		error("skipping overridden action dim for device " .. devname);
+		return;
 	end
 
 	if devobj.setState("on") == false then
@@ -206,7 +209,8 @@ end
 function M.timer_in(timer)
 	local data = timer.getUserdata();
 	local devname = data['device'];
-	local devobj = pilight.config.device(devname);
+	local config = pilight.config();
+	local devobj = config.getDevice(devname);
 
 	if devobj.setState("on") == false then
 		error("device \"" .. devname .. "\" could not be set to state \"on\"")
@@ -264,7 +268,8 @@ end
 function M.thread(thread)
 	local data = thread.getUserdata();
 	local devname = data['device'];
-	local devobj = pilight.config.device(devname);
+	local config = pilight.config();
+	local devobj = config.getDevice(devname);
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		error("skipping overridden action dim for device " .. devname);
@@ -288,7 +293,8 @@ end
 function M.timer_after(timer)
 	local data = timer.getUserdata();
 	local devname = data['device'];
-	local devobj = pilight.config.device(devname);
+	local config = pilight.config();
+	local devobj = config.getDevice(devname);
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		error("skipping overridden action dim for device " .. devname);
@@ -317,7 +323,8 @@ function M.run(parameters)
 
 	for i = 1, nrdev, 1 do
 		local devname = parameters['DEVICE']['value'][i];
-		local devobj = pilight.config.device(devname);
+		local config = pilight.config();
+		local devobj = config.getDevice(devname);
 		local old_dimlevel = nil;
 		local new_dimlevel = parameters['TO']['value'][1];
 		local from_dimlevel = nil;
@@ -427,8 +434,8 @@ function M.info()
 	return {
 		name = "dim",
 		version = "4.1",
-		reqversion = "7.0",
-		reqcommit = "94"
+		reqversion = "8.1.3",
+		reqcommit = "0"
 	}
 end
 

@@ -52,7 +52,7 @@ void event_operator_init(void) {
 		OUT_OF_MEMORY
 	}
 
-	settings_select_string(ORIGIN_MASTER, "operators-root", &operator_root);
+	config_setting_get_string("operators-root", 0, &operator_root);
 
 	if((d = opendir(operator_root))) {
 		while((file = readdir(d)) != NULL) {

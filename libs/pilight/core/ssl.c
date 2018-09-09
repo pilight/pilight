@@ -30,19 +30,14 @@ int ssl_server_init_status(void) {
 
 void ssl_init(void) {
 	char *pemfile = NULL, buffer[BUFFER_SIZE];
-	int ret = 0, pem_free = 0;
+	int ret = 0;
 
-#ifdef PILIGHT_REWRITE
-	if(settings_select_string(ORIGIN_WEBSERVER, "pem-file", &pemfile) != 0) {
-#else
-	if(settings_find_string("pem-file", &pemfile) != 0) {
-#endif
+	if(config_setting_get_string("pem-file", 0, &pemfile) != 0) {
 		if((pemfile = REALLOC(pemfile, strlen(PEM_FILE)+1)) == NULL) {
 			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(pemfile, PEM_FILE);
-		pem_free = 1;
 	}
 	if(file_exists(pemfile) != 0) {
 		logprintf(LOG_NOTICE, "pemfile does not exists: %s", pemfile);
@@ -121,7 +116,7 @@ void ssl_init(void) {
 		}
 	}
 
-	if(pem_free == 1) {
+	if(pemfile != NULL) {
 		FREE(pemfile);
 	}
 }

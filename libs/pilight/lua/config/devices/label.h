@@ -6,11 +6,11 @@
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
-#ifndef _LUA_CONFIG_DEVICE_SWITCH_H_
-#define _LUA_CONFIG_DEVICE_SWITCH_H_
+#ifndef _LUA_CONFIG_DEVICE_LABEL_H_
+#define _LUA_CONFIG_DEVICE_LABEL_H_
 
-#include "../lua.h"
+#include "../../lua.h"
 
-int plua_config_device_switch(lua_State *L, struct plua_device_t *dev);
+int plua_config_device_label(lua_State *L, struct plua_device_t *dev);
 
 #endif

@@ -105,7 +105,6 @@ static char *authentication_username = NULL;
 static char *authentication_password = NULL;
 static unsigned short loop = 1;
 static char *root = NULL;
-static unsigned short root_free = 0;
 
 typedef struct broadcast_list_t {
 	char *out;
@@ -177,10 +176,6 @@ int webserver_gc(void) {
 
 	loop = 0;
 
-	if(root_free == 1) {
-		FREE(root);
-	}
-
 #ifdef _WIN32
 	uv_mutex_lock(&webserver_lock);
 #else
@@ -226,8 +221,18 @@ int webserver_gc(void) {
 		poll_close_cb(poll_https_req);
 	}
 
-	authentication_username = NULL;
-	authentication_password = NULL;
+	if(authentication_username != NULL) {
+		FREE(authentication_username);
+		authentication_username = NULL;
+	}
+	if(authentication_password != NULL) {
+		FREE(authentication_password);
+		authentication_password = NULL;
+	}
+	if(root != NULL) {
+		FREE(root);
+		root = NULL;
+	}
 
 	sha256cache_gc();
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
@@ -1981,7 +1986,6 @@ int webserver_start(void) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(root, WEBSERVER_ROOT);
-		root_free = 1;
 		/*LCOV_EXCL_STOP*/
 	}
 
@@ -1989,28 +1993,27 @@ int webserver_start(void) {
 	settings_select_string_element(ORIGIN_WEBSERVER, "webserver-authentication", 1, &authentication_password);
 #else
 	/* Check on what port the webserver needs to run */
-	settings_find_number("webserver-http-port", &http_port);
+	config_setting_get_number("webserver-http-port", 0, &http_port);
 
 #ifdef WEBSERVER_HTTPS
-	settings_find_number("webserver-https-port", &https_port);
+	config_setting_get_number("webserver-https-port", 0, &https_port);
 #endif
 
-	if(settings_find_string("webserver-root", &root) != 0) {
+	if(config_setting_get_string("webserver-root", 0, &root) != 0) {
 		/* If no webserver port was set, use the default webserver port */
 		if((root = MALLOC(strlen(WEBSERVER_ROOT)+1)) == NULL) {
 			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(root, WEBSERVER_ROOT);
-		root_free = 1;
 	}
-	settings_find_number("webgui-websockets", &websockets);
+	config_setting_get_number("webgui-websockets", 0, &websockets);
 
 	/* Do we turn on webserver caching. This means that all requested files are
 	   loaded into the memory so they aren't read from the FS anymore */
-	settings_find_number("webserver-cache", &cache);
-	settings_find_string("webserver-authentication-password", &authentication_password);
-	settings_find_string("webserver-authentication-username", &authentication_username);
+	config_setting_get_number("webserver-cache", 0, &cache);
+	config_setting_get_string("webserver-authentication", 0, &authentication_username);
+	config_setting_get_string("webserver-authentication", 1, &authentication_password);
 
 #endif
 

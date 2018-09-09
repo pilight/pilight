@@ -71,7 +71,7 @@ function M.info()
 	return {
 		name = "pushover",
 		version = "1.0",
-		reqversion = "8.1.1",
+		reqversion = "8.1.3",
 		reqcommit = "0"
 	}
 end

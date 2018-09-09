@@ -67,7 +67,7 @@
 #include "libs/pilight/core/firmware.h"
 #include "libs/pilight/core/proc.h"
 #include "libs/pilight/core/ntp.h"
-#include "libs/pilight/core/config.h"
+#include "libs/pilight/config/config.h"
 #include "libs/pilight/lua/lua.h"
 
 #ifdef EVENTS
@@ -177,7 +177,6 @@ static struct protocol_t *procProtocol;
 /* The pid_file and pid of this daemon */
 #ifndef _WIN32
 static char *pid_file;
-static unsigned short pid_file_free = 0;
 #endif
 static pid_t pid;
 /* Daemonize or not */
@@ -223,7 +222,6 @@ static int webgui_websockets = WEBGUI_WEBSOCKETS;
 static int webserver_http_port = WEBSERVER_HTTP_PORT;
 /* The webroot of pilight */
 static char *webserver_root = NULL;
-static int webserver_root_free = 0;
 #endif
 
 static void *reason_forward_free(void *param) {
@@ -2221,8 +2219,6 @@ void *clientize(void *param) {
 	struct ssdp_list_t *ssdp_list = NULL;
 	struct JsonNode *json = NULL;
 	struct JsonNode *joptions = NULL;
-	struct JsonNode *jchilds = NULL;
-	struct JsonNode *tmp = NULL;
   char *recvBuff = NULL, *output = NULL;
 	char *message = NULL, *action = NULL;
 	char *origin = NULL, *protocol = NULL;
@@ -2310,23 +2306,7 @@ void *clientize(void *param) {
 							registry_gc();
 							pthread_mutex_unlock(&config_lock);
 
-							int match = 1;
-							while(match) {
-								jchilds = json_first_child(jconfig);
-								match = 0;
-								while(jchilds) {
-									tmp = jchilds;
-									if(strcmp(tmp->key, "devices") != 0) {
-										json_remove_from_parent(tmp);
-										match = 1;
-									}
-									jchilds = jchilds->next;
-									if(match == 1) {
-										json_delete(tmp);
-									}
-								}
-							}
-							if(config_parse(jconfig) == EXIT_SUCCESS) {
+							if(config_parse(jconfig, CONFIG_DEVICES) == 0) {
 								logprintf(LOG_DEBUG, "loaded master configuration");
 								config_synced = 1;
 							} else {
@@ -2512,7 +2492,7 @@ int main_gc(void) {
 		}
 	}
 
-	if(pid_file_free) {
+	if(pid_file != NULL) {
 		FREE(pid_file);
 	}
 #endif
@@ -2521,7 +2501,7 @@ int main_gc(void) {
 	if(webserver_enable == 1) {
 		webserver_gc();
 	}
-	if(webserver_root_free == 1) {
+	if(webserver_root != NULL) {
 		FREE(webserver_root);
 	}
 #endif
@@ -2646,8 +2626,8 @@ static void pilight_abort(uv_timer_t *timer_req) {
 static void pilight_stats(uv_timer_t *timer_req) {
 	int watchdog = 1, stats = 1;
 	// double itmp = 0.0;
-	settings_find_number("watchdog-enable", &watchdog);
-	settings_find_number("stats-enable", &stats);
+	config_setting_get_number("watchdog-enable", 0, &watchdog);
+	config_setting_get_number("stats-enable", 0, &stats);
 
 	if(pilight.runmode == STANDALONE) {
 		registerVersion();
@@ -2749,6 +2729,7 @@ int start_pilight(int argc, char **argv) {
 	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
+	options_add(&options, 'L', "storage-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 	options_add(&options, 'D', "debug", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 256, "stacktracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 257, "threadprofiler", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
@@ -2772,13 +2753,14 @@ int start_pilight(int argc, char **argv) {
 				show_version = 1;
 			break;
 			case 'C':
-				configtmp = REALLOC(configtmp, strlen(args)+1);
+				if((configtmp = REALLOC(configtmp, strlen(args)+1)) == NULL) {
+					OUT_OF_MEMORY
+				}
 				strcpy(configtmp, args);
 			break;
 			case 'S':
 				if((master_server = MALLOC(strlen(args)+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				strcpy(master_server, args);
 			break;
@@ -2789,6 +2771,12 @@ int start_pilight(int argc, char **argv) {
 				nodaemon = 1;
 				verbosity = LOG_DEBUG;
 				verbosity_changed = 1;
+			break;
+			case 'L':
+				if(config_root(args) == -1) {
+					logprintf(LOG_ERR, "%s is not valid storage lua modules path", args);
+					goto clear;
+				}
 			break;
 			case 'F':
 				nodaemon = 1;
@@ -2831,13 +2819,14 @@ int start_pilight(int argc, char **argv) {
 									"\t -C --config\t%sconfig file\n"
 									"\t -S --server=x.x.x.x\t\tconnect to server address\n"
 									"\t -P --port=xxxx\t%sconnect to server port\n"
+									"\t -L --storage-root=xxxx%slocation of storage lua modules\n"
 									"\t -F --foreground\t\tdo not daemonize\n"
 									"\t -D --debug\t%sdo not daemonize and\n"
 									"\t\t\t%sshow debug information\n"
 									"\t    --stacktracer\t\tshow internal function calls\n"
 									"\t    --threadprofiler\t\tshow per thread cpu usage\n"
 									"\t    --debuglevel\t\tshow additional development info\n",
-									progname, tabs, tabs, tabs, tabs, tabs);
+									progname, tabs, tabs, tabs, tabs, tabs, tabs);
 #ifdef _WIN32
 		MessageBox(NULL, help, "pilight :: info", MB_OK);
 #else
@@ -2978,7 +2967,12 @@ int start_pilight(int argc, char **argv) {
 	eventpool_callback(REASON_SOCKET_RECEIVED, socket_parse_data1);
 	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain1);
 
-	if(config_read() != EXIT_SUCCESS) {
+	if(config_read(CONFIG_ALL) != 0) {
+		if(config_exists("settings") == -1) {
+			logprintf(LOG_ERR, "could not read lua config settings module");
+		} else {
+			logprintf(LOG_ERR, "failed to read config");
+		}
 		goto clear;
 	}
 
@@ -2986,28 +2980,28 @@ int start_pilight(int argc, char **argv) {
 
 	// let verbosity level from command line take precedence over config file
 	if(verbosity_changed == 0) {
-		settings_find_number("log-level", &verbosity);
+		config_setting_get_number("log-level", 0, &verbosity);
 	}
 
 	log_level_set(verbosity);
 
-	if(settings_find_string("log-file", &stmp) == 0) {
+	if(config_setting_get_string("log-file", 0, &stmp) == 0) {
 		if(log_file_set(stmp) == EXIT_FAILURE) {
+			FREE(stmp);
 			goto clear;
 		}
+		FREE(stmp);
 	}
 
 #ifdef WEBSERVER
 	#ifdef WEBSERVER_HTTPS
 	char *pemfile = NULL;
-	int pem_free = 0;
-	if(settings_find_string("pem-file", &pemfile) != 0) {
+	if(config_setting_get_string("pem-file", 0, &pemfile) != 0) {
 		if((pemfile = REALLOC(pemfile, strlen(PEM_FILE)+1)) == NULL) {
 			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(pemfile, PEM_FILE);
-		pem_free = 1;
 	}	
 	
 	char *content = NULL;
@@ -3017,7 +3011,7 @@ int start_pilight(int argc, char **argv) {
 	p = (char *)md5sum;
 	if(file_exists(pemfile) != 0) {
 		logprintf(LOG_ERR, "missing webserver SSL private key %s", pemfile);
-		if(pem_free == 1) {
+		if(pemfile != NULL) {
 			FREE(pemfile);
 		}
 		goto clear;
@@ -3036,31 +3030,29 @@ int start_pilight(int argc, char **argv) {
 		FREE(content);
 	}
 
-	if(pem_free == 1) {
+	if(pemfile != NULL) {
 		FREE(pemfile);
 	}	
 	#endif
 
-	settings_find_number("webserver-enable", &webserver_enable);
-	settings_find_number("webserver-http-port", &webserver_http_port);
-	if(settings_find_string("webserver-root", &webserver_root) != 0) {
+	config_setting_get_number("webserver-enable", 0, &webserver_enable);
+	config_setting_get_number("webserver-http-port", 0, &webserver_http_port);
+	if(config_setting_get_string("webserver-root", 0, &webserver_root) != 0) {
 		if((webserver_root = REALLOC(webserver_root, strlen(WEBSERVER_ROOT)+1)) == NULL) {
 			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(webserver_root, WEBSERVER_ROOT);
-		webserver_root_free = 1;
 	}
 #endif
 
 #ifndef _WIN32
-	if(settings_find_string("pid-file", &pid_file) != 0) {
+	if(config_setting_get_string("pid-file", 0, &pid_file) != 0) {
 		if((pid_file = REALLOC(pid_file, strlen(PID_FILE)+1)) == NULL) {
 			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(pid_file, PID_FILE);
-		pid_file_free = 1;
 	}
 
 	if((f = open(pid_file, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) != -1) {
@@ -3137,8 +3129,8 @@ int start_pilight(int argc, char **argv) {
 		tmp_confhw = tmp_confhw->next;
 	}
 
-	settings_find_number("port", &port);
-	settings_find_number("standalone", &standalone);
+	config_setting_get_number("port", 0, &port);
+	config_setting_get_number("standalone", 0, &standalone);
 
 	pilight.runmode = STANDALONE;
 	if(standalone == 0 || (master_server != NULL && master_port > 0)) {
@@ -3275,7 +3267,7 @@ int start_pilight(int argc, char **argv) {
 #endif
 
 #ifdef WEBSERVER
-	settings_find_number("webgui-websockets", &webgui_websockets);
+	config_setting_get_number("webgui-websockets", 0, &webgui_websockets);
 
 	/* Register a seperate thread for the webserver */
 	if(webserver_enable == 1 && pilight.runmode == STANDALONE) {
@@ -3296,17 +3288,12 @@ int start_pilight(int argc, char **argv) {
 #endif
 
 	{
-		char name[25], *server = NULL;
+		char *server = NULL;
 		unsigned int nrservers = 0;
-		while(1) {
-			sprintf(name, "ntpserver%d", nrservers);
-			if(settings_find_string(name, &server) == 0) {
-				strcpy(ntp_servers.server[nrservers].host, server);
-				ntp_servers.server[x].port = 123;
-				nrservers++;
-			} else {
-				break;
-			}
+		while(config_setting_get_string("ntp-server", nrservers, &server) == 0) {
+			strcpy(ntp_servers.server[nrservers].host, server);
+			ntp_servers.server[nrservers].port = 123;
+			nrservers++;
 		}
 		ntp_servers.nrservers = nrservers;
 		ntp_servers.callback = NULL;

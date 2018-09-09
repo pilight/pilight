@@ -6,11 +6,11 @@
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
-#ifndef _PLUA_LIBRARY_H_
-#define _PLUA_LIBRARY_H_
+#ifndef _LUA_CONFIG_DEVICE_DIMMER_H_
+#define _LUA_CONFIG_DEVICE_DIMMER_H_
 
-#include "lua.h"
+#include "../../lua.h"
 
-void plua_register_library(struct lua_State *);
+int plua_config_device_dimmer(lua_State *L, struct plua_device_t *dev);
 
 #endif

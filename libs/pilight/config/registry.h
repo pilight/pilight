@@ -20,7 +20,7 @@
 #define _REGISTRY_H_
 
 #include "../core/json.h"
-#include "../core/config.h"
+#include "../config/config.h"
 
 struct config_t *config_registry;
 
@@ -31,5 +31,7 @@ int registry_get_number(const char *key, double *value, int *decimals);
 int registry_set_string(const char *key, char *value);
 int registry_set_number(const char *key, double value, int decimals);
 int registry_remove_value(const char *key);
+struct JsonNode *config_registry_sync(int level, const char *media);
+int config_registry_parse(struct JsonNode *root);
 
 #endif

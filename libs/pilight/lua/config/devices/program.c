@@ -9,8 +9,8 @@
 #include <string.h>
 #include <assert.h>
 
-#include "../../core/log.h"
-#include "../config.h"
+#include "../../../core/log.h"
+#include "../../config.h"
 #include "program.h"
 
 typedef struct program_t {

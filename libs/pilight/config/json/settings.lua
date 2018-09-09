@@ -66,9 +66,7 @@ local function parse_num_val(str, pos)
   return val, pos + #num_str
 end
 
-
 -- Public values and functions.
-
 function json.stringify(obj, as_key, indent)
   local s = {}  -- We'll build the string as an array of strings to be concatenated.
   local kind = kind_of(obj)  -- This is 'array' if it's an array or type(obj) otherwise.
@@ -210,7 +208,7 @@ function M.read(f)
 	end
 
 	local keys = {
-		'port',
+		'port', 'loopback',
 
 		'name', 'adhoc-master', 'adhoc-mode', 'standalone',
 
@@ -322,7 +320,7 @@ function M.read(f)
 	-- These settings should be either 0 or 1
 	--
 	keys = {
-		'standalone', 'watchdog-enable', 'stats-enable',
+		'standalone', 'watchdog-enable', 'stats-enable', 'loopback',
 		'webserver-enable', 'webserver-cache', 'webgui-websockets', 'smtp-ssl' }
 	for k, v in pairs(keys) do
 		if settings[v] ~= nil then
@@ -358,7 +356,7 @@ function M.read(f)
 	--
 	v = 'ntp-servers';
 	if settings[v] ~= nil then
-		if settings[v].__len() == 0 then
+		if type(settings[v]) ~= 'table' or settings[v].__len() == 0 then
 			error('config setting "' .. v .. '" must be in the format of [ \"0.eu.pool.ntp.org\", ... ]');
 		end
 		if type(settings[v]) == 'table' then

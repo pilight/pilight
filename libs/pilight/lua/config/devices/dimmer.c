@@ -10,13 +10,13 @@
 #include <assert.h>
 
 #ifndef PILIGHT_REWRITE
-#include "../../config/devices.h"
+#include "../../../config/devices.h"
 #endif
 
-#include "../../protocols/protocol.h"
+#include "../../../protocols/protocol.h"
 
-#include "../../core/log.h"
-#include "../config.h"
+#include "../../../core/log.h"
+#include "../../config.h"
 #include "dimmer.h"
 
 typedef struct dimmer_t {

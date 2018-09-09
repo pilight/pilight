@@ -67,7 +67,7 @@ void event_action_init(void) {
 		OUT_OF_MEMORY
 	}
 
-	settings_select_string(ORIGIN_MASTER, "actions-root", &actions_root);
+	config_setting_get_string("actions-root", 0, &actions_root);
 
 	if((d = opendir(actions_root))) {
 		while((file = readdir(d)) != NULL) {

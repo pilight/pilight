@@ -369,11 +369,21 @@ static void *thread(void *param) {
 
 static struct threadqueue_t *initDev(JsonNode *jdevice) {
 	char *platform = GPIO_PLATFORM;
-	if(settings_find_string("gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
-		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
-		exit(EXIT_FAILURE);
+
+	if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
+		logprintf(LOG_ERR, "no gpio-platform configured");
+		return NULL;
 	}
-	if(wiringXSetup(platform, logprintf1) == 0) {
+	if(strcmp(platform, "none") == 0) {
+		FREE(platform);
+		logprintf(LOG_ERR, "no gpio-platform configured");
+		return NULL;
+	}
+	if(wiringXSetup(platform, logprintf1) < 0) {
+		FREE(platform);
+		return NULL;
+	} else {
+		FREE(platform);
 		loop = 1;
 		char *output = json_stringify(jdevice, NULL);
 		JsonNode *json = json_decode(output);
@@ -381,8 +391,6 @@ static struct threadqueue_t *initDev(JsonNode *jdevice) {
 
 		struct protocol_threads_t *node = protocol_thread_init(bmp180, json);
 		return threads_register("bmp180", &thread, (void *) node, 0);
-	} else {
-		return NULL;
 	}
 }
 

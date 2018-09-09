@@ -17,13 +17,6 @@ typedef struct plua_device_t {
 	void *data;
 } plua_device_t;
 
-extern int plua_config_device(struct lua_State *L);
-extern int plua_config_setting(struct lua_State *L);
-
-static const luaL_Reg pilight_config_lib[] = {
-	{"device", plua_config_device},
-	{"setting", plua_config_setting},
-	{NULL, NULL}
-};
+extern int plua_config(struct lua_State *L);
 
 #endif

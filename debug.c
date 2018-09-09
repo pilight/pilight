@@ -34,7 +34,6 @@
 #include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/network.h"
-#include "libs/pilight/core/config.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/options.h"
 #include "libs/pilight/core/threads.h"
@@ -43,6 +42,7 @@
 #include "libs/pilight/core/socket.h"
 #include "libs/pilight/core/gc.h"
 #include "libs/pilight/core/dso.h"
+#include "libs/pilight/config/config.h"
 
 #include "libs/pilight/events/events.h"
 
@@ -482,10 +482,14 @@ int main(int argc, char **argv) {
 	struct options_t *options = NULL;
 
 	char *args = NULL;
+	char *configtmp = MALLOC(strlen(CONFIG_FILE)+1);
 	pid_t pid = 0;
 
-	char configtmp[] = CONFIG_FILE;
-	config_set_file(configtmp);
+	if(configtmp == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	strcpy(configtmp, CONFIG_FILE);
 
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
@@ -511,9 +515,10 @@ int main(int argc, char **argv) {
 				goto clear;
 			break;
 			case 'C':
-				if(config_set_file(args) == EXIT_FAILURE) {
-					goto clear;
+				if((configtmp = REALLOC(configtmp, strlen(args)+1)) == NULL) {
+					OUT_OF_MEMORY
 				}
+				strcpy(configtmp, args);
 			break;
 			default:
 				printf("Usage: %s [options]\n", progname);
@@ -540,15 +545,21 @@ int main(int argc, char **argv) {
 		goto clear;
 	}
 
+	if(config_set_file(configtmp) == EXIT_FAILURE) {
+		FREE(configtmp);
+		return EXIT_FAILURE;
+	}
+
 #ifndef PILIGHT_DEVELOPMENT
 	eventpool_init(EVENTPOOL_THREADED);
 #endif
 	protocol_init();
 	config_init();
-
-	if(config_read() != EXIT_SUCCESS) {
+	if(config_read(CONFIG_SETTINGS) != EXIT_SUCCESS) {
+		FREE(configtmp);
 		goto clear;
 	}
+	FREE(configtmp);
 
 #ifndef PILIGHT_DEVELOPMENT
 	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain1);
@@ -557,18 +568,21 @@ int main(int argc, char **argv) {
 	/* Start threads library that keeps track of all threads used */
 	threads_start();
 
+	int has_hardware = 0;
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
 	while(tmp_confhw) {
 		if(tmp_confhw->hardware->init) {
 			if(tmp_confhw->hardware->comtype == COMOOK) {
-				tmp_confhw->hardware->maxrawlen = MAXPULSESTREAMLENGTH;
-				tmp_confhw->hardware->minrawlen = 25;
-				tmp_confhw->hardware->maxgaplen = 34000;
-				tmp_confhw->hardware->mingaplen = 5100;
+				tmp_confhw->hardware->maxrawlen = 1024;
+				tmp_confhw->hardware->minrawlen = 0;
+				tmp_confhw->hardware->maxgaplen = 99999;
+				tmp_confhw->hardware->mingaplen = 0;
 			}
 			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
 				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
 				goto clear;
+			} else {
+				has_hardware = 1;
 			}
 			if(tmp_confhw->hardware->comtype == COMOOK) {
 #ifdef PILIGHT_DEVELOPMENT
@@ -576,9 +590,16 @@ int main(int argc, char **argv) {
 #endif
 			} else if(tmp_confhw->hardware->comtype == COMPLSTRAIN) {
 				threads_register(tmp_confhw->hardware->id, &receivePulseTrain, (void *)tmp_confhw->hardware, 0);
+				has_hardware = 1;
 			}
 		}
 		tmp_confhw = tmp_confhw->next;
+	}
+
+	if(has_hardware == 0) {
+		logprintf(LOG_NOTICE, "there are no hardware modules configured");
+		uv_stop(uv_default_loop());
+		goto clear;
 	}
 
 	printf("Press and hold one of the buttons on your remote or wait until\n");

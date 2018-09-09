@@ -27,7 +27,6 @@
 
 #include "../core/pilight.h"
 #include "../core/common.h"
-#include "../core/config.h"
 #include "../core/log.h"
 #include "../core/cast.h"
 #include "../core/options.h"
@@ -40,6 +39,7 @@
 
 #include "../protocols/protocol.h"
 
+#include "../config/config.h"
 #include "../config/rules.h"
 #include "../config/settings.h"
 #include "../config/devices.h"
@@ -2117,7 +2117,7 @@ void *events_clientize(void *param) {
 	char *out = NULL;
 	int standalone = 0;
 	int client_loop = 0;
-	settings_find_number("standalone", &standalone);
+	config_setting_get_number("standalone", 0, &standalone);
 
 	while(loop) {
 

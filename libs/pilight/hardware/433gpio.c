@@ -159,25 +159,23 @@ static unsigned short int gpio433HwInit(void) {
 	uv_poll_t *poll_req = NULL;
 	char *platform = GPIO_PLATFORM;
 
-#ifdef PILIGHT_REWRITE
-	if(settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+	config_setting_get_number("loopback", 0, &loopback);
+
+	if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
 		logprintf(LOG_ERR, "no gpio-platform configured");
 		return EXIT_FAILURE;
 	}
-	if(wiringXSetup(platform, _logprintf) < 0) {
-		return EXIT_FAILURE;
-	}
-#else
-	settings_find_number("loopback", &loopback);
-
-	if(settings_find_string("gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+	if(strcmp(platform, "none") == 0) {
+		FREE(platform);
 		logprintf(LOG_ERR, "no gpio-platform configured");
 		return EXIT_FAILURE;
 	}
 	if(wiringXSetup(platform, logprintf1) < 0) {
+		FREE(platform);
 		return EXIT_FAILURE;
 	}
-#endif
+	FREE(platform);
+
 	if(gpio_433_out >= 0) {
 		if(wiringXValidGPIO(gpio_433_out) != 0) {
 			logprintf(LOG_ERR, "invalid sender pin: %d", gpio_433_out);

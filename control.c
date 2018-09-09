@@ -30,7 +30,6 @@
 #include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/common.h"
-#include "libs/pilight/core/config.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/options.h"
 #include "libs/pilight/core/socket.h"
@@ -38,6 +37,7 @@
 #include "libs/pilight/core/ssdp.h"
 #include "libs/pilight/core/dso.h"
 #include "libs/pilight/core/gc.h"
+#include "libs/pilight/config/config.h"
 
 #include "libs/pilight/config/devices.h"
 
@@ -188,7 +188,7 @@ int main(int argc, char **argv) {
 	protocol_init();
 	config_init();
 	if(hasconfarg == 1) {
-		if(config_read() != EXIT_SUCCESS) {
+		if(config_read(CONFIG_SETTINGS) != EXIT_SUCCESS) {
 			goto close;
 		}
 	}
@@ -230,7 +230,9 @@ int main(int argc, char **argv) {
 								tmp = NULL;
 							}
 						}
-						config_parse(jconfig);
+
+						struct JsonNode *jnode = json_find_member(jconfig, "devices");
+						config_devices_parse(jnode);
 						if(devices_get(device, &dev) == 0) {
 							JsonNode *joutput = json_mkobject();
 							JsonNode *jcode = json_mkobject();

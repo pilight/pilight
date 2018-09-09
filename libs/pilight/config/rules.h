@@ -20,9 +20,9 @@
 #define _RULES_H_
 
 #include "../core/json.h"
-#include "../core/config.h"
 #include "../events/action.h"
 #include "../datatypes/stack.h"
+#include "config.h"
 
 typedef struct rules_values_t {
 	char *device;
@@ -64,6 +64,8 @@ struct config_t *config_rules;
 
 void rules_init(void);
 int rules_gc(void);
+int config_rules_parse(struct JsonNode *root);
+struct JsonNode *config_rules_sync(int level, const char *media);
 struct rules_t *rules_get(void);
 
 #endif

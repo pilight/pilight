@@ -17,7 +17,8 @@ function M.run(a, b, c, d)
 		tm = pilight.datetime.strptime(a, b);
 	elseif a ~= nil and b ~= nil then
 		e = b;
-		local dev = pilight.config.device(a);
+		local config = pilight.config();
+		local dev = config.getDevice(a);
 		if dev == nil then
 			error(string.format("DATE_FORMAT device \"%s\" is not a datetime protocol", a));
 		else

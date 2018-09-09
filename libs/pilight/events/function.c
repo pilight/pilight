@@ -52,11 +52,7 @@ void event_function_init(void) {
 		OUT_OF_MEMORY
 	}
 
-#ifdef PILIGHT_REWRITE
-	settings_select_string(ORIGIN_MASTER, "functions-root", &functions_root);
-#else
-	settings_find_string("functions-root", &functions_root);
-#endif
+	config_setting_get_string("functions-root", 0, &functions_root);
 
 	if((d = opendir(functions_root))) {
 		while((file = readdir(d)) != NULL) {

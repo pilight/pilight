@@ -223,7 +223,7 @@ int registry_remove_value(const char *key) {
 	return registry_remove_value_recursive(registry, key);
 }
 
-static int registry_parse(JsonNode *root) {
+int config_registry_parse(struct JsonNode *root) {
 	if(root->tag == JSON_OBJECT) {
 		char *content = json_stringify(root, NULL);
 		registry = json_decode(content);
@@ -235,7 +235,7 @@ static int registry_parse(JsonNode *root) {
 	return 0;
 }
 
-static JsonNode *registry_sync(int level, const char *display) {
+struct JsonNode *config_registry_sync(int level, const char *display) {
 	if(registry != NULL) {
 		char *content = json_stringify(registry, NULL);
 		struct JsonNode *jret = json_decode(content);
@@ -262,12 +262,4 @@ void registry_init(void) {
 	pthread_mutexattr_init(&mutex_attr);
 	pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&mutex_lock, &mutex_attr);
-
-	/* Request settings json object in main configuration */
-	config_register(&config_registry, "registry");
-	config_registry->readorder = 5;
-	config_registry->writeorder = 5;
-	config_registry->parse=&registry_parse;
-	config_registry->sync=&registry_sync;
-	config_registry->gc=&registry_gc;
 }

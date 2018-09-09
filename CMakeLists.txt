@@ -11,6 +11,17 @@ set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
 set(CPACK_DEB_COMPONENT_INSTALL TRUE)
 
+MACRO(SUBDIRLIST result curdir)
+  FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
+  SET(dirlist "")
+  FOREACH(child ${children})
+    IF(IS_DIRECTORY ${curdir}/${child})
+      LIST(APPEND dirlist ${curdir}/${child})
+    ENDIF()
+  ENDFOREACH()
+  SET(${result} ${dirlist})
+ENDMACRO()
+
 if(CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")
   # Use the highest warning level for visual studio.
   if(CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
@@ -436,6 +447,9 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		install(FILES ${CMAKE_BINARY_DIR}/lib${PROJECT_NAME}.a DESTINATION lib RENAME lib${PROJECT_NAME}.a COMPONENT ${PROJECT_NAME})
 		install(CODE "execute_process(COMMAND ln -s \"/usr/local/lib/lib${PROJECT_NAME}.so.${VERSION}\" \"/usr/local/lib/lib${PROJECT_NAME}.so\")")
 
+		if(EXISTS "/usr/local/lib/${PROJECT_NAME}/storage")
+			install(CODE "execute_process(COMMAND find /usr/local/lib/${PROJECT_NAME}/storage/ -type f -exec rm {} \\;)")
+		endif()
 		if(EXISTS "/usr/local/lib/${PROJECT_NAME}/protocols")
 			install(CODE "execute_process(COMMAND find /usr/local/lib/${PROJECT_NAME}/protocols/ -type f -exec rm {} \\;)")
 		endif()
@@ -741,6 +755,7 @@ else()
 	message("")
 	message("${Red}-- WARNING --${ColorReset}")
 	message("${Yellow}Manually compiling and installing ${PROJECT_NAME} will also clear all module folders:
+/usr/local/lib/${PROJECT_NAME}/storage/
 /usr/local/lib/${PROJECT_NAME}/protocols/
 /usr/local/lib/${PROJECT_NAME}/hardware/
 /usr/local/lib/${PROJECT_NAME}/actions/
