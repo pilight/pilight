@@ -99,8 +99,8 @@ function M.info()
 	return {
 		name = "toggle",
 		version = "4.1",
-		reqversion = "8.1.3",
-		reqcommit = "0"
+		reqversion = "8.1.2",
+		reqcommit = "23"
 	}
 end
 
