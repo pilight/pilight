@@ -4,12 +4,15 @@ Lua Modules
 .. toctree::
    :maxdepth: 1
 
+   defaults/index
+   table/index
    async/index
    cast/index
    common/index
    config/index
    datetime/index
    network/index
+   io/index
 
 States
 ------

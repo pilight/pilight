@@ -50,6 +50,9 @@ Mandatory arguments to long options are mandatory for short options too.
 | ``-P``, ``--port=xxxx``
 |  Connect to a pilight daemon at this port. Requires -S
 |
+| ``-L``, ``--storage-root=xxxx``
+|  Location of storage lua modules
+|
 | ``-F``, ``--foreground``
 |  Do not daemonize
 |

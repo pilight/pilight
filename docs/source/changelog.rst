@@ -1,6 +1,16 @@
 Changelog
 =========
 
+.. versionadded:: nightly
+
+.. rubric:: Improvements
+
+- Added aarch64 / arm64 packages
+- Added lua file and dir io
+- Improved lua config library
+- Allow nested metatables in lua modules
+- Added pilight defaults to lua modules
+
 .. versionadded:: 8.1.2
 
 .. rubric:: Improvements
@@ -16,7 +26,7 @@ Changelog
 - Fixed bug in which didn't close opened files.
 - Few fixes in mail library.
 - Fixed pushbullet SSL handshake error.
-- Improved Alecto WX500 
+- Improved Alecto WX500
 
 .. versionadded:: 8.1.1
 
