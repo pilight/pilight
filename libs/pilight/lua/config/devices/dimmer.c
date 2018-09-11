@@ -72,7 +72,7 @@ static int plua_config_device_dimmer_send(lua_State *L) {
 			}
 			FREE(dimmer->state);
 		}
-		if(dimmer->has_dimlevel) {
+		if(dimmer->has_dimlevel == 1) {
 			json_append_member(data1->values, "dimlevel", json_mknumber(dimmer->dimlevel, 0));
 		}
 		FREE(dimmer);
