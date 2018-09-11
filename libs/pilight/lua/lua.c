@@ -447,7 +447,7 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 					if(node->table[x].val.type_ == LUA_TTABLE) {
 						plua_metatable_free(node->table[x].val.void_);
 					}
-					node->table[x].val.number_ = lua_tonumber(L, -1);
+					node->table[x].val.number_ = lua_toboolean(L, -1);
 					node->table[x].val.type_ = LUA_TBOOLEAN;
 				} break;
 				case LUA_TNUMBER: {
@@ -571,7 +571,7 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 			}
 			switch(lua_type(L, -1)) {
 				case LUA_TBOOLEAN: {
-					node->table[idx].val.number_ = lua_tonumber(L, -1);
+					node->table[idx].val.number_ = lua_toboolean(L, -1);
 					node->table[idx].val.type_ = LUA_TBOOLEAN;
 				} break;
 				case LUA_TNUMBER: {
