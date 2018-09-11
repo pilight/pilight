@@ -217,12 +217,12 @@ function M.timer_in(timer)
 	end
 
 	if devobj.setDimlevel(data['from_dimlevel']) == false then
-		error("device \"" .. devname .. "\" could not be set to dimlevel \"" .. data['new_dimlevel'] .. "\"")
+		error("device \"" .. devname .. "\" could not be set to dimlevel \"" .. data['from_dimlevel'] .. "\"")
 	end
 
 	devobj.send();
 
-	if data['direction'] == 1 then
+	if data['direction'] == true then
 		data['from_dimlevel'] = data['from_dimlevel'] + 1;
 	else
 		data['from_dimlevel'] = data['from_dimlevel'] - 1;
