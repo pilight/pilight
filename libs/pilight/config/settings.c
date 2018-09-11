@@ -45,12 +45,12 @@ int config_callback_get_number(char *module, char *key, int idx, int *ret) {
 	}
 
 	if(key == NULL) {
-		logprintf(LOG_ERR, "%s key cannot be NULL\n", __FUNCTION__);
+		logprintf(LOG_ERR, "%s key cannot be NULL", __FUNCTION__);
 		return -1;
 	}
 
 	if(ret == NULL) {
-		logprintf(LOG_ERR, "%s return value cannot be NULL\n", __FUNCTION__);
+		logprintf(LOG_ERR, "%s return value cannot be NULL", __FUNCTION__);
 		return -1;
 	}
 
@@ -91,12 +91,12 @@ int config_callback_get_string(char *module, char *key, int idx, char **ret) {
 	}
 
 	if(key == NULL) {
-		logprintf(LOG_ERR, "%s key cannot be NULL\n", __FUNCTION__);
+		logprintf(LOG_ERR, "%s key cannot be NULL", __FUNCTION__);
 		return -1;
 	}
 
 	if(ret == NULL) {
-		logprintf(LOG_ERR, "%s return value cannot be NULL\n", __FUNCTION__);
+		logprintf(LOG_ERR, "%s return value cannot be NULL", __FUNCTION__);
 		return -1;
 	}
 
