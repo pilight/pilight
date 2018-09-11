@@ -161,6 +161,16 @@ static int plua_print(lua_State* L) {
 			CuAssertIntEquals(gtc, 1, lua_tonumber(L, -1));
 			run++;
 		break;
+		case 29:
+			CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+			CuAssertIntEquals(gtc, 1, lua_tonumber(L, -1));
+			run++;
+		break;
+		case 30:
+			CuAssertIntEquals(gtc, LUA_TBOOLEAN, lua_type(L, -1));
+			CuAssertIntEquals(gtc, 0, lua_tonumber(L, -1));
+			run++;
+		break;
 	}
 	return 1;
 }
@@ -266,7 +276,19 @@ static void test_lua_c_metatable(CuTest *tc) {
 		print(y.__len()); \
 		print(x.__len()); \
 	"));
-	uv_mutex_unlock(&state->lock);
+
+	CuAssertIntEquals(gtc, 0, luaL_dostring(state->L, " \
+		local z = pilight.table(); \
+		z['a'] = 1; \
+		z['b'] = false; \
+		print(z['a']); \
+		print(z['b']); \
+	"));
+
+	CuAssertIntEquals(gtc, 1, luaL_dostring(state->L, " \
+		local z = pilight.table(); \
+		z[false] = 1; \
+	"));
 
 	/*
 	 * Test proper free of empty table in
@@ -282,7 +304,7 @@ static void test_lua_c_metatable(CuTest *tc) {
 	plua_pause_coverage(0);
 	plua_gc();
 
-	CuAssertIntEquals(tc, 29, run);
+	CuAssertIntEquals(tc, 31, run);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 

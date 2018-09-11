@@ -231,9 +231,6 @@ int plua_metatable_call(lua_State *L) {
 	return 1;
 }
 
-/*
- * Implement cloning nested tables
- */
 void plua_metatable_clone(struct plua_metatable_t **src, struct plua_metatable_t **dst) {
 	int i = 0;
 	struct plua_metatable_t *a = *src;
@@ -383,6 +380,9 @@ int plua_metatable_get(lua_State *L) {
 		}
 		if(match == 1) {
 			switch(node->table[x].val.type_) {
+				case LUA_TBOOLEAN: {
+					lua_pushboolean(L, node->table[x].val.number_);
+				} break;
 				case LUA_TNUMBER: {
 					lua_pushnumber(L, node->table[x].val.number_);
 				} break;
@@ -391,6 +391,9 @@ int plua_metatable_get(lua_State *L) {
 				} break;
 				case LUA_TTABLE: {
 					plua_metatable_push(L, (struct plua_metatable_t *)node->table[x].val.void_);
+				} break;
+				default: {
+					lua_pushnil(L);
 				} break;
 			}
 			return 1;
@@ -414,10 +417,10 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 		(lua_type(L, -1) == LUA_TNIL) || (lua_type(L, -1) == LUA_TBOOLEAN) || (lua_type(L, -1) == LUA_TTABLE)),
 		1, buf);
 
-	sprintf(p, error, lua_typename(L, lua_type(L, -1)));
+	sprintf(p, error, lua_typename(L, lua_type(L, -2)));
 
 	luaL_argcheck(L,
-		((lua_type(L, -2) == LUA_TSTRING) || (lua_type(L, -2) == LUA_TNUMBER) || (lua_type(L, -1) == LUA_TBOOLEAN)),
+		((lua_type(L, -2) == LUA_TSTRING) || (lua_type(L, -2) == LUA_TNUMBER)),
 		1, buf);
 
 	for(x=0;x<node->nrvar;x++) {
@@ -437,6 +440,16 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 		}
 		if(match == 1) {
 			switch(lua_type(L, -1)) {
+				case LUA_TBOOLEAN: {
+					if(node->table[x].val.type_ == LUA_TSTRING) {
+						FREE(node->table[x].val.string_);
+					}
+					if(node->table[x].val.type_ == LUA_TTABLE) {
+						plua_metatable_free(node->table[x].val.void_);
+					}
+					node->table[x].val.number_ = lua_tonumber(L, -1);
+					node->table[x].val.type_ = LUA_TBOOLEAN;
+				} break;
 				case LUA_TNUMBER: {
 					if(node->table[x].val.type_ == LUA_TSTRING) {
 						FREE(node->table[x].val.string_);
@@ -556,6 +569,10 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			switch(lua_type(L, -1)) {
+				case LUA_TBOOLEAN: {
+					node->table[idx].val.number_ = lua_tonumber(L, -1);
+					node->table[idx].val.type_ = LUA_TBOOLEAN;
+				} break;
 				case LUA_TNUMBER: {
 					node->table[idx].val.number_ = lua_tonumber(L, -1);
 					node->table[idx].val.type_ = LUA_TNUMBER;
