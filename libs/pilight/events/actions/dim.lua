@@ -310,18 +310,18 @@ function M.timer_after(timer)
 		error("device \"" .. devname .. "\" could not be set to state \"on\"")
 	end
 
-	if devobj.setDimlevel(data['new_dimlevel']) == false then
-		error("device \"" .. devname .. "\" could not be set to dimlevel \"" .. data['new_dimlevel'] .. "\"")
-	end
-
-	devobj.send();
-
 	if data['time_in'] > 0 and data['type_in'] ~= nil then
 		M.execute_in(data);
-	elseif data['time_for'] > 0 and data['type_for'] ~= nil then
-		M.execute_for(data);
-	end
+	else
+		if devobj.setDimlevel(data['new_dimlevel']) == false then
+			error("device \"" .. devname .. "\" could not be set to dimlevel \"" .. data['new_dimlevel'] .. "\"")
+		end
 
+		devobj.send();
+		if data['time_for'] > 0 and data['type_for'] ~= nil then
+			M.execute_for(data);
+		end
+	end
 end
 
 function M.run(parameters)

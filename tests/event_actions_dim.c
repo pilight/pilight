@@ -1263,12 +1263,12 @@ static void test_event_actions_dim_run_stepped_down(CuTest *tc) {
 	int i = 0;
 	run = 0;
 	steps = 0;
-	nrsteps = 11;
-	interval[0] = 525000;
-	for(i=1;i<10;i++) {
+	nrsteps = 10;
+	interval[0] = 650000;
+	for(i=1;i<9;i++) {
 		interval[i] = 150000;
 	}
-	interval[10] = 275000;
+	interval[9] = 275000;
 	checktime = 1;
 
 	memtrack();
@@ -1321,7 +1321,7 @@ static void test_event_actions_dim_run_stepped_down(CuTest *tc) {
 	eventpool_gc();
 	storage_gc();
 
-	CuAssertIntEquals(tc, 11, steps);
+	CuAssertIntEquals(tc, 10, steps);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -1334,12 +1334,12 @@ static void test_event_actions_dim_run_stepped_up(CuTest *tc) {
 	int i = 0;
 	run = 0;
 	steps = 0;
-	nrsteps = 11;
-	interval[0] = 525000;
-	for(i=1;i<10;i++) {
+	nrsteps = 10;
+	interval[0] = 655000;
+	for(i=1;i<9;i++) {
 		interval[i] = 150000;
 	}
-	interval[10] = 275000;
+	interval[9] = 275000;
 	checktime = 1;
 
 	memtrack();
@@ -1392,7 +1392,7 @@ static void test_event_actions_dim_run_stepped_up(CuTest *tc) {
 	eventpool_gc();
 	storage_gc();
 
-	CuAssertIntEquals(tc, 11, steps);
+	CuAssertIntEquals(tc, 10, steps);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
