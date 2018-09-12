@@ -264,7 +264,7 @@ void plua_metatable_clone(struct plua_metatable_t **src, struct plua_metatable_t
 				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 		}
-		if(a->table[i].val.type_ == LUA_TNUMBER) {
+		if(a->table[i].val.type_ == LUA_TNUMBER || a->table[i].val.type_ == LUA_TBOOLEAN) {
 			(*dst)->table[i].val.number_ = a->table[i].val.number_;
 		}
 		if(a->table[i].val.type_ == LUA_TTABLE) {
