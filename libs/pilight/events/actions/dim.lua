@@ -222,18 +222,24 @@ function M.timer_in(timer)
 
 	devobj.send();
 
-	if data['direction'] == true then
+	if data['direction'] == false then
 		data['from_dimlevel'] = data['from_dimlevel'] + 1;
+		if (data['from_dimlevel'] - 1) == data['new_dimlevel'] then
+			if data['time_for'] ~= 0 and data['type_for'] ~= nil then
+				M.execute_for(data);
+			end
+			timer.stop();
+			return;
+		end
 	else
 		data['from_dimlevel'] = data['from_dimlevel'] - 1;
-	end
-
-	if (data['from_dimlevel'] + 1) == data['new_dimlevel'] then
-		if data['time_for'] ~= 0 and data['type_for'] ~= nil then
-			M.execute_for(data);
+		if (data['from_dimlevel'] + 1) == data['new_dimlevel'] then
+			if data['time_for'] ~= 0 and data['type_for'] ~= nil then
+				M.execute_for(data);
+			end
+			timer.stop();
+			return;
 		end
-		timer.stop();
-		return;
 	end
 end
 
