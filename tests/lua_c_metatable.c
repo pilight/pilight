@@ -176,6 +176,21 @@ static int plua_print(lua_State* L) {
 			CuAssertIntEquals(gtc, 1, lua_toboolean(L, -1));
 			run++;
 		break;
+		case 32:
+			CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+			CuAssertIntEquals(gtc, 1, lua_tonumber(L, -1));
+			run++;
+		break;
+		case 33:
+			CuAssertIntEquals(gtc, LUA_TBOOLEAN, lua_type(L, -1));
+			CuAssertIntEquals(gtc, 0, lua_toboolean(L, -1));
+			run++;
+		break;
+		case 34:
+			CuAssertIntEquals(gtc, LUA_TBOOLEAN, lua_type(L, -1));
+			CuAssertIntEquals(gtc, 1, lua_toboolean(L, -1));
+			run++;
+		break;
 	}
 	return 1;
 }
@@ -283,6 +298,8 @@ static void test_lua_c_metatable(CuTest *tc) {
 	"));
 
 	CuAssertIntEquals(gtc, 0, luaL_dostring(state->L, " \
+		local thread = pilight.async.thread(); \
+		local data = thread.getUserdata(); \
 		local z = pilight.table(); \
 		z['a'] = 1; \
 		z['b'] = false; \
@@ -290,6 +307,10 @@ static void test_lua_c_metatable(CuTest *tc) {
 		print(z['a']); \
 		print(z['b']); \
 		print(z['c']); \
+		thread.setUserdata(z());\
+		print(data['a']); \
+		print(data['b']); \
+		print(data['c']); \
 	"));
 
 	CuAssertIntEquals(gtc, 1, luaL_dostring(state->L, " \
@@ -311,7 +332,7 @@ static void test_lua_c_metatable(CuTest *tc) {
 	plua_pause_coverage(0);
 	plua_gc();
 
-	CuAssertIntEquals(tc, 32, run);
+	CuAssertIntEquals(tc, 35, run);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
