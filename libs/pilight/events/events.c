@@ -346,7 +346,7 @@ void event_cache_device(struct rules_t *obj, char *device) {
  * 0: Found variable and filled varcont
  * 1: Did not find variable and did not fill varcont
  */
-int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varcont, unsigned short validate, enum origin_t origin) {
+int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varcont, unsigned short validate, int in_action) {
 	int recvtype = 0;
 	// int cached = 0;
 	if(strcmp(true_, "1") != 0) {
@@ -423,7 +423,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varc
 
 		if(recvtype == 2) {
 			if(validate == 1) {
-				if(origin == ORIGIN_RULE) {
+				if(in_action == 0) {
 					event_cache_device(obj, device);
 				}
 				if(strcmp(name, "repeats") != 0 && strcmp(name, "uuid") != 0) {
@@ -486,7 +486,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varc
 			return 0;
 		} else if(recvtype == 1) {
 			if(validate == 1) {
-				if(origin == ORIGIN_RULE) {
+				if(in_action == 0) {
 					event_cache_device(obj, device);
 				}
 #ifdef PILIGHT_REWRITE
@@ -1616,7 +1616,7 @@ static int run_function(struct tree_t *tree, int in_action, struct rules_t *obj,
 			return -1;
 		}
 		if(v_res.type_ == JSON_STRING) {
-			if(event_lookup_variable(v_res.string_, obj, &v1, validate, ORIGIN_RULE) == -1) {
+			if(event_lookup_variable(v_res.string_, obj, &v1, validate, in_action) == -1) {
 				varcont_free(&v1);
 				varcont_free(&v_res);
 				return -1;
@@ -1683,7 +1683,7 @@ static int run_action(struct tree_t *tree, struct rules_t *obj, unsigned short v
 
 			switch(v_res1.type_) {
 				case JSON_STRING: {
-					if(event_lookup_variable(v_res1.string_, obj, &v1, validate, ORIGIN_RULE) == -1) {
+					if(event_lookup_variable(v_res1.string_, obj, &v1, validate, 1) == -1) {
 						varcont_free(&v1);
 						varcont_free(&v_res);
 						varcont_free(&v_res1);
@@ -1837,7 +1837,7 @@ static int interpret(struct tree_t *tree, int in_action, struct rules_t *obj, un
 					return -1;
 				}
 				if(v1.type_ == JSON_STRING) {
-					if(event_lookup_variable(v1.string_, obj, &v3, validate, ORIGIN_RULE) == -1) {
+					if(event_lookup_variable(v1.string_, obj, &v3, validate, in_action) == -1) {
 						varcont_free(&v1);
 						return -1;
 					} else {
@@ -1864,7 +1864,7 @@ static int interpret(struct tree_t *tree, int in_action, struct rules_t *obj, un
 					}
 				}
 				if(v2.type_ == JSON_STRING) {
-					if(event_lookup_variable(v2.string_, obj, &v4, validate, ORIGIN_RULE) == -1) {
+					if(event_lookup_variable(v2.string_, obj, &v4, validate, in_action) == -1) {
 						varcont_free(&v2);
 						return -1;
 					} else {
