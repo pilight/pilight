@@ -9,7 +9,13 @@ Changelog
 - Added lua file and dir io
 - Improved lua config library
 - Allow nested metatables in lua modules
+- Allow boolean values in lua metatables
 - Added pilight defaults to lua modules
+
+.. rubric:: Fixes
+
+- Fix arctech dimmer in which dimlevel 0 would turn the dimmer off
+- Fix eventing library in which a rule was triggered by a device affected in an action
 
 .. versionadded:: 8.1.2
 
