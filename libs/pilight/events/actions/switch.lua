@@ -33,6 +33,10 @@ function M.check(parameters)
 		error("switch action \"TO\" only takes one argument");
 	end
 
+	if parameters['FROM'] ~= nil and (#parameters['FROM']['value'] ~= 1 or parameters['FROM']['value'][2] ~= nil) then
+		error("switch action \"FROM\" only takes one argument");
+	end
+
 	if parameters['FOR'] ~= nil then
 		if #parameters['FOR']['value'] ~= 1 or parameters['FOR']['value'][2] ~= nil or parameters['FOR']['value'][1] == nil then
 			error("switch action \"FOR\" only takes one argument");
@@ -67,6 +71,10 @@ function M.check(parameters)
 		end
 	end
 
+	if (parameters['FROM'] ~= nil and parameters['FOR'] == nil) then
+		error("switch action \"FROM\" can only be combined with the \"FOR\" parameter");
+	end
+
 	local config = pilight.config();
 	local nrdev = #parameters['DEVICE']['value'];
 	for i = 1, nrdev, 1 do
@@ -74,8 +82,13 @@ function M.check(parameters)
 		if dev == nil then
 			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" does not exist");
 		end
-		if dev.hasState == nil or dev.setState == nil or dev.hasState(parameters['TO']['value'][1]) == false then
-			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['TO']['value'][1] .. "\"");
+		if dev.hasState == nil or dev.setState == nil then
+			if dev.hasState(parameters['TO']['value'][1]) == false then
+				error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['TO']['value'][1] .. "\"");
+			end
+			if parameters['FROM'] ~= nil and dev.hasState(parameters['FROM']['value'][1]) == false then
+				error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['FROM']['value'][1] .. "\"");
+			end
 		end
 	end
 
@@ -183,9 +196,13 @@ function M.run(parameters)
 			for_ = pilight.common.explode(parameters['FOR']['value'][1], " ");
 		end
 
-		if devobj.hasSetting("state") == true then
-			if devobj.getState ~= nil then
-				old_state = devobj.getState();
+		if parameters['FROM'] ~= nil then
+			old_state = parameters['FROM']['value'][1];
+		else
+			if devobj.hasSetting("state") == true then
+				if devobj.getState ~= nil then
+					old_state = devobj.getState();
+				end
 			end
 		end
 
@@ -243,7 +260,7 @@ function M.run(parameters)
 end
 
 function M.parameters()
-	return "DEVICE", "TO", "FOR", "AFTER";
+	return "DEVICE", "TO", "FOR", "AFTER", "FROM";
 end
 
 function M.info()
