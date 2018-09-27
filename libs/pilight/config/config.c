@@ -302,7 +302,6 @@ int config_read(unsigned short objects) {
 			}
 		}
 	}
-
 	char *content = NULL;
 	/* Read JSON config file */
 	if(file_get_contents(string, &content) == 0) {
@@ -330,37 +329,81 @@ int config_read(unsigned short objects) {
 }
 
 struct JsonNode *config_print(int level, const char *media) {
-	struct JsonNode *root = json_mkobject();
+	struct JsonNode *root = NULL;
+	char *content = NULL;
+	/* Read JSON config file */
+	if(file_get_contents(string, &content) == 0) {
+		/* Validate JSON and turn into JSON object */
+		if(json_validate(content) == false) {
+			logprintf(LOG_ERR, "config is not in a valid json format");
+			FREE(content);
+			return NULL;
+		}
 
-	struct JsonNode *child1 = config_devices_sync(level, media);
-	if(child1 != NULL) {
-		json_append_member(root, "devices", child1);
-	}
+		root = json_decode(content);
 
-	struct JsonNode *child2 = config_rules_sync(level, media);
-	if(child2 != NULL) {
-		json_append_member(root, "rules", child2);
-	}
+		struct JsonNode *jchild1 = config_devices_sync(level, media);
+		struct JsonNode *jchild = json_find_member(root, "devices");
+		json_remove_from_parent(jchild);
+		if(jchild1 != NULL && strcmp(json_stringify(jchild1, NULL), "{}") != 0) {
+			json_append_member(root, "devices", jchild1);
+			json_delete(jchild);
+		} else {
+			json_append_member(root, "devices", jchild);
+			json_delete(jchild1);
+		}
 
-	struct JsonNode *child3 = config_gui_sync(level, media);
-	if(child3 != NULL) {
-		json_append_member(root, "gui", child3);
-	}
+		struct JsonNode *jchild2 = config_rules_sync(level, media);
+		jchild = json_find_member(root, "rules");
+		json_remove_from_parent(jchild);
+		if(jchild2 != NULL && strcmp(json_stringify(jchild2, NULL), "{}") != 0) {
+			json_append_member(root, "rules", jchild2);
+			json_delete(jchild);
+		} else {
+			json_append_member(root, "rules", jchild);
+			json_delete(jchild2);
+		}
 
-	char *settings = config_callback_write("settings");
-	if(settings != NULL) {
-		json_append_member(root, "settings", json_decode(settings));
-		FREE(settings);
-	}
+		struct JsonNode *jchild3 = config_gui_sync(level, media);
+		jchild = json_find_member(root, "gui");
+		json_remove_from_parent(jchild);
+		if(jchild3 != NULL && strcmp(json_stringify(jchild3, NULL), "{}") != 0) {
+			json_append_member(root, "gui", jchild3);
+			json_delete(jchild);
+		} else {
+			json_append_member(root, "gui", jchild);
+			json_delete(jchild3);
+		}
 
-	struct JsonNode *child4 = config_hardware_sync(level, media);
-	if(child4 != NULL) {
-		json_append_member(root, "hardware", child4);
-	}
+		char *settings = config_callback_write("settings");
+		if(settings != NULL) {
+			struct JsonNode *jchild = json_find_member(root, "settings");
+			json_remove_from_parent(jchild);
+			json_append_member(root, "settings", json_decode(settings));
+			FREE(settings);
+		}
 
-	struct JsonNode *child5 = config_registry_sync(level, media);
-	if(child5 != NULL) {
-		json_append_member(root, "registry", child5);
+		struct JsonNode *jchild4 = config_hardware_sync(level, media);
+		jchild = json_find_member(root, "hardware");
+		json_remove_from_parent(jchild);
+		if(jchild4 != NULL && strcmp(json_stringify(jchild4, NULL), "{}") != 0) {
+			json_append_member(root, "hardware", jchild4);
+			json_delete(jchild);
+		} else {
+			json_append_member(root, "hardware", jchild);
+			json_delete(jchild4);
+		}
+
+		struct JsonNode *jchild5 = config_registry_sync(level, media);
+		jchild = json_find_member(root, "registry");
+		json_remove_from_parent(jchild);
+		if(jchild5 != NULL && strcmp(json_stringify(jchild5, NULL), "{}") != 0) {
+			json_append_member(root, "registry", jchild5);
+			json_delete(jchild);
+		} else {
+			json_append_member(root, "registry", jchild);
+			json_delete(jchild5);
+		}
 	}
 
 	return root;
@@ -383,7 +426,6 @@ int config_write(int level, char *media) {
 	fseek(fp, 0L, SEEK_SET);
 	char *content = NULL;
 	if((content = json_stringify(root, "\t")) != NULL) {
-
 		fwrite(content, sizeof(char), strlen(content), fp);
 		json_free(content);
 		json_delete(root);
