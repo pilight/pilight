@@ -555,7 +555,7 @@ int main(int argc, char **argv) {
 #endif
 	protocol_init();
 	config_init();
-	if(config_read(CONFIG_SETTINGS) != EXIT_SUCCESS) {
+	if(config_read(CONFIG_SETTINGS | CONFIG_HARDWARE) != EXIT_SUCCESS) {
 		FREE(configtmp);
 		goto clear;
 	}
