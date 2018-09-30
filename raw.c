@@ -118,33 +118,7 @@ void *receiveOOK(void *param) {
 	return NULL;
 }
 
-void *receivePulseTrain(void *param) {
-	struct rawcode_t r;
-	int i = 0;
-
-	struct hardware_t *hw = (hardware_t *)param;
-	while(main_loop && hw->receivePulseTrain) {
-		hw->receivePulseTrain(&r);
-		if(r.length == -1) {
-			main_gc();
-			break;
-		} else if(r.length > 0) {
-			for(i=0;i<r.length;i++) {
-				if(linefeed == 1) {
-					printf(" %d", r.pulses[i]);
-					if(r.pulses[i] > 5100) {
-						printf(" -# %d\n %s:", i, hw->id);
-					}
-				} else {
-					printf("%s: %d\n", hw->id, r.pulses[i]);
-				}
-			}
-		}
-	};
-	return NULL;
-}
-
-static void *receivePulseTrain1(int reason, void *param) {
+static void *receivePulseTrain(int reason, void *param) {
 	struct reason_received_pulsetrain_t *data = param;
 	int i = 0;
 
@@ -337,7 +311,7 @@ int main(int argc, char **argv) {
 	FREE(configtmp);
 
 #ifndef PILIGHT_DEVELOPMENT
-	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain1);
+	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain);
 #endif
 
 	/* Start threads library that keeps track of all threads used */
@@ -357,14 +331,6 @@ int main(int argc, char **argv) {
 				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
 				goto close;
 			} else {
-				has_hardware = 1;
-			}
-			if(tmp_confhw->hardware->comtype == COMOOK) {
-#ifdef PILIGHT_DEVELOPMENT
-					// threads_register(tmp_confhw->hardware->id, &receiveOOK, (void *)tmp_confhw->hardware, 0);
-#endif
-			} else if(tmp_confhw->hardware->comtype == COMPLSTRAIN) {
-				threads_register(tmp_confhw->hardware->id, &receivePulseTrain, (void *)tmp_confhw->hardware, 0);
 				has_hardware = 1;
 			}
 		}

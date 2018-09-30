@@ -97,79 +97,7 @@ int main_gc(void) {
 	return EXIT_SUCCESS;
 }
 
-void *receivePulseTrain(void *param) {
-	int i = 0;
-
-	int pulselen = 0;
-	int pulse = 0;
-
-	struct rawcode_t r;
-	struct tm tm;
-	time_t now = 0;
-
-	struct hardware_t *hw = (hardware_t *)param;
-
-	while(main_loop) {
-		memset(&r.pulses, 0, sizeof(r.pulses));
-		memset(&tm, '\0', sizeof(struct tm));
-		pulse = 0;
-		inner_loop = 1;
-
-		i = 0;
-		time(&now);
-
-		hw->receivePulseTrain(&r);
-		if(r.length == -1) {
-			main_gc();
-			break;
-		} else if(r.length > 0) {
-			pulselen = r.pulses[r.length-1]/PULSE_DIV;
-
-			if(pulselen > 25) {
-				for(i=3;i<r.length;i++) {
-					if((r.pulses[i]/pulselen) >= 2) {
-						pulse=r.pulses[i];
-						break;
-					}
-				}
-
-				if(normalize(pulse, pulselen) > 0 && r.length > 25) {
-					/* Print everything */
-					printf("--[RESULTS]--\n");
-					printf("\n");
-#ifdef _WIN32
-					localtime(&now);
-#else
-					localtime_r(&now, &tm);
-#endif
-
-#ifdef _WIN32
-					printf("time:\t\t%s\n", asctime(&tm));
-#else
-					char buf[128];
-					char *p = buf;
-					memset(&buf, '\0', sizeof(buf));
-					asctime_r(&tm, p);
-					printf("time:\t\t%s", buf);
-#endif
-					printf("hardware:\t%s\n", hw->id);
-					printf("pulse:\t\t%d\n", normalize(pulse, pulselen));
-					printf("rawlen:\t\t%d\n", r.length);
-					printf("pulselen:\t%d\n", pulselen);
-					printf("\n");
-					printf("Raw code:\n");
-					for(i=0;i<r.length;i++) {
-						printf("%d ", r.pulses[i]);
-					}
-					printf("\n");
-				}
-			}
-		}
-	}
-	return (void *)NULL;
-}
-
-void *receivePulseTrain1(int reason, void *param) {
+static void *receivePulseTrain(int reason, void *param) {
 	doSkip ^= 1;
 	if(doSkip == 1) {
 		return NULL;
@@ -562,7 +490,7 @@ int main(int argc, char **argv) {
 	FREE(configtmp);
 
 #ifndef PILIGHT_DEVELOPMENT
-	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain1);
+	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain);
 #endif
 
 	/* Start threads library that keeps track of all threads used */
@@ -582,14 +510,6 @@ int main(int argc, char **argv) {
 				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
 				goto clear;
 			} else {
-				has_hardware = 1;
-			}
-			if(tmp_confhw->hardware->comtype == COMOOK) {
-#ifdef PILIGHT_DEVELOPMENT
-					// threads_register(tmp_confhw->hardware->id, &receiveOOK, (void *)tmp_confhw->hardware, 0);
-#endif
-			} else if(tmp_confhw->hardware->comtype == COMPLSTRAIN) {
-				threads_register(tmp_confhw->hardware->id, &receivePulseTrain, (void *)tmp_confhw->hardware, 0);
 				has_hardware = 1;
 			}
 		}
