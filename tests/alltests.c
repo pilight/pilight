@@ -30,7 +30,7 @@
 
 static int dolist = 0;
 
-CuSuite *suite_storage_core(void);
+CuSuite *suite_config(void);
 CuSuite *suite_common(void);
 CuSuite *suite_network(void);
 CuSuite *suite_binary(void);
@@ -97,18 +97,18 @@ CuSuite *suites[NRSUITS];
 const uv_thread_t pth_main_id;
 int nr = 0;
 
-/*void _logprintf(int prio, char *file, int line, const char *str, ...) {
-	va_list ap;
-	char buffer[1024];
+// void _logprintf(int prio, char *file, int line, const char *str, ...) {
+	// va_list ap;
+	// char buffer[1024];
 
-	memset(buffer, 0, 1024);
+	// memset(buffer, 0, 1024);
 
-	va_start(ap, str);
-	vsnprintf(buffer, 1024, str, ap);
-	va_end(ap);
+	// va_start(ap, str);
+	// vsnprintf(buffer, 1024, str, ap);
+	// va_end(ap);
 
-	printf("(%s #%d) %s\n", file, line, buffer);
-}*/
+	// printf("(%s #%d) %s\n", file, line, buffer);
+// }
 
 int suiteFailed(void) {
 	int i = 0;
@@ -159,7 +159,7 @@ int RunAllTests(void) {
 	/*
 	 * Storage should be tested first
 	 */
-	suites[nr++] = suite_storage_core();
+	suites[nr++] = suite_config();
 	suites[nr++] = suite_common();
 	suites[nr++] = suite_network();
 	suites[nr++] = suite_binary(); // Ported (Missing signed tests)

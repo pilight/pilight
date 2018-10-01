@@ -789,7 +789,7 @@ struct settings_t {
 static void foo(int prio, char *file, int line, const char *format_str, ...) {
 }
 
-static void test_storage_core(CuTest *tc) {
+void test_config_settings(CuTest *tc) {
 	if(wiringXSetup("test", foo) != -999) {
 		printf("[ %-31.31s (preload libgpio)]\n", __FUNCTION__);
 		fflush(stdout);
@@ -802,7 +802,7 @@ static void test_storage_core(CuTest *tc) {
 	if(file == NULL) {
 		OUT_OF_MEMORY
 	}
-	str_replace("storage_core.c", "", &file);
+	str_replace("config_settings.c", "", &file);
 
 	int len = sizeof(settings)/sizeof(settings[0]);
 	int i = 0, y = 0, pos = 0;
@@ -908,10 +908,3 @@ static void test_storage_core(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
-CuSuite *suite_storage_core(void) {
-	CuSuite *suite = CuSuiteNew();
-
-	SUITE_ADD_TEST(suite, test_storage_core);
-
-	return suite;
-}
