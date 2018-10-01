@@ -60,15 +60,15 @@ int main(int argc, char **argv) {
 	}
 	strcpy(progname, "pilight-flash");
 
-	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'f', "file", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'p', "comport", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "H", "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "V", "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "C", "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "f", "file", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "p", "comport", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	while (1) {
 		int c;
-		c = options_parse(&options, argc, argv, 1, &args);
+		c = options_parse1(&options, argc, argv, 1, &args, NULL);
 		if(c == -1)
 			break;
 		if(c == -2)

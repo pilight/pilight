@@ -2037,9 +2037,9 @@ int hardware_validate_settings(struct JsonNode *jhardware, int i) {
 					while(tmp_options) {
 						if(strcmp(jvalues->key, tmp_options->name) == 0 && jvalues->tag == tmp_options->vartype) {
 							if(tmp_options->vartype == JSON_NUMBER) {
-								options_set_number(&tmp_options, tmp_options->id, jvalues->number_);
+								options_set_number(tmp_options, tmp_options->id, jvalues->number_);
 							} else if(tmp_options->vartype == JSON_STRING) {
-								options_set_string(&tmp_options, tmp_options->id, jvalues->string_);
+								options_set_string(tmp_options, tmp_options->id, jvalues->string_);
 							}
 							match = 1;
 							break;

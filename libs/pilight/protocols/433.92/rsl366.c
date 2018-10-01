@@ -214,13 +214,13 @@ void rsl366Init(void) {
 	rsl366->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	rsl366->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
-	options_add(&rsl366->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([1234]{1})$");
-	options_add(&rsl366->options, 'u', "programcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([1234]{1})$");
-	options_add(&rsl366->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&rsl366->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&rsl366->options, "s", "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([1234]{1})$");
+	options_add(&rsl366->options, "u", "programcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([1234]{1})$");
+	options_add(&rsl366->options, "t", "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&rsl366->options, "f", "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
-	options_add(&rsl366->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	options_add(&rsl366->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&rsl366->options, "0", "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&rsl366->options, "0", "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	rsl366->parseCode=&parseCode;
 	rsl366->createCode=&createCode;

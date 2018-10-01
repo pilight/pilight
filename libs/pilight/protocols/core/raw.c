@@ -59,8 +59,8 @@ void rawInit(void) {
 	raw->hwtype = RF433;
 	raw->config = 0;
 
-	options_add(&raw->options, 'c', "code", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
-	options_add(&raw->options, 'r', "repeats", OPTION_OPT_VALUE, 0, JSON_NUMBER, NULL, NULL);
+	options_add(&raw->options, "c", "code", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
+	options_add(&raw->options, "r", "repeats", OPTION_OPT_VALUE, 0, JSON_NUMBER, NULL, NULL);
 
 	raw->createCode=&createCode;
 	raw->printHelp=&printHelp;

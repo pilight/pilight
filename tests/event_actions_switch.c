@@ -89,6 +89,9 @@ static void test_event_actions_switch_get_parameters(CuTest *tc) {
 		if(stricmp(ret[i], "AFTER") == 0) {
 			check |= 1 << i;
 		}
+		if(stricmp(ret[i], "FROM") == 0) {
+			check |= 1 << i;
+		}
 		FREE(ret[i]);
 	}
 	FREE(ret);
@@ -101,7 +104,7 @@ static void test_event_actions_switch_get_parameters(CuTest *tc) {
 	eventpool_gc();
 	plua_gc();
 
-	CuAssertIntEquals(tc, 15, check);
+	CuAssertIntEquals(tc, 31, check);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -138,6 +141,16 @@ static void test_event_actions_switch_check_arguments(CuTest *tc) {
 		memset(&v, 0, sizeof(struct varcont_t));
 		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
 		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("off"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FROM", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("10 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
 		FREE(v.string_);
 
 		CuAssertIntEquals(tc, 0, event_action_check_arguments("switch", args));
@@ -498,6 +511,137 @@ static void test_event_actions_switch_check_arguments(CuTest *tc) {
 
 	{
 		/*
+		 * FROM without FOR
+		 */
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("switch"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("off"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FROM", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("switch", args));
+	}
+
+	{
+		/*
+		 * Invalid state for switch device
+		 */
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("switch"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("off"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("foo"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FROM", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("switch", args));
+	}
+
+	{
+		/*
+		 * Invalid state for switch device (numeric value)
+		 */
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("switch"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("off"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.number_ = 1; v.type_ = JSON_NUMBER; v.decimals_ = 0;
+		args = event_action_add_argument(args, "FROM", &v);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("switch", args));
+	}
+
+	{
+		/*
+		 * State missing value parameter
+		 */
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("switch"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("off"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
+
+		args = event_action_add_argument(args, "FROM", NULL);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("switch", args));
+	}
+
+	{
+		/*
+		 * State missing value parameter
+		 */
+		struct event_action_args_t *args = NULL;
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("switch"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "DEVICE", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("off"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "TO", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("off"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FROM", &v);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("1 SECOND"); v.type_ = JSON_STRING;
+		args = event_action_add_argument(args, "FOR", &v);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, -1, event_action_check_arguments("switch", args));
+	}
+
+	{
+		/*
 		 * Wrong device for switch action
 		 */
 		struct event_action_args_t *args = NULL;
@@ -647,6 +791,32 @@ static struct event_action_args_t *initialize_vars(int test) {
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
 			args = event_action_add_argument(args, "TO", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("250 MILLISECOND"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "FOR", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("250 MILLISECOND"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "AFTER", &v);
+			FREE(v.string_);
+		} break;
+		case 6: {
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("switch"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "DEVICE", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "TO", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("off"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "FROM", &v);
 			FREE(v.string_);
 
 			memset(&v, 0, sizeof(struct varcont_t));
@@ -815,6 +985,72 @@ static void test_event_actions_switch_run_delayed(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, event_action_check_arguments("switch", args));
 
 	args = initialize_vars(2);
+	CuAssertIntEquals(tc, 0, event_action_run("switch", args));
+
+	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
+	}
+
+	plua_gc();
+	event_action_gc();
+	event_function_gc();
+	protocol_gc();
+	eventpool_gc();
+	storage_gc();
+
+	CuAssertIntEquals(tc, 2, steps);
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
+static void test_event_actions_switch_run_delayed1(CuTest *tc) {
+	if(suiteFailed()) return;
+
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	run = 1;
+	steps = 0;
+	nrsteps = 2;
+	interval = 275000;
+	checktime = 1;
+
+	memtrack();
+
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
+
+	gtc = tc;
+
+	genericSwitchInit();
+	genericLabelInit();
+
+	plua_init();
+
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_switch.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+	event_action_init();
+
+	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	uv_timer_init(uv_default_loop(), timer_req);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 750, 0);
+
+	eventpool_init(EVENTPOOL_THREADED);
+	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
+
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	timestamp.first = timestamp.second;
+	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+
+	struct event_action_args_t *args = initialize_vars(6);
+	CuAssertIntEquals(tc, 0, event_action_check_arguments("switch", args));
+
+	args = initialize_vars(6);
 	CuAssertIntEquals(tc, 0, event_action_run("switch", args));
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -1030,6 +1266,7 @@ CuSuite *suite_event_actions_switch(void) {
 	SUITE_ADD_TEST(suite, test_event_actions_switch_check_arguments);
 	SUITE_ADD_TEST(suite, test_event_actions_switch_run);
 	SUITE_ADD_TEST(suite, test_event_actions_switch_run_delayed);
+	SUITE_ADD_TEST(suite, test_event_actions_switch_run_delayed1);
 	SUITE_ADD_TEST(suite, test_event_actions_switch_run_overlapped);
 	SUITE_ADD_TEST(suite, test_event_actions_switch_run_override);
 

@@ -19,36 +19,21 @@
 #include "options.h"
 #include "json.h"
 
-static int getOptPos = 0;
-static char *longarg = NULL;
-static char *shortarg = NULL;
-static char *gctmp = NULL;
-
 int options_gc(void) {
-
-	if(longarg != NULL) {
-		FREE(longarg);
-	}
-	if(shortarg != NULL) {
-		FREE(shortarg);
-	}
-	if(gctmp != NULL) {
-		FREE(gctmp);
-	}
-
 	logprintf(LOG_DEBUG, "garbage collected options library");
 	return EXIT_SUCCESS;
 }
 
 /* Add a value to the specific struct id */
-void options_set_string(struct options_t **opt, int id, const char *val) {
+void options_set_string(struct options_t *opt, char *id, const char *val) {
 
-	struct options_t *temp = *opt;
+	struct options_t *temp = opt;
 	while(temp) {
-		if(temp->id == id && temp->id > 0) {
+		if(temp->id != NULL && id != NULL && strcmp(temp->id, id) == 0) {
 			if((temp->string_ = REALLOC(temp->string_, strlen(val)+1)) == NULL) {
 				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
+			temp->set = 1;
 			temp->vartype = JSON_STRING;
 			strcpy(temp->string_, val);
 			break;
@@ -57,14 +42,29 @@ void options_set_string(struct options_t **opt, int id, const char *val) {
 	}
 }
 
-/* Add a value to the specific struct id */
-void options_set_number(struct options_t **opt, int id, double val) {
+void options_set_null(struct options_t *opt, char *id) {
 
-	struct options_t *temp = *opt;
+	struct options_t *temp = opt;
 	while(temp) {
-		if(temp->id == id && temp->id > 0) {
+		if(temp->id != NULL && id != NULL && strcmp(temp->id, id) == 0) {
+			temp->vartype = JSON_NULL;
+			temp->string_ = NULL;
+			temp->set = 1;
+			break;
+		}
+		temp = temp->next;
+	}
+}
+
+/* Add a value to the specific struct id */
+void options_set_number(struct options_t *opt, char *id, int val) {
+
+	struct options_t *temp = opt;
+	while(temp) {
+		if(temp->id != NULL && id != NULL && strcmp(temp->id, id) == 0) {
 			temp->number_ = val;
 			temp->vartype = JSON_NUMBER;
+			temp->set = 1;
 			break;
 		}
 		temp = temp->next;
@@ -72,32 +72,32 @@ void options_set_number(struct options_t **opt, int id, double val) {
 }
 
 /* Get a certain option value identified by the id */
-int options_get_string(struct options_t **opt, int id, char **out) {
+int options_get_string(struct options_t *opt, char *id, char **out) {
 
-	struct options_t *temp = *opt;
+	struct options_t *temp = opt;
 	*out = NULL;
 	while(temp) {
-		if(temp->id == id && temp->id > 0) {
-			if(temp->string_ && temp->vartype == JSON_STRING) {
+		if(temp->id != NULL && id != NULL && strcmp(temp->id, id) == 0) {
+			if(temp->string_ != NULL && temp->vartype == JSON_STRING) {
 				*out = temp->string_;
 				return 0;
 			} else {
-				return 1;
+				return -1;
 			}
 		}
 		temp = temp->next;
 	}
 
-	return 1;
+	return -1;
 }
 
 /* Get a certain option value identified by the id */
-int options_get_number(struct options_t **opt, int id, double *out) {
+int options_get_number(struct options_t *opt, char *id, int *out) {
 
-	struct options_t *temp = *opt;
+	struct options_t *temp = opt;
 	*out = 0;
 	while(temp) {
-		if(temp->id == id && temp->id > 0) {
+		if(temp->id != NULL && id != NULL && strcmp(temp->id, id) == 0) {
 			if(temp->vartype == JSON_NUMBER) {
 				*out = temp->number_;
 			}
@@ -106,320 +106,315 @@ int options_get_number(struct options_t **opt, int id, double *out) {
 		temp = temp->next;
 	}
 
-	return 1;
+	return -1;
+}
+
+/* Get a certain option value identified by the id */
+int options_exists(struct options_t *opt, char *id) {
+
+	struct options_t *temp = opt;
+	while(temp) {
+		if(temp->id != NULL && id != NULL && strcmp(temp->id, id) == 0) {
+			if(temp->set == 1) {
+				return 0;
+			} else {
+				return -1;
+			}
+		}
+		temp = temp->next;
+	}
+
+	return -1;
 }
 
 /* Get a certain option argument type identified by the id */
-int options_get_argtype(struct options_t **opt, int id, int *out) {
+int options_get_argtype(struct options_t *opt, char *id, int is_long, int *out) {
+	if(id == NULL) {
+		return -1;
+	}
 
-	struct options_t *temp = *opt;
+	struct options_t *temp = opt;
 	*out = 0;
 	while(temp) {
-		if(temp->id == id && temp->id > 0) {
+		if((is_long == 0 && temp->id != NULL && strcmp(temp->id, id) == 0) ||
+			 (is_long == 1 && temp->name != NULL && strcmp(temp->name, id) == 0)) {
 			if(temp->argtype != 0) {
 				*out = temp->argtype;
 				return 0;
 			} else {
-				return 1;
+				return -1;
 			}
 		}
 		temp = temp->next;
 	}
 
-	return 1;
+	return -1;
 }
 
 /* Get a certain option argument type identified by the id */
-int options_get_conftype(struct options_t **opt, int id, int *out) {
+int options_get_conftype(struct options_t *opt, char *id, int *out) {
 
-	struct options_t *temp = *opt;
+	struct options_t *temp = opt;
 	*out = 0;
 	while(temp) {
-		if(temp->id == id && temp->id > 0) {
+		if(temp->id != NULL && id != NULL && strcmp(temp->id, id) == 0) {
 			if(temp->argtype != 0) {
 				*out = temp->conftype;
 				return 0;
 			} else {
-				return 1;
+				return -1;
 			}
 		}
 		temp = temp->next;
 	}
 
-	return 1;
+	return -1;
 }
 
 /* Get a certain option name identified by the id */
-int options_get_name(struct options_t **opt, int id, char **out) {
+int options_get_name(struct options_t *opt, char *name, char **out) {
 
-	struct options_t *temp = *opt;
+	struct options_t *temp = opt;
 	*out = NULL;
 	while(temp) {
-		if(temp->id == id && temp->id > 0) {
+		if(temp->name != NULL && name != NULL && strcmp(temp->name, name) == 0) {
 			if(temp->name) {
 				*out = temp->name;
 				return 0;
 			} else {
-				return 1;
+				return -1;
 			}
 		}
 		temp = temp->next;
 	}
 
-	return 1;
+	return -1;
 }
 
 /* Get a certain regex mask identified by the name */
-int options_get_mask(struct options_t **opt, int id, char **out) {
+int options_get_mask(struct options_t *opt, char *id, int is_long, char **out) {
+	if(id == NULL) {
+		return -1;
+	}
 
-	struct options_t *temp = *opt;
+	struct options_t *temp = opt;
 	*out = NULL;
 	while(temp) {
-		if(temp->id == id && temp->id > 0) {
+		if((is_long == 0 && temp->id != NULL && strcmp(temp->id, id) == 0) ||
+			 (is_long == 1 && temp->name != NULL && strcmp(temp->name, id) == 0)) {
 			if(temp->mask) {
 				*out = temp->mask;
 				return 0;
 			} else {
-				return 1;
+				return -1;
 			}
 		}
 		temp = temp->next;
 	}
 
-	return 1;
+	return -1;
 }
 
 /* Get a certain option id identified by the name */
-int options_get_id(struct options_t **opt, char *name, int *out) {
-
-	struct options_t *temp = *opt;
+int options_get_id(struct options_t *opt, char *id, char **out) {
+	struct options_t *temp = opt;
 	*out = 0;
 	while(temp) {
-		if(temp->name) {
-			if(strcmp(temp->name, name) == 0) {
-				if(temp->id > 0) {
-					*out = temp->id;
-					return 0;
-				} else {
-					return 1;
-				}
+		if(strcmp(temp->id, id) == 0) {
+			if(temp->id != NULL) {
+				*out = temp->id;
+				return 0;
+			} else {
+				return -1;
 			}
 		}
 		temp = temp->next;
 	}
 
-	return 1;
+	return -1;
+}
+
+/* Get a certain option id identified by the name */
+int options_get_id_by_name(struct options_t *opt, char *name, char **out) {
+	struct options_t *temp = opt;
+	*out = 0;
+	while(temp) {
+		if(strcmp(temp->name, name) == 0) {
+			if(temp->id != NULL) {
+				*out = temp->id;
+				return 0;
+			} else {
+				return -1;
+			}
+		}
+		temp = temp->next;
+	}
+
+	return -1;
+}
+
+int options_parse1(struct options_t **opt, int argc, char **argv, int error_check, char **optarg, char **ret) {
+	return 0;
 }
 
 /* Parse all CLI arguments */
-int options_parse(struct options_t **opt, int argc, char **argv, int error_check, char **optarg) {
-
-	int c = 0;
-	int itmp = 0;
+int options_parse(struct options_t *opt, int argc, char **argv) {
+	char *str = NULL, *key = NULL, *val = NULL, *name = NULL;
+	int i = 0, len = 0, is_long = 0, x = 0, quote = 0, itmp = 0;
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 	char *mask;
 	regex_t regex;
 	int reti;
 #endif
 
-	char *ctmp = NULL;
+	for(i=1;i<argc;i++) {
+		if((str = STRDUP(argv[i])) == NULL) {
+			OUT_OF_MEMORY
+		}
+		len = strlen(str);
 
-	/* If have read all arguments, exit and reset */
-	if(getOptPos>=(argc-1)) {
-		getOptPos=0;
-		if(*optarg) {
-			FREE(*optarg);
-			*optarg = NULL;
-		}
-		return -1;
-	} else {
-		getOptPos++;
-		/* Reserve enough memory to store all variables */
-		if((longarg = REALLOC(longarg, 4)) == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
-		if((shortarg = REALLOC(shortarg, 2)) == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
-		if((*optarg = REALLOC(*optarg, 4)) == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
-
-		/* The memory to null */
-		memset(*optarg, '\0', 4);
-		memset(shortarg, '\0', 2);
-		memset(longarg, '\0', 4);
-
-		/* Check if the CLI character contains an equals to (=) sign.
-		   If it does, we have probably encountered a long argument */
-		if(strchr(argv[getOptPos],'=')) {
-			/* Copy all characters until the equals to sign.
-			   This will probably be the name of the argument */
-			if((longarg = REALLOC(longarg, strcspn(argv[getOptPos],"=")+1)) == NULL) {
-				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		if((is_long = (strncmp(str, "--", 2) == 0)) || strncmp(str, "-", 1) == 0) {
+			if(is_long == 1) {
+				memmove(&str[0], &str[2], len-2);
+				len-=2;
+			} else {
+				memmove(&str[0], &str[1], len-1);
+				len-=1;
 			}
-			memset(longarg, '\0', strcspn(argv[getOptPos],"=")+1);
-			memcpy(longarg, &argv[getOptPos][0], strcspn(argv[getOptPos],"="));
-
-			/* Then copy everything after the equals sign.
-			   This will probably be the value of the argument */
-			size_t i = strlen(&argv[getOptPos][strcspn(argv[getOptPos],"=")+1]);
-			if((*optarg = REALLOC(*optarg, i+1)) == NULL) {
-				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-			}
-			memset(*optarg, '\0', i+1);
-			memcpy(*optarg, &argv[getOptPos][strcspn(argv[getOptPos],"=")+1], i);
-		} else {
-			/* If the argument does not contain a equals sign.
-			   Store the argument to check later if it's a long argument */
-			if((longarg = REALLOC(longarg, strlen(argv[getOptPos])+1)) == NULL) {
-				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-			}
-			strcpy(longarg, argv[getOptPos]);
-		}
-
-		/* A short argument only contains of two characters.
-		   So only store the first two characters */
-		if((shortarg = REALLOC(shortarg, strlen(argv[getOptPos])+1)) == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
-		memset(shortarg, '\0', 3);
-		strncpy(shortarg, argv[getOptPos], 2);
-
-		/* Check if the short argument and the long argument are equal,
-		   then we probably encountered a short argument. Only store the
-		   identifier character. If there are more CLI characters
-		   after the current one, store it as the CLI value. However, only
-		   do this if the first character of the argument doesn't contain*/
-		if(strcmp(longarg, shortarg) == 0 && (getOptPos+1)<argc && argv[getOptPos+1][0] != '-') {
-			if((*optarg = REALLOC(*optarg, strlen(argv[getOptPos+1])+1)) == NULL) {
-				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-			}
-			strcpy(*optarg, argv[getOptPos+1]);
-			c = shortarg[1];
-			getOptPos++;
-		} else {
-			/* If the short argument and the long argument are not equal,
-			    then we probably encountered a long argument. */
-			if(longarg[0] == '-' && longarg[1] == '-') {
-				if((gctmp = REALLOC(gctmp, strlen(&longarg[2])+1)) == NULL) {
-					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-				}
-				strcpy(gctmp, &longarg[2]);
-
-				/* Retrieve the short identifier for the long argument */
-				if(options_get_id(opt, gctmp, &itmp) == 0) {
-					c = itmp;
-				} else if(argv[getOptPos][0] == '-') {
-					c = shortarg[1];
-				}
-			} else if(argv[getOptPos][0] == '-' && strstr(shortarg, longarg) != 0) {
-				c = shortarg[1];
-			}
-		}
-
-		/* Check if the argument was expected */
-		if(options_get_name(opt, c, &ctmp) != 0 && c > 0) {
-			if(error_check == 1) {
-				if(strcmp(longarg,shortarg) == 0) {
-					if(shortarg[0] == '-') {
-						logprintf(LOG_ERR, "invalid option -- '-%c'", c);
-					} else {
-						logprintf(LOG_ERR, "invalid option -- '%s'", longarg);
+			str[len] = '\0';
+			x = 0;
+			while(x <= len) {
+				if((str[x] == '=' || str[x] == ' ' || x == len) && key == NULL) {
+					int tmp = str[x];
+					str[x] = '\0';
+					if((key = STRDUP(str)) == NULL) {
+						OUT_OF_MEMORY
 					}
-				} else {
-					logprintf(LOG_ERR, "invalid option -- '%s'", longarg);
+					str[x] = tmp;
+					x++;
+					break;
 				}
-				goto gc;
-			} else {
-				return 0;
+				x++;
 			}
-		/* Check if an argument cannot have an argument that was set */
-		} else if(strlen(*optarg) != 0 && options_get_argtype(opt, c, &itmp) == 0 && itmp == 1) {
-			if(error_check == 1) {
-				if(strcmp(longarg,shortarg) == 0) {
-					logprintf(LOG_ERR, "option '-%c' does not take an argument", c);
-				} else {
-					logprintf(LOG_ERR, "option '%s' does not take an argument", longarg);
+			if(x < len) {
+				quote = str[x];
+				if((val = STRDUP(&str[x])) == NULL) {
+					OUT_OF_MEMORY
 				}
-				goto gc;
-			} else {
-				return 0;
-			}
-		/* Check if an argument required a value that wasn't set */
-		} else if(strlen(*optarg) == 0 && options_get_argtype(opt, c, &itmp) == 0 && itmp == 2) {
-			if(error_check == 1) {
-				if(strcmp(longarg, shortarg) == 0) {
-					logprintf(LOG_ERR, "option '-%c' requires an argument", c);
-				} else {
-					logprintf(LOG_ERR, "option '%s' requires an argument", longarg);
+				int len1 = strlen(val);
+				if(val[len1-1] == quote && (quote == '\'' || quote == '"')) {
+					memmove(&val[0], &val[1], len1-1);
+					len1-=2;
+					val[len1] = '\0';
 				}
-				goto gc;
-			} else {
-				return 0;
 			}
-		/* Check if we have a valid argument */
-		} else if(c == 0) {
-			if(error_check == 1) {
-				if(shortarg[0] == '-' && strstr(shortarg, longarg) != 0) {
-					logprintf(LOG_ERR, "invalid option -- '-%c'", c);
-				} else {
-					logprintf(LOG_ERR, "invalid option -- '%s'", longarg);
-				}
-				goto gc;
-			} else {
-				return 0;
+		}
+		FREE(str);
+
+		if(is_long == 1 && key != NULL && options_get_name(opt, key, &name) != 0) {
+			logprintf(LOG_ERR, "invalid option -- '--%s'", key);
+			FREE(key);
+			if(val != NULL) {
+				FREE(val);
 			}
-		} else {
-			/* If the argument didn't have a value, set it to 1 */
-			if(strlen(*optarg) == 0) {
-				options_set_string(opt, c, "1");
+			return -1;
+		} else if(is_long == 0 && key != NULL && options_get_id(opt, key, &name) != 0) {
+			logprintf(LOG_ERR, "invalid option -- '-%s'", key);
+			FREE(key);
+			if(val != NULL) {
+				FREE(val);
+			}
+			return -1;
+		} else if(val != NULL && options_get_argtype(opt, key, is_long, &itmp) == 0 && itmp == OPTION_NO_VALUE) {
+			if(is_long == 1) {
+				logprintf(LOG_ERR, "option '--%s' does not take an argument", key);
 			} else {
+				logprintf(LOG_ERR, "option '-%s' does not take an argument", key);
+			}
+			FREE(key);
+			if(val != NULL) {
+				FREE(val);
+			}
+			return -1;
+		} else if(val == NULL && options_get_argtype(opt, key, is_long, &itmp) == 0 && itmp == OPTION_HAS_VALUE) {
+			if(is_long == 1) {
+				logprintf(LOG_ERR, "option '--%s' requires an argument", key);
+			} else {
+				logprintf(LOG_ERR, "option '-%s' requires an argument", key);
+			}
+			FREE(key);
+			if(val != NULL) {
+				FREE(val);
+			}
+			return -1;
+		}
+
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-				if(error_check != 2) {
-					/* If the argument has a regex mask, check if it passes */
-					if(options_get_mask(opt, c, &mask) == 0) {
-						reti = regcomp(&regex, mask, REG_EXTENDED);
-						if(reti) {
-							logprintf(LOG_ERR, "could not compile regex");
-							goto gc;
-						}
-						reti = regexec(&regex, *optarg, 0, NULL, 0);
-						if(reti == REG_NOMATCH || reti != 0) {
-							if(error_check == 1) {
-								if(shortarg[0] == '-') {
-									logprintf(LOG_ERR, "invalid format -- '-%c'", c);
-								} else {
-									logprintf(LOG_ERR, "invalid format -- '%s'", longarg);
-								}
-								logprintf(LOG_ERR, "requires %s", mask);
-							}
-							regfree(&regex);
-							goto gc;
-						}
-						regfree(&regex);
-					}
+		if(val != NULL) {
+			/* If the argument has a regex mask, check if it passes */
+			if(options_get_mask(opt, key, is_long, &mask) == 0) {
+				reti = regcomp(&regex, mask, REG_EXTENDED);
+				if(reti) {
+					logprintf(LOG_ERR, "could not compile regex");
+					FREE(val);
+					FREE(key);
+					return -1;
 				}
-#endif
-				options_set_string(opt, c, *optarg);
+
+				reti = regexec(&regex, val, 0, NULL, 0);
+				if(reti == REG_NOMATCH || reti != 0) {
+					if(is_long == 1) {
+						logprintf(LOG_ERR, "invalid format -- '--%c'", key);
+					} else {
+						logprintf(LOG_ERR, "invalid format -- '-%s'", key);
+					}
+					logprintf(LOG_ERR, "requires %s", mask);
+
+					FREE(val);
+					FREE(key);
+					regfree(&regex);
+					return -1;
+				}
+				regfree(&regex);
 			}
-			return c;
+		}
+#endif
+
+		if(options_get_id_by_name(opt, key, &name) == 0) {
+			FREE(key);
+			if(val != NULL) {
+				if(isNumeric(val) == 0) {
+					options_set_number(opt, name, atoi(val));
+				} else {
+					options_set_string(opt, name, val);
+				}
+				FREE(val);
+			} else {
+				options_set_null(opt, name);
+			}
+		} else {
+			if(val != NULL) {
+				if(isNumeric(val) == 0) {
+					options_set_number(opt, key, atoi(val));
+				} else {
+					options_set_string(opt, key, val);
+				}
+				FREE(val);
+			} else {
+				options_set_null(opt, key);
+			}
+			FREE(key);
 		}
 	}
-
-gc:
-	getOptPos=0;
-	FREE(*optarg);
-
-	return -2;
+	return 0;
 }
 
 /* Add a new option to the options struct */
-void options_add(struct options_t **opt, int id, const char *name, int argtype, int conftype, int vartype, void *def, const char *mask) {
+void options_add(struct options_t **opt, char *id, const char *name, int argtype, int conftype, int vartype, void *def, const char *mask) {
 
 	char *ctmp = NULL;
 	char *nname = MALLOC(strlen(name)+1);
-	int sid = 0;
+	char *sid = NULL;
 	if(nname == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
@@ -437,13 +432,16 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 		logprintf(LOG_CRIT, "trying to add an option without name");
 		FREE(nname);
 		exit(EXIT_FAILURE);
-	} else if(id != 0 && options_get_name(opt, id, &ctmp) == 0) {
-		logprintf(LOG_CRIT, "duplicate option id: %c", id);
+	} else if(id == NULL) {
+		logprintf(LOG_CRIT, "option id cannot be null: %s", name);
+		FREE(nname);
+	} else if(options_get_name(*opt, id, &ctmp) == 0) {
+		logprintf(LOG_CRIT, "duplicate option id: %s", id);
 		FREE(nname);
 		exit(EXIT_FAILURE);
-	} else if(options_get_id(opt, nname, &sid) == 0 &&
-			((options_get_conftype(opt, sid, &itmp) == 0 && itmp == conftype) ||
-			(options_get_conftype(opt, sid, &itmp) != 0))) {
+	} else if(options_get_id(*opt, nname, &sid) == 0 &&
+			((options_get_conftype(*opt, sid, &itmp) == 0 && itmp == conftype) ||
+			(options_get_conftype(*opt, sid, &itmp) != 0))) {
 		logprintf(LOG_CRIT, "duplicate option name: %s", name);
 		FREE(nname);
 		exit(EXIT_FAILURE);
@@ -452,7 +450,9 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 		if(optnode == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
-		optnode->id = id;
+		if((optnode->id = STRDUP(id)) == NULL) {
+			OUT_OF_MEMORY
+		}
 		if((optnode->name = MALLOC(strlen(name)+1)) == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
@@ -462,6 +462,7 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 		optnode->vartype = vartype;
 		optnode->def = def;
 		optnode->string_ = NULL;
+		optnode->set = 0;
 		if(mask) {
 			if((optnode->mask = MALLOC(strlen(mask)+1)) == NULL) {
 				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -486,7 +487,9 @@ void options_merge(struct options_t **a, struct options_t **b) {
 		if(optnode == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
-		optnode->id = temp->id;
+		if((optnode->id = STRDUP(temp->id)) == NULL) {
+			OUT_OF_MEMORY
+		}
 		if(temp->name) {
 			if((optnode->name = MALLOC(strlen(temp->name)+1)) == NULL) {
 				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -523,6 +526,20 @@ void options_merge(struct options_t **a, struct options_t **b) {
 	}
 }
 
+int options_list(struct options_t *options, int i, char **name) {
+	struct options_t *tmp = options;
+	int x = 0;
+	while(tmp) {
+		if(i == x) {
+			*name = tmp->id;
+			return 0;
+		}
+		x++;
+		tmp = tmp->next;
+	}
+	return -1;
+}
+
 void options_delete(struct options_t *options) {
 
 	struct options_t *tmp;
@@ -531,10 +548,15 @@ void options_delete(struct options_t *options) {
 		if(tmp->mask) {
 			FREE(tmp->mask);
 		}
-		if(tmp->vartype == JSON_STRING && tmp->string_) {
+		if(tmp->vartype == JSON_STRING && tmp->string_ != NULL) {
 			FREE(tmp->string_);
 		}
-		FREE(tmp->name);
+		if(tmp->id != NULL) {
+			FREE(tmp->id);
+		}
+		if(tmp->name != NULL) {
+			FREE(tmp->name);
+		}
 		options = options->next;
 		FREE(tmp);
 	}

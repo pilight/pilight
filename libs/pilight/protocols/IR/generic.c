@@ -411,10 +411,10 @@ void genericIRInit(void) {
 	generic_ir->mingaplen = 10000;
 	generic_ir->maxgaplen = 100000;
 
-	options_add(&generic_ir->options, 'c', "code", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&generic_ir->options, 'a', "repeat", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "[0-9]");
-	options_add(&generic_ir->options, 'b', "button", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&generic_ir->options, 'r', "remote", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
+	options_add(&generic_ir->options, "c", "code", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&generic_ir->options, "a", "repeat", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "[0-9]");
+	options_add(&generic_ir->options, "b", "button", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&generic_ir->options, "r", "remote", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
 
 	generic_ir->parseCode=&parseCode;
 	generic_ir->validate=&validate;

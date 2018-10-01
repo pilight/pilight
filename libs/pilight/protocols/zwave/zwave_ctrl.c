@@ -131,13 +131,13 @@ void zwaveCtrlInit(void) {
 	zwave_ctrl->hwtype = ZWAVE;
 	zwave_ctrl->config = 0;
 
-	options_add(&zwave_ctrl->options, 'i', "inclusion", OPTION_NO_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&zwave_ctrl->options, 'e', "exclusion", OPTION_NO_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&zwave_ctrl->options, 's', "stop", OPTION_NO_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&zwave_ctrl->options, 'r', "soft-reset", OPTION_NO_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&zwave_ctrl->options, 'c', "parameter", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
-	options_add(&zwave_ctrl->options, 'v', "value", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
-	options_add(&zwave_ctrl->options, 'n', "nodeid", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&zwave_ctrl->options, "i", "inclusion", OPTION_NO_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&zwave_ctrl->options, "e", "exclusion", OPTION_NO_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&zwave_ctrl->options, "s", "stop", OPTION_NO_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&zwave_ctrl->options, "r", "soft-reset", OPTION_NO_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&zwave_ctrl->options, "c", "parameter", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&zwave_ctrl->options, "v", "value", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&zwave_ctrl->options, "n", "nodeid", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 
 	zwave_ctrl->createCode=&createCode;
 	zwave_ctrl->printHelp=&printHelp;

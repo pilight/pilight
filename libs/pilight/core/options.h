@@ -23,31 +23,33 @@
 
 
 typedef struct options_t {
-	int id;
+	char *id;
 	char *name;
 	union {
 		char *string_;
-		double number_;
+		int number_;
 	};
 	char *mask;
 	void *def;
 	int argtype;
 	int conftype;
 	int vartype;
+	int set;
 	struct options_t *next;
 } options_t;
 
 int options_gc(void);
-void options_set_string(struct options_t **options, int id, const char *val);
-void options_set_number(struct options_t **options, int id, double val);
-int options_get_string(struct options_t **options, int id, char **out);
-int options_get_number(struct options_t **options, int id, double *out);
-int options_get_argtype(struct options_t **options, int id, int *out);
-int options_get_name(struct options_t **options, int id, char **out);
-int options_get_id(struct options_t **options, char *name, int *out);
-int options_get_mask(struct options_t **options, int id, char **out);
-int options_parse(struct options_t **options, int argc, char **argv, int error_check, char **optarg);
-void options_add(struct options_t **options, int id, const char *name, int argtype, int conftype, int vartype, void *def, const char *mask);
+void options_set_string(struct options_t *options, char *id, const char *val);
+void options_set_number(struct options_t *options, char *id, int val);
+void options_set_null(struct options_t *options, char *id);
+int options_get_string(struct options_t *options, char *id, char **out);
+int options_get_number(struct options_t *options, char *id, int *out);
+int options_get_id(struct options_t *opt, char *id, char **out);
+int options_exists(struct options_t *options, char *id);
+int options_list(struct options_t *options, int i, char **name);
+int options_parse1(struct options_t **options, int argc, char **argv, int error_check, char **optarg, char **ret);
+int options_parse(struct options_t *options, int argc, char **argv);
+void options_add(struct options_t **options, char *id, const char *name, int argtype, int conftype, int vartype, void *def, const char *mask);
 void options_merge(struct options_t **a, struct options_t **b);
 void options_delete(struct options_t *options);
 

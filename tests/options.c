@@ -24,7 +24,7 @@ static void test_options_valid(CuTest *tc) {
 	memtrack();
 
 	struct options_t *options = NULL;
-	char *args = NULL, *argv[12] = {
+	char *argv[16] = {
 		"./pilight-unittest",
 		"-A",
 		"-a",
@@ -33,77 +33,131 @@ static void test_options_valid(CuTest *tc) {
 		"-C",
 		"-c=a",
 		"-D=1",
+		"-Ls=2",
+		"-Lt 3",
 		"--foo=bar",
 		"--server=127.0.0.1",
 		"--test=\"aap noot\"",
-		"--test1=\"-15\""
+		"--test1=\"-15\"",
+		"--test2=\"-15'",
+		"--no-value"
 	};
 	int argc = sizeof(argv)/sizeof(argv[0]), check = 0;
 
-	options_add(&options, 'A', "ab", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'a', "ac", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'B', "ba", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'b', "bc", OPTION_OPT_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'C', "ca", OPTION_OPT_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'c', "cb", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
-	options_add(&options, 'D', "da", OPTION_HAS_VALUE, 0, JSON_NUMBER, NULL, NULL);
-	options_add(&options, 1, "foo", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
-	options_add(&options, 2, "server", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
-	options_add(&options, 3, "test", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
-	options_add(&options, 4, "test1", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
+	options_add(&options, "A", "ab", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "a", "ac", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "B", "ba", OPTION_HAS_VALUE, 0, JSON_NUMBER, NULL, NULL);
+	options_add(&options, "b", "bc", OPTION_OPT_VALUE, 0, JSON_NUMBER, NULL, NULL);
+	options_add(&options, "C", "ca", OPTION_OPT_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "c", "cb", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
+	options_add(&options, "D", "da", OPTION_HAS_VALUE, 0, JSON_NUMBER, NULL, NULL);
+	options_add(&options, "Ls", "fe", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
+	options_add(&options, "Lt", "fg", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
+	options_add(&options, "1", "foo", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
+	options_add(&options, "2", "server", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
+	options_add(&options, "3", "test", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
+	options_add(&options, "4", "test1", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
+	options_add(&options, "5", "test2", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
+	options_add(&options, "6", "no-value", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 
-	while(1) {
-		int c = options_parse(&options, argc, argv, 1, &args);
-		if(c == -1) {
-			break;
-		}
-		if(c == -2) {
-			break;
-		}
-		switch(c) {
-			case 'A':
-			case 'a':
-			case 'C':
-				CuAssertIntEquals(tc, 0, strlen(args));
-				check++;
-			break;
-			case 'B':
-			case 'b':
-			case 'D':
-				CuAssertStrEquals(tc, "1", args);
-				check++;
-			break;
-			case 'c':
-				CuAssertStrEquals(tc, "a", args);
-				check++;
-			break;
-			case 1:
-				CuAssertStrEquals(tc, "bar", args);
-				check++;
-			break;
-			case 2:
-				CuAssertStrEquals(tc, "127.0.0.1", args);
-				check++;
-			break;
-			case 3:
-				CuAssertStrEquals(tc, "\"aap noot\"", args);
-				check++;
-			break;
-			case 4:
-				CuAssertStrEquals(tc, "\"-15\"", args);
-				check++;
-			break;
+	char *str = NULL;
+	int num = 0, i = 0;
+	options_parse(options, argc, argv);
+
+	while(options_list(options, i++, &str) == 0) {
+		if((strcmp(str, "A") == 0) || (strcmp(str, "a") == 0) ||
+			(strcmp(str, "B") == 0) || (strcmp(str, "b") == 0) ||
+			(strcmp(str, "C") == 0) || (strcmp(str, "c") == 0) ||
+			(strcmp(str, "D") == 0) || (strcmp(str, "Ls") == 0) ||
+			(strcmp(str, "Lt") == 0) || (strcmp(str, "1") == 0) ||
+			(strcmp(str, "2") == 0) || (strcmp(str, "3") == 0) ||
+			(strcmp(str, "4") == 0) || (strcmp(str, "5") == 0) ||
+			(strcmp(str, "6") == 0)) {
+			check++;
 		}
 	}
-	options_delete(options);
 
+	CuAssertIntEquals(tc, 0, options_exists(options, "A"));
+	CuAssertIntEquals(tc, 0, options_exists(options, "a"));
+
+	{
+		CuAssertIntEquals(tc, 0, options_exists(options, "B"));
+		CuAssertIntEquals(tc, 0, options_get_number(options, "B", &num));
+		CuAssertIntEquals(tc, 1, num);
+	}
+
+	{
+		CuAssertIntEquals(tc, 0, options_exists(options, "b"));
+		CuAssertIntEquals(tc, 0, options_get_number(options, "b", &num));
+		CuAssertIntEquals(tc, 1, num);
+	}
+
+	CuAssertIntEquals(tc, 0, options_exists(options, "C"));
+
+	{
+		CuAssertIntEquals(tc, 0, options_exists(options, "c"));
+		CuAssertIntEquals(tc, 0, options_get_string(options, "c", &str));
+		CuAssertStrEquals(tc, "a", str);
+	}
+
+	{
+		CuAssertIntEquals(tc, 0, options_exists(options, "D"));
+		CuAssertIntEquals(tc, 0, options_get_number(options, "D", &num));
+		CuAssertIntEquals(tc, 1, num);
+	}
+
+	{
+		CuAssertIntEquals(tc, 0, options_exists(options, "Ls"));
+		CuAssertIntEquals(tc, 0, options_get_number(options, "Ls", &num));
+		CuAssertIntEquals(tc, 2, num);
+	}
+
+	{
+		CuAssertIntEquals(tc, 0, options_exists(options, "Lt"));
+		CuAssertIntEquals(tc, 0, options_get_number(options, "Lt", &num));
+		CuAssertIntEquals(tc, 3, num);
+	}
+
+	{
+		CuAssertIntEquals(tc, 0, options_exists(options, "1"));
+		CuAssertIntEquals(tc, 0, options_get_string(options, "1", &str));
+		CuAssertStrEquals(tc, "bar", str);
+	}
+
+	{
+		CuAssertIntEquals(tc, 0, options_exists(options, "2"));
+		CuAssertIntEquals(tc, 0, options_get_string(options, "2", &str));
+		CuAssertStrEquals(tc, "127.0.0.1", str);
+	}
+
+	{
+		CuAssertIntEquals(tc, 0, options_exists(options, "3"));
+		CuAssertIntEquals(tc, 0, options_get_string(options, "3", &str));
+		CuAssertStrEquals(tc, "aap noot", str);
+	}
+
+	{
+		CuAssertIntEquals(tc, 0, options_exists(options, "4"));
+		CuAssertIntEquals(tc, 0, options_get_number(options, "4", &num));
+		CuAssertIntEquals(tc, -15, num);
+	}
+
+	{
+		CuAssertIntEquals(tc, 0, options_exists(options, "5"));
+		CuAssertIntEquals(tc, 0, options_get_string(options, "5", &str));
+		CuAssertStrEquals(tc, "\"-15'", str);
+	}
+
+	CuAssertIntEquals(tc, 0, options_exists(options, "6"));
+
+	options_delete(options);
 	options_gc();
 
-	CuAssertIntEquals(tc, 11, check);
+	CuAssertIntEquals(tc, 15, check);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
-static int options_test(char *a, int b, char *c, int d, int e, int f, char *g) {
+static struct options_t *options_test(char *a, char *b, char *c, int d, int e, int f, char *g, char **ret) {
 	struct options_t *options = NULL;
 	char *args = NULL, *argv[2] = { "./pilight-unittest", a };
 	int argc = 0;
@@ -111,12 +165,11 @@ static int options_test(char *a, int b, char *c, int d, int e, int f, char *g) {
 
 	options_add(&options, b, c, d, e, f, NULL, g);
 
-	int z = options_parse(&options, argc, argv, 1, &args);
+	options_parse(options, argc, argv);
 	if(args != NULL) {
 		FREE(args);
 	}
-	options_delete(options);
-	return z;
+	return options;
 }
 
 static void test_options_invalid(CuTest *tc) {
@@ -125,35 +178,64 @@ static void test_options_invalid(CuTest *tc) {
 
 	memtrack();
 
-	int r = options_test("-Z", 'A', "ab", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
-	CuAssertIntEquals(tc, -2, r);
+	char *ret = NULL, *str = NULL;
+	struct options_t *options = options_test("-Z", "A", "ab", OPTION_NO_VALUE, 0, JSON_NULL, NULL, &ret);
+	CuAssertTrue(tc, ret == NULL);
+	CuAssertIntEquals(tc, -1, options_exists(options, "A"));
+	CuAssertIntEquals(tc, -1, options_get_string(options, "A", &str));
+	CuAssertTrue(tc, str == NULL);
+	options_delete(options);
 
-	r = options_test("-foo", 'A', "ab", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
-	CuAssertIntEquals(tc, -2, r);
+	options = options_test("-foo", "A", "ab", OPTION_NO_VALUE, 0, JSON_NULL, NULL, &ret);
+	CuAssertTrue(tc, ret == NULL);
+	CuAssertIntEquals(tc, -1, options_exists(options, "A"));
+	CuAssertIntEquals(tc, -1, options_get_string(options, "A", &str));
+	CuAssertTrue(tc, str == NULL);
+	options_delete(options);
 
-	r = options_test("-foo", 'A', "foo", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
-	CuAssertIntEquals(tc, -2, r);
+	options = options_test("-foo", "A", "foo", OPTION_NO_VALUE, 0, JSON_NULL, NULL, &ret);
+	CuAssertTrue(tc, ret == NULL);
+	CuAssertIntEquals(tc, -1, options_exists(options, "A"));
+	CuAssertIntEquals(tc, -1, options_get_string(options, "A", &str));
+	CuAssertTrue(tc, str == NULL);
+	options_delete(options);
 
-	r = options_test("--foo", 'A', "foo", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
-	CuAssertIntEquals(tc, 65, r);
+	options = options_test("--foo", "A", "foo", OPTION_NO_VALUE, 0, JSON_NULL, NULL, &ret);
+	CuAssertTrue(tc, ret == NULL);
+	CuAssertIntEquals(tc, 0, options_exists(options, "A"));
+	CuAssertIntEquals(tc, -1, options_get_string(options, "A", &str));
+	CuAssertTrue(tc, str == NULL);
+	options_delete(options);
 
 	/*
 	 * This should fail in the new library
-	r = options_test("-A 1", 'A', "ab", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
-	CuAssertIntEquals(tc, 0, r);
+	 */
+	options = options_test("-A 1", "A", "ab", OPTION_NO_VALUE, 0, JSON_NULL, NULL, &ret);
+	CuAssertTrue(tc, ret == NULL);
+	CuAssertIntEquals(tc, -1, options_exists(options, "A"));
+	CuAssertIntEquals(tc, -1, options_get_string(options, "A", &str));
+	CuAssertTrue(tc, str == NULL);
+	options_delete(options);
 
-	r = options_test("-A", 'A', "ab", OPTION_HAS_VALUE, 0, JSON_NULL, NULL);
-	CuAssertIntEquals(tc, 0, r);
+	options = options_test("-A", "A", "ab", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, &ret);
+	CuAssertTrue(tc, ret == NULL);
+	CuAssertIntEquals(tc, -1, options_exists(options, "A"));
+	CuAssertIntEquals(tc, -1, options_get_string(options, "A", &str));
+	CuAssertTrue(tc, str == NULL);
+	options_delete(options);
 
-	r = options_test("-A 1", 'A', "ab", OPTION_HAS_VALUE, 0, JSON_STRING, NULL);
-	CuAssertIntEquals(tc, 0, r);
+	// r = options_test("-A 1", "A", "ab", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, &ret);
+	// CuAssertIntEquals(tc, -1, r);
 
-	r = options_test("-A a", 'A', "ab", OPTION_HAS_VALUE, 0, JSON_NUMBER, NULL);
-	CuAssertIntEquals(tc, 0, r);
-	*/
+	// r = options_test("-A a", "A", "ab", OPTION_HAS_VALUE, 0, JSON_NUMBER, NULL, &ret);
+	// CuAssertIntEquals(tc, -1, r);
 
-	r = options_test("--foo=-1", 'A', "foo", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
-	CuAssertIntEquals(tc, -1, r);
+	options = options_test("--foo=-1", "A", "foo", OPTION_NO_VALUE, 0, JSON_NULL, NULL, &ret);
+	CuAssertTrue(tc, ret == NULL);
+	CuAssertIntEquals(tc, -1, options_exists(options, "A"));
+	CuAssertIntEquals(tc, -1, options_get_string(options, "A", &str));
+	CuAssertTrue(tc, str == NULL);
+	options_delete(options);
 
 	options_gc();
 
@@ -168,7 +250,7 @@ static void test_options_merge(CuTest *tc) {
 
 	struct options_t *options = NULL;
 	struct options_t *options1 = NULL;
-	char *args = NULL, *argv[12] = {
+	char *argv[12] = {
 		"./pilight-unittest",
 		"-A",
 		"-a",
@@ -182,53 +264,81 @@ static void test_options_merge(CuTest *tc) {
 		"--test=\"aap noot\"",
 		"--test1=\"-15\""
 	};
-	int argc = sizeof(argv)/sizeof(argv[0]), i = 0;
+	int argc = sizeof(argv)/sizeof(argv[0]);
 
-	options_add(&options, 'A', "ab", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'a', "ac", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'B', "ba", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'b', "bc", OPTION_OPT_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'C', "ca", OPTION_OPT_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'c', "cb", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
-	options_add(&options1, 'D', "da", OPTION_HAS_VALUE, 0, JSON_NUMBER, NULL, NULL);
-	options_add(&options1, 1, "foo", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
-	options_add(&options1, 2, "server", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
-	options_add(&options1, 3, "test", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
-	options_add(&options1, 4, "test1", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
+	options_add(&options, "A", "ab", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "a", "ac", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "B", "ba", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "b", "bc", OPTION_OPT_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "C", "ca", OPTION_OPT_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "c", "cb", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
+	options_add(&options1, "D", "da", OPTION_HAS_VALUE, 0, JSON_NUMBER, NULL, NULL);
+	options_add(&options1, "1", "foo", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
+	options_add(&options1, "2", "server", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
+	options_add(&options1, "3", "test", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
+	options_add(&options1, "4", "test1", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
 
-	
-	for(i=0;i<7;i++) {
-		int c = options_parse(&options, argc, argv, 1, &args);
-		CuAssertTrue(tc, (i != 0 || (i == 0 && c == 65)));
-		CuAssertTrue(tc, (i != 1 || (i == 1 && c == 97)));
-		CuAssertTrue(tc, (i != 2 || (i == 2 && c == 66)));
-		CuAssertTrue(tc, (i != 3 || (i == 3 && c == 98)));
-		CuAssertTrue(tc, (i != 4 || (i == 4 && c == 67)));
-		CuAssertTrue(tc, (i != 5 || (i == 5 && c == 99)));
-		CuAssertTrue(tc, (i != 6 || (i == 6 && c == -2)));
+	char *str = NULL;
+	int i = 0, check = 0;
+
+	options_parse(options, argc, argv);
+
+	while(options_list(options, i++, &str) == 0) {
+		if((strcmp(str, "A") == 0) || (strcmp(str, "a") == 0) ||
+			(strcmp(str, "B") == 0) || (strcmp(str, "b") == 0) ||
+			(strcmp(str, "C") == 0) || (strcmp(str, "c") == 0) ||
+			(strcmp(str, "D") == 0) || (strcmp(str, "1") == 0) ||
+			(strcmp(str, "2") == 0) || (strcmp(str, "3") == 0) ||
+			(strcmp(str, "4") == 0)) {
+			check++;
+		}
 	}
+	CuAssertIntEquals(tc, 6, check);
+
 	options_merge(&options, &options1);
 
-	for(i=0;i<12;i++) {
-		int c = options_parse(&options, argc, argv, 1, &args);
-		CuAssertTrue(tc, (i != 0 || (i == 0 && c == 65)));
-		CuAssertTrue(tc, (i != 1 || (i == 1 && c == 97)));
-		CuAssertTrue(tc, (i != 2 || (i == 2 && c == 66)));
-		CuAssertTrue(tc, (i != 3 || (i == 3 && c == 98)));
-		CuAssertTrue(tc, (i != 4 || (i == 4 && c == 67)));
-		CuAssertTrue(tc, (i != 5 || (i == 5 && c == 99)));
-		CuAssertTrue(tc, (i != 6 || (i == 6 && c == 68)));
-		CuAssertTrue(tc, (i != 7 || (i == 7 && c == 1)));
-		CuAssertTrue(tc, (i != 8 || (i == 8 && c == 2)));
-		CuAssertTrue(tc, (i != 9 || (i == 9 && c == 3)));
-		CuAssertTrue(tc, (i != 10 || (i == 10 && c == 4)));
-		CuAssertTrue(tc, (i != 11 || (i == 11 && c == -1)));
-	}	
+	i = 0, check = 0;
+	while(options_list(options, i++, &str) == 0) {
+		if((strcmp(str, "A") == 0) || (strcmp(str, "a") == 0) ||
+			(strcmp(str, "B") == 0) || (strcmp(str, "b") == 0) ||
+			(strcmp(str, "C") == 0) || (strcmp(str, "c") == 0) ||
+			(strcmp(str, "D") == 0) || (strcmp(str, "1") == 0) ||
+			(strcmp(str, "2") == 0) || (strcmp(str, "3") == 0) ||
+			(strcmp(str, "4") == 0)) {
+			check++;
+		}
+	}
+	CuAssertIntEquals(tc, 11, check);
+
 	options_delete(options);
 	options_delete(options1);
 
 	options_gc();
 
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
+static void test_options_mask(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	memtrack();
+
+	struct options_t *options = NULL;
+	char *argv[16] = {
+		"./pilight-unittest",
+		"-A=1"
+	};
+	int argc = sizeof(argv)/sizeof(argv[0]), check = 0;
+
+	options_add(&options, "A", "ab", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^[A-Z]$");
+
+	options_parse(options, argc, argv);
+	options_delete(options);
+
+	options_gc();
+
+	CuAssertIntEquals(tc, 0, check);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -238,6 +348,9 @@ CuSuite *suite_options(void) {
 	SUITE_ADD_TEST(suite, test_options_valid);
 	SUITE_ADD_TEST(suite, test_options_invalid);
 	SUITE_ADD_TEST(suite, test_options_merge);
+#if !defined(__FreeBSD__) && !defined(_WIN32)
+	SUITE_ADD_TEST(suite, test_options_mask);
+#endif
 
 	return suite;
 }

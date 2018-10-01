@@ -62,9 +62,9 @@ void genericLabelInit(void) {
 	protocol_device_add(generic_label, "generic_label", "Generic String Label");
 	generic_label->devtype = LABEL;
 
-	options_add(&generic_label->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,})$");
-	options_add(&generic_label->options, 'l', "label", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&generic_label->options, 'c', "color", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&generic_label->options, "i", "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,})$");
+	options_add(&generic_label->options, "l", "label", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&generic_label->options, "c", "color", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 
 	generic_label->printHelp=&printHelp;
 	generic_label->createCode=&createCode;

@@ -120,10 +120,10 @@ void zwaveSwitchInit(void) {
 	zwave_switch->devtype = SWITCH;
 	zwave_switch->hwtype = ZWAVE;
 
-	options_add(&zwave_switch->options, 'h', "homeId", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
-	options_add(&zwave_switch->options, 'i', "nodeId", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
-	options_add(&zwave_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&zwave_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&zwave_switch->options, "h", "homeId", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
+	options_add(&zwave_switch->options, "i", "nodeId", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
+	options_add(&zwave_switch->options, "t", "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&zwave_switch->options, "f", "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
 	zwave_switch->createCode=&createCode;
 	zwave_switch->parseCommand=&parseCommand;

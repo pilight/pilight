@@ -398,16 +398,16 @@ void quiggGT1000Init(void) {
 	quigg_gt1000->maxgaplen = (int)PROG_SPACE*1.1;
 	quigg_gt1000->mingaplen = (int)PROG_SPACE*0.9;
 
-	options_add(&quigg_gt1000->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&quigg_gt1000->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&quigg_gt1000->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-5])$");
-	options_add(&quigg_gt1000->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(1[0-6]|[0-9])$");
-	options_add(&quigg_gt1000->options, 'a', "all", OPTION_NO_VALUE, DEVICES_SETTING, JSON_NUMBER, NULL, NULL);
-	options_add(&quigg_gt1000->options, 's', "super", OPTION_NO_VALUE, DEVICES_SETTING, JSON_NUMBER, NULL, NULL);
-	options_add(&quigg_gt1000->options, 'n', "num", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, NULL, "^([0-3])$");
+	options_add(&quigg_gt1000->options, "t", "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&quigg_gt1000->options, "f", "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&quigg_gt1000->options, "u", "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-5])$");
+	options_add(&quigg_gt1000->options, "i", "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(1[0-6]|[0-9])$");
+	options_add(&quigg_gt1000->options, "a", "all", OPTION_NO_VALUE, DEVICES_SETTING, JSON_NUMBER, NULL, NULL);
+	options_add(&quigg_gt1000->options, "s", "super", OPTION_NO_VALUE, DEVICES_SETTING, JSON_NUMBER, NULL, NULL);
+	options_add(&quigg_gt1000->options, "n", "num", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, NULL, "^([0-3])$");
 
-	options_add(&quigg_gt1000->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	options_add(&quigg_gt1000->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&quigg_gt1000->options, "0", "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&quigg_gt1000->options, "0", "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	quigg_gt1000->printHelp = &printHelp;
 	quigg_gt1000->createCode = &createCode;

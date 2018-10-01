@@ -396,10 +396,10 @@ void quiggGT9000Init(void) {
 	quigg_gt9000->maxgaplen = (int)(PULSE_QUIGG_FOOTER2*1.1);
 	quigg_gt9000->mingaplen = (int)(PULSE_QUIGG_FOOTER2*0.9);
 
-	options_add(&quigg_gt9000->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&quigg_gt9000->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&quigg_gt9000->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
-	options_add(&quigg_gt9000->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
+	options_add(&quigg_gt9000->options, "t", "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&quigg_gt9000->options, "f", "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&quigg_gt9000->options, "u", "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
+	options_add(&quigg_gt9000->options, "i", "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
 
 	quigg_gt9000->parseCode=&parseCode;
 	quigg_gt9000->createCode=&createCode;

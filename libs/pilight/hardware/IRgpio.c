@@ -213,8 +213,8 @@ void gpioIRInit(void) {
 	hardware_register(&gpioIR);
 	hardware_set_id(gpioIR, "IRgpio");
 
-	options_add(&gpioIR->options, 'r', "receiver", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
-	options_add(&gpioIR->options, 's', "sender", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
+	options_add(&gpioIR->options, "r", "receiver", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
+	options_add(&gpioIR->options, "s", "sender", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
 
 	gpioIR->minrawlen = 1000;
 	gpioIR->maxrawlen = 0;

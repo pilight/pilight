@@ -234,8 +234,8 @@ void gpio433Init(void) {
 	hardware_register(&gpio433);
 	hardware_set_id(gpio433, "433gpio");
 
-	options_add(&gpio433->options, 'r', "receiver", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
-	options_add(&gpio433->options, 's', "sender", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
+	options_add(&gpio433->options, "r", "receiver", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
+	options_add(&gpio433->options, "s", "sender", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
 
 	gpio433->minrawlen = 1000;
 	gpio433->maxrawlen = 0;

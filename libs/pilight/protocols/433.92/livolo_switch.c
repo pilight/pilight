@@ -178,16 +178,16 @@ void livoloSwitchInit(void) {
 	livolo_switch->minrawlen = MIN_RAW_LENGTH;
 	livolo_switch->maxrawlen = MAX_RAW_LENGTH;
 
-	options_add(&livolo_switch->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL,
+	options_add(&livolo_switch->options, "i", "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL,
 	            // 16 bits: 0..65535
 	            "^([0-5]?[0-9]{1,4}|(6[0-4][0-9]{3})|(65[0-4][0-9]{2})|(655[0-2][0-9])|(6553[0-5]))$");
-	options_add(&livolo_switch->options, 'n', "key", OPTION_OPT_VALUE, DEVICES_ID, JSON_NUMBER, NULL,
+	options_add(&livolo_switch->options, "n", "key", OPTION_OPT_VALUE, DEVICES_ID, JSON_NUMBER, NULL,
 	            // 7 its: 0..127
 	            "^(([0-9]{1,2})|(1[0-1][0-9])|(12[0-7]))$");
-	options_add(&livolo_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&livolo_switch->options, "f", "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
-	options_add(&livolo_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, NULL, "^[01]$");
-	options_add(&livolo_switch->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, NULL, "^[01]$");
+	options_add(&livolo_switch->options, "0", "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, NULL, "^[01]$");
+	options_add(&livolo_switch->options, "0", "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, NULL, "^[01]$");
 
 	livolo_switch->createCode=&createCode;
 	livolo_switch->printHelp=&printHelp;
