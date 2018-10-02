@@ -20,7 +20,7 @@
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/eventpool.h"
-#include "../libs/pilight/lua/lua.h"
+#include "../libs/pilight/lua_c/lua.h"
 #include "../libs/pilight/protocols/protocol.h"
 #include "../libs/pilight/events/action.h"
 #include "../libs/pilight/protocols/generic/generic_switch.h"
@@ -94,6 +94,8 @@ static void test_event_actions_pushbullet_get_parameters(CuTest *tc) {
 
 	plua_init();
 
+	test_set_plua_path(tc, __FILE__, "event_actions_pushbullet.c");
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_pushbullet.json", CONFIG_SETTINGS));
 	event_action_init();
@@ -142,6 +144,9 @@ static void test_event_actions_pushbullet_check_parameters(CuTest *tc) {
 	genericLabelInit();
 
 	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "event_actions_pushbullet.c");
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_pushbullet.json", CONFIG_SETTINGS | CONFIG_DEVICES));
 	event_action_init();
@@ -392,6 +397,8 @@ static void test_event_actions_pushbullet_run(CuTest *tc) {
 
 	plua_init();
 	plua_override_global("error", plua_error);
+
+	test_set_plua_path(tc, __FILE__, "event_actions_pushbullet.c");
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_pushbullet.json", CONFIG_SETTINGS | CONFIG_DEVICES));

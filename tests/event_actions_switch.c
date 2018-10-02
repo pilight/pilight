@@ -20,7 +20,7 @@
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/eventpool.h"
-#include "../libs/pilight/lua/lua.h"
+#include "../libs/pilight/lua_c/lua.h"
 #include "../libs/pilight/protocols/protocol.h"
 #include "../libs/pilight/events/events.h"
 #include "../libs/pilight/events/action.h"
@@ -68,6 +68,8 @@ static void test_event_actions_switch_get_parameters(CuTest *tc) {
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "event_actions_switch.c");
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_switch.json", CONFIG_SETTINGS));
@@ -123,6 +125,8 @@ static void test_event_actions_switch_check_arguments(CuTest *tc) {
 	genericLabelInit();
 
 	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "event_actions_switch.c");
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_switch.json", CONFIG_SETTINGS | CONFIG_DEVICES));
@@ -897,6 +901,8 @@ static void test_event_actions_switch_run(CuTest *tc) {
 
 	plua_init();
 
+	test_set_plua_path(tc, __FILE__, "event_actions_switch.c");
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_switch.json", CONFIG_SETTINGS | CONFIG_DEVICES));
 	event_action_init();
@@ -963,6 +969,8 @@ static void test_event_actions_switch_run_delayed(CuTest *tc) {
 
 	plua_init();
 
+	test_set_plua_path(tc, __FILE__, "event_actions_switch.c");
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_switch.json", CONFIG_SETTINGS | CONFIG_DEVICES));
 	event_action_init();
@@ -1028,6 +1036,8 @@ static void test_event_actions_switch_run_delayed1(CuTest *tc) {
 	genericLabelInit();
 
 	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "event_actions_switch.c");
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_switch.json", CONFIG_SETTINGS | CONFIG_DEVICES));
@@ -1105,6 +1115,8 @@ static void test_event_actions_switch_run_overlapped(CuTest *tc) {
 
 	plua_init();
 
+	test_set_plua_path(tc, __FILE__, "event_actions_switch.c");
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_switch.json", CONFIG_SETTINGS | CONFIG_DEVICES));
 	event_action_init();
@@ -1181,6 +1193,8 @@ static void test_event_actions_switch_run_override(CuTest *tc) {
 	genericLabelInit();
 
 	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "event_actions_switch.c");
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_switch.json", CONFIG_SETTINGS));

@@ -16,7 +16,7 @@
 #include "../libs/pilight/core/mem.h"
 #include "../libs/pilight/core/common.h"
 #include "../libs/pilight/core/CuTest.h"
-#include "../libs/pilight/lua/lua.h"
+#include "../libs/pilight/lua_c/lua.h"
 #include "../libs/pilight/protocols/protocol.h"
 #include "../libs/pilight/protocols/GPIO/gpio_switch.h"
 
@@ -288,6 +288,10 @@ static void test_protocols_gpio_switch_param4(CuTest *tc) {
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
 
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "protocols_gpio_switch.c");
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("protocols_gpio_switch.json", CONFIG_SETTINGS));
 
@@ -395,6 +399,10 @@ static void test_protocols_gpio_switch_param6(CuTest *tc) {
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
 
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "protocols_gpio_switch.c");
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("protocols_gpio_switch.json", CONFIG_SETTINGS));
 
@@ -445,6 +453,10 @@ static void test_protocols_gpio_switch_param7(CuTest *tc) {
 	gpioSwitchInit();
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
+
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "protocols_gpio_switch.c");
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("protocols_gpio_switch.json", CONFIG_SETTINGS));
@@ -506,6 +518,10 @@ static void test_protocols_gpio_switch(CuTest *tc) {
 	char *add = "{\"test\":{\"protocol\":[\"gpio_switch\"],\"id\":[{\"gpio\":0}],\"state\":\"off\",\"resolution\":100,\"readonly\":1}}";
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
+
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "protocols_gpio_switch.c");
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("protocols_gpio_switch.json", CONFIG_SETTINGS));

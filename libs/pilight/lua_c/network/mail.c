@@ -615,7 +615,7 @@ static int plua_network_mail_send(lua_State *L) {
 		mail->password,
 		mail->port,
 		mail->is_ssl,
-		&mail->mail, 
+		&mail->mail,
 		plua_network_mail_callback) != 0) {
 
 		plua_gc_unreg(mail->L, mail);

@@ -14,7 +14,7 @@
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/network.h"
-#include "../libs/pilight/lua/lua.h"
+#include "../libs/pilight/lua_c/lua.h"
 
 #include "alltests.h"
 
@@ -140,6 +140,10 @@ static void test_whitelist_check(CuTest *tc) {
 		);
 		fclose(f);
 
+		plua_init();
+
+		test_set_plua_path(tc, __FILE__, "network.c");
+
 		eventpool_init(EVENTPOOL_NO_THREADS);
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("network_whitelist.json", CONFIG_SETTINGS));
@@ -172,6 +176,10 @@ static void test_whitelist_check(CuTest *tc) {
 		);
 		fclose(f);
 
+		plua_init();
+
+		test_set_plua_path(tc, __FILE__, "network.c");
+
 		eventpool_init(EVENTPOOL_NO_THREADS);
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("network_whitelist.json", CONFIG_SETTINGS));	
@@ -203,6 +211,10 @@ static void test_whitelist_check(CuTest *tc) {
 		);
 		fclose(f);
 
+		plua_init();
+
+		test_set_plua_path(tc, __FILE__, "network.c");
+
 		eventpool_init(EVENTPOOL_NO_THREADS);
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("network_whitelist.json", CONFIG_SETTINGS));	
@@ -231,6 +243,10 @@ static void test_whitelist_check(CuTest *tc) {
 			"\"hardware\":{},\"registry\":{}}"
 		);
 		fclose(f);
+
+		plua_init();
+
+		test_set_plua_path(tc, __FILE__, "network.c");
 
 		eventpool_init(EVENTPOOL_NO_THREADS);
 		storage_init();
@@ -265,6 +281,10 @@ static void test_whitelist_check(CuTest *tc) {
 		);
 		fclose(f);
 
+		plua_init();
+
+		test_set_plua_path(tc, __FILE__, "network.c");
+
 		eventpool_init(EVENTPOOL_NO_THREADS);
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("network_whitelist.json", CONFIG_SETTINGS));	
@@ -297,6 +317,10 @@ static void test_whitelist_check(CuTest *tc) {
 			"\"hardware\":{},\"registry\":{}}"
 		);
 		fclose(f);
+
+		plua_init();
+
+		test_set_plua_path(tc, __FILE__, "network.c");
 
 		eventpool_init(EVENTPOOL_NO_THREADS);
 		storage_init();
@@ -331,6 +355,10 @@ static void test_whitelist_check(CuTest *tc) {
 			"\"hardware\":{},\"registry\":{}}"
 		);
 		fclose(f);
+
+		plua_init();
+
+		test_set_plua_path(tc, __FILE__, "network.c");
 
 		eventpool_init(EVENTPOOL_NO_THREADS);
 		storage_init();

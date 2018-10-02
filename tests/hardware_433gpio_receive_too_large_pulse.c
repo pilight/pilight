@@ -16,7 +16,7 @@
 #include "../libs/pilight/core/mem.h"
 #include "../libs/pilight/core/common.h"
 #include "../libs/pilight/core/CuTest.h"
-#include "../libs/pilight/lua/lua.h"
+#include "../libs/pilight/lua_c/lua.h"
 #include "../libs/pilight/hardware/hardware.h"
 #include "../libs/pilight/hardware/433gpio.h"
 
@@ -193,6 +193,11 @@ void test_hardware_433gpio_receive_too_large_pulse(CuTest *tc) {
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
+
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "hardware_433gpio_receive_too_large_pulse.c");
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("hardware_433gpio.json", CONFIG_SETTINGS));
 	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain);

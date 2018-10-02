@@ -23,7 +23,7 @@
 #include "../libs/pilight/core/ssl.h"
 #include "../libs/pilight/core/log.h"
 #include "../libs/pilight/core/socket.h"
-#include "../libs/pilight/lua/lua.h"
+#include "../libs/pilight/lua_c/lua.h"
 
 #include "alltests.h"
 
@@ -92,6 +92,10 @@ static void test_webserver(CuTest *tc) {
 	CuAssertPtrNotNull(tc, timer_req);
 	uv_timer_init(uv_default_loop(), timer_req);
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);
+
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "webserver_rest.c");
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("webserver.json", CONFIG_SETTINGS));

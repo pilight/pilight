@@ -21,7 +21,7 @@
 #include "../libs/pilight/core/webserver.h"
 #include "../libs/pilight/core/log.h"
 #include "../libs/pilight/core/ssl.h"
-#include "../libs/pilight/lua/lua.h"
+#include "../libs/pilight/lua_c/lua.h"
 
 #include "alltests.h"
 
@@ -649,6 +649,10 @@ static void test_http(CuTest *tc) {
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "http.c");
+
 	eventpool_init(EVENTPOOL_NO_THREADS);
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("http.json", CONFIG_SETTINGS));
@@ -694,6 +698,10 @@ static void test_http_threaded(CuTest *tc) {
 	CuAssertPtrNotNull(tc, _userdata);
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
+
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "http.c");
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
 	storage_init();

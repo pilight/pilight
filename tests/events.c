@@ -17,7 +17,7 @@
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/binary.h"
-#include "../libs/pilight/lua/lua.h"
+#include "../libs/pilight/lua_c/lua.h"
 #include "../libs/pilight/events/events.h"
 #include "../libs/pilight/events/operator.h"
 #include "../libs/pilight/events/action.h"
@@ -1116,6 +1116,8 @@ static void test_events(CuTest *tc) {
 		fclose(f);
 
 		plua_init();
+
+		test_set_plua_path(tc, __FILE__, "events.c");
 
 		storage_init();
 		CuAssertIntEquals(tc, 0, storage_read("events.json", CONFIG_SETTINGS));

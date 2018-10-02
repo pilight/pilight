@@ -20,7 +20,7 @@
 #include "../libs/pilight/core/network.h"
 #include "../libs/pilight/config/config.h"
 #include "../libs/pilight/protocols/protocol.h"
-#include "../libs/pilight/lua/lua.h"
+#include "../libs/pilight/lua_c/lua.h"
 #include "../libs/libuv/uv.h"
 
 #include "alltests.h"
@@ -109,6 +109,27 @@ int nr = 0;
 
 	// printf("(%s #%d) %s\n", file, line, buffer);
 // }
+
+void test_set_plua_path(CuTest *tc, char *a, char *b) {
+	char *file = STRDUP(a);
+	if(file == NULL) {
+		OUT_OF_MEMORY
+	}
+	str_replace(b, "", &file);
+
+	char *path = MALLOC(1024);
+	CuAssertPtrNotNull(tc, path);
+	snprintf(path, 1024, "%s../libs/pilight/lua/?/?.lua", file);
+	plua_package_path(path);
+	FREE(path);
+
+	path = MALLOC(1024);
+	CuAssertPtrNotNull(tc, path);
+	snprintf(path, 1024, "%s../libs/pilight/lua/?.lua", file);
+	plua_package_path(path);
+	FREE(path);
+	FREE(file);
+}
 
 int suiteFailed(void) {
 	int i = 0;

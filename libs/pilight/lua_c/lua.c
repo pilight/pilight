@@ -1643,3 +1643,25 @@ int plua_flush_coverage(void) {
 	return 0;
 }
 #endif
+
+void plua_package_path(const char *path) {
+	int i = 0;
+	for(i=0;i<NRLUASTATES;i++) {
+		lua_getglobal(lua_state[i].L, "package");
+		lua_getfield(lua_state[i].L, -1, "path");
+		const char *tmp = lua_tostring(lua_state[i].L, -1);
+		int len = strlen(tmp)+strlen(path)+3;
+		char *newpath = MALLOC(len);
+		if(newpath == NULL) {
+			OUT_OF_MEMORY
+		}
+		snprintf(newpath, len, "%s;%s", tmp, path);
+		lua_pop(lua_state[i].L, 1);
+		lua_pushstring(lua_state[i].L, newpath);
+		lua_setfield(lua_state[i].L, -2, "path");
+
+		lua_pop(lua_state[i].L, 1);
+
+		FREE(newpath);
+	}
+}

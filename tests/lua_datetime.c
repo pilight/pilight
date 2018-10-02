@@ -15,8 +15,8 @@
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/common.h"
-#include "../libs/pilight/lua/lua.h"
-#include "../libs/pilight/lua/lualibrary.h"
+#include "../libs/pilight/lua_c/lua.h"
+#include "../libs/pilight/lua_c/lualibrary.h"
 
 static struct {
 	union {

@@ -9,7 +9,7 @@
 #ifndef _CONFIG_SETTINGS_H_
 #define _CONFIG_SETTINGS_H_
 
-#include "../lua/lua.h"
+#include "../lua_c/lua.h"
 
 int config_setting_get_number(char *key, int idx, int *ret);
 int config_setting_get_string(char *key, int idx, char **ret);

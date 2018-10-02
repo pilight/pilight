@@ -57,9 +57,10 @@
 #include "../libs/pilight/core/log.h"
 #include "../libs/pilight/core/json.h"
 #include "../libs/pilight/core/CuTest.h"
-#include "../libs/pilight/lua/lua.h"
+#include "../libs/pilight/lua_c/lua.h"
 #include "../libs/pilight/protocols/protocol.h"
 #include "../libs/pilight/protocols/network/arping.h"
+#include "alltests.h"
 
 #include "alltests.h"
 
@@ -443,6 +444,10 @@ static void test_protocols_network_arping(CuTest *tc) {
 		"\"hardware\":{},\"registry\":{}}"
 	);
 	fclose(f);
+
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "protocols_network_arping.c");
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("arp.json", CONFIG_SETTINGS));

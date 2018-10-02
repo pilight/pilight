@@ -98,6 +98,7 @@ void plua_pause_coverage(int status);
 void plua_coverage_output(const char *);
 int plua_flush_coverage(void);
 #endif
+void plua_package_path(const char *path);
 void plua_override_global(char *name, int (*func)(lua_State *L));
 int plua_gc(void);
 

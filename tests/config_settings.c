@@ -14,7 +14,7 @@
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/binary.h"
-#include "../libs/pilight/lua/lua.h"
+#include "../libs/pilight/lua_c/lua.h"
 #include "../libs/pilight/config/config.h"
 #include "../libs/pilight/config/settings.h"
 
@@ -828,6 +828,9 @@ void test_config_settings(CuTest *tc) {
 		content[pos-1] = '\0';
 
 		plua_init();
+
+		test_set_plua_path(tc, __FILE__, "config_settings.c");
+
 		config_init();
 
 		FILE *f = fopen("storage_core.json", "w");

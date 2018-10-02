@@ -27,7 +27,7 @@
 #include "../core/options.h"
 #include "../core/dso.h"
 #include "../core/log.h"
-#include "../lua/lua.h"
+#include "../lua_c/lua.h"
 #include "../config/settings.h"
 
 #include "function.h"

@@ -1,4 +1,4 @@
-project(pilight_lua_io)
+project(pilight_lua_c_network)
 
 file(GLOB ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/*.c")
 file(GLOB ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/*.h")

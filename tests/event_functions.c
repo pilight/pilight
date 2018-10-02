@@ -14,7 +14,7 @@
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/binary.h"
-#include "../libs/pilight/lua/lua.h"
+#include "../libs/pilight/lua_c/lua.h"
 #include "../libs/pilight/events/function.h"
 #include "../libs/pilight/protocols/protocol.h"
 
@@ -30,6 +30,8 @@ static void test_event_function_date_add(CuTest *tc) {
 
 	plua_init();
 
+	test_set_plua_path(tc, __FILE__, "event_functions.c");
+
 	protocol_init();
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_function.json", CONFIG_SETTINGS | CONFIG_DEVICES));
@@ -40,7 +42,7 @@ static void test_event_function_date_add(CuTest *tc) {
 	 */
 	{
 
-		{			
+		{
 			/*
 			 * No json parameters
 			 */
@@ -477,6 +479,8 @@ static void test_event_function_date_format(CuTest *tc) {
 
 	plua_init();
 
+	test_set_plua_path(tc, __FILE__, "event_functions.c");
+
 	protocol_init();
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_function.json", CONFIG_SETTINGS | CONFIG_DEVICES));
@@ -756,6 +760,8 @@ static void test_event_function_random(CuTest *tc) {
 	memtrack();
 
 	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "event_functions.c");
 
 	protocol_init();
 	storage_init();

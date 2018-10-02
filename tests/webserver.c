@@ -22,7 +22,7 @@
 #include "../libs/pilight/core/http.h"
 #include "../libs/pilight/core/ssl.h"
 #include "../libs/pilight/core/log.h"
-#include "../libs/pilight/lua/lua.h"
+#include "../libs/pilight/lua_c/lua.h"
 
 #include "alltests.h"
 
@@ -419,6 +419,10 @@ static void test_webserver(CuTest *tc) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	uv_async_init(uv_default_loop(), async_close_req, async_close_cb);
+
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "webserver.c");
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("webserver.json", CONFIG_SETTINGS));

@@ -16,8 +16,8 @@
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/common.h"
 #include "../libs/pilight/core/eventpool.h"
-#include "../libs/pilight/lua/lua.h"
-#include "../libs/pilight/lua/lualibrary.h"
+#include "../libs/pilight/lua_c/lua.h"
+#include "../libs/pilight/lua_c/lualibrary.h"
 #include "../libs/pilight/protocols/API/datetime.h"
 #include "../libs/pilight/protocols/GPIO/relay.h"
 #include "../libs/pilight/protocols/433.92/arctech_switch.h"
@@ -148,6 +148,10 @@ static void test_lua_config_device_switch(CuTest *tc) {
 	FREE(file);
 
 	arctechSwitchInit();
+
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "lua_config_device.c");
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("lua_config.json", CONFIG_DEVICES));
@@ -297,6 +301,10 @@ static void test_lua_config_device_screen(CuTest *tc) {
 
 	arctechScreenInit();
 
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "lua_config_device.c");
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("lua_config.json", CONFIG_DEVICES));
 
@@ -445,6 +453,10 @@ static void test_lua_config_device_relay(CuTest *tc) {
 
 	relayInit();
 
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "lua_config_device.c");
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("lua_config.json", CONFIG_DEVICES));
 
@@ -577,6 +589,10 @@ static void test_lua_config_device_label(CuTest *tc) {
 	FREE(file);
 
 	genericLabelInit();
+
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "lua_config_device.c");
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("lua_config.json", CONFIG_DEVICES));
@@ -723,6 +739,10 @@ static void test_lua_config_device_datetime(CuTest *tc) {
 
 	datetimeInit();
 
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "lua_config_device.c");
+
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("lua_config.json", CONFIG_DEVICES));
 
@@ -867,6 +887,10 @@ static void test_lua_config_device_dimmer(CuTest *tc) {
 	FREE(file);
 
 	arctechDimmerInit();
+
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "lua_config_device.c");
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("lua_config.json", CONFIG_DEVICES));

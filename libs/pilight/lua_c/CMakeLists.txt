@@ -1,4 +1,4 @@
-project(pilight_lua)
+project(pilight_lua_c)
 
 set(${PROJECT_NAME}_files "" CACHE INTERNAL "")
 

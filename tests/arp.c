@@ -57,7 +57,7 @@
 #include "../libs/pilight/core/common.h"
 #include "../libs/pilight/core/json.h"
 #include "../libs/pilight/core/CuTest.h"
-#include "../libs/pilight/lua/lua.h"
+#include "../libs/pilight/lua_c/lua.h"
 #include "../libs/pilight/protocols/protocol.h"
 #include "../libs/pilight/protocols/network/ping.h"
 
@@ -432,6 +432,10 @@ static void test_arp(CuTest *tc) {
 		"\"hardware\":{},\"registry\":{}}"
 	);
 	fclose(f);
+
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "arp.c");
 
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("arp.json", CONFIG_SETTINGS));
