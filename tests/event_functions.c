@@ -906,6 +906,250 @@ static void test_event_function_random(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
+static void test_event_function_min(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	struct varcont_t v;
+	struct varcont_t ret;
+	memtrack();
+
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "event_functions.c");
+
+	protocol_init();
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_function.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+	event_function_init();
+
+	/*
+	 * Invalid parameters
+	 */
+	{
+		/*
+		 * Missing json parameters
+		 */
+		{
+			memset(&ret, 0, sizeof(struct varcont_t));
+			CuAssertIntEquals(tc, -1, event_function_callback("MIN", NULL, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
+		}
+
+		/*
+		 * Invalid json parameters
+		 */
+		{
+			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("0"); v.type_ = JSON_STRING;
+			args = event_function_add_argument(&v, NULL);
+			FREE(v.string_);
+
+			CuAssertIntEquals(tc, -1, event_function_callback("MIN", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
+		}
+
+		{
+			/*
+			 * Too many json parameters
+			 */
+			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("0"); v.type_ = JSON_STRING;
+			args = event_function_add_argument(&v, NULL);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("1"); v.type_ = JSON_STRING;
+			args = event_function_add_argument(&v, args);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("2"); v.type_ = JSON_STRING;
+			args = event_function_add_argument(&v, args);
+			FREE(v.string_);
+
+			CuAssertIntEquals(tc, -1, event_function_callback("MIN", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
+		}
+
+		/*
+		 * Invalid json parameters
+		 */
+		{
+			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("a"); v.type_ = JSON_STRING;
+			args = event_function_add_argument(&v, NULL);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("b"); v.type_ = JSON_STRING;
+			args = event_function_add_argument(&v, args);
+			FREE(v.string_);
+
+			CuAssertIntEquals(tc, -1, event_function_callback("MIN", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
+		}
+	}
+
+	/*
+	 * Valid input parameters
+	 */
+	{
+		struct event_function_args_t *args = NULL;
+		memset(&ret, 0, sizeof(struct varcont_t));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("0"); v.type_ = JSON_STRING;
+		args = event_function_add_argument(&v, NULL);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("10"); v.type_ = JSON_STRING;
+		args = event_function_add_argument(&v, args);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, 0, event_function_callback("MIN", args, &ret));
+		CuAssertIntEquals(tc, JSON_NUMBER, ret.type_);
+		CuAssertIntEquals(tc, 0, ret.decimals_);
+		CuAssertIntEquals(tc, 0, ret.number_);
+	}
+
+	protocol_gc();
+	storage_gc();
+	event_function_gc();
+	eventpool_gc();
+	plua_gc();
+
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
+static void test_event_function_max(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	struct varcont_t v;
+	struct varcont_t ret;
+	memtrack();
+
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "event_functions.c");
+
+	protocol_init();
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_function.json", CONFIG_SETTINGS | CONFIG_DEVICES));
+	event_function_init();
+
+	/*
+	 * Invalid parameters
+	 */
+	{
+		/*
+		 * Missing json parameters
+		 */
+		{
+			memset(&ret, 0, sizeof(struct varcont_t));
+			CuAssertIntEquals(tc, -1, event_function_callback("MAX", NULL, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
+		}
+
+		/*
+		 * Invalid json parameters
+		 */
+		{
+			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("0"); v.type_ = JSON_STRING;
+			args = event_function_add_argument(&v, NULL);
+			FREE(v.string_);
+
+			CuAssertIntEquals(tc, -1, event_function_callback("MAX", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
+		}
+
+		{
+			/*
+			 * Too many json parameters
+			 */
+			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("0"); v.type_ = JSON_STRING;
+			args = event_function_add_argument(&v, NULL);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("1"); v.type_ = JSON_STRING;
+			args = event_function_add_argument(&v, args);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("2"); v.type_ = JSON_STRING;
+			args = event_function_add_argument(&v, args);
+			FREE(v.string_);
+
+			CuAssertIntEquals(tc, -1, event_function_callback("MAX", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
+		}
+
+		/*
+		 * Invalid json parameters
+		 */
+		{
+			struct event_function_args_t *args = NULL;
+			memset(&ret, 0, sizeof(struct varcont_t));
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("a"); v.type_ = JSON_STRING;
+			args = event_function_add_argument(&v, NULL);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("b"); v.type_ = JSON_STRING;
+			args = event_function_add_argument(&v, args);
+			FREE(v.string_);
+
+			CuAssertIntEquals(tc, -1, event_function_callback("MAX", args, &ret));
+			CuAssertIntEquals(tc, 0, ret.type_);
+		}
+	}
+
+	/*
+	 * Valid input parameters
+	 */
+	{
+		struct event_function_args_t *args = NULL;
+		memset(&ret, 0, sizeof(struct varcont_t));
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("0"); v.type_ = JSON_STRING;
+		args = event_function_add_argument(&v, NULL);
+		FREE(v.string_);
+
+		memset(&v, 0, sizeof(struct varcont_t));
+		v.string_ = STRDUP("10"); v.type_ = JSON_STRING;
+		args = event_function_add_argument(&v, args);
+		FREE(v.string_);
+
+		CuAssertIntEquals(tc, 0, event_function_callback("MAX", args, &ret));
+		CuAssertIntEquals(tc, JSON_NUMBER, ret.type_);
+		CuAssertIntEquals(tc, 0, ret.decimals_);
+		CuAssertIntEquals(tc, 10, ret.number_);
+	}
+
+	protocol_gc();
+	storage_gc();
+	event_function_gc();
+	eventpool_gc();
+	plua_gc();
+
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
 CuSuite *suite_event_functions(void) {
 	CuSuite *suite = CuSuiteNew();
 
@@ -925,6 +1169,8 @@ CuSuite *suite_event_functions(void) {
 	SUITE_ADD_TEST(suite, test_event_function_date_add);
 	SUITE_ADD_TEST(suite, test_event_function_date_format);
 	SUITE_ADD_TEST(suite, test_event_function_random);
+	SUITE_ADD_TEST(suite, test_event_function_min);
+	SUITE_ADD_TEST(suite, test_event_function_max);
 
 	return suite;
 }
