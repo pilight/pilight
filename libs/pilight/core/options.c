@@ -260,7 +260,8 @@ int options_parse1(struct options_t **opt, int argc, char **argv, int error_chec
 /* Parse all CLI arguments */
 int options_parse(struct options_t *opt, int argc, char **argv) {
 	char *str = NULL, *key = NULL, *val = NULL, *name = NULL;
-	int i = 0, len = 0, is_long = 0, x = 0, quote = 0, itmp = 0;
+	int len = 0, x = 0, i = 0, is_long = 0, quote = 0, itmp = 0, tmp = 0;
+
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 	char *mask;
 	regex_t regex;
@@ -268,11 +269,19 @@ int options_parse(struct options_t *opt, int argc, char **argv) {
 #endif
 
 	for(i=1;i<argc;i++) {
-		if((str = STRDUP(argv[i])) == NULL) {
+		x = strlen(argv[i]);
+		if((str = REALLOC(str, len+x+1)) == NULL) {
 			OUT_OF_MEMORY
 		}
-		len = strlen(str);
+		memset(&str[len], 0, x);
+		memcpy(&str[len], argv[i], x);
+		str[len+x] = '\0';
+		len += x+1;
+	}
+	str[len-1] = '\0';
 
+	i = 0;
+	while(i < len) {
 		if((is_long = (strncmp(str, "--", 2) == 0)) || strncmp(str, "-", 1) == 0) {
 			if(is_long == 1) {
 				memmove(&str[0], &str[2], len-2);
@@ -281,11 +290,12 @@ int options_parse(struct options_t *opt, int argc, char **argv) {
 				memmove(&str[0], &str[1], len-1);
 				len-=1;
 			}
+			i = -1;
 			str[len] = '\0';
 			x = 0;
 			while(x <= len) {
-				if((str[x] == '=' || str[x] == ' ' || x == len) && key == NULL) {
-					int tmp = str[x];
+				if((str[x] == '=' || str[x] == '\0' || x == len)) {
+					tmp = str[x];
 					str[x] = '\0';
 					if((key = STRDUP(str)) == NULL) {
 						OUT_OF_MEMORY
@@ -296,20 +306,38 @@ int options_parse(struct options_t *opt, int argc, char **argv) {
 				}
 				x++;
 			}
+
 			if(x < len) {
-				quote = str[x];
-				if((val = STRDUP(&str[x])) == NULL) {
-					OUT_OF_MEMORY
-				}
-				int len1 = strlen(val);
-				if(val[len1-1] == quote && (quote == '\'' || quote == '"')) {
-					memmove(&val[0], &val[1], len1-1);
-					len1-=2;
-					val[len1] = '\0';
-				}
+				memmove(&str[0], &str[x], len-x);
+				i = -1;
 			}
+			len -= x;
 		}
-		FREE(str);
+		if((((strncmp(str, "--", 2) == 0 || strncmp(str, "-", 1) == 0) && tmp == '=') ||
+				(strncmp(str, "--", 2) != 0 && strncmp(str, "-", 1) != 0 && (tmp == '\0' || tmp == '='))) && len > 0) {
+			x = 0;
+			while(x <= len) {
+				if((str[x] == '\0' || x == len)) {
+					if((val = STRDUP(str)) == NULL) {
+						OUT_OF_MEMORY
+					}
+					int len1 = strlen(val);
+					if(((quote = str[0]) == '"' || str[0] == '\'') &&
+						val[len1-1] == quote) {
+						memmove(&val[0], &val[1], len1-1);
+						val[len1-2] = '\0';
+					}
+					x++;
+					break;
+				}
+				x++;
+			}
+			if(x < len) {
+				memmove(&str[0], &str[x], len-x);
+				i = -1;
+			}
+			len -= x;
+		}
 
 		if(is_long == 1 && key != NULL && options_get_name(opt, key, &name) != 0) {
 			logprintf(LOG_ERR, "invalid option -- '--%s'", key);
@@ -317,6 +345,7 @@ int options_parse(struct options_t *opt, int argc, char **argv) {
 			if(val != NULL) {
 				FREE(val);
 			}
+			FREE(str);
 			return -1;
 		} else if(is_long == 0 && key != NULL && options_get_id(opt, key, &name) != 0) {
 			logprintf(LOG_ERR, "invalid option -- '-%s'", key);
@@ -324,6 +353,7 @@ int options_parse(struct options_t *opt, int argc, char **argv) {
 			if(val != NULL) {
 				FREE(val);
 			}
+			FREE(str);
 			return -1;
 		} else if(val != NULL && options_get_argtype(opt, key, is_long, &itmp) == 0 && itmp == OPTION_NO_VALUE) {
 			if(is_long == 1) {
@@ -335,6 +365,7 @@ int options_parse(struct options_t *opt, int argc, char **argv) {
 			if(val != NULL) {
 				FREE(val);
 			}
+			FREE(str);
 			return -1;
 		} else if(val == NULL && options_get_argtype(opt, key, is_long, &itmp) == 0 && itmp == OPTION_HAS_VALUE) {
 			if(is_long == 1) {
@@ -346,6 +377,7 @@ int options_parse(struct options_t *opt, int argc, char **argv) {
 			if(val != NULL) {
 				FREE(val);
 			}
+			FREE(str);
 			return -1;
 		}
 
@@ -358,6 +390,7 @@ int options_parse(struct options_t *opt, int argc, char **argv) {
 					logprintf(LOG_ERR, "could not compile regex");
 					FREE(val);
 					FREE(key);
+					FREE(str);
 					return -1;
 				}
 
@@ -372,6 +405,7 @@ int options_parse(struct options_t *opt, int argc, char **argv) {
 
 					FREE(val);
 					FREE(key);
+					FREE(str);
 					regfree(&regex);
 					return -1;
 				}
@@ -379,7 +413,6 @@ int options_parse(struct options_t *opt, int argc, char **argv) {
 			}
 		}
 #endif
-
 		if(options_get_id_by_name(opt, key, &name) == 0) {
 			FREE(key);
 			if(val != NULL) {
@@ -405,6 +438,10 @@ int options_parse(struct options_t *opt, int argc, char **argv) {
 			}
 			FREE(key);
 		}
+		i++;
+	}
+	if(str != NULL) {
+		FREE(str);
 	}
 	return 0;
 }

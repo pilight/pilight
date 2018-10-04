@@ -24,7 +24,7 @@ static void test_options_valid(CuTest *tc) {
 	memtrack();
 
 	struct options_t *options = NULL;
-	char *argv[16] = {
+	char *argv[18] = {
 		"./pilight-unittest",
 		"-A",
 		"-a",
@@ -33,8 +33,10 @@ static void test_options_valid(CuTest *tc) {
 		"-C",
 		"-c=a",
 		"-D=1",
+		"-e=-a",
 		"-Ls=2",
-		"-Lt 3",
+		"-Lt",
+		"3",
 		"--foo=bar",
 		"--server=127.0.0.1",
 		"--test=\"aap noot\"",
@@ -51,6 +53,7 @@ static void test_options_valid(CuTest *tc) {
 	options_add(&options, "C", "ca", OPTION_OPT_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, "c", "cb", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
 	options_add(&options, "D", "da", OPTION_HAS_VALUE, 0, JSON_NUMBER, NULL, NULL);
+	options_add(&options, "e", "fe", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
 	options_add(&options, "Ls", "fe", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
 	options_add(&options, "Lt", "fg", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
 	options_add(&options, "1", "foo", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
@@ -72,7 +75,7 @@ static void test_options_valid(CuTest *tc) {
 			(strcmp(str, "Lt") == 0) || (strcmp(str, "1") == 0) ||
 			(strcmp(str, "2") == 0) || (strcmp(str, "3") == 0) ||
 			(strcmp(str, "4") == 0) || (strcmp(str, "5") == 0) ||
-			(strcmp(str, "6") == 0)) {
+			(strcmp(str, "6") == 0) || (strcmp(str, "e") == 0)) {
 			check++;
 		}
 	}
@@ -104,6 +107,12 @@ static void test_options_valid(CuTest *tc) {
 		CuAssertIntEquals(tc, 0, options_exists(options, "D"));
 		CuAssertIntEquals(tc, 0, options_get_number(options, "D", &num));
 		CuAssertIntEquals(tc, 1, num);
+	}
+
+	{
+		CuAssertIntEquals(tc, 0, options_exists(options, "e"));
+		CuAssertIntEquals(tc, 0, options_get_string(options, "e", &str));
+		CuAssertStrEquals(tc, "-a", str);
 	}
 
 	{
@@ -153,7 +162,7 @@ static void test_options_valid(CuTest *tc) {
 	options_delete(options);
 	options_gc();
 
-	CuAssertIntEquals(tc, 15, check);
+	CuAssertIntEquals(tc, 16, check);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -325,7 +334,7 @@ static void test_options_mask(CuTest *tc) {
 	memtrack();
 
 	struct options_t *options = NULL;
-	char *argv[16] = {
+	char *argv[2] = {
 		"./pilight-unittest",
 		"-A=1"
 	};
