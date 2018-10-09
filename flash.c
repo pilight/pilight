@@ -81,6 +81,7 @@ int main(int argc, char **argv) {
 		printf("\t -C --config\t\tconfig file\n");
 		printf("\t -p --comport\t\tserial COM port\n");
 		printf("\t -f --file=firmware\tfirmware file\n");
+		printf("\t -Ls --storage-root=xxxx\tlocation of storage lua modules\n");
 		goto close;
 	}
 

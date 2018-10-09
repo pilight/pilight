@@ -80,6 +80,7 @@ int main(int argc, char **argv) {
 	options_add(&options, "P", "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 	options_add(&options, "C", "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, "I", "instance", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "Ls", "storage-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 
 	if(options_parse(options, argc, argv) == -1) {
 		printf("Usage: %s -l location -d device -s state\n", progname);
@@ -146,6 +147,7 @@ int main(int argc, char **argv) {
 		printf("\t -d --device=device\t\tthe device that you want to control\n");
 		printf("\t -s --state=state\t\tthe new state of the device\n");
 		printf("\t -v --values=values\t\tspecific comma separated values, e.g.:\n");
+		printf("\t -Ls --storage-root=xxxx\tlocation of storage lua modules\n");
 		printf("\t\t\t\t\t-v dimlevel=10\n");
 		goto close;
 	}

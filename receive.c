@@ -93,8 +93,6 @@ int main(int argc, char **argv) {
 	options_add(&options, "P", "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 	options_add(&options, "s", "stats", OPTION_NO_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 	options_add(&options, "F", "filter", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
-	options_add(&options, "Ls", "storage-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
-
 
 	if(options_parse(options, argc, argv) == -1) {
 		printf("Usage: %s \n", progname);
@@ -108,7 +106,6 @@ int main(int argc, char **argv) {
 		printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
 		printf("\t -s --stats\t\t\tshow CPU and RAM statistics\n");
 		printf("\t -F --filter=protocol\t\tfilter out protocol(s)\n");
-		printf("\t -Ls --storage-root=xxxx\tlocation of storage lua modules\n");
 		goto close;
 	}
 
