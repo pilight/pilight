@@ -52,6 +52,9 @@ Mandatory arguments to long options are mandatory for short options too.
 |
 | ``-v``, ``--values=VALUES``
 |  Supply other values for DEVICE, such as dimlevel=10
+|
+| ``-Ls``, ``--storage-root``
+|  Location of storage lua modules
 
 BUGS
 ====
