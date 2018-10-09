@@ -201,7 +201,7 @@ static struct timeval tv;
 static int standalone = 0;
 /* Do we need to connect to a master server:port? */
 static char *master_server = NULL;
-static unsigned short master_port = 0;
+static int master_port = 0;
 
 static int adhoc_pending = 0;
 static char *configtmp = NULL;
@@ -212,6 +212,8 @@ struct socket_callback_t socket_callback;
 	static int console = 0;
 	static int oldverbosity = LOG_NOTICE;
 #endif
+
+static struct options_t *options = NULL;
 
 
 #ifdef WEBSERVER
@@ -2506,10 +2508,6 @@ int main_gc(void) {
 	}
 #endif
 
-	if(master_server != NULL) {
-		FREE(master_server);
-	}
-
 	datetime_gc();
 	ssdp_gc();
 	options_gc();
@@ -2530,11 +2528,9 @@ int main_gc(void) {
 	log_gc();
 	ssl_gc();
 	plua_gc();
-	if(configtmp != NULL) {
-		FREE(configtmp);
-	}
 
 	uv_stop(uv_default_loop());
+	options_delete(options);
 	gc_clear();
 	FREE(progname);
 	xfree();
@@ -2562,8 +2558,8 @@ static void procProtocolInit(void) {
 	procProtocol->multipleId = 0;
 	procProtocol->config = 0;
 
-	options_add(&procProtocol->options, 'c', "cpu", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
-	options_add(&procProtocol->options, 'r', "ram", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&procProtocol->options, "c", "cpu", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&procProtocol->options, "r", "ram", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 }
 
 #ifndef _WIN32
@@ -2685,7 +2681,6 @@ int start_pilight(int argc, char **argv) {
 	const uv_thread_t pth_cur_id = uv_thread_self();
 	memcpy((void *)&pth_main_id, &pth_cur_id, sizeof(uv_thread_t));
 
-	struct options_t *options = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;
 
 	char buffer[BUFFER_SIZE];
@@ -2693,7 +2688,7 @@ int start_pilight(int argc, char **argv) {
 #ifndef _WIN32
 	int f = 0;
 #endif
-	char *stmp = NULL, *args = NULL, *p = NULL;
+	char *stmp = NULL, *p = NULL;
 	int port = 0;
 
 	if((progname = MALLOC(16)) == NULL) {
@@ -2717,94 +2712,81 @@ int start_pilight(int argc, char **argv) {
 		}
 	}
 
-	if((configtmp = MALLOC(strlen(CONFIG_FILE)+1)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(configtmp, CONFIG_FILE);
+	configtmp = CONFIG_FILE;
 
-	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'F', "foreground", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
-	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
-	options_add(&options, 'L', "storage-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
-	options_add(&options, 'D', "debug", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 256, "stacktracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 257, "threadprofiler", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 258, "debuglevel", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-2]{1}");
+	options_add(&options, "H", "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "V", "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "F", "foreground", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "C", "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "S", "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+	options_add(&options, "P", "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
+	options_add(&options, "Ls", "storage-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
+	options_add(&options, "D", "debug", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "256", "stacktracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "257", "threadprofiler", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "258", "debuglevel", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-2]{1}");
 	// options_add(&options, 258, "memory-tracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 
-	while(1) {
-		int c = options_parse(&options, argc, argv, 1, &args);
-		if(c == -1) {
-			break;
-		}
-		if(c == -2) {
-			show_help = 1;
-			break;
-		}
-		switch(c) {
-			case 'H':
-				show_help = 1;
-			break;
-			case 'V':
-				show_version = 1;
-			break;
-			case 'C':
-				if((configtmp = REALLOC(configtmp, strlen(args)+1)) == NULL) {
-					OUT_OF_MEMORY
-				}
-				strcpy(configtmp, args);
-			break;
-			case 'S':
-				if((master_server = MALLOC(strlen(args)+1)) == NULL) {
-					OUT_OF_MEMORY
-				}
-				strcpy(master_server, args);
-			break;
-			case 'P':
-				master_port = (unsigned short)atoi(args);
-			break;
-			case 'D':
-				nodaemon = 1;
-				verbosity = LOG_DEBUG;
-				verbosity_changed = 1;
-			break;
-			case 'L':
-				if(config_root(args) == -1) {
-					logprintf(LOG_ERR, "%s is not valid storage lua modules path", args);
-					goto clear;
-				}
-			break;
-			case 'F':
-				nodaemon = 1;
-			break;
-			case 257:
-				threadprofiler = 1;
-				verbosity = LOG_ERR;
-				verbosity_changed = 1;
-				nodaemon = 1;
-			break;
-			case 256:
-				verbosity = LOG_STACK;
-				verbosity_changed = 1;
-				stacktracer = 1;
-				nodaemon = 1;
-			break;
-			case 258:
-				pilight.debuglevel = atoi(args);
-				nodaemon = 1;
-				verbosity = LOG_DEBUG;
-				verbosity_changed = 1;
-			break;
-			default:
-				show_default = 1;
-			break;
+	if(options_parse(options, argc, argv) == -1) {
+		show_default = 1;
+	} else if(options_exists(options, "H") == 0) {
+		show_help = 1;
+	} else if(options_exists(options, "V") == 0) {
+		show_help = 1;
+	}
+
+	if(options_exists(options, "C") == 0) {
+		options_get_string(options, "C", &configtmp);
+	}
+
+	if(options_exists(options, "S") == 0) {
+		options_get_string(options, "S", &master_server);
+	}
+
+	if(options_exists(options, "P") == 0) {
+		options_get_number(options, "P", &master_port);
+	}
+
+	if(options_exists(options, "D") == 0) {
+		nodaemon = 1;
+		verbosity = LOG_DEBUG;
+		verbosity_changed = 1;
+	}
+
+	if(options_exists(options, "Ls") == 0) {
+		char *arg = NULL;
+		options_get_string(options, "Ls", &arg);
+		if(config_root(arg) == -1) {
+			logprintf(LOG_ERR, "%s is not valid storage lua modules path", arg);
+			goto clear;
 		}
 	}
-	options_delete(options);
+
+	if(options_exists(options, "F") == 0) {
+		nodaemon = 1;
+	}
+
+	if(options_exists(options, "257") == 0) {
+		threadprofiler = 1;
+		verbosity = LOG_ERR;
+		verbosity_changed = 1;
+		nodaemon = 1;
+	}
+
+	if(options_exists(options, "256") == 0) {
+		verbosity = LOG_STACK;
+		verbosity_changed = 1;
+		stacktracer = 1;
+		nodaemon = 1;
+	}
+
+	if(options_exists(options, "258") == 0) {
+		options_get_number(options, "258", &pilight.debuglevel);
+		nodaemon = 1;
+		verbosity = LOG_DEBUG;
+		verbosity_changed = 1;
+	}
+
 	if(show_help == 1) {
 		char help[1024];
 		char tabs[5];
@@ -2814,19 +2796,19 @@ int start_pilight(int argc, char **argv) {
 		strcpy(tabs, "\t\t");
 #endif
 		sprintf(help, "Usage: %s [options]\n"
-									"\t -H --help\t\t\tdisplay usage summary\n"
-									"\t -V --version\t%sdisplay version\n"
-									"\t -C --config\t%sconfig file\n"
-									"\t -S --server=x.x.x.x\t\tconnect to server address\n"
-									"\t -P --port=xxxx\t%sconnect to server port\n"
-									"\t -L --storage-root=xxxx%slocation of storage lua modules\n"
-									"\t -F --foreground\t\tdo not daemonize\n"
-									"\t -D --debug\t%sdo not daemonize and\n"
+									"\t -H  --help\t\t\tdisplay usage summary\n"
+									"\t -V  --version\t%sdisplay version\n"
+									"\t -C  --config\t%sconfig file\n"
+									"\t -S  --server=x.x.x.x\t\tconnect to server address\n"
+									"\t -P  --port=xxxx%sconnect to server port\n"
+									"\t -Ls --storage-root=xxxx\tlocation of storage lua modules\n"
+									"\t -F  --foreground\t\tdo not daemonize\n"
+									"\t -D  --debug\t%sdo not daemonize and\n"
 									"\t\t\t%sshow debug information\n"
-									"\t    --stacktracer\t\tshow internal function calls\n"
-									"\t    --threadprofiler\t\tshow per thread cpu usage\n"
-									"\t    --debuglevel\t\tshow additional development info\n",
-									progname, tabs, tabs, tabs, tabs, tabs, tabs);
+									"\t     --stacktracer\t\tshow internal function calls\n"
+									"\t     --threadprofiler\t\tshow per thread cpu usage\n"
+									"\t     --debuglevel\t\tshow additional development info\n",
+									progname, tabs, tabs, tabs, tabs, tabs);
 #ifdef _WIN32
 		MessageBox(NULL, help, "pilight :: info", MB_OK);
 #else
@@ -2968,11 +2950,7 @@ int start_pilight(int argc, char **argv) {
 	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain1);
 
 	if(config_read(CONFIG_ALL) != 0) {
-		if(config_exists("settings") == -1) {
-			logprintf(LOG_ERR, "could not read lua config settings module");
-		} else {
-			logprintf(LOG_ERR, "failed to read config");
-		}
+		logprintf(LOG_ERR, "failed to read config");
 		goto clear;
 	}
 

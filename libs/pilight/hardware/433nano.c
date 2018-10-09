@@ -490,7 +490,7 @@ void nano433Init(void) {
 	hardware_register(&nano433);
 	hardware_set_id(nano433, "433nano");
 
-	options_add(&nano433->options, 'p', "comport", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&nano433->options, "p", "comport", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 
 	nano433->hwtype=RF433;
 	nano433->comtype=COMPLSTRAIN;

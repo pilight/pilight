@@ -281,9 +281,9 @@ int config_hardware_parse(struct JsonNode *root) {
 					while(hw_options) {
 						if(strcmp(jvalues->key, hw_options->name) == 0 && jvalues->tag == hw_options->vartype) {
 							if(hw_options->vartype == JSON_NUMBER) {
-								options_set_number(&hw_options, hw_options->id, jvalues->number_);
+								options_set_number(hw_options, hw_options->id, jvalues->number_);
 							} else if(hw_options->vartype == JSON_STRING) {
-								options_set_string(&hw_options, hw_options->id, jvalues->string_);
+								options_set_string(hw_options, hw_options->id, jvalues->string_);
 							}
 							match = 1;
 							break;

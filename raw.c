@@ -200,10 +200,9 @@ int main(int argc, char **argv) {
 	atomicinit();
 	struct options_t *options = NULL;
 	char *args = NULL;
-	char *configtmp = MALLOC(strlen(CONFIG_FILE)+1);
+	char *configtmp = CONFIG_FILE;
 	pid_t pid = 0;
-
-	strcpy(configtmp, CONFIG_FILE);
+	int help = 0;
 
 	gc_attach(main_gc);
 
@@ -237,45 +236,47 @@ int main(int argc, char **argv) {
 	log_file_disable();
 	log_level_set(LOG_NOTICE);
 
-	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'L', "linefeed", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "H", "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "V", "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "C", "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "L", "linefeed", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "Ls", "storage-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 
-	while (1) {
-		int c;
-		c = options_parse(&options, argc, argv, 1, &args);
-		if(c == -1)
-			break;
-		if(c == -2)
-			c = 'H';
-		switch (c) {
-			case 'H':
-				printf("Usage: %s [options]\n", progname);
-				printf("\t -H --help\t\tdisplay usage summary\n");
-				printf("\t -V --version\t\tdisplay version\n");
- 				printf("\t -L --linefeed\t\tstructure raw printout\n");
- 				printf("\t -C --config\t\tconfig file\n");
-				goto close;
-			break;
-			case 'L':
-				linefeed = 1;
-			break;
-			case 'V':
-				printf("%s v%s\n", progname, PILIGHT_VERSION);
-				goto close;
-			break;
-			case 'C':
-				configtmp = REALLOC(configtmp, strlen(args)+1);
-				strcpy(configtmp, args);
-			break;
-			default:
-				printf("Usage: %s [options]\n", progname);
-				goto close;
-			break;
+	if(options_parse(options, argc, argv) == -1) {
+		help = 1;
+	}
+
+	if(options_exists(options, "H") == 0 || help == 1) {
+		printf("Usage: %s [options]\n", progname);
+		printf("\t -H  --help\t\t\tdisplay usage summary\n");
+		printf("\t -V  --version\t\t\tdisplay version\n");
+		printf("\t -L  --linefeed\t\t\tstructure raw printout\n");
+		printf("\t -C  --config\t\t\tconfig file\n");
+		printf("\t -Ls --storage-root=xxxx\tlocation of storage lua modules\n");
+		goto close;
+	}
+
+	if(options_exists(options, "L") == 0) {
+		linefeed = 1;
+	}
+
+	if(options_exists(options, "V") == 0) {
+		printf("%s v%s\n", progname, PILIGHT_VERSION);
+		goto close;
+	}
+
+	if(options_exists(options, "C") == 0) {
+		options_get_string(options, "C", &configtmp);
+	}
+
+	if(options_exists(options, "Ls") == 0) {
+		char *arg = NULL;
+		options_get_string(options, "Ls", &arg);
+		if(config_root(arg) == -1) {
+			logprintf(LOG_ERR, "%s is not valid storage lua modules path", arg);
+			goto close;
 		}
 	}
-	options_delete(options);
 
 #ifdef _WIN32
 	if((pid = check_instances(L"pilight-raw")) != -1) {
@@ -295,8 +296,7 @@ int main(int argc, char **argv) {
 	}
 
 	if(config_set_file(configtmp) == EXIT_FAILURE) {
-		FREE(configtmp);
-		return EXIT_FAILURE;
+		goto close;
 	}
 
 #ifndef PILIGHT_DEVELOPMENT
@@ -305,10 +305,8 @@ int main(int argc, char **argv) {
 	protocol_init();
 	config_init();
 	if(config_read(CONFIG_SETTINGS | CONFIG_HARDWARE) != EXIT_SUCCESS) {
-		FREE(configtmp);
 		goto close;
 	}
-	FREE(configtmp);
 
 #ifndef PILIGHT_DEVELOPMENT
 	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain);
@@ -351,6 +349,7 @@ int main(int argc, char **argv) {
 #endif
 
 close:
+	options_delete(options);
 	if(args != NULL) {
 		FREE(args);
 	}

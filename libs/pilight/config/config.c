@@ -158,6 +158,7 @@ int config_callback_read(char *module, char *string) {
 	int x = 0;
 
 	if(state == NULL) {
+		logprintf(LOG_ERR, "could not lua storage settings module");
 		return -1;
 	}
 
@@ -302,6 +303,7 @@ int config_read(unsigned short objects) {
 			}
 		}
 	}
+
 	char *content = NULL;
 	/* Read JSON config file */
 	if(file_get_contents(string, &content) == 0) {

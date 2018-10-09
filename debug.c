@@ -409,52 +409,49 @@ int main(int argc, char **argv) {
 
 	struct options_t *options = NULL;
 
-	char *args = NULL;
-	char *configtmp = MALLOC(strlen(CONFIG_FILE)+1);
+	char *configtmp = CONFIG_FILE;
 	pid_t pid = 0;
+	int help = 0;
 
-	if(configtmp == NULL) {
-		OUT_OF_MEMORY
+	options_add(&options, "H", "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "V", "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "C", "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+
+	// if(argc == 1) {
+		// printf("Usage: %s [options]\n", progname);
+		// goto clear;
+	// }
+
+	if(options_parse(options, argc, argv) == -1) {
+		help = 1;
 	}
 
-	strcpy(configtmp, CONFIG_FILE);
+	if(options_exists(options, "H") == 0 || help == 1) {
+		printf("Usage: %s [options]\n", progname);
+		printf("\t -H  --help\t\t\tdisplay usage summary\n");
+		printf("\t -V  --version\t\t\tdisplay version\n");
+		printf("\t -C  --config\t\t\tconfig file\n");
+		printf("\t -Ls --storage-root=xxxx\tlocation of storage lua modules\n");
+		goto clear;
+	}
 
-	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	if(options_exists(options, "V") == 0) {
+		printf("%s v%s\n", progname, PILIGHT_VERSION);
+		goto clear;
+	}
 
-	while (1) {
-		int c;
-		c = options_parse(&options, argc, argv, 1, &args);
-		if(c == -1)
-			break;
-		if(c == -2)
-			c = 'H';
-		switch (c) {
-			case 'H':
-				printf("Usage: %s [options]\n", progname);
-				printf("\t -H --help\t\tdisplay usage summary\n");
-				printf("\t -V --version\t\tdisplay version\n");
-				printf("\t -C --config\t\tconfig file\n");
-				goto clear;
-			break;
-			case 'V':
-				printf("%s v%s\n", progname, PILIGHT_VERSION);
-				goto clear;
-			break;
-			case 'C':
-				if((configtmp = REALLOC(configtmp, strlen(args)+1)) == NULL) {
-					OUT_OF_MEMORY
-				}
-				strcpy(configtmp, args);
-			break;
-			default:
-				printf("Usage: %s [options]\n", progname);
-				goto clear;
-			break;
+	if(options_exists(options, "C") == 0) {
+		options_get_string(options, "C", &configtmp);
+	}
+
+	if(options_exists(options, "Ls") == 0) {
+		char *arg = NULL;
+		options_get_string(options, "Ls", &arg);
+		if(config_root(arg) == -1) {
+			logprintf(LOG_ERR, "%s is not valid storage lua modules path", arg);
+			goto clear;
 		}
 	}
-	options_delete(options);
 
 #ifdef _WIN32
 	if((pid = check_instances(L"pilight-debug")) != -1) {
@@ -474,8 +471,7 @@ int main(int argc, char **argv) {
 	}
 
 	if(config_set_file(configtmp) == EXIT_FAILURE) {
-		FREE(configtmp);
-		return EXIT_FAILURE;
+		goto clear;
 	}
 
 #ifndef PILIGHT_DEVELOPMENT
@@ -484,10 +480,8 @@ int main(int argc, char **argv) {
 	protocol_init();
 	config_init();
 	if(config_read(CONFIG_SETTINGS | CONFIG_HARDWARE) != EXIT_SUCCESS) {
-		FREE(configtmp);
 		goto clear;
 	}
-	FREE(configtmp);
 
 #ifndef PILIGHT_DEVELOPMENT
 	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain);
@@ -537,6 +531,7 @@ int main(int argc, char **argv) {
 #endif
 
 clear:
+	options_delete(options);
 #ifdef PILIGHT_DEVELOPMENT
 	if(main_loop == 1) {
 		main_gc();
