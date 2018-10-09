@@ -17,6 +17,7 @@ local units = {
 };
 
 function M.check(parameters)
+	local _to = nil;
 	if parameters['DEVICE'] == nil then
 		error("switch action is missing a \"DEVICE\" statement");
 	end
@@ -31,10 +32,20 @@ function M.check(parameters)
 
 	if #parameters['TO']['value'] ~= 1 or parameters['TO']['value'][2] ~= nil then
 		error("switch action \"TO\" only takes one argument");
+	else
+		_to = parameters['TO']['value'][1];
 	end
 
 	if parameters['FROM'] ~= nil and (#parameters['FROM']['value'] ~= 1 or parameters['FROM']['value'][2] ~= nil) then
 		error("switch action \"FROM\" only takes one argument");
+	else
+		if parameters['FROM'] ~= nil and #parameters['FROM']['value'] == 1 then
+			_from = parameters['FROM']['value'][1];
+		end
+	end
+
+	if _to == _from then
+		error("switch action \"TO\" and \"FROM\" cannot be the same");
 	end
 
 	if parameters['FOR'] ~= nil then
@@ -82,7 +93,10 @@ function M.check(parameters)
 		if dev == nil then
 			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" does not exist");
 		end
-		if dev.hasState == nil or dev.setState == nil then
+		if dev.setState == nil then
+			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['TO']['value'][1] .. "\"");
+		end
+		if dev.hasState ~= nil then
 			if dev.hasState(parameters['TO']['value'][1]) == false then
 				error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['TO']['value'][1] .. "\"");
 			end
