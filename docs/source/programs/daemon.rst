@@ -58,6 +58,9 @@ Mandatory arguments to long options are mandatory for short options too.
 |
 | ``-D``, ``--debug``
 |  Do not daemonize and print more debug information
+|
+| ``-Ls``, ``--storage-root``
+|  Location of storage lua modules
 
 Debugging options:
 
