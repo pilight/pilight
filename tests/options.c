@@ -17,6 +17,28 @@
 
 #include "alltests.h"
 
+static void test_options_absent(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	memtrack();
+
+	struct options_t *options = NULL;
+	char *argv[1] = {
+		"./pilight-unittest"
+	};
+	int argc = sizeof(argv)/sizeof(argv[0]);
+
+	options_add(&options, "A", "ab", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+
+	options_parse(options, argc, argv);
+
+	options_delete(options);
+	options_gc();
+
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
 static void test_options_valid(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
@@ -354,6 +376,7 @@ static void test_options_mask(CuTest *tc) {
 CuSuite *suite_options(void) {	
 	CuSuite *suite = CuSuiteNew();
 
+	SUITE_ADD_TEST(suite, test_options_absent);
 	SUITE_ADD_TEST(suite, test_options_valid);
 	SUITE_ADD_TEST(suite, test_options_invalid);
 	SUITE_ADD_TEST(suite, test_options_merge);

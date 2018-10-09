@@ -128,7 +128,7 @@ int options_exists(struct options_t *opt, char *id) {
 }
 
 /* Get a certain option argument type identified by the id */
-int options_get_argtype(struct options_t *opt, char *id, int is_long, int *out) {
+static int options_get_argtype(struct options_t *opt, char *id, int is_long, int *out) {
 	if(id == NULL) {
 		return -1;
 	}
@@ -152,13 +152,14 @@ int options_get_argtype(struct options_t *opt, char *id, int is_long, int *out) 
 }
 
 /* Get a certain option argument type identified by the id */
-int options_get_conftype(struct options_t *opt, char *id, int *out) {
+static int options_get_conftype(struct options_t *opt, char *id, int is_long, int *out) {
 
 	struct options_t *temp = opt;
 	*out = 0;
 	while(temp) {
-		if(temp->id != NULL && id != NULL && strcmp(temp->id, id) == 0) {
-			if(temp->argtype != 0) {
+		if((is_long == 0 && temp->id != NULL && strcmp(temp->id, id) == 0) ||
+			 (is_long == 1 && temp->name != NULL && strcmp(temp->name, id) == 0)) {
+			if(temp->conftype != 0) {
 				*out = temp->conftype;
 				return 0;
 			} else {
@@ -170,6 +171,27 @@ int options_get_conftype(struct options_t *opt, char *id, int *out) {
 
 	return -1;
 }
+
+/* Get a certain option argument type identified by the id */
+// static int options_get_vartype(struct options_t *opt, char *id, int is_long, int *out) {
+
+	// struct options_t *temp = opt;
+	// *out = 0;
+	// while(temp) {
+		// if((is_long == 0 && temp->id != NULL && strcmp(temp->id, id) == 0) ||
+			 // (is_long == 1 && temp->name != NULL && strcmp(temp->name, id) == 0)) {
+			// if(temp->vartype != 0) {
+				// *out = temp->vartype;
+				// return 0;
+			// } else {
+				// return -1;
+			// }
+		// }
+		// temp = temp->next;
+	// }
+
+	// return -1;
+// }
 
 /* Get a certain option name identified by the id */
 int options_get_name(struct options_t *opt, char *name, char **out) {
@@ -278,7 +300,9 @@ int options_parse(struct options_t *opt, int argc, char **argv) {
 		str[len+x] = '\0';
 		len += x+1;
 	}
-	str[len-1] = '\0';
+	if(argc > 1) {
+		str[len-1] = '\0';
+	}
 
 	i = 0;
 	while(i < len) {
@@ -339,7 +363,14 @@ int options_parse(struct options_t *opt, int argc, char **argv) {
 			len -= x;
 		}
 
-		if(is_long == 1 && key != NULL && options_get_name(opt, key, &name) != 0) {
+		if(key == NULL) {
+			logprintf(LOG_ERR, "invalid option -- '%s'", str);
+			if(val != NULL) {
+				FREE(val);
+			}
+			FREE(str);
+			return -1;
+		} else if(is_long == 1 && key != NULL && options_get_name(opt, key, &name) != 0) {
 			logprintf(LOG_ERR, "invalid option -- '--%s'", key);
 			FREE(key);
 			if(val != NULL) {
@@ -477,8 +508,8 @@ void options_add(struct options_t **opt, char *id, const char *name, int argtype
 		FREE(nname);
 		exit(EXIT_FAILURE);
 	} else if(options_get_id(*opt, nname, &sid) == 0 &&
-			((options_get_conftype(*opt, sid, &itmp) == 0 && itmp == conftype) ||
-			(options_get_conftype(*opt, sid, &itmp) != 0))) {
+			((options_get_conftype(*opt, sid, 0, &itmp) == 0 && itmp == conftype) ||
+			(options_get_conftype(*opt, sid, 0, &itmp) != 0))) {
 		logprintf(LOG_CRIT, "duplicate option name: %s", name);
 		FREE(nname);
 		exit(EXIT_FAILURE);
