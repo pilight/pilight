@@ -1,7 +1,7 @@
 IO
 ==
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.3
 
 Various functions to do filesystem io
 

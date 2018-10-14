@@ -1,7 +1,7 @@
 Table
 =====
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.3
 
 The pilight metatable can be used using the table object.
 The main difference from the default lua tables is that

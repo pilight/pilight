@@ -10,7 +10,7 @@ Functions
    date_add
    date_format
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.3
 
 .. toctree::
    :maxdepth: 1

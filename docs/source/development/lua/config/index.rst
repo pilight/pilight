@@ -15,7 +15,7 @@ The config library allows for interaction between the pilight configuration and 
 
    Not all devices are currently supported in the config library. More devices will be added in the future.
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.3
 
 A new version object must be initialized before the different configuration subsections can be used:
 
@@ -28,7 +28,7 @@ A new version object must be initialized before the different configuration subs
 Devices
 -------
 
-.. versionchanged:: nightly
+.. versionchanged:: 8.1.3
 
 .. c:function:: userdata [pilight.config()].getDevice(string device)
 
@@ -208,7 +208,7 @@ Screen
 Settings
 --------
 
-.. versionchanged:: nightly
+.. versionchanged:: 8.1.3
 
 .. c:function:: number | string [pilight.config()].getSetting(string setting)
 

@@ -1,7 +1,7 @@
 Changelog
 =========
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.3
 
 .. rubric:: Improvements
 
@@ -11,11 +11,17 @@ Changelog
 - Allow nested metatables in lua modules
 - Allow boolean values in lua metatables
 - Added pilight defaults to lua modules
+- Added from parameter to switch action
+- Allow multi-character short options
+- Added storage-root to clients
+- Added eventing MAX and MIN function
 
 .. rubric:: Fixes
 
 - Fix arctech dimmer in which dimlevel 0 would turn the dimmer off
 - Fix eventing library in which a rule was triggered by a device affected in an action
+- Do not partially write config when partially read
+- Fixed a segfault in pilight-debug and pilight-raw
 
 .. versionadded:: 8.1.2
 
