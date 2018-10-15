@@ -2732,7 +2732,7 @@ int start_pilight(int argc, char **argv) {
 	} else if(options_exists(options, "H") == 0) {
 		show_help = 1;
 	} else if(options_exists(options, "V") == 0) {
-		show_help = 1;
+		show_version = 1;
 	}
 
 	if(options_exists(options, "C") == 0) {
