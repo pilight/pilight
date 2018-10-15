@@ -35,7 +35,7 @@ int plua_wiringx_setup(struct lua_State *L) {
 		luaL_error(L, "wiringX setup requires 1 argument, %d given", lua_gettop(L));
 	}
 
-#if !defined(__arm__) && !defined(__mips__) && !defined(PILIGHT_UNITTEST)
+#if !defined(__aarch64__) && !defined(__arm__) && !defined(__mips__) && !defined(PILIGHT_UNITTEST)
 	lua_remove(L, -1);
 	lua_pushboolean(L, 0);
 #else
@@ -71,7 +71,7 @@ int plua_wiringx_has_gpio(struct lua_State *L) {
 		luaL_error(L, "wiringX hasGPIO requires 1 argument, %d given", lua_gettop(L));
 	}
 
-#if !defined(__arm__) && !defined(__mips__) && !defined(PILIGHT_UNITTEST)
+#if !defined(__aarch64__) && !defined(__arm__) && !defined(__mips__) && !defined(PILIGHT_UNITTEST)
 	lua_remove(L, -1);
 	lua_pushboolean(L, 0);
 #else
