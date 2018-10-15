@@ -134,9 +134,21 @@ execute_process(COMMAND git describe --always --abbrev=0
 	RESULT_VARIABLE git_result
 	OUTPUT_VARIABLE git_ver)
 
+execute_process(COMMAND git describe
+	WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+	RESULT_VARIABLE git_result
+	OUTPUT_VARIABLE git_check)
+
+string(FIND "${git_check}" "-" git_pos)
+
 string(REGEX REPLACE "\n" "" git_ver "${git_ver}")
 string(REGEX REPLACE "\"" "" git_hash "${git_hash}")
-add_definitions(-DHASH="${git_ver}-nightly-${git_hash}")
+
+if(${git_pos} MATCHES "-1")
+	add_definitions(-DHASH="${git_ver}")
+else()
+	add_definitions(-DHASH="${git_ver}-nightly-${git_hash}")
+endif()
 
 file(MD5 ${PROJECT_SOURCE_DIR}/res/pilight.pem md5sum)
 add_definitions(-DPILIGHT_PEM_MD5="${md5sum}")
