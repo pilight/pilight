@@ -219,18 +219,23 @@ int config_read(char *str, unsigned short objects) {
 
 	if((objects & CONFIG_SETTINGS) == CONFIG_SETTINGS) {
 		if(config_callback_read("settings", string) != 1) {
+			FREE(string);
 			return -1;
 		}
+		FREE(string);
 		return 0;
 	}
 
 	if((objects & CONFIG_REGISTRY) == CONFIG_REGISTRY) {
 		if(config_callback_read("registry", string) != 1) {
+			FREE(string);
 			return -1;
 		}
+		FREE(string);
 		return 0;
 	}
 
+	FREE(string);
 	return -1;
 }
 
@@ -262,6 +267,11 @@ char *config_write(void) {
 	char *settings = config_callback_write("settings");
 	if(settings != NULL) {
 		FREE(settings);
+	}
+
+	char *registry = config_callback_write("registry");
+	if(registry != NULL) {
+		FREE(registry);
 	}
 
 	return 0;

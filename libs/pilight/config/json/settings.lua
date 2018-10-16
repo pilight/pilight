@@ -421,7 +421,6 @@ function M.write()
 	else
 		return nil;
 	end
-
 end
 
 function M.info()

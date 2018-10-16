@@ -135,11 +135,11 @@ static void *reason_code_sent_free(void *param) {
 	return NULL;
 }
 
-static void *reason_send_code_free(void *param) {
-	struct reason_send_code_t *data = param;
-	FREE(data);
-	return NULL;
-}
+// static void *reason_send_code_free(void *param) {
+	// struct reason_send_code_t *data = param;
+	// FREE(data);
+	// return NULL;
+// }
 
 static void *reason_code_received_free(void *param) {
 	struct reason_code_received_t *data = param;
@@ -397,7 +397,7 @@ static void receive_parse_code(int *raw, int rawlen, int plslen, int hwtype) {
 					logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", protocol->repeats, protocol->id);
 					logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
 					memset(message, 0, 255);
-					protocol->parseCode(message);
+					// protocol->parseCode(message);
 					receiver_create_message(protocol, message);
 				}
 			}
@@ -640,18 +640,18 @@ static int send_queue(struct JsonNode *json, enum origin_t origin) {
 			if(match == 1 && protocol->createCode != NULL) {
 				/* Let the protocol create his code */
 				memset(message, 0, 255);
-				if(protocol->createCode(jcode, message) == 0 && main_loop == 1) {
-					struct reason_send_code_t *data = MALLOC(sizeof(struct reason_send_code_t));
-					if(data == NULL) {
-						OUT_OF_MEMORY
-					}
-					data->origin = origin;
-					snprintf(data->message, 1024, "{\"message\":%s}", message);
-					data->rawlen = protocol->rawlen;
-					memcpy(data->pulses, protocol->raw, protocol->rawlen*sizeof(int));
-					data->txrpt = protocol->txrpt;
-					strncpy(data->protocol, protocol->id, 255);
-					data->hwtype = protocol->hwtype;
+				// if(protocol->createCode(jcode, message) == 0 && main_loop == 1) {
+					// struct reason_send_code_t *data = MALLOC(sizeof(struct reason_send_code_t));
+					// if(data == NULL) {
+						// OUT_OF_MEMORY
+					// }
+					// data->origin = origin;
+					// snprintf(data->message, 1024, "{\"message\":%s}", message);
+					// data->rawlen = protocol->rawlen;
+					// memcpy(data->pulses, protocol->raw, protocol->rawlen*sizeof(int));
+					// data->txrpt = protocol->txrpt;
+					// strncpy(data->protocol, protocol->id, 255);
+					// data->hwtype = protocol->hwtype;
 
 					/*struct JsonNode *jtmp = NULL;
 					char *stmp = NULL;
@@ -676,17 +676,17 @@ static int send_queue(struct JsonNode *json, enum origin_t origin) {
 					}
 					strncpy(&data->settings[x], "}", 1024-x);*/
 
-					if(uuid != NULL) {
-						strcpy(data->uuid, uuid);
-					} else {
-						memset(data->uuid, 0, UUID_LENGTH+1);
-					}
-					eventpool_trigger(REASON_SEND_CODE, reason_send_code_free, data);
+					// if(uuid != NULL) {
+						// strcpy(data->uuid, uuid);
+					// } else {
+						// memset(data->uuid, 0, UUID_LENGTH+1);
+					// }
+					// eventpool_trigger(REASON_SEND_CODE, reason_send_code_free, data);
 
-					return 0;
-				} else {
-					return -1;
-				}
+					// return 0;
+				// } else {
+					// return -1;
+				// }
 			}
 		} else {
 			return 0;
@@ -953,9 +953,9 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 					struct JsonNode *value = NULL;
 					char *type = NULL;
 					char *key = NULL;
-					char *sval = NULL;
-					double nval = 0.0;
-					int dec = 0;
+					// char *sval = NULL;
+					// double nval = 0.0;
+					// int dec = 0;
 					if(json_find_string(json, "type", &type) != 0) {
 						logprintf(LOG_ERR, "client did not send a type of action");
 						json_delete(json);
@@ -979,47 +979,47 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 								json_delete(json);
 								return 0;
 							} else {
-								if(value->tag == JSON_NUMBER) {
-									if(registry_update(ORIGIN_MASTER, key, json_mknumber(value->number_, value->decimals_)) == 0) {
-										if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
-											OUT_OF_MEMORY
-										}
-										strcpy(*respons, "{\"status\":\"success\"}");
-										json_delete(json);
-										return 0;
-									} else {
-										if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
-											OUT_OF_MEMORY
-										}
-										strcpy(*respons, "{\"status\":\"failed\"}");
-										json_delete(json);
-										return 0;
-									}
-								} else if(value->tag == JSON_STRING) {
-									if(registry_update(ORIGIN_MASTER, key, json_mkstring(value->string_)) == 0) {
-										if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
-											OUT_OF_MEMORY
-										}
-										strcpy(*respons, "{\"status\":\"success\"}");
-										json_delete(json);
-										return 0;
-									} else {
-										if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
-											OUT_OF_MEMORY
-										}
-										strcpy(*respons, "{\"status\":\"failed\"}");
-										json_delete(json);
-										return 0;
-									}
-								} else {
-									logprintf(LOG_ERR, "registry value can only be a string or number");
-									if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
-										OUT_OF_MEMORY
-									}
-									strcpy(*respons, "{\"status\":\"failed\"}");
-									json_delete(json);
-									return 0;
-								}
+								// if(value->tag == JSON_NUMBER) {
+									// if(registry_update(ORIGIN_MASTER, key, json_mknumber(value->number_, value->decimals_)) == 0) {
+										// if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
+											// OUT_OF_MEMORY
+										// }
+										// strcpy(*respons, "{\"status\":\"success\"}");
+										// json_delete(json);
+										// return 0;
+									// } else {
+										// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+											// OUT_OF_MEMORY
+										// }
+										// strcpy(*respons, "{\"status\":\"failed\"}");
+										// json_delete(json);
+										// return 0;
+									// }
+								// } else if(value->tag == JSON_STRING) {
+									// if(registry_update(ORIGIN_MASTER, key, json_mkstring(value->string_)) == 0) {
+										// if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
+											// OUT_OF_MEMORY
+										// }
+										// strcpy(*respons, "{\"status\":\"success\"}");
+										// json_delete(json);
+										// return 0;
+									// } else {
+										// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+											// OUT_OF_MEMORY
+										// }
+										// strcpy(*respons, "{\"status\":\"failed\"}");
+										// json_delete(json);
+										// return 0;
+									// }
+								// } else {
+									// logprintf(LOG_ERR, "registry value can only be a string or number");
+									// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+										// OUT_OF_MEMORY
+									// }
+									// strcpy(*respons, "{\"status\":\"failed\"}");
+									// json_delete(json);
+									// return 0;
+								// }
 							}
 						} else if(strcmp(type, "remove") == 0) {
 							if(json_find_string(json, "key", &key) != 0) {
@@ -1031,22 +1031,22 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 								json_delete(json);
 								return 0;
 							} else {
-								if(registry_delete(ORIGIN_MASTER, key) == 0) {
-									if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
-										OUT_OF_MEMORY
-									}
-									strcpy(*respons, "{\"status\":\"success\"}");
-									json_delete(json);
-									return 0;
-								} else {
-									logprintf(LOG_ERR, "registry value can only be a string or number");
-									if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
-										OUT_OF_MEMORY
-									}
-									strcpy(*respons, "{\"status\":\"failed\"}");
-									json_delete(json);
-									return 0;
-								}
+								// if(registry_delete(ORIGIN_MASTER, key) == 0) {
+									// if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
+										// OUT_OF_MEMORY
+									// }
+									// strcpy(*respons, "{\"status\":\"success\"}");
+									// json_delete(json);
+									// return 0;
+								// } else {
+									// logprintf(LOG_ERR, "registry value can only be a string or number");
+									// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+										// OUT_OF_MEMORY
+									// }
+									// strcpy(*respons, "{\"status\":\"failed\"}");
+									// json_delete(json);
+									// return 0;
+								// }
 							}
 						} else if(strcmp(type, "get") == 0) {
 							if(json_find_string(json, "key", &key) != 0) {
@@ -1058,43 +1058,43 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 								json_delete(json);
 								return 0;
 							} else {
-								if(registry_select_number(ORIGIN_MASTER, key, &nval, &dec) == 0) {
-									struct JsonNode *jsend = json_mkobject();
-									json_append_member(jsend, "message", json_mkstring("registry"));
-									json_append_member(jsend, "value", json_mknumber(nval, dec));
-									json_append_member(jsend, "key", json_mkstring(key));
-									char *output = json_stringify(jsend, NULL);
-									if((*respons = MALLOC(strlen(output)+1)) == NULL) {
-										OUT_OF_MEMORY
-									}
-									strcpy(*respons, output);
-									json_free(output);
-									json_delete(jsend);
-									json_delete(json);
-									return 0;
-								} else if(registry_select_string(ORIGIN_MASTER, key, &sval) == 0) {
-									struct JsonNode *jsend = json_mkobject();
-									json_append_member(jsend, "message", json_mkstring("registry"));
-									json_append_member(jsend, "value", json_mkstring(sval));
-									json_append_member(jsend, "key", json_mkstring(key));
-									char *output = json_stringify(jsend, NULL);
-									if((*respons = MALLOC(strlen(output)+1)) == NULL) {
-										OUT_OF_MEMORY
-									}
-									strcpy(*respons, output);
-									json_free(output);
-									json_delete(jsend);
-									json_delete(json);
-									return 0;
-								} else {
-									logprintf(LOG_ERR, "registry key '%s' does not exist", key);
-									if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
-										OUT_OF_MEMORY
-									}
-									strcpy(*respons, "{\"status\":\"failed\"}");
-									json_delete(json);
-									return 0;
-								}
+								// if(registry_select_number(ORIGIN_MASTER, key, &nval, &dec) == 0) {
+									// struct JsonNode *jsend = json_mkobject();
+									// json_append_member(jsend, "message", json_mkstring("registry"));
+									// json_append_member(jsend, "value", json_mknumber(nval, dec));
+									// json_append_member(jsend, "key", json_mkstring(key));
+									// char *output = json_stringify(jsend, NULL);
+									// if((*respons = MALLOC(strlen(output)+1)) == NULL) {
+										// OUT_OF_MEMORY
+									// }
+									// strcpy(*respons, output);
+									// json_free(output);
+									// json_delete(jsend);
+									// json_delete(json);
+									// return 0;
+								// } else if(registry_select_string(ORIGIN_MASTER, key, &sval) == 0) {
+									// struct JsonNode *jsend = json_mkobject();
+									// json_append_member(jsend, "message", json_mkstring("registry"));
+									// json_append_member(jsend, "value", json_mkstring(sval));
+									// json_append_member(jsend, "key", json_mkstring(key));
+									// char *output = json_stringify(jsend, NULL);
+									// if((*respons = MALLOC(strlen(output)+1)) == NULL) {
+										// OUT_OF_MEMORY
+									// }
+									// strcpy(*respons, output);
+									// json_free(output);
+									// json_delete(jsend);
+									// json_delete(json);
+									// return 0;
+								// } else {
+									// logprintf(LOG_ERR, "registry key '%s' does not exist", key);
+									// if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+										// OUT_OF_MEMORY
+									// }
+									// strcpy(*respons, "{\"status\":\"failed\"}");
+									// json_delete(json);
+									// return 0;
+								// }
 							}
 						}
 					}
@@ -1454,8 +1454,8 @@ static void pilight_abort(uv_timer_t *timer_req) {
 }
 
 void registerVersion(void) {
-	registry_delete(ORIGIN_MASTER, "pilight.version");
-	registry_update(ORIGIN_MASTER, "pilight.version.current", json_mkstring((char *)PILIGHT_VERSION));
+	// registry_delete(ORIGIN_MASTER, "pilight.version");
+	// registry_update(ORIGIN_MASTER, "pilight.version.current", json_mkstring((char *)PILIGHT_VERSION));
 }
 
 static void pilight_stats(uv_timer_t *timer_req) {
@@ -1795,12 +1795,12 @@ int start_pilight(int argc, char **argv) {
 			for(i = 0; i < 32; i+=2) {
 				sprintf(&md5conv[i], "%02x", md5sum[i/2] );
 			}
-			if(strcmp(md5conv, PILIGHT_PEM_MD5) == 0) {
-				registry_update(ORIGIN_MASTER, "webserver.ssl.certificate.secure", json_mknumber(0, 0));
-			} else {
-				registry_update(ORIGIN_MASTER, "webserver.ssl.certificate.secure", json_mknumber(1, 0));
-			}
-			registry_update(ORIGIN_MASTER, "webserver.ssl.certificate.location", json_mkstring(pemfile));
+			// if(strcmp(md5conv, PILIGHT_PEM_MD5) == 0) {
+				// registry_update(ORIGIN_MASTER, "webserver.ssl.certificate.secure", json_mknumber(0, 0));
+			// } else {
+				// registry_update(ORIGIN_MASTER, "webserver.ssl.certificate.secure", json_mknumber(1, 0));
+			// }
+			// registry_update(ORIGIN_MASTER, "webserver.ssl.certificate.location", json_mkstring(pemfile));
 			FREE(content);
 		}
 

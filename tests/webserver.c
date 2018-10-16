@@ -94,7 +94,7 @@ static struct tests_t get_tests[] = {
 	{ "http://127.0.0.1:10080/pilight.css", 6261, "text/css", 200 },
 	{ "http://127.0.0.1:10080/pilight.jquery.theme.css", 25683, "text/css", 200 },
 	{ "http://127.0.0.1:10080/images/ajax-loader.gif", 6242, "image/gif", 200 },
-	{ "http://127.0.0.1:10080/config", 62, "application/json", 200 },
+	{ "http://127.0.0.1:10080/config", 48, "application/json", 200 },
 	/*
 	 * Regular pilight ssl webgui loading until config call
 	 */
@@ -107,7 +107,7 @@ static struct tests_t get_tests[] = {
 	{ "https://127.0.0.1:10443/pilight.css", 6261, "text/css", 200 },
 	{ "https://127.0.0.1:10443/pilight.jquery.theme.css", 25683, "text/css", 200 },
 	{ "https://127.0.0.1:10443/images/ajax-loader.gif", 6242, "image/gif", 200 },
-	{ "https://127.0.0.1:10443/config", 62, "application/json", 200 },
+	{ "https://127.0.0.1:10443/config", 48, "application/json", 200 },
 	{ "https://127.0.0.1:10443/nonexisting", 214, "text/html", 404 }
 };
 

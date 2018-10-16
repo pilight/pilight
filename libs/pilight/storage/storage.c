@@ -68,7 +68,7 @@ static struct JsonNode *jdevices_cache = NULL;
 static struct JsonNode *jgui_cache = NULL;
 // static struct JsonNode *jsettings_cache = NULL;
 static struct JsonNode *jhardware_cache = NULL;
-static struct JsonNode *jregistry_cache = NULL;
+// static struct JsonNode *jregistry_cache = NULL;
 
 static void *devices_update_cache(int reason, void *param) {
 	struct reason_config_update_t *data = param;
@@ -2235,11 +2235,12 @@ int storage_read(char *file, unsigned long objects) {
 	}
 #endif
 
-	if(((objects & CONFIG_REGISTRY) == CONFIG_REGISTRY || (objects & CONFIG_ALL) == CONFIG_ALL)) {
-		if(storage->registry_select(ORIGIN_CONFIG, NULL, &json) != 0) {
+	if(((objects & CONFIG_REGISTRY) == CONFIG_REGISTRY || (objects & CONFIG_ALL) == CONFIG_ALL) &&
+		storage->settings_select(CONFIG_REGISTRY, NULL, &json) == 0) {
+		if(config_read(file, CONFIG_REGISTRY) != 0) {
 			return -1;
 		}
-		json_clone(json, &jregistry_cache);
+		// json_clone(json, &jregistry_cache);
 	}
 
 	storage->sync();
@@ -2677,206 +2678,206 @@ int hardware_select_struct(enum origin_t origin, char *id, struct hardware_t **o
 	// return -1;
 // }
 
-static int registry_get_value_recursive(struct JsonNode *root, const char *key, void **value, void **decimals, int type) {
-	char *sub = strstr(key, ".");
-	char *buff = MALLOC(strlen(key)+1);
-	strcpy(buff, key);
-	if(sub != NULL) {
-		int pos = sub-key;
-		buff[pos] = '\0';
-	}
-	struct JsonNode *member = json_find_member(root, buff);
-	if(member != NULL) {
-		if(member->tag == type) {
-			if(type == JSON_NUMBER) {
-				*value = (void *)&member->number_;
-				*decimals = (void *)&member->decimals_;
-			} else if(type == JSON_STRING) {
-				*value = (void *)member->string_;
-			}
-			FREE(buff);
-			return 0;
-		} else if(member->tag == JSON_OBJECT) {
-			if(sub != NULL) {
-				int pos = sub-key;
-				strcpy(buff, &key[pos+1]);
-			}
-			int ret = registry_get_value_recursive(member, buff, value, decimals, type);
-			FREE(buff);
-			return ret;
-		}
-	}
-	FREE(buff);
-	return -1;
-}
+// static int registry_get_value_recursive(struct JsonNode *root, const char *key, void **value, void **decimals, int type) {
+	// char *sub = strstr(key, ".");
+	// char *buff = MALLOC(strlen(key)+1);
+	// strcpy(buff, key);
+	// if(sub != NULL) {
+		// int pos = sub-key;
+		// buff[pos] = '\0';
+	// }
+	// struct JsonNode *member = json_find_member(root, buff);
+	// if(member != NULL) {
+		// if(member->tag == type) {
+			// if(type == JSON_NUMBER) {
+				// *value = (void *)&member->number_;
+				// *decimals = (void *)&member->decimals_;
+			// } else if(type == JSON_STRING) {
+				// *value = (void *)member->string_;
+			// }
+			// FREE(buff);
+			// return 0;
+		// } else if(member->tag == JSON_OBJECT) {
+			// if(sub != NULL) {
+				// int pos = sub-key;
+				// strcpy(buff, &key[pos+1]);
+			// }
+			// int ret = registry_get_value_recursive(member, buff, value, decimals, type);
+			// FREE(buff);
+			// return ret;
+		// }
+	// }
+	// FREE(buff);
+	// return -1;
+// }
 
-int registry_select(enum origin_t origin, char *id, struct JsonNode **jrespond) {
-	if(jregistry_cache == NULL) {
-		return -1;
-	}
-	*jrespond = jregistry_cache;
-	if(id != NULL) {
-		struct JsonNode *jchilds = json_first_child(*jrespond);
-		while(jchilds) {
-			if(strcmp(jchilds->key, id) == 0) {
-				*jrespond = jchilds;
-				return 0;
-			}
-			jchilds = jchilds->next;
-		}
-		return -1;
-	}
-	return 0;
-}
+// int registry_select(enum origin_t origin, char *id, struct JsonNode **jrespond) {
+	// if(jregistry_cache == NULL) {
+		// return -1;
+	// }
+	// *jrespond = jregistry_cache;
+	// if(id != NULL) {
+		// struct JsonNode *jchilds = json_first_child(*jrespond);
+		// while(jchilds) {
+			// if(strcmp(jchilds->key, id) == 0) {
+				// *jrespond = jchilds;
+				// return 0;
+			// }
+			// jchilds = jchilds->next;
+		// }
+		// return -1;
+	// }
+	// return 0;
+// }
 
-int registry_select_number(enum origin_t origin, char *id, double *out, int *decimals) {
-	struct JsonNode *jregistry = NULL;
-	if(registry_select(origin, NULL, &jregistry) == 0) {
-		if(jregistry == NULL) {
-			return -1;
-		}
-		void *p = NULL;
-		void *q = NULL;
-		int ret = registry_get_value_recursive(jregistry, id, &p, &q, JSON_NUMBER);
-		if(ret == 0) {
-			*out = *(double *)p;
-			*decimals = *(int *)q;
-		}
-		return ret;
-	}
-	return -1;
-}
+// int registry_select_number(enum origin_t origin, char *id, double *out, int *decimals) {
+	// struct JsonNode *jregistry = NULL;
+	// if(registry_select(origin, NULL, &jregistry) == 0) {
+		// if(jregistry == NULL) {
+			// return -1;
+		// }
+		// void *p = NULL;
+		// void *q = NULL;
+		// int ret = registry_get_value_recursive(jregistry, id, &p, &q, JSON_NUMBER);
+		// if(ret == 0) {
+			// *out = *(double *)p;
+			// *decimals = *(int *)q;
+		// }
+		// return ret;
+	// }
+	// return -1;
+// }
 
-int registry_select_string(enum origin_t origin, char *id, char **out) {
-	struct JsonNode *jregistry = NULL;
-	if(registry_select(origin, NULL, &jregistry) == 0) {
-		if(jregistry == NULL) {
-			return -1;
-		}
-		return registry_get_value_recursive(jregistry, id, (void *)out, NULL, JSON_STRING);
-	}
-	return -1;
-}
+// int registry_select_string(enum origin_t origin, char *id, char **out) {
+	// struct JsonNode *jregistry = NULL;
+	// if(registry_select(origin, NULL, &jregistry) == 0) {
+		// if(jregistry == NULL) {
+			// return -1;
+		// }
+		// return registry_get_value_recursive(jregistry, id, (void *)out, NULL, JSON_STRING);
+	// }
+	// return -1;
+// }
 
-static int registry_set_value_recursive(struct JsonNode *root, const char *key, char *svalue, double dvalue, int decimals, int type) {
-	char *sub = strstr(key, ".");
-	char *buff = MALLOC(strlen(key)+1);
-	strcpy(buff, key);
-	if(sub != NULL) {
-		int pos = sub-key;
-		buff[pos] = '\0';
-	}
-	struct JsonNode *member = json_find_member(root, buff);
-	if(member != NULL) {
-		if(member->tag == type) {
-			if(type == JSON_NUMBER) {
-				member->number_ = dvalue;
-				member->decimals_ = decimals;
-			} else if(type == JSON_STRING) {
-				if((member->string_ = REALLOC(member->string_, strlen(svalue)+1)) == NULL) {
-					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-				}
-				strcpy(member->string_, svalue);
-			}
-			FREE(buff);
-			return 0;
-		} else if(member->tag == JSON_OBJECT) {
-			if(sub != NULL) {
-				int pos = sub-key;
-				strcpy(buff, &key[pos+1]);
-			}
-			int ret = registry_set_value_recursive(member, buff, svalue, dvalue, decimals, type);
-			FREE(buff);
-			return ret;
-		}
-	} else if(sub != NULL) {
-		member = json_mkobject();
-		json_append_member(root, buff, member);
-		int pos = sub-key;
-		strcpy(buff, &key[pos+1]);
-		int ret = registry_set_value_recursive(member, buff, svalue, dvalue, decimals, type);
-		FREE(buff);
-		return ret;
-	} else {
-		if(type == JSON_NUMBER) {
-			json_append_member(root, buff, json_mknumber(dvalue, decimals));
-		} else if(type == JSON_STRING) {
-			json_append_member(root, buff, json_mkstring(svalue));
-		}
-		FREE(buff);
-		return 0;
-	}
-	FREE(buff);
-	return -1;
-}
+// static int registry_set_value_recursive(struct JsonNode *root, const char *key, char *svalue, double dvalue, int decimals, int type) {
+	// char *sub = strstr(key, ".");
+	// char *buff = MALLOC(strlen(key)+1);
+	// strcpy(buff, key);
+	// if(sub != NULL) {
+		// int pos = sub-key;
+		// buff[pos] = '\0';
+	// }
+	// struct JsonNode *member = json_find_member(root, buff);
+	// if(member != NULL) {
+		// if(member->tag == type) {
+			// if(type == JSON_NUMBER) {
+				// member->number_ = dvalue;
+				// member->decimals_ = decimals;
+			// } else if(type == JSON_STRING) {
+				// if((member->string_ = REALLOC(member->string_, strlen(svalue)+1)) == NULL) {
+					// OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+				// }
+				// strcpy(member->string_, svalue);
+			// }
+			// FREE(buff);
+			// return 0;
+		// } else if(member->tag == JSON_OBJECT) {
+			// if(sub != NULL) {
+				// int pos = sub-key;
+				// strcpy(buff, &key[pos+1]);
+			// }
+			// int ret = registry_set_value_recursive(member, buff, svalue, dvalue, decimals, type);
+			// FREE(buff);
+			// return ret;
+		// }
+	// } else if(sub != NULL) {
+		// member = json_mkobject();
+		// json_append_member(root, buff, member);
+		// int pos = sub-key;
+		// strcpy(buff, &key[pos+1]);
+		// int ret = registry_set_value_recursive(member, buff, svalue, dvalue, decimals, type);
+		// FREE(buff);
+		// return ret;
+	// } else {
+		// if(type == JSON_NUMBER) {
+			// json_append_member(root, buff, json_mknumber(dvalue, decimals));
+		// } else if(type == JSON_STRING) {
+			// json_append_member(root, buff, json_mkstring(svalue));
+		// }
+		// FREE(buff);
+		// return 0;
+	// }
+	// FREE(buff);
+	// return -1;
+// }
 
-static void registry_remove_empty_parent(struct JsonNode *root) {
-	struct JsonNode *parent = root->parent;
-	if(json_first_child(root) == NULL) {
-		if(parent != NULL) {
-			json_remove_from_parent(root);
-			registry_remove_empty_parent(parent);
-			json_delete(root);
-		}
-	}
-}
+// static void registry_remove_empty_parent(struct JsonNode *root) {
+	// struct JsonNode *parent = root->parent;
+	// if(json_first_child(root) == NULL) {
+		// if(parent != NULL) {
+			// json_remove_from_parent(root);
+			// registry_remove_empty_parent(parent);
+			// json_delete(root);
+		// }
+	// }
+// }
 
-static int registry_remove_value_recursive(struct JsonNode *root, const char *key) {
-	char *sub = strstr(key, ".");
-	char *buff = MALLOC(strlen(key)+1);
-	strcpy(buff, key);
-	if(sub != NULL) {
-		int pos = sub-key;
-		buff[pos] = '\0';
-	}
-	struct JsonNode *member = json_find_member(root, buff);
-	if(member != NULL) {
-		if(sub == NULL) {
-			json_remove_from_parent(member);
-			json_delete(member);
-			registry_remove_empty_parent(root);
-			FREE(buff);
-			return 0;
-		}
-		if(member->tag == JSON_OBJECT) {
-			if(sub != NULL) {
-				int pos = sub-key;
-				strcpy(buff, &key[pos+1]);
-			}
-			int ret = registry_remove_value_recursive(member, buff);
-			FREE(buff);
-			return ret;
-		}
-	}
-	FREE(buff);
-	return -1;
-}
+// static int registry_remove_value_recursive(struct JsonNode *root, const char *key) {
+	// char *sub = strstr(key, ".");
+	// char *buff = MALLOC(strlen(key)+1);
+	// strcpy(buff, key);
+	// if(sub != NULL) {
+		// int pos = sub-key;
+		// buff[pos] = '\0';
+	// }
+	// struct JsonNode *member = json_find_member(root, buff);
+	// if(member != NULL) {
+		// if(sub == NULL) {
+			// json_remove_from_parent(member);
+			// json_delete(member);
+			// registry_remove_empty_parent(root);
+			// FREE(buff);
+			// return 0;
+		// }
+		// if(member->tag == JSON_OBJECT) {
+			// if(sub != NULL) {
+				// int pos = sub-key;
+				// strcpy(buff, &key[pos+1]);
+			// }
+			// int ret = registry_remove_value_recursive(member, buff);
+			// FREE(buff);
+			// return ret;
+		// }
+	// }
+	// FREE(buff);
+	// return -1;
+// }
 
-int registry_update(enum origin_t origin, const char *name, struct JsonNode *jvalues) {
-	int i = 0;
-	if(jvalues == NULL) {
-		return -1;
-	}
-	if(jregistry_cache == NULL) {
-		return -1;
-	}
-	if(jvalues->tag != JSON_NUMBER && jvalues->tag != JSON_STRING) {
-		return -1;
-	}
-	i = registry_set_value_recursive(jregistry_cache, name, jvalues->string_, jvalues->number_, jvalues->decimals_, jvalues->tag);
-	json_delete(jvalues);
-	return i;
-}
+// int registry_update(enum origin_t origin, const char *name, struct JsonNode *jvalues) {
+	// int i = 0;
+	// if(jvalues == NULL) {
+		// return -1;
+	// }
+	// if(jregistry_cache == NULL) {
+		// return -1;
+	// }
+	// if(jvalues->tag != JSON_NUMBER && jvalues->tag != JSON_STRING) {
+		// return -1;
+	// }
+	// i = registry_set_value_recursive(jregistry_cache, name, jvalues->string_, jvalues->number_, jvalues->decimals_, jvalues->tag);
+	// json_delete(jvalues);
+	// return i;
+// }
 
-int registry_delete(enum origin_t origin, const char *key) {
-	if(key == NULL) {
-		return -1;
-	}
-	if(jregistry_cache == NULL) {
-		return -1;
-	}
-	return registry_remove_value_recursive(jregistry_cache, key);
-}
+// int registry_delete(enum origin_t origin, const char *key) {
+	// if(key == NULL) {
+		// return -1;
+	// }
+	// if(jregistry_cache == NULL) {
+		// return -1;
+	// }
+	// return registry_remove_value_recursive(jregistry_cache, key);
+// }
 
 #ifdef EVENTS
 int rules_gc(void) {
@@ -2995,10 +2996,10 @@ int storage_gc(void) {
 		jhardware_cache = NULL;
 	}
 
-	if(jregistry_cache != NULL) {
-		json_delete(jregistry_cache);
-		jregistry_cache = NULL;
-	}
+	// if(jregistry_cache != NULL) {
+		// json_delete(jregistry_cache);
+		// jregistry_cache = NULL;
+	// }
 
 	devices_gc();
 #ifdef EVENTS
@@ -3183,13 +3184,13 @@ struct JsonNode *config_print(int level, const char *media) {
 	} else {
 		json_append_member(jroot, "hardware", json_mkobject());
 	}
-	if(jregistry_cache != NULL) {
-		char *out = json_stringify(jregistry_cache, NULL);
-		json_append_member(jroot, "registry", json_decode(out));
-		json_free(out);
-	} else {
-		json_append_member(jroot, "registry", json_mkobject());
-	}
+	// if(jregistry_cache != NULL) {
+		// char *out = json_stringify(jregistry_cache, NULL);
+		// json_append_member(jroot, "registry", json_decode(out));
+		// json_free(out);
+	// } else {
+		// json_append_member(jroot, "registry", json_mkobject());
+	// }
 	return jroot;
 }
 
