@@ -495,10 +495,10 @@ int main(int argc, char **argv) {
 	while(tmp_confhw) {
 		if(tmp_confhw->hardware->init) {
 			if(tmp_confhw->hardware->comtype == COMOOK) {
-				tmp_confhw->hardware->maxrawlen = 1024;
-				tmp_confhw->hardware->minrawlen = 0;
-				tmp_confhw->hardware->maxgaplen = 99999;
-				tmp_confhw->hardware->mingaplen = 0;
+				tmp_confhw->hardware->maxrawlen = MAXPULSESTREAMLENGTH;
+				tmp_confhw->hardware->minrawlen = 25;
+				tmp_confhw->hardware->maxgaplen = 34000;
+				tmp_confhw->hardware->mingaplen = 5100;
 			}
 			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
 				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
