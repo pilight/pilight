@@ -134,6 +134,8 @@ int plua_io_file_readline_iter(struct lua_State *L) {
 	ssize_t read = 0;
 	fd_set readset;
 
+	memset(&readset, 0, sizeof(fd_set));
+
 	lua_remove(L, -1);
 
 	if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
@@ -145,6 +147,8 @@ int plua_io_file_readline_iter(struct lua_State *L) {
 
 retry:
 	FD_SET(fd, &readset);
+
+	memset(&timeout, 0, sizeof(struct timeval));
 
 	timeout.tv_sec = 0;
 	timeout.tv_usec = 1000;
