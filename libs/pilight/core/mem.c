@@ -286,7 +286,7 @@ void __free(void *a, const char *file, int line) {
 #endif
 
 			if(match == 0) {
-				fprintf(stderr, "ERROR: trying to free an unknown pointer in %s at line #%d\n", file, line);
+				fprintf(stderr, "ERROR: trying to free an unknown pointer (%p) in %s at line #%d\n", a, file, line);
 				free(a);
 			}
 		}
