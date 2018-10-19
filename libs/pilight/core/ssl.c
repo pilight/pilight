@@ -31,6 +31,7 @@ int ssl_server_init_status(void) {
 void ssl_init(void) {
 	char *pemfile = NULL, buffer[BUFFER_SIZE];
 	int ret = 0;
+	int pem_file_free = 1;
 
 	if(config_setting_get_string("pem-file", 0, &pemfile) != 0) {
 		if((pemfile = REALLOC(pemfile, strlen(PEM_FILE)+1)) == NULL) {
@@ -38,6 +39,7 @@ void ssl_init(void) {
 			exit(EXIT_FAILURE);
 		}
 		strcpy(pemfile, PEM_FILE);
+		pem_file_free = 0;
 	}
 	if(file_exists(pemfile) != 0) {
 		logprintf(LOG_NOTICE, "pemfile does not exists: %s", pemfile);
@@ -116,7 +118,7 @@ void ssl_init(void) {
 		}
 	}
 
-	if(pemfile != NULL) {
+	if(pem_file_free == 1) {
 		FREE(pemfile);
 	}
 }
