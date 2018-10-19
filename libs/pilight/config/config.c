@@ -222,8 +222,6 @@ int config_read(char *str, unsigned short objects) {
 			FREE(string);
 			return -1;
 		}
-		FREE(string);
-		return 0;
 	}
 
 	if((objects & CONFIG_REGISTRY) == CONFIG_REGISTRY) {
@@ -231,12 +229,10 @@ int config_read(char *str, unsigned short objects) {
 			FREE(string);
 			return -1;
 		}
-		FREE(string);
-		return 0;
 	}
 
 	FREE(string);
-	return -1;
+	return 0;
 }
 
 // char *config_print(int level, const char *media) {

@@ -21,9 +21,9 @@ function M.read(f)
 	local config = pilight.config();
 	local data = config.getData();
 	local jobject = json.parse(content);
-	local settings = jobject['registry'];
+	local registry = jobject['registry'];
 
-	data['registry'] = settings;
+	data['registry'] = registry;
 
 	return 1;
 end

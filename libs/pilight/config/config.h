@@ -13,6 +13,7 @@
 
 struct lua_state_t *plua_get_module(char *namespace, char *module);
 int config_callback_func(char *module, char *func, char *settings);
+char *config_callback_write(char *);
 int config_root(char *path);
 void plua_pause_coverage(int status);
 void config_init(void);

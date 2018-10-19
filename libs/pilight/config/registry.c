@@ -105,7 +105,11 @@ static int config_callback_set_string(char *module, char *key, char *val) {
 	plua_get_method(state->L, state->module->file, "set");
 
 	lua_pushstring(state->L, key);
-	lua_pushstring(state->L, val);
+	if(val != NULL) {
+		lua_pushstring(state->L, val);
+	} else {
+		lua_pushnil(state->L);
+	}
 
 	if((x = plua_pcall(state->L, state->module->file, 2, 1)) == 0) {
 		if(lua_type(state->L, -1) == LUA_TNUMBER) {
@@ -195,4 +199,8 @@ int config_registry_set_boolean(char *key, int val) {
 
 int config_registry_set_string(char *key, char *val) {
 	return config_callback_set_string("registry", key, val);
+}
+
+int config_registry_set_null(char *key) {
+	return config_callback_set_string("registry", key, NULL);
 }
