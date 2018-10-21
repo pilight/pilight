@@ -158,7 +158,7 @@ int main(int argc, char **argv) {
 		goto close;
 	}
 
-	if(server == NULL && port > 0) {
+	if(server != NULL && port > 0) {
 		if((sockfd = socket_connect(server, port)) == -1) {
 			logprintf(LOG_ERR, "could not connect to pilight-daemon");
 			goto close;
