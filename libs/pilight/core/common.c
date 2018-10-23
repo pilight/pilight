@@ -997,6 +997,13 @@ int str_replace(char *search, char *replace, char **str) {
 	}
 }
 
+void strtolower(char **a) {
+	int i = 0;
+	for(i = 0; (*a)[i]; i++){
+		(*a)[i] = tolower((*a)[i]);
+	}
+}
+
 int strnicmp(char const *a, char const *b, size_t len) {
 	int i = 0;
 
