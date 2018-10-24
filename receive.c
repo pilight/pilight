@@ -115,11 +115,11 @@ int main(int argc, char **argv) {
 	}
 
 	if(options_exists(options, "S") == 0) {
-		options_get_string(options, "C", &server);
+		options_get_string(options, "S", &server);
 	}
 
-	if(options_exists(options, "S") == 0) {
-		options_get_number(options, "C", &port);
+	if(options_exists(options, "P") == 0) {
+		options_get_number(options, "P", &port);
 	}
 
 	if(options_exists(options, "s") == 0) {
