@@ -70,6 +70,10 @@ void event_function_init(void) {
 	}
 	closedir(d);
 	FREE(f);
+
+	if(functions_root != (void *)FUNCTION_ROOT) {
+		FREE(functions_root);
+	}
 }
 
 static int plua_function_module_run(struct lua_State *L, char *file, struct event_function_args_t *args, struct varcont_t *v) {

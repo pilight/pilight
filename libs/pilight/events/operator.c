@@ -70,6 +70,10 @@ void event_operator_init(void) {
 	}
 	closedir(d);
 	FREE(f);
+
+	if(operator_root != (void *)OPERATOR_ROOT) {
+		FREE(operator_root);
+	}
 }
 
 static int plua_operator_precedence_run(struct lua_State *L, char *file, int *ret) {

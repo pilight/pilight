@@ -85,6 +85,10 @@ void event_action_init(void) {
 	}
 	closedir(d);
 	FREE(f);
+
+	if(actions_root != (void *)ACTION_ROOT) {
+		FREE(actions_root);
+	}
 }
 
 unsigned long event_action_set_execution_id(char *name) {
