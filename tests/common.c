@@ -565,6 +565,47 @@ static void test_strnicmp(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
+static void test_strtolower(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	memtrack();
+
+	{
+		char *a = STRDUP("A");
+		CuAssertPtrNotNull(tc, a);
+		strtolower(&a);
+		CuAssertStrEquals(tc, "a", a);
+		FREE(a);
+	}
+
+	{
+		char *a = STRDUP("Hello World!");
+		CuAssertPtrNotNull(tc, a);
+		strtolower(&a);
+		CuAssertStrEquals(tc, "hello world!", a);
+		FREE(a);
+	}
+
+	{
+		char *a = STRDUP("HelloWorld!");
+		CuAssertPtrNotNull(tc, a);
+		strtolower(&a);
+		CuAssertStrEquals(tc, "helloworld!", a);
+		FREE(a);
+	}
+
+	{
+		char *a = STRDUP("hELLO wORLd!");
+		CuAssertPtrNotNull(tc, a);
+		strtolower(&a);
+		CuAssertStrEquals(tc, "hello world!", a);
+		FREE(a);
+	}
+
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
 static void test_file_get_contents(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
@@ -711,6 +752,7 @@ CuSuite *suite_common(void) {
 	SUITE_ADD_TEST(suite, test_str_replace);
 	SUITE_ADD_TEST(suite, test_stricmp);
 	SUITE_ADD_TEST(suite, test_strnicmp);
+	SUITE_ADD_TEST(suite, test_strtolower);
 	SUITE_ADD_TEST(suite, test_file_get_contents);
 	SUITE_ADD_TEST(suite, test_calc_time_interval);
 

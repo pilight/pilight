@@ -86,6 +86,7 @@ int str_replace(char *search, char *replace, char **str);
 int stricmp(char const *a, char const *b);
 int strnicmp(char const *a, char const *b, size_t len);
 #endif
+void strtolower(char **a);
 int file_get_contents(char *file, char **content);
 void calc_time_interval(int type, int seconds, int diff, struct timeval *tv);
 char *_dirname(char *path);
