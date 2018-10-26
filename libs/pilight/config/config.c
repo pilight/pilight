@@ -27,7 +27,7 @@
 #include "../core/common.h"
 #include "../core/dso.h"
 #include "../core/log.h"
-#include "../lua/lua.h"
+#include "../lua_c/lua.h"
 
 #include "config.h"
 #include "settings.h"
@@ -155,7 +155,7 @@ struct lua_state_t *plua_get_module(char *namespace, char *module) {
 }
 
 int config_callback_read(char *module, char *string) {
-	struct lua_state_t *state = plua_get_module("storage", "settings");
+	struct lua_state_t *state = plua_get_module("storage", module);
 	int x = 0;
 
 	if(state == NULL) {
@@ -186,7 +186,7 @@ int config_callback_read(char *module, char *string) {
 }
 
 char *config_callback_write(char *module) {
-	struct lua_state_t *state = plua_get_module("storage", "settings");
+	struct lua_state_t *state = plua_get_module("storage", module);
 	char *out = NULL;
 	int x = 0;
 

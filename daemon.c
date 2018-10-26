@@ -68,7 +68,7 @@
 #include "libs/pilight/core/proc.h"
 #include "libs/pilight/core/ntp.h"
 #include "libs/pilight/config/config.h"
-#include "libs/pilight/lua/lua.h"
+#include "libs/pilight/lua_c/lua.h"
 
 #ifdef EVENTS
 	#include "libs/pilight/events/events.h"

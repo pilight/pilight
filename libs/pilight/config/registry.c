@@ -30,6 +30,9 @@
 #include "../core/common.h"
 #include "../core/json.h"
 #include "../core/log.h"
+#include "../lua_c/lua.h"
+
+#include "config.h"
 #include "registry.h"
 
 struct JsonNode *registry = NULL;

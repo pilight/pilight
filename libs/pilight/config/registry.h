@@ -21,17 +21,12 @@
 
 #include "../core/json.h"
 #include "../config/config.h"
+#include "../lua_c/lua.h"
 
-struct config_t *config_registry;
-
-void registry_init(void);
-int registry_gc(void);
-int registry_get_string(const char *key, char **value);
-int registry_get_number(const char *key, double *value, int *decimals);
-int registry_set_string(const char *key, char *value);
-int registry_set_number(const char *key, double value, int decimals);
-int registry_remove_value(const char *key);
-struct JsonNode *config_registry_sync(int level, const char *media);
-int config_registry_parse(struct JsonNode *root);
+int config_registry_get(char *key, struct varcont_t *ret);
+int config_registry_set_number(char *key, double val);
+int config_registry_set_string(char *key, char *val);
+int config_registry_set_boolean(char *key, int val);
+int config_registry_set_null(char *key);
 
 #endif

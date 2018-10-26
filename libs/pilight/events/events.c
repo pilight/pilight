@@ -35,7 +35,7 @@
 #include "../core/socket.h"
 #include "../datatypes/stack.h"
 
-#include "../lua/lua.h"
+#include "../lua_c/lua.h"
 
 #include "../protocols/protocol.h"
 
@@ -346,7 +346,7 @@ void event_cache_device(struct rules_t *obj, char *device) {
  * 0: Found variable and filled varcont
  * 1: Did not find variable and did not fill varcont
  */
-int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varcont, unsigned short validate, int in_action) {
+static int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varcont, unsigned short validate, int in_action) {
 	int recvtype = 0;
 	// int cached = 0;
 	if(strcmp(true_, "1") != 0) {
