@@ -283,16 +283,6 @@ int config_parse(struct JsonNode *root, unsigned short objects) {
 	}
 #endif
 
-	if(((objects & CONFIG_REGISTRY) == CONFIG_REGISTRY) || ((objects & CONFIG_ALL) == CONFIG_ALL)) {
-		struct JsonNode *jnode = json_find_member(root, "registry");
-		if(jnode == NULL) {
-			return -1;
-		}
-		if(config_registry_parse(jnode) != 0) {
-			return -1;
-		}
-	}
-
 	return 0;
 }
 
@@ -300,6 +290,12 @@ int config_read(unsigned short objects) {
 	if(string != NULL) {
 		if(((objects & CONFIG_SETTINGS) == CONFIG_SETTINGS) || ((objects & CONFIG_ALL) == CONFIG_ALL)) {
 			if(config_callback_read("settings", string) != 1) {
+				return -1;
+			}
+		}
+
+		if(((objects & CONFIG_REGISTRY) == CONFIG_REGISTRY) || ((objects & CONFIG_ALL) == CONFIG_ALL)) {
+			if(config_callback_read("registry", string) != 1) {
 				return -1;
 			}
 		}
@@ -426,22 +422,12 @@ struct JsonNode *config_print(int level, const char *media) {
 			json_delete(jchild4);
 		}
 
-		struct JsonNode *jchild5 = config_registry_sync(level, media);
-		jchild = json_find_member(root, "registry");
-		json_remove_from_parent(jchild);
-		check = json_stringify(jchild5, NULL);
-		if(check != NULL) {
-			if(jchild5 != NULL && strcmp(check, "{}") != 0) {
-				json_append_member(root, "registry", jchild5);
-				json_delete(jchild);
-			} else {
-				json_append_member(root, "registry", jchild);
-				json_delete(jchild5);
-			}
-			json_free(check);
-		} else {
-			json_append_member(root, "registry", jchild);
-			json_delete(jchild5);
+		char *registry = config_callback_write("registry");
+		if(registry != NULL) {
+			struct JsonNode *jchild = json_find_member(root, "registry");
+			json_remove_from_parent(jchild);
+			json_append_member(root, "registry", json_decode(registry));
+			FREE(registry);
 		}
 	}
 	if(content != NULL) {
@@ -491,7 +477,6 @@ int config_gc(void) {
 	}
 	hardware_gc();
 	devices_gc();
-	registry_gc();
 	rules_gc();
 	gui_gc();
 

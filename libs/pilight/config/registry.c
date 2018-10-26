@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -21,248 +11,196 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <unistd.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <time.h>
-#include <libgen.h>
+#include <limits.h>
+#include <assert.h>
+
+#ifndef _WIN32
+	#include <libgen.h>
+	#include <dirent.h>
+	#include <unistd.h>
+#endif
 
 #include "../core/pilight.h"
 #include "../core/common.h"
-#include "../core/json.h"
+#include "../core/dso.h"
 #include "../core/log.h"
 #include "../lua_c/lua.h"
 
 #include "config.h"
 #include "registry.h"
 
-struct JsonNode *registry = NULL;
+static int config_callback_get(char *module, char *key, struct varcont_t *ret) {
+	struct lua_state_t *state = plua_get_module("storage", module);
+	int x = 0;
 
-static pthread_mutex_t mutex_lock;
-static pthread_mutexattr_t mutex_attr;
-
-static int registry_get_value_recursive(struct JsonNode *root, const char *key, void **value, void **decimals, int type) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	char *sub = strstr(key, ".");
-	char *buff = MALLOC(strlen(key)+1);
-	strcpy(buff, key);
-	if(sub != NULL) {
-		int pos = sub-key;
-		buff[pos] = '\0';
+	if(state == NULL) {
+		return -1;
 	}
-	struct JsonNode *member = json_find_member(root, buff);
-	if(member != NULL) {
-		if(member->tag == type) {
-			if(type == JSON_NUMBER) {
-				*value = (void *)&member->number_;
-				*decimals = (void *)&member->decimals_;
-			} else if(type == JSON_STRING) {
-				*value = (void *)member->string_;
+
+	if(plua_get_method(state->L, state->module->file, "get") == -1) {
+		return -1;
+	}
+
+	if(key == NULL) {
+		logprintf(LOG_ERR, "%s key cannot be NULL", __FUNCTION__);
+		return -1;
+	}
+
+	if(ret == NULL) {
+		logprintf(LOG_ERR, "%s return value cannot be NULL", __FUNCTION__);
+		return -1;
+	}
+
+	lua_pushstring(state->L, key);
+
+	if((x = plua_pcall(state->L, state->module->file, 1, 1)) == 0) {
+		if(lua_type(state->L, -1) == LUA_TNUMBER) {
+			(*ret).number_ = lua_tonumber(state->L, -1);
+			(*ret).type_ = LUA_TNUMBER;
+
+			lua_pop(state->L, 1);
+
+			x = 0;
+		} else if(lua_type(state->L, -1) == LUA_TSTRING) {
+			if(((*ret).string_ = STRDUP((char *)lua_tostring(state->L, -1))) == NULL) {
+				OUT_OF_MEMORY
 			}
-			FREE(buff);
-			return 0;
-		} else if(member->tag == JSON_OBJECT) {
-			if(sub != NULL) {
-				int pos = sub-key;
-				strcpy(buff, &key[pos+1]);
-			}
-			int ret = registry_get_value_recursive(member, buff, value, decimals, type);
-			FREE(buff);
-			return ret;
+			(*ret).type_ = LUA_TSTRING;
+
+			lua_pop(state->L, 1);
+
+			x = 0;
+		} else if(lua_type(state->L, -1) == LUA_TBOOLEAN) {
+			(*ret).bool_ = (int)lua_toboolean(state->L, -1);
+			(*ret).type_ = LUA_TBOOLEAN;
+
+			lua_pop(state->L, 1);
+
+			x = 0;
+		} else {
+			x = 1;
 		}
+		lua_pop(state->L, -1);
 	}
-	FREE(buff);
-	return -1;
+
+	lua_pop(state->L, -1);
+
+	assert(lua_gettop(state->L) == 0);
+	plua_clear_state(state);
+
+	return x;
 }
 
-static int registry_set_value_recursive(struct JsonNode *root, const char *key, void *value, int decimals, int type) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+static int config_callback_set_string(char *module, char *key, char *val) {
+	struct lua_state_t *state = plua_get_module("storage", module);
+	int x = 0;
 
-	char *sub = strstr(key, ".");
-	char *buff = MALLOC(strlen(key)+1);
-	strcpy(buff, key);
-	if(sub != NULL) {
-		int pos = sub-key;
-		buff[pos] = '\0';
+	if(state == NULL) {
+		return -1;
 	}
-	struct JsonNode *member = json_find_member(root, buff);
-	if(member != NULL) {
-		if(member->tag == type) {
-			if(type == JSON_NUMBER) {
-				member->number_ = *(double *)value;
-				member->decimals_ = decimals;
-			} else if(type == JSON_STRING) {
-				member->string_ = REALLOC(member->string_, strlen(value)+1);
-				strcpy(member->string_, (char *)value);
-			}
-			FREE(buff);
-			return 0;
-		} else if(member->tag == JSON_OBJECT) {
-			if(sub != NULL) {
-				int pos = sub-key;
-				strcpy(buff, &key[pos+1]);
-			}
-			int ret = registry_set_value_recursive(member, buff, value, decimals, type);
-			FREE(buff);
-			return ret;
-		}
-	} else if(sub != NULL) {
-		member = json_mkobject();
-		json_append_member(root, buff, member);
-		int pos = sub-key;
-		strcpy(buff, &key[pos+1]);
-		int ret = registry_set_value_recursive(member, buff, value, decimals, type);
-		FREE(buff);
-		return ret;
+
+	plua_get_method(state->L, state->module->file, "set");
+
+	lua_pushstring(state->L, key);
+	if(val != NULL) {
+		lua_pushstring(state->L, val);
 	} else {
-		if(type == JSON_NUMBER) {
-			json_append_member(root, buff, json_mknumber(*(double *)value, decimals));
-		} else if(type == JSON_STRING) {
-			json_append_member(root, buff, json_mkstring(value));
-		}
-		FREE(buff);
-		return 0;
+		lua_pushnil(state->L);
 	}
-	FREE(buff);
-	return -1;
+
+	if((x = plua_pcall(state->L, state->module->file, 2, 1)) == 0) {
+		if(lua_type(state->L, -1) == LUA_TNUMBER) {
+			x = lua_tonumber(state->L, -1);
+			lua_pop(state->L, 1);
+		} else {
+			x = -1;
+		}
+		lua_pop(state->L, -1);
+	}
+
+	assert(lua_gettop(state->L) == 0);
+	plua_clear_state(state);
+
+	return x;
 }
 
-static void registry_remove_empty_parent(struct JsonNode *root) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+static int config_callback_set_number(char *module, char *key, double val) {
+	struct lua_state_t *state = plua_get_module("storage", module);
+	int x = 0;
 
-	struct JsonNode *parent = root->parent;
-	if(json_first_child(root) == NULL) {
-		if(parent != NULL) {
-			json_remove_from_parent(root);
-			registry_remove_empty_parent(parent);
-			json_delete(root);
-		}
-	}
-}
-
-static int registry_remove_value_recursive(struct JsonNode *root, const char *key) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	char *sub = strstr(key, ".");
-	char *buff = MALLOC(strlen(key)+1);
-	strcpy(buff, key);
-	if(sub != NULL) {
-		int pos = sub-key;
-		buff[pos] = '\0';
-	}
-	struct JsonNode *member = json_find_member(root, buff);
-	if(member != NULL) {
-		if(sub == NULL) {
-			json_remove_from_parent(member);
-			json_delete(member);
-			registry_remove_empty_parent(root);
-			FREE(buff);
-			return 0;
-		}
-		if(member->tag == JSON_OBJECT) {
-			if(sub != NULL) {
-				int pos = sub-key;
-				strcpy(buff, &key[pos+1]);
-			}
-			int ret = registry_remove_value_recursive(member, buff);
-			FREE(buff);
-			return ret;
-		}
-	}
-	FREE(buff);
-	return -1;
-}
-
-int registry_get_string(const char *key, char **value) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if(registry == NULL) {
+	if(state == NULL) {
 		return -1;
 	}
-	return registry_get_value_recursive(registry, key, (void *)value, NULL, JSON_STRING);
+
+	plua_get_method(state->L, state->module->file, "set");
+
+	lua_pushstring(state->L, key);
+	lua_pushnumber(state->L, val);
+
+	if((x = plua_pcall(state->L, state->module->file, 2, 1)) == 0) {
+		if(lua_type(state->L, -1) == LUA_TNUMBER) {
+			x = lua_tonumber(state->L, -1);
+			lua_pop(state->L, 1);
+		} else {
+			x = -1;
+		}
+		lua_pop(state->L, -1);
+	}
+
+	assert(lua_gettop(state->L) == 0);
+	plua_clear_state(state);
+
+	return x;
 }
 
-int registry_get_number(const char *key, double *value, int *decimals) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+static int config_callback_set_boolean(char *module, char *key, int val) {
+	struct lua_state_t *state = plua_get_module("storage", module);
+	int x = 0;
 
-	if(registry == NULL) {
+	if(state == NULL) {
 		return -1;
 	}
-	void *p = NULL;
-	void *q = NULL;
-	int ret = registry_get_value_recursive(registry, key, &p, &q, JSON_NUMBER);
-	if(ret == 0) {
-		*value = *(double *)p;
-		*decimals = *(int *)q;
+
+	plua_get_method(state->L, state->module->file, "set");
+
+	lua_pushstring(state->L, key);
+	lua_pushboolean(state->L, val);
+
+	if((x = plua_pcall(state->L, state->module->file, 2, 1)) == 0) {
+		if(lua_type(state->L, -1) == LUA_TNUMBER) {
+			x = lua_tonumber(state->L, -1);
+			lua_pop(state->L, 1);
+		} else {
+			x = -1;
+		}
+		lua_pop(state->L, -1);
 	}
-	return ret;
+
+	assert(lua_gettop(state->L) == 0);
+	plua_clear_state(state);
+
+	return x;
 }
 
-int registry_set_string(const char *key, char *value) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if(registry == NULL) {
-		registry = json_mkobject();
-	}
-	return registry_set_value_recursive(registry, key, (void *)value, 0, JSON_STRING);
+int config_registry_get(char *key, struct varcont_t *ret) {
+	return config_callback_get("registry", key, ret);
 }
 
-int registry_set_number(const char *key, double value, int decimals) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if(registry == NULL) {
-		registry = json_mkobject();
-	}
-	void *p = (void *)&value;
-	return registry_set_value_recursive(registry, key, p, decimals, JSON_NUMBER);
+int config_registry_set_number(char *key, double val) {
+	return config_callback_set_number("registry", key, val);
 }
 
-int registry_remove_value(const char *key) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if(registry == NULL) {
-		return -1;
-	}
-	return registry_remove_value_recursive(registry, key);
+int config_registry_set_boolean(char *key, int val) {
+	return config_callback_set_boolean("registry", key, val);
 }
 
-int config_registry_parse(struct JsonNode *root) {
-	if(root->tag == JSON_OBJECT) {
-		char *content = json_stringify(root, NULL);
-		registry = json_decode(content);
-		json_free(content);
-	} else {
-		logprintf(LOG_ERR, "config registry should be of an object type");
-		return -1;
-	}
-	return 0;
+int config_registry_set_string(char *key, char *val) {
+	return config_callback_set_string("registry", key, val);
 }
 
-struct JsonNode *config_registry_sync(int level, const char *display) {
-	if(registry != NULL) {
-		char *content = json_stringify(registry, NULL);
-		struct JsonNode *jret = json_decode(content);
-		json_free(content);
-		return jret;
-	} else {
-		return NULL;
-	}
-}
-
-int registry_gc(void) {
-	pthread_mutex_lock(&mutex_lock);
-	if(registry != NULL) {
-		json_delete(registry);
-	}
-	registry = NULL;
-	pthread_mutex_unlock(&mutex_lock);
-
-	logprintf(LOG_DEBUG, "garbage collected config registry library");
-	return 1;
-}
-
-void registry_init(void) {
-	pthread_mutexattr_init(&mutex_attr);
-	pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&mutex_lock, &mutex_attr);
+int config_registry_set_null(char *key) {
+	return config_callback_set_string("registry", key, NULL);
 }

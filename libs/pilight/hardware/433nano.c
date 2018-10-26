@@ -336,9 +336,9 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 							firmware.hpf = atof(array[6]);
 
 							if(firmware.version > 0 && firmware.lpf > 0 && firmware.hpf > 0) {
-								registry_set_number("pilight.firmware.version", firmware.version, 0);
-								registry_set_number("pilight.firmware.lpf", firmware.lpf, 0);
-								registry_set_number("pilight.firmware.hpf", firmware.hpf, 0);
+								config_registry_set_number("pilight.firmware.version", firmware.version);
+								config_registry_set_number("pilight.firmware.lpf", firmware.lpf);
+								config_registry_set_number("pilight.firmware.hpf", firmware.hpf);
 								logprintf(LOG_INFO, "pilight-usb-nano version: %d, lpf: %d, hpf: %d", (int)firmware.version, (int)firmware.lpf, (int)firmware.hpf);
 							}
 						}

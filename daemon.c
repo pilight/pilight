@@ -446,9 +446,9 @@ void *broadcast(void *param) {
 							json_find_number(code, "lpf", &firmware.lpf);
 							json_find_number(code, "hpf", &firmware.hpf);
 							if(firmware.version > 0 && firmware.lpf > 0 && firmware.hpf > 0) {
-								registry_set_number("pilight.firmware.version", firmware.version, 0);
-								registry_set_number("pilight.firmware.lpf", firmware.lpf, 0);
-								registry_set_number("pilight.firmware.hpf", firmware.hpf, 0);
+								config_registry_set_number("pilight.firmware.version", firmware.version);
+								config_registry_set_number("pilight.firmware.lpf", firmware.lpf);
+								config_registry_set_number("pilight.firmware.hpf", firmware.hpf);
 
 								struct JsonNode *jmessage = json_mkobject();
 								struct JsonNode *jcode = json_mkobject();
@@ -1372,9 +1372,6 @@ static void socket_parse_data(int i, char *buffer) {
 					struct JsonNode *value = NULL;
 					char *type = NULL;
 					char *key = NULL;
-					char *sval = NULL;
-					double nval = 0.0;
-					int dec = 0;
 					if(json_find_string(json, "type", &type) != 0) {
 						logprintf(LOG_ERR, "client did not send a type of action");
 					} else {
@@ -1387,13 +1384,13 @@ static void socket_parse_data(int i, char *buffer) {
 								socket_write(sd, "{\"status\":\"failed\"}");
 							} else {
 								if(value->tag == JSON_NUMBER) {
-									if(registry_set_number(key, value->number_, value->decimals_) == 0) {
+									if(config_registry_set_number(key, value->number_) == 0) {
 										socket_write(sd, "{\"status\":\"success\"}");
 									} else {
 										socket_write(sd, "{\"status\":\"failed\"}");
 									}
 								} else if(value->tag == JSON_STRING) {
-									if(registry_set_string(key, value->string_) == 0) {
+									if(config_registry_set_string(key, value->string_) == 0) {
 										socket_write(sd, "{\"status\":\"success\"}");
 									} else {
 										socket_write(sd, "{\"status\":\"failed\"}");
@@ -1408,7 +1405,7 @@ static void socket_parse_data(int i, char *buffer) {
 								logprintf(LOG_ERR, "client did not send a registry key");
 								socket_write(sd, "{\"status\":\"failed\"}");
 							} else {
-								if(registry_remove_value(key) == 0) {
+								if(config_registry_set_null(key) == 0) {
 									socket_write(sd, "{\"status\":\"success\"}");
 								} else {
 									socket_write(sd, "{\"status\":\"failed\"}");
@@ -1419,24 +1416,31 @@ static void socket_parse_data(int i, char *buffer) {
 								logprintf(LOG_ERR, "client did not send a registry key");
 								socket_write(sd, "{\"status\":\"failed\"}");
 							} else {
-								if(registry_get_number(key, &nval, &dec) == 0) {
-									struct JsonNode *jsend = json_mkobject();
-									json_append_member(jsend, "message", json_mkstring("registry"));
-									json_append_member(jsend, "value", json_mknumber(nval, dec));
-									json_append_member(jsend, "key", json_mkstring(key));
-									char *output = json_stringify(jsend, NULL);
-									socket_write(sd, output);
-									json_free(output);
-									json_delete(jsend);
-								} else if(registry_get_string(key, &sval) == 0) {
-									struct JsonNode *jsend = json_mkobject();
-									json_append_member(jsend, "message", json_mkstring("registry"));
-									json_append_member(jsend, "value", json_mkstring(sval));
-									json_append_member(jsend, "key", json_mkstring(key));
-									char *output = json_stringify(jsend, NULL);
-									socket_write(sd, output);
-									json_free(output);
-									json_delete(jsend);
+								struct varcont_t out;
+								memset(&out, 0, sizeof(struct varcont_t));
+								if(config_registry_get(key, &out) == 0) {
+									if(out.type_ == JSON_NUMBER) {
+										struct JsonNode *jsend = json_mkobject();
+										json_append_member(jsend, "message", json_mkstring("registry"));
+										json_append_member(jsend, "value", json_mknumber(out.number_, 0));
+										json_append_member(jsend, "key", json_mkstring(key));
+										char *output = json_stringify(jsend, NULL);
+										socket_write(sd, output);
+										json_free(output);
+										json_delete(jsend);
+									} else if(out.type_ == JSON_STRING) {
+										struct JsonNode *jsend = json_mkobject();
+										json_append_member(jsend, "message", json_mkstring("registry"));
+										json_append_member(jsend, "value", json_mkstring(out.string_));
+										json_append_member(jsend, "key", json_mkstring(key));
+										char *output = json_stringify(jsend, NULL);
+										socket_write(sd, output);
+										json_free(output);
+										json_delete(jsend);
+									} else {
+										logprintf(LOG_ERR, "registry key '%s' doesn't exists", key);
+										socket_write(sd, "{\"status\":\"failed\"}");
+									}
 								} else {
 									logprintf(LOG_ERR, "registry key '%s' doesn't exists", key);
 									socket_write(sd, "{\"status\":\"failed\"}");
@@ -1653,11 +1657,7 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 								return 0;
 							} else {
 								if(value->tag == JSON_NUMBER) {
-#ifdef PILIGHT_REWRITE
-									if(registry_update(ORIGIN_MASTER, key, json_mknumber(value->number_, value->decimals_)) == 0) {
-#else
-									if(registry_set_number(key, value->number_, value->decimals_) == 0) {
-#endif
+									if(config_registry_set_number(key, value->number_) == 0) {
 										if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
 											OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 										}
@@ -1673,11 +1673,7 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 										return 0;
 									}
 								} else if(value->tag == JSON_STRING) {
-#ifdef PILIGHT_REWRITE
-									if(registry_update(ORIGIN_MASTER, key, json_mkstring(value->string_)) == 0) {
-#else
-									if(registry_set_string(key, value->string_) == 0) {
-#endif
+									if(config_registry_set_string(key, value->string_) == 0) {
 										if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
 											OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 										}
@@ -1712,11 +1708,7 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 								json_delete(json);
 								return 0;
 							} else {
-#ifdef PILIGHT_REWRITE
-								if(registry_delete(ORIGIN_MASTER, key) == 0) {
-#else
-								if(registry_remove_value(key) == 0) {
-#endif
+								if(config_registry_set_null(key) == 0) {
 									if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
 										OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 									}
@@ -1743,42 +1735,46 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 								json_delete(json);
 								return 0;
 							} else {
-#ifdef PILIGHT_REWRITE
-								if(registry_select_number(ORIGIN_MASTER, key, &nval, &dec) == 0) {
-#else
-								if(registry_get_number(key, &nval, &dec) == 0) {
-#endif
-									struct JsonNode *jsend = json_mkobject();
-									json_append_member(jsend, "message", json_mkstring("registry"));
-									json_append_member(jsend, "value", json_mknumber(nval, dec));
-									json_append_member(jsend, "key", json_mkstring(key));
-									char *output = json_stringify(jsend, NULL);
-									if((*respons = MALLOC(strlen(output)+1)) == NULL) {
-										OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+								struct varcont_t out;
+								memset(&out, 0, sizeof(struct varcont_t));
+								if(config_registry_get(key, &out) == 0) {
+									if(out.type_ == JSON_NUMBER) {
+										struct JsonNode *jsend = json_mkobject();
+										json_append_member(jsend, "message", json_mkstring("registry"));
+										json_append_member(jsend, "value", json_mknumber(nval, dec));
+										json_append_member(jsend, "key", json_mkstring(key));
+										char *output = json_stringify(jsend, NULL);
+										if((*respons = MALLOC(strlen(output)+1)) == NULL) {
+											OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+										}
+										strcpy(*respons, output);
+										json_free(output);
+										json_delete(jsend);
+										json_delete(json);
+										return 0;
+									} else if(out.type_ == JSON_STRING) {
+										struct JsonNode *jsend = json_mkobject();
+										json_append_member(jsend, "message", json_mkstring("registry"));
+										json_append_member(jsend, "value", json_mkstring(sval));
+										json_append_member(jsend, "key", json_mkstring(key));
+										char *output = json_stringify(jsend, NULL);
+										if((*respons = MALLOC(strlen(output)+1)) == NULL) {
+											OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+										}
+										strcpy(*respons, output);
+										json_free(output);
+										json_delete(jsend);
+										json_delete(json);
+										return 0;
+									} else {
+										logprintf(LOG_ERR, "registry key '%s' does not exist", key);
+										if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
+											OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+										}
+										strcpy(*respons, "{\"status\":\"failed\"}");
+										json_delete(json);
+										return 0;
 									}
-									strcpy(*respons, output);
-									json_free(output);
-									json_delete(jsend);
-									json_delete(json);
-									return 0;
-#ifdef PILIGHT_REWRITE
-								} else if(registry_select_string(ORIGIN_MASTER, key, &sval) == 0) {
-#else
-								} else if(registry_get_string(key, &sval) == 0) {
-#endif
-									struct JsonNode *jsend = json_mkobject();
-									json_append_member(jsend, "message", json_mkstring("registry"));
-									json_append_member(jsend, "value", json_mkstring(sval));
-									json_append_member(jsend, "key", json_mkstring(key));
-									char *output = json_stringify(jsend, NULL);
-									if((*respons = MALLOC(strlen(output)+1)) == NULL) {
-										OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-									}
-									strcpy(*respons, output);
-									json_free(output);
-									json_delete(jsend);
-									json_delete(json);
-									return 0;
 								} else {
 									logprintf(LOG_ERR, "registry key '%s' does not exist", key);
 									if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
@@ -2305,7 +2301,6 @@ void *clientize(void *param) {
 #ifdef EVENTS
 							rules_gc();
 #endif
-							registry_gc();
 							pthread_mutex_unlock(&config_lock);
 
 							if(config_parse(jconfig, CONFIG_DEVICES) == 0) {
@@ -2569,8 +2564,8 @@ static void procProtocolInit(void) {
 void registerVersion(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	registry_remove_value("pilight.version");
-	registry_set_string("pilight.version.current", (char *)PILIGHT_VERSION);
+	config_registry_set_null("pilight.version");
+	config_registry_set_string("pilight.version.current", (char *)PILIGHT_VERSION);
 }
 #ifndef _WIN32
 #pragma GCC diagnostic pop   // require GCC 4.6
@@ -2930,6 +2925,10 @@ int start_pilight(int argc, char **argv) {
 		goto clear;
 	}
 
+	plua_init();
+	plua_package_path("/usr/local/lib/pilight/lua/?/?.lua");
+	plua_package_path("/usr/local/lib/pilight/lua/?.lua");
+
 	if(config_set_file(configtmp) == EXIT_FAILURE) {
 		return EXIT_FAILURE;
 	}
@@ -3000,11 +2999,11 @@ int start_pilight(int argc, char **argv) {
 			sprintf(&md5conv[i], "%02x", md5sum[i/2] );
 		}
 		if(strcmp(md5conv, PILIGHT_PEM_MD5) == 0) {
-			registry_set_number("webserver.ssl.certificate.secure", 0, 0);
+			config_registry_set_number("webserver.ssl.certificate.secure", 0);
 		} else {
-			registry_set_number("webserver.ssl.certificate.secure", 1, 0);
+			config_registry_set_number("webserver.ssl.certificate.secure", 1);
 		}
-		registry_set_string("webserver.ssl.certificate.location", pemfile);
+		config_registry_set_string("webserver.ssl.certificate.location", pemfile);
 		FREE(content);
 	}
 
