@@ -493,6 +493,7 @@ int config_gc(void) {
 	devices_gc();
 	registry_gc();
 	rules_gc();
+	gui_gc();
 
 	logprintf(LOG_DEBUG, "garbage collected storage library");
 	return 0;
