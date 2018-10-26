@@ -124,6 +124,7 @@ struct lua_state_t *plua_get_module(char *namespace, char *module) {
 
 	sprintf(p, "%s.%s", namespace, module);
 	lua_getglobal(L, name);
+
 	if(lua_isnil(L, -1) != 0) {
 		lua_pop(L, -1);
 		assert(lua_gettop(L) == 0);
@@ -347,9 +348,16 @@ struct JsonNode *config_print(int level, const char *media) {
 		struct JsonNode *jchild1 = config_devices_sync(level, media);
 		struct JsonNode *jchild = json_find_member(root, "devices");
 		json_remove_from_parent(jchild);
-		if(jchild1 != NULL && strcmp(json_stringify(jchild1, NULL), "{}") != 0) {
-			json_append_member(root, "devices", jchild1);
-			json_delete(jchild);
+		char *check = json_stringify(jchild1, NULL);
+		if(check != NULL) {
+			if(jchild1 != NULL && strcmp(check, "{}") != 0) {
+				json_append_member(root, "devices", jchild1);
+				json_delete(jchild);
+			} else {
+				json_append_member(root, "devices", jchild);
+				json_delete(jchild1);
+			}
+			json_free(check);
 		} else {
 			json_append_member(root, "devices", jchild);
 			json_delete(jchild1);
@@ -358,9 +366,16 @@ struct JsonNode *config_print(int level, const char *media) {
 		struct JsonNode *jchild2 = config_rules_sync(level, media);
 		jchild = json_find_member(root, "rules");
 		json_remove_from_parent(jchild);
-		if(jchild2 != NULL && strcmp(json_stringify(jchild2, NULL), "{}") != 0) {
-			json_append_member(root, "rules", jchild2);
-			json_delete(jchild);
+		check = json_stringify(jchild2, NULL);
+		if(check != NULL) {
+			if(jchild2 != NULL && strcmp(check, "{}") != 0) {
+				json_append_member(root, "rules", jchild2);
+				json_delete(jchild);
+			} else {
+				json_append_member(root, "rules", jchild);
+				json_delete(jchild2);
+			}
+			json_free(check);
 		} else {
 			json_append_member(root, "rules", jchild);
 			json_delete(jchild2);
@@ -369,9 +384,16 @@ struct JsonNode *config_print(int level, const char *media) {
 		struct JsonNode *jchild3 = config_gui_sync(level, media);
 		jchild = json_find_member(root, "gui");
 		json_remove_from_parent(jchild);
-		if(jchild3 != NULL && strcmp(json_stringify(jchild3, NULL), "{}") != 0) {
-			json_append_member(root, "gui", jchild3);
-			json_delete(jchild);
+		check = json_stringify(jchild3, NULL);
+		if(check != NULL) {
+			if(jchild3 != NULL && strcmp(check, "{}") != 0) {
+				json_append_member(root, "gui", jchild3);
+				json_delete(jchild);
+			} else {
+				json_append_member(root, "gui", jchild);
+				json_delete(jchild3);
+			}
+			json_free(check);
 		} else {
 			json_append_member(root, "gui", jchild);
 			json_delete(jchild3);
@@ -381,6 +403,7 @@ struct JsonNode *config_print(int level, const char *media) {
 		if(settings != NULL) {
 			struct JsonNode *jchild = json_find_member(root, "settings");
 			json_remove_from_parent(jchild);
+			json_delete(jchild);
 			json_append_member(root, "settings", json_decode(settings));
 			FREE(settings);
 		}
@@ -388,9 +411,16 @@ struct JsonNode *config_print(int level, const char *media) {
 		struct JsonNode *jchild4 = config_hardware_sync(level, media);
 		jchild = json_find_member(root, "hardware");
 		json_remove_from_parent(jchild);
-		if(jchild4 != NULL && strcmp(json_stringify(jchild4, NULL), "{}") != 0) {
-			json_append_member(root, "hardware", jchild4);
-			json_delete(jchild);
+		check = json_stringify(jchild4, NULL);
+		if(check != NULL) {
+			if(jchild4 != NULL && strcmp(check, "{}") != 0) {
+				json_append_member(root, "hardware", jchild4);
+				json_delete(jchild);
+			} else {
+				json_append_member(root, "hardware", jchild);
+				json_delete(jchild4);
+			}
+			json_free(check);
 		} else {
 			json_append_member(root, "hardware", jchild);
 			json_delete(jchild4);
@@ -399,13 +429,23 @@ struct JsonNode *config_print(int level, const char *media) {
 		struct JsonNode *jchild5 = config_registry_sync(level, media);
 		jchild = json_find_member(root, "registry");
 		json_remove_from_parent(jchild);
-		if(jchild5 != NULL && strcmp(json_stringify(jchild5, NULL), "{}") != 0) {
-			json_append_member(root, "registry", jchild5);
-			json_delete(jchild);
+		check = json_stringify(jchild5, NULL);
+		if(check != NULL) {
+			if(jchild5 != NULL && strcmp(check, "{}") != 0) {
+				json_append_member(root, "registry", jchild5);
+				json_delete(jchild);
+			} else {
+				json_append_member(root, "registry", jchild);
+				json_delete(jchild5);
+			}
+			json_free(check);
 		} else {
 			json_append_member(root, "registry", jchild);
 			json_delete(jchild5);
 		}
+	}
+	if(content != NULL) {
+		FREE(content);
 	}
 
 	return root;
@@ -419,10 +459,10 @@ int config_write(int level, char *media) {
 	FILE *fp = NULL;
 
 	struct JsonNode *root = config_print(level, media);
-
 	/* Overwrite config file with proper format */
 	if((fp = fopen(string, "w+")) == NULL) {
 		logprintf(LOG_ERR, "cannot write config file: %s", string);
+		json_delete(root);
 		return EXIT_FAILURE;
 	}
 	fseek(fp, 0L, SEEK_SET);
@@ -430,8 +470,8 @@ int config_write(int level, char *media) {
 	if((content = json_stringify(root, "\t")) != NULL) {
 		fwrite(content, sizeof(char), strlen(content), fp);
 		json_free(content);
-		json_delete(root);
 	}
+	json_delete(root);
 	fclose(fp);
 
 	return 0;
