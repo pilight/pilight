@@ -1018,6 +1018,20 @@ static struct tests_t get_tests[] = {
 		{ 1, 0 }
 	},
 	{
+		"uppercase action name",
+		"{\"devices\":{"\
+			"\"testlabel\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":1}],\"label\":\"foo\",\"color\":\"black\"}"\
+		"},"\
+		"\"gui\":{},"\
+		"\"rules\":{"\
+			"\"switch\":{\"rule\":\"IF 1 == 1 THEN LABEL DEVICE testlabel TO 1000 + 10\",\"active\":1}"\
+		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
+		0, UV_RUN_DEFAULT,
+		0, &updates1[0],
+		{ &receives[4] },
+		{ 1, 0 }
+	},
+	{
 		"single function argument test",
 		"{\"devices\":{"\
 			"\"testlabel\":{\"protocol\":[\"generic_label\"],\"id\":[{\"id\":1}],\"label\":\"foo\",\"color\":\"black\"}"\
