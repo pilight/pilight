@@ -185,32 +185,32 @@ if(NOT WIN32)
 		endif()
 	endif()
 
-	set(CMAKE_UNWIND_LIBS_INIT)
+	# set(CMAKE_UNWIND_LIBS_INIT)
 
-	if(NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^mips" AND NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^aarch64")
-		find_library(CMAKE_UNWIND_LIBS_INIT
-		NAME unwind
-		PATHS
-			${CROSS_COMPILE_LIBS}
-			/usr/lib
-			/usr/lib32
-			/usr/lib64
-			/usr/lib/i386-linux-gnu		
-			/usr/lib/x86_64-linux-gnu
-			/usr/local/lib
-			/usr/local/lib32
-			/usr/local/lib64
-			/usr/lib/arm-linux-gnueabi
-			/usr/lib/arm-linux-gnueabihf
-			/usr/lib/aarch64-linux-gnu
-		NO_DEFAULT_PATH)
+	# if(NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^mips" AND NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^aarch64")
+		# find_library(CMAKE_UNWIND_LIBS_INIT
+		# NAME unwind
+		# PATHS
+			# ${CROSS_COMPILE_LIBS}
+			# /usr/lib
+			# /usr/lib32
+			# /usr/lib64
+			# /usr/lib/i386-linux-gnu
+			# /usr/lib/x86_64-linux-gnu
+			# /usr/local/lib
+			# /usr/local/lib32
+			# /usr/local/lib64
+			# /usr/lib/arm-linux-gnueabi
+			# /usr/lib/arm-linux-gnueabihf
+			# /usr/lib/aarch64-linux-gnu
+		# NO_DEFAULT_PATH)
 
-		if(${CMAKE_UNWIND_LIBS_INIT} MATCHES "CMAKE_UNWIND_LIBS_INIT-NOTFOUND")
-			message(FATAL_ERROR "Looking for libunwind - not found")
-		else()
-			message(STATUS "Looking for libunwind - found (${CMAKE_UNWIND_LIBS_INIT})")
-		endif()
-	endif()
+		# if(${CMAKE_UNWIND_LIBS_INIT} MATCHES "CMAKE_UNWIND_LIBS_INIT-NOTFOUND")
+			# message(FATAL_ERROR "Looking for libunwind - not found")
+		# else()
+			# message(STATUS "Looking for libunwind - found (${CMAKE_UNWIND_LIBS_INIT})")
+		# endif()
+	# endif()
 
 	find_library(CMAKE_WIRINGX_LIBS_INIT
 		NAME wiringx
@@ -446,10 +446,10 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_PCAP_LIBS_INIT})
 	endif()
 
-	if(NOT WIN32)
-		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_UNWIND_LIBS_INIT})
-		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_UNWIND_LIBS_INIT})
-	endif()
+	# if(NOT WIN32)
+		# target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_UNWIND_LIBS_INIT})
+		# target_link_libraries(${PROJECT_NAME}_static ${CMAKE_UNWIND_LIBS_INIT})
+	# endif()
 
 	set_target_properties(${PROJECT_NAME}_shared ${PROJECT_NAME}_static PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 
