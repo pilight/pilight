@@ -27,6 +27,9 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 
 	add_subdirectory(lua_c)
 	set(${PROJECT_NAME}_files	${${PROJECT_NAME}_files} ${${PROJECT_NAME}_lua_c_files} CACHE INTERNAL "")
+
+	add_subdirectory(lua)
+	set(${PROJECT_NAME}_files	${${PROJECT_NAME}_files} ${${PROJECT_NAME}_lua_c_files} CACHE INTERNAL "")
 else()
 	if(${EVENTS} MATCHES "ON")
 		add_subdirectory(events)

@@ -1,0 +1,6 @@
+file(GLOB lua "${PROJECT_SOURCE_DIR}/lua/*.lua")
+if(WIN32)
+	install(FILES ${lua} DESTINATION lua/ COMPONENT pilight)
+else()
+	install(FILES ${lua} DESTINATION lib/pilight/lua/ COMPONENT pilight)
+endif()

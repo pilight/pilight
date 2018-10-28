@@ -767,6 +767,7 @@ else()
 	message("")
 	message("${Red}-- WARNING --${ColorReset}")
 	message("${Yellow}Manually compiling and installing ${PROJECT_NAME} will also clear all module folders:
+/usr/local/lib/${PROJECT_NAME}/lua/
 /usr/local/lib/${PROJECT_NAME}/storage/
 /usr/local/lib/${PROJECT_NAME}/protocols/
 /usr/local/lib/${PROJECT_NAME}/hardware/
