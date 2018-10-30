@@ -20,14 +20,13 @@
 		"webserver": {
 			"ssl": {
 				"certificate": {
-					"secure": 0,
 					"location": "/etc/pilight/pilight.pem"
 				}
 			}
 		},
 		"pilight": {
 			"version": {
-				"current": "8.1.2"
+				"current": "8.1.3"
 			}
 		}
 	}

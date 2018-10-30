@@ -176,7 +176,7 @@ static struct protocol_t *procProtocol;
 
 /* The pid_file and pid of this daemon */
 #ifndef _WIN32
-static char *pid_file;
+static char *pid_file = NULL;
 #endif
 static pid_t pid;
 /* Daemonize or not */
@@ -225,6 +225,8 @@ static int webserver_http_port = WEBSERVER_HTTP_PORT;
 /* The webroot of pilight */
 static char *webserver_root = NULL;
 #endif
+
+static char *lua_root = LUA_ROOT;
 
 static void *reason_forward_free(void *param) {
 	FREE(param);
@@ -2422,7 +2424,6 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 int main_gc(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	running = 0;
 	pilight.running = 0;
 	main_loop = 0;
 
@@ -2538,6 +2539,8 @@ int main_gc(void) {
 #endif
 
 	FREE(signal_req);
+
+	running = 0;
 
 	return 0;
 }
@@ -2715,7 +2718,8 @@ int start_pilight(int argc, char **argv) {
 	options_add(&options, "C", "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, "S", "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, "P", "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
-	options_add(&options, "Ls", "storage-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
+	options_add(&options, "Ls", "storage-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "Ll", "lua-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, "D", "debug", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, "256", "stacktracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, "257", "threadprofiler", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
@@ -2757,6 +2761,10 @@ int start_pilight(int argc, char **argv) {
 		}
 	}
 
+	if(options_exists(options, "Ll") == 0) {
+		options_get_string(options, "Ll", &lua_root);
+	}
+
 	if(options_exists(options, "F") == 0) {
 		nodaemon = 1;
 	}
@@ -2793,16 +2801,22 @@ int start_pilight(int argc, char **argv) {
 		sprintf(help, "Usage: %s [options]\n"
 									"\t -H  --help\t\t\tdisplay usage summary\n"
 									"\t -V  --version\t%sdisplay version\n"
+									"\n"
 									"\t -C  --config\t%sconfig file\n"
+									"\n"
 									"\t -S  --server=x.x.x.x\t\tconnect to server address\n"
 									"\t -P  --port=xxxx%sconnect to server port\n"
-									"\t -Ls --storage-root=xxxx\tlocation of storage lua modules\n"
+									"\n"
 									"\t -F  --foreground\t\tdo not daemonize\n"
 									"\t -D  --debug\t%sdo not daemonize and\n"
 									"\t\t\t%sshow debug information\n"
-									"\t     --stacktracer\t\tshow internal function calls\n"
+									"\n"
+									"\t -Ls --storage-root=xxxx\tlocation of storage lua modules\n"
+									"\t -Ll --lua-root=xxxx\t\tlocation of the lua modules\n"
+									"\n"
+									/*"\t     --stacktracer\t\tshow internal function calls\n"
 									"\t     --threadprofiler\t\tshow per thread cpu usage\n"
-									"\t     --debuglevel\t\tshow additional development info\n",
+									"\t     --debuglevel\t\tshow additional development info\n"*/,
 									progname, tabs, tabs, tabs, tabs, tabs);
 #ifdef _WIN32
 		MessageBox(NULL, help, "pilight :: info", MB_OK);
@@ -2915,6 +2929,12 @@ int start_pilight(int argc, char **argv) {
 	}
 #endif
 
+	if((pid = isrunning("pilight-daemon")) != -1) {
+		logprintf(LOG_NOTICE, "already active (pid %d)", (int)pid);
+		log_shell_disable();
+		goto clear;
+	}
+
 	if((pid = isrunning("pilight-raw")) != -1) {
 		logprintf(LOG_NOTICE, "pilight-raw instance found (%d)", (int)pid);
 		goto clear;
@@ -2925,9 +2945,27 @@ int start_pilight(int argc, char **argv) {
 		goto clear;
 	}
 
-	plua_init();
-	plua_package_path("/usr/local/lib/pilight/lua/?/?.lua");
-	plua_package_path("/usr/local/lib/pilight/lua/?.lua");
+	{
+		int len = strlen(lua_root)+strlen("lua/?/?.lua")+1;
+		char *lua_path = MALLOC(len);
+
+		if(lua_path == NULL) {
+			OUT_OF_MEMORY
+		}
+
+		plua_init();
+
+		memset(lua_path, '\0', len);
+		snprintf(lua_path, len, "%s/?/?.lua", lua_root);
+		printf("%s\n", lua_path);
+		plua_package_path(lua_path);
+
+		memset(lua_path, '\0', len);
+		snprintf(lua_path, len, "%s/?.lua", lua_root);
+		plua_package_path(lua_path);
+
+		FREE(lua_path);
+	}
 
 	if(config_set_file(configtmp) == EXIT_FAILURE) {
 		return EXIT_FAILURE;
