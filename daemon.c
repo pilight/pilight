@@ -2957,7 +2957,6 @@ int start_pilight(int argc, char **argv) {
 
 		memset(lua_path, '\0', len);
 		snprintf(lua_path, len, "%s/?/?.lua", lua_root);
-		printf("%s\n", lua_path);
 		plua_package_path(lua_path);
 
 		memset(lua_path, '\0', len);

@@ -42,12 +42,13 @@
 #include "libs/pilight/core/dso.h"
 #include "libs/pilight/core/gc.h"
 #include "libs/pilight/config/config.h"
+#include "libs/pilight/config/hardware.h"
+#include "libs/pilight/lua_c/lua.h"
 
 #include "libs/pilight/protocols/protocol.h"
 
 #include "libs/pilight/events/events.h"
 
-#include "libs/pilight/config/hardware.h"
 
 #ifndef PILIGHT_DEVELOPMENT
 static uv_signal_t *signal_req = NULL;
@@ -55,6 +56,8 @@ static uv_signal_t *signal_req = NULL;
 
 static unsigned short main_loop = 1;
 static unsigned short linefeed = 0;
+
+static char *lua_root = LUA_ROOT;
 
 int main_gc(void) {
 	log_shell_disable();
@@ -240,7 +243,8 @@ int main(int argc, char **argv) {
 	options_add(&options, "V", "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, "C", "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, "L", "linefeed", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, "Ls", "storage-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
+	options_add(&options, "Ls", "storage-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "Ll", "lua-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	if(options_parse(options, argc, argv) == -1) {
 		help = 1;
@@ -252,7 +256,8 @@ int main(int argc, char **argv) {
 		printf("\t -V  --version\t\t\tdisplay version\n");
 		printf("\t -L  --linefeed\t\t\tstructure raw printout\n");
 		printf("\t -C  --config\t\t\tconfig file\n");
-		printf("\t -Ls --storage-root=xxxx\tlocation of storage lua modules\n");
+		printf("\t -Ls --storage-root=xxxx\tlocation of the storage lua modules\n");
+		printf("\t -Ll --lua-root=xxxx\t\tlocation of the plain lua modules\n");
 		goto close;
 	}
 
@@ -276,6 +281,31 @@ int main(int argc, char **argv) {
 			logprintf(LOG_ERR, "%s is not valid storage lua modules path", arg);
 			goto close;
 		}
+	}
+
+	if(options_exists(options, "Ll") == 0) {
+		options_get_string(options, "Ll", &lua_root);
+	}
+
+	{
+		int len = strlen(lua_root)+strlen("lua/?/?.lua")+1;
+		char *lua_path = MALLOC(len);
+
+		if(lua_path == NULL) {
+			OUT_OF_MEMORY
+		}
+
+		plua_init();
+
+		memset(lua_path, '\0', len);
+		snprintf(lua_path, len, "%s/?/?.lua", lua_root);
+		plua_package_path(lua_path);
+
+		memset(lua_path, '\0', len);
+		snprintf(lua_path, len, "%s/?.lua", lua_root);
+		plua_package_path(lua_path);
+
+		FREE(lua_path);
 	}
 
 #ifdef _WIN32
