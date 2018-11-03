@@ -2927,13 +2927,15 @@ int start_pilight(int argc, char **argv) {
 		logprintf(LOG_NOTICE, "pilight is already running");
 		goto clear;
 	}
-#endif
-
+#else
 	if((pid = isrunning("pilight-daemon")) != -1) {
-		logprintf(LOG_NOTICE, "already active (pid %d)", (int)pid);
-		log_shell_disable();
-		goto clear;
+		if(pid != getpid()) {
+			logprintf(LOG_NOTICE, "already active (pid %d)", (int)pid);
+			log_shell_disable();
+			goto clear;
+		}
 	}
+#endif
 
 	if((pid = isrunning("pilight-raw")) != -1) {
 		logprintf(LOG_NOTICE, "pilight-raw instance found (%d)", (int)pid);
