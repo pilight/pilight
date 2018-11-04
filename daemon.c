@@ -178,7 +178,6 @@ static struct protocol_t *procProtocol;
 #ifndef _WIN32
 static char *pid_file = NULL;
 #endif
-static pid_t pid;
 /* Daemonize or not */
 static int nodaemon = 0;
 /* Run tracktracer */
@@ -2922,28 +2921,29 @@ int start_pilight(int argc, char **argv) {
 		log_shell_enable();
 	}
 
-#ifdef _WIN32
-	if((pid = check_instances(L"pilight-daemon")) != -1) {
-		logprintf(LOG_NOTICE, "pilight is already running");
-		goto clear;
-	}
-#else
-	if((pid = isrunning("pilight-daemon")) != -1) {
-		if(pid != getpid()) {
-			logprintf(LOG_NOTICE, "already active (pid %d)", (int)pid);
-			log_shell_disable();
-			goto clear;
+	int *ret = NULL, n = 0;
+	if((n = isrunning("pilight-daemon", &ret)) > 1) {
+		int i = 0;
+		for(i=0;i<n;i++) {
+			if(ret[i] != getpid()) {
+				log_shell_enable();
+				logprintf(LOG_NOTICE, "pilight-daemon is already running (%d)", ret[i]);
+				break;
+			}
 		}
-	}
-#endif
-
-	if((pid = isrunning("pilight-raw")) != -1) {
-		logprintf(LOG_NOTICE, "pilight-raw instance found (%d)", (int)pid);
+		FREE(ret);
 		goto clear;
 	}
 
-	if((pid = isrunning("pilight-debug")) != -1) {
-		logprintf(LOG_NOTICE, "pilight-debug instance found (%d)", (int)pid);
+	if((n = isrunning("pilight-debug", &ret)) > 0) {
+		logprintf(LOG_NOTICE, "pilight-debug instance found (%d)", ret[0]);
+		FREE(ret);
+		goto clear;
+	}
+
+	if((n = isrunning("pilight-raw", &ret)) > 0) {
+		logprintf(LOG_NOTICE, "pilight-raw instance found (%d)", ret[0]);
+		FREE(ret);
 		goto clear;
 	}
 

@@ -48,11 +48,12 @@ extern char *progname;
 int check_instances(const wchar_t *prog);
 int setenv(const char *name, const char *value, int overwrite);
 int unsetenv(const char *name);
-int isrunning(const char *program);
+int isrunning(const char *program, int **ret);
+#else
+int isrunning(const char *program, int **ret);
 #endif
 
 void array_free(char ***array, int len);
-int isrunning(const char *program);
 void atomicinit(void);
 void atomiclock(void);
 void atomicunlock(void);
@@ -77,9 +78,9 @@ int path_exists(char *fil);
 char *uniq_space(char *str);
 
 #ifdef __FreeBSD__
-int findproc(char *name, char *args, int loosely);
+int findproc(char *name, char *args, int loosely, int **ret);
 #else
-pid_t findproc(char *name, char *args, int loosely);
+pid_t findproc(char *name, char *args, int loosely, int **ret);
 #endif
 
 int vercmp(char *val, char *ref);

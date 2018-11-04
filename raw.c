@@ -204,7 +204,6 @@ int main(int argc, char **argv) {
 	struct options_t *options = NULL;
 	char *args = NULL;
 	char *configtmp = CONFIG_FILE;
-	pid_t pid = 0;
 	int help = 0;
 
 	gc_attach(main_gc);
@@ -308,20 +307,28 @@ int main(int argc, char **argv) {
 		FREE(lua_path);
 	}
 
-#ifdef _WIN32
-	if((pid = check_instances(L"pilight-raw")) != -1) {
-		logprintf(LOG_NOTICE, "pilight-raw is already running");
+	int *ret = NULL, n = 0;
+	if((n = isrunning("pilight-raw", &ret)) > 1) {
+		int i = 0;
+		for(i=0;i<n;i++) {
+			if(ret[i] != getpid()) {
+				logprintf(LOG_NOTICE, "pilight-raw is already running (%d)", ret[i]);
+				break;
+			}
+		}
+		FREE(ret);
 		goto close;
 	}
-#endif
 
-	if((pid = isrunning("pilight-daemon")) != -1) {
-		logprintf(LOG_NOTICE, "pilight-daemon instance found (%d)", (int)pid);
+	if((n = isrunning("pilight-daemon", &ret)) > 0) {
+		logprintf(LOG_NOTICE, "pilight-daemon instance found (%d)", ret[0]);
+		FREE(ret);
 		goto close;
 	}
 
-	if((pid = isrunning("pilight-debug")) != -1) {
-		logprintf(LOG_NOTICE, "pilight-debug instance found (%d)", (int)pid);
+	if((n = isrunning("pilight-debug", &ret)) > 0) {
+		logprintf(LOG_NOTICE, "pilight-debug instance found (%d)", ret[0]);
+		FREE(ret);
 		goto close;
 	}
 
