@@ -675,6 +675,7 @@ struct lua_state_t *plua_get_current_state(lua_State *L) {
 
 void plua_clear_state(struct lua_state_t *state) {
 	int i = 0;
+	uv_mutex_lock(&state->gc.lock);
 	for(i=0;i<state->gc.nr;i++) {
 		if(state->gc.list[i]->free == 0) {
 			state->gc.list[i]->callback(state->gc.list[i]->ptr);
@@ -687,9 +688,12 @@ void plua_clear_state(struct lua_state_t *state) {
 	state->gc.nr = 0;
 	state->gc.size = 0;
 
+	uv_mutex_unlock(&state->gc.lock);
+
 	if(state->L != NULL) {
 		assert(lua_gettop(state->L) == 0);
 	}
+
 	uv_mutex_unlock(&state->lock);
 }
 
