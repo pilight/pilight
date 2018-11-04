@@ -229,22 +229,26 @@ int unsetenv(const char *name) {
 }
 #endif
 
-int isrunning(const char *program) {
+int isrunning(const char *program, int **ret) {
 	if(program == NULL) {
 		return -1;
 	}
-	int i = 0;
+	int i = 0, nr = 0;
 	char name[1024], *p = name;
 	memset(&name, '\0', sizeof(name));
 
 	for(i=0;i<psutil_max_pid();i++) {
 		if(psutil_proc_name(i, &p, sizeof(name)) == 0) {
 			if(strcmp(name, program) == 0) {
-				return i;
+				if(((*ret) = REALLOC((*ret), (nr+1)*sizeof(int *))) == NULL) {
+					OUT_OF_MEMORY
+				}
+				(*ret)[nr] = (int)i;
+				nr++;
 			}
 		}
 	}
-	return -1;
+	return nr;
 }
 
 int isNumeric(char *s) {

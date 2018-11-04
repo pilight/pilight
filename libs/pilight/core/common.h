@@ -45,12 +45,12 @@ int gettimeofday(struct timeval *tp, struct timezone *tzp);
 int check_instances(const wchar_t *prog);
 int setenv(const char *name, const char *value, int overwrite);
 int unsetenv(const char *name);
-int isrunning(const char *program);
+int isrunning(const char *program, int **ret);
 #endif
 
 int getnrcpu(void);
 void array_free(char ***array, int len);
-int isrunning(const char *program);
+int isrunning(const char *program, int **ret);
 void atomicinit(void);
 void atomiclock(void);
 void atomicunlock(void);

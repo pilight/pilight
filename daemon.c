@@ -102,7 +102,6 @@ static int active = 1;
 static int nodaemon = 0;
 static int main_loop = 1;
 static int verbosity = LOG_INFO;
-static pid_t pid = 0;
 static int sockfd = 0;
 static char *master_server = NULL;
 static unsigned short master_port = 0;
@@ -1734,13 +1733,29 @@ int start_pilight(int argc, char **argv) {
 		log_shell_enable();
 	}
 
-	if((pid = isrunning("pilight-raw")) != -1) {
-		logprintf(LOG_NOTICE, "pilight-raw instance found (%d)", (int)pid);
+	int *ret = NULL, n = 0;
+	if((n = isrunning("pilight-daemon", &ret)) > 1) {
+		int i = 0;
+		for(i=0;i<n;i++) {
+			if(ret[i] != getpid()) {
+				log_shell_enable();
+				logprintf(LOG_NOTICE, "pilight-daemon is already running (%d)", ret[i]);
+				break;
+			}
+		}
+		FREE(ret);
 		goto clear;
 	}
 
-	if((pid = isrunning("pilight-debug")) != -1) {
-		logprintf(LOG_NOTICE, "pilight-debug instance found (%d)", (int)pid);
+	if((n = isrunning("pilight-debug", &ret)) > 0) {
+		logprintf(LOG_NOTICE, "pilight-debug instance found (%d)", ret[0]);
+		FREE(ret);
+		goto clear;
+	}
+
+	if((n = isrunning("pilight-raw", &ret)) > 0) {
+		logprintf(LOG_NOTICE, "pilight-raw instance found (%d)", ret[0]);
+		FREE(ret);
 		goto clear;
 	}
 
@@ -1825,7 +1840,7 @@ int start_pilight(int argc, char **argv) {
 #ifndef _WIN32
 	{
 		char buffer[BUFFER_SIZE];
-		int f = 0;
+		int f = 0, pid = 0;
 		if(config_setting_get_string("pid-file", 0, &pid_file) != 0) {
 			if((pid_file = REALLOC(pid_file, strlen(PID_FILE)+1)) == NULL) {
 				OUT_OF_MEMORY
@@ -1854,6 +1869,14 @@ int start_pilight(int argc, char **argv) {
 			goto clear;
 		}
 		close(f);
+
+		if(active == 1) {
+			nodaemon = 1;
+			logprintf(LOG_NOTICE, "already active (pid %d)", pid);
+			log_level_set(LOG_NOTICE);
+			log_shell_disable();
+			goto clear;
+		}
 	}
 #endif
 
@@ -1888,16 +1911,6 @@ int start_pilight(int argc, char **argv) {
 			log_level_set(LOG_ERR);
 		}
 	}
-
-#ifndef _WIN32
-	if(active == 1) {
-		nodaemon = 1;
-		logprintf(LOG_NOTICE, "already active (pid %d)", pid);
-		log_level_set(LOG_NOTICE);
-		log_shell_disable();
-		goto clear;
-	}
-#endif
 
 	struct JsonNode *jrespond = NULL;
 	struct JsonNode *jchilds = NULL;

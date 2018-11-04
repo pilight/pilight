@@ -85,12 +85,16 @@ static void test_isrunning(CuTest *tc) {
 
 	memtrack();
 
-	int n = 0;
-	n = isrunning("pilight-unittest");
+	int n = 0, *ret = NULL;
+	n = isrunning("pilight-unittest", &ret);
 	CuAssertTrue(tc, n > 0);
+	CuAssertPtrNotNull(tc, ret);
+	FREE(ret);
+	ret = NULL;
 
-	n = isrunning("foo");
-	CuAssertIntEquals(tc, -1, n);
+	n = isrunning("foo", &ret);
+	CuAssertIntEquals(tc, 0, n);
+	CuAssertPtrEquals(tc, ret, NULL);
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
