@@ -287,6 +287,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 	int s = 0, nrpulses = 0, y = 0;
 	int pulses[10];
 	size_t x = 0;
+	int error = 0;
 
 	int fd = req->io_watcher.fd;
 #ifdef _WIN32
@@ -353,26 +354,33 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 								pulses[nrpulses++] = atoi(&data.buffer[s]);
 								s = y+1;
 							}
+							if(nrpulses > 10 || s > 1024) {
+								logprintf(LOG_NOTICE, "433nano: discarded invalid pulse train");
+								error = 1;
+								break;
+							}
 						}
-						pulses[nrpulses++] = atoi(&data.buffer[s]);
-						x = strlen(&data.buffer[2]);
+						if(error == 0) {
+							pulses[nrpulses++] = atoi(&data.buffer[s]);
+							x = strlen(&data.buffer[2]);
 
-						struct reason_received_pulsetrain_t *data1 = MALLOC(sizeof(struct reason_received_pulsetrain_t));
-						if(data1 == NULL) {
-							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-						}
+							struct reason_received_pulsetrain_t *data1 = MALLOC(sizeof(struct reason_received_pulsetrain_t));
+							if(data1 == NULL) {
+								OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+							}
 
-						data1->length = 0;
+							data1->length = 0;
 
-						for(y = 2; y < 2 + x; y++) {
-							data1->pulses[data1->length++] = pulses[0];
-							data1->pulses[data1->length++] = pulses[data.buffer[y] - '0'];
+							for(y = 2; y < 2 + x; y++) {
+								data1->pulses[data1->length++] = pulses[0];
+								data1->pulses[data1->length++] = pulses[data.buffer[y] - '0'];
+							}
+
+							data1->hardware = nano433->id;
+
+							eventpool_trigger(REASON_RECEIVED_PULSETRAIN, reason_received_pulsetrain_free, data1);
 						}
 						data.bytes = 0;
-
-						data1->hardware = nano433->id;
-
-						eventpool_trigger(REASON_RECEIVED_PULSETRAIN, reason_received_pulsetrain_free, data1);
 					}
 				}
 				if(data.start == 1) {
