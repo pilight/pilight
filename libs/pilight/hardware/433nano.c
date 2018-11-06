@@ -354,7 +354,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 								pulses[nrpulses++] = atoi(&data.buffer[s]);
 								s = y+1;
 							}
-							if(nrpulses > 10 || s > 1024) {
+							if(nrpulses > 9 || s > 1023) {
 								logprintf(LOG_NOTICE, "433nano: discarded invalid pulse train");
 								error = 1;
 								break;
