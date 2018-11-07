@@ -1397,7 +1397,8 @@ void plua_gc_unreg(lua_State *L, void *ptr) {
 	uv_mutex_lock(&state->gc.lock);
 	int i = 0;
 	for(i=0;i<state->gc.nr;i++) {
-		if(state->gc.list[i]->ptr == ptr) {
+		if(state->gc.list[i]->free == 0 &&
+			 state->gc.list[i]->ptr == ptr) {
 			memset(state->gc.list[i], 0, sizeof(**state->gc.list));
 			state->gc.list[i]->free = 1;
 			break;
