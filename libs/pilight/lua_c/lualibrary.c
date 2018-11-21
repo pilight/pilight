@@ -59,7 +59,9 @@ static const struct {
 	{ "WEBSERVER_HTTPS_PORT", { .number_ = WEBSERVER_HTTPS_PORT }, LUA_TNUMBER },
 #endif
 	{ "WEBSERVER_ENABLE", { .number_ = WEBSERVER_ENABLE }, LUA_TNUMBER },
+#ifdef WEBSERVER_HTTPS
 	{ "WEBSERVER_HTTPS", { .number_ = WEBSERVER_HTTPS }, LUA_TBOOLEAN },
+#endif
 #endif
 	{ "FIRMWARE_GPIO_SCK", { .number_ = FIRMWARE_GPIO_SCK }, LUA_TNUMBER },
 	{ "FIRMWARE_GPIO_RESET", { .number_ = FIRMWARE_GPIO_RESET }, LUA_TNUMBER },
