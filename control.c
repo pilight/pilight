@@ -37,13 +37,14 @@
 #include "libs/pilight/core/ssdp.h"
 #include "libs/pilight/core/dso.h"
 #include "libs/pilight/core/gc.h"
+#include "libs/pilight/lua_c/lua.h"
+
 #include "libs/pilight/config/config.h"
-
 #include "libs/pilight/config/devices.h"
-
 #include "libs/pilight/protocols/protocol.h"
-
 #include "libs/pilight/events/events.h"
+
+static char *lua_root = LUA_ROOT;
 
 int main(int argc, char **argv) {
 	// memtrack();
@@ -148,6 +149,7 @@ int main(int argc, char **argv) {
 		printf("\t -s --state=state\t\tthe new state of the device\n");
 		printf("\t -v --values=values\t\tspecific comma separated values, e.g.:\n");
 		printf("\t -Ls --storage-root=xxxx\tlocation of storage lua modules\n");
+		printf("\t -Ll --lua-root=xxxx\t\tlocation of the plain lua modules\n");
 		printf("\t\t\t\t\t-v dimlevel=10\n");
 		goto close;
 	}
@@ -174,6 +176,31 @@ int main(int argc, char **argv) {
 	}
 	if(ssdp_list) {
 		ssdp_free(ssdp_list);
+	}
+
+	if(options_exists(options, "Ll") == 0) {
+		options_get_string(options, "Ll", &lua_root);
+	}
+
+	{
+		int len = strlen(lua_root)+strlen("lua/?/?.lua")+1;
+		char *lua_path = MALLOC(len);
+
+		if(lua_path == NULL) {
+			OUT_OF_MEMORY
+		}
+
+		plua_init();
+
+		memset(lua_path, '\0', len);
+		snprintf(lua_path, len, "%s/?/?.lua", lua_root);
+		plua_package_path(lua_path);
+
+		memset(lua_path, '\0', len);
+		snprintf(lua_path, len, "%s/?.lua", lua_root);
+		plua_package_path(lua_path);
+
+		FREE(lua_path);
 	}
 
 	protocol_init();

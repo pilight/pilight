@@ -48,7 +48,6 @@
 
 #include "libs/pilight/events/events.h"
 
-
 static unsigned short main_loop = 1;
 static unsigned short inner_loop = 1;
 
