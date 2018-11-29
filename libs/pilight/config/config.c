@@ -426,6 +426,7 @@ struct JsonNode *config_print(int level, const char *media) {
 		if(registry != NULL) {
 			struct JsonNode *jchild = json_find_member(root, "registry");
 			json_remove_from_parent(jchild);
+			json_delete(jchild);
 			json_append_member(root, "registry", json_decode(registry));
 			FREE(registry);
 		}
