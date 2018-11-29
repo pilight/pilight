@@ -2660,6 +2660,24 @@ static void pilight_stats(uv_timer_t *timer_req) {
 	return;
 }
 
+static void generate_uuid(uv_timer_t *timer_req) {
+	int nrdevs = 0, x = 0;
+	char **devs = NULL, *p = NULL;
+	if((nrdevs = inetdevs(&devs)) > 0) {
+		for(x=0;x<nrdevs;x++) {
+			if((p = genuuid(devs[x])) == NULL) {
+				logprintf(LOG_ERR, "could not generate the device uuid");
+				uv_timer_start(timer_req, generate_uuid, 3000, 0);
+			} else {
+				strcpy(pilight_uuid, p);
+				FREE(p);
+				break;
+			}
+		}
+	}
+	array_free(&devs, nrdevs);
+}
+
 static void signal_cb(uv_signal_t *handle, int signum) {
 	logprintf(LOG_INFO, "Interrupt signal received. Please wait while pilight is shutting down");
 
@@ -2893,20 +2911,12 @@ int start_pilight(int argc, char **argv) {
 	// /* Catch all exit signals for gc */
 	// gc_catch();
 
-	int nrdevs = 0, x = 0;
-	char **devs = NULL;
-	if((nrdevs = inetdevs(&devs)) > 0) {
-		for(x=0;x<nrdevs;x++) {
-			if((p = genuuid(devs[x])) == NULL) {
-				logprintf(LOG_ERR, "could not generate the device uuid");
-			} else {
-				strcpy(pilight_uuid, p);
-				FREE(p);
-				break;
-			}
-		}
+	uv_timer_t *timer_uuid_req = MALLOC(sizeof(uv_timer_t));
+	if(timer_uuid_req == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
-	array_free(&devs, nrdevs);
+	uv_timer_init(uv_default_loop(), timer_uuid_req);
+	generate_uuid(timer_uuid_req);
 
 	firmware.version = 0;
 	firmware.lpf = 0;
