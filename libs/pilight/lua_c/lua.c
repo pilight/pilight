@@ -496,7 +496,6 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 							} else {
 								if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
 									struct plua_metatable_t *table = lua_touserdata(L, -1);
-									plua_metatable_free(node->table[x].val.void_);
 									plua_metatable_clone(&table, (struct plua_metatable_t **)&node->table[x].val.void_);
 								} else {
 									logprintf(LOG_ERR, "metatable metafield __call does not return userdata");
