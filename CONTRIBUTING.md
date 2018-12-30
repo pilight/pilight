@@ -11,7 +11,7 @@ When you contribute to pilight make sure to follow this checklist:
 
 1. Is your pull request directed at the development branch?
 *pilight doesn't accept contributions to the master branch because this branch reflects the latest stable code.*
-2. Did you read the [development](http://manual.pilight.org/development/) pages of pilight?
+2. Did you read the [development](http://www.pilight.org/development/) pages of pilight?
 *Even if you think you know all, please check and double check. There are always small syntax changes. Also check similar already existing modules for syntax.*
 3. Keep the coding style in sync with that of pilight (see below).
 4. First merge with the latest development code.

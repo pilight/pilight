@@ -309,19 +309,19 @@ if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^aarch64")
 	find_library(CMAKE_LUA_LIBS_INIT
 		NAME lua5.1
 		PATHS
-	${CROSS_COMPILE_LIBS}
-	/usr/lib
-	/usr/lib32
-	/usr/lib64
-	/usr/lib/i386-linux-gnu
-	/usr/lib/x86_64-linux-gnu
-	/usr/local/lib
-	/usr/local/lib32
-	/usr/local/lib64
-	/usr/lib/arm-linux-gnueabi
-	/usr/lib/arm-linux-gnueabihf
-	/usr/lib/aarch64-linux-gnu
-NO_DEFAULT_PATH)
+		${CROSS_COMPILE_LIBS}
+		/usr/lib
+		/usr/lib32
+		/usr/lib64
+		/usr/lib/i386-linux-gnu
+		/usr/lib/x86_64-linux-gnu
+		/usr/local/lib
+		/usr/local/lib32
+		/usr/local/lib64
+		/usr/lib/arm-linux-gnueabi
+		/usr/lib/arm-linux-gnueabihf
+		/usr/lib/aarch64-linux-gnu
+	NO_DEFAULT_PATH)
 
 	if(${CMAKE_LUA_LIBS_INIT} MATCHES "CMAKE_LUA_LIBS_INIT-NOTFOUND")
 		message(FATAL_ERROR "Looking for libluajit - not found")
