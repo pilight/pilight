@@ -31,13 +31,13 @@
 #include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/common.h"
-#include "libs/pilight/core/config.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/options.h"
 #include "libs/pilight/core/socket.h"
 #include "libs/pilight/core/json.h"
 #include "libs/pilight/core/ssdp.h"
 #include "libs/pilight/core/dso.h"
+#include "libs/pilight/config/config.h"
 
 #include "libs/pilight/protocols/protocol.h"
 
@@ -105,82 +105,78 @@ int main(int argc, char **argv) {
 
 	int sockfd = 0;
 	int raw[MAXPULSESTREAMLENGTH-1];
-	char *args = NULL, *recvBuff = NULL;
+	char *recvBuff = NULL;
 
-	/* Hold the name of the protocol */
 	char *protobuffer = NULL;
-	/* Does this protocol exists */
 	int match = 0;
 
-	/* Do we need to print the help */
 	int help = 0;
-	/* Do we need to print the version */
 	int version = 0;
-	/* Do we need to print the protocol help */
 	int protohelp = 0;
 
 	char *uuid = NULL;
 	char *server = NULL;
-	unsigned short port = 0;
+	int port = 0;
 
 	/* Hold the final protocol struct */
 	struct protocol_t *protocol = NULL;
 	JsonNode *code = NULL;
 
-	/* Define all CLI arguments of this program */
-	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'p', "protocol", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
-	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
-	options_add(&options, 'U', "uuid", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[a-zA-Z0-9]{4}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{6}");
+	options_add(&options, "H", "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "V", "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "p", "protocol", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "S", "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+	options_add(&options, "P", "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
+	options_add(&options, "I", "instance", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "U", "uuid", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[a-zA-Z0-9]{4}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{6}");
+	options_add(&options, "Ls", "storage-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 
-	/* Get the protocol to be used */
-	while(1) {
-		int c;
-		c = options_parse(&options, argc, argv, 0, &args);
-		if(c == -1)
-			break;
-		if(c == -2)
-			c = 'H';
-		switch(c) {
-			case 'p':
-				if(strlen(args) == 0) {
-					logprintf(LOG_INFO, "options '-p' and '--protocol' require an argument");
-					exit(EXIT_FAILURE);
-				} else {
-					if((protobuffer = REALLOC(protobuffer, strlen(args)+1)) == NULL) {
-						fprintf(stderr, "out of memory\n");
-						exit(EXIT_FAILURE);
-					}
-					strcpy(protobuffer, args);
-				}
-			break;
-			case 'V':
-				version = 1;
-			break;
-			case 'H':
-				help = 1;
-			break;
-			case 'S':
-				if((server = REALLOC(server, strlen(args)+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
-				}
-				strcpy(server, args);
-			break;
-			case 'P':
-				port = (unsigned short)atoi(args);
-			break;
-			case 'U':
-				if((uuid = REALLOC(uuid, strlen(args)+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
-				}
-				strcpy(uuid, args);
-			break;
-			default:;
-		}
+	log_shell_disable();
+	if(argc == 1) {
+		help = 1;
+	}
+	if(options_parse(options, argc, argv) == -1) {
+		// printf("Usage: %s -p protocol [options]\n", progname);
+		// goto close;
+		// help = 1;
+	}
+	log_shell_enable();
+
+	if(options_exists(options, "H") == 0) {
+		help = 1;
+	}
+
+	if(options_exists(options, "V") == 0) {
+		version = 1;
+	}
+
+	// if(options_exists(options, "C") == 0) {
+		// options_get_string(options, "C", &configtmp);
+	// }
+
+	// if(options_exists(options, "Ls") == 0) {
+		// char *arg = NULL;
+		// options_get_string(options, "Ls", &arg);
+		// if(config_root(arg) == -1) {
+			// logprintf(LOG_ERR, "%s is not valid storage lua modules path", arg);
+			// goto close;
+		// }
+	// }
+
+	if(options_exists(options, "p") == 0) {
+		options_get_string(options, "p", &protobuffer);
+	}
+
+	if(options_exists(options, "S") == 0) {
+		options_get_string(options, "S", &server);
+	}
+
+	if(options_exists(options, "P") == 0) {
+		options_get_number(options, "P", &port);
+	}
+
+	if(options_exists(options, "U") == 0) {
+		options_get_string(options, "U", &uuid);
 	}
 
 	/* Initialize protocols */
@@ -189,7 +185,7 @@ int main(int argc, char **argv) {
 	/* Check if a protocol was given */
 	if(protobuffer != NULL && strlen(protobuffer) > 0 && strcmp(protobuffer, "-V") != 0) {
 		if(strlen(protobuffer) > 0 && version) {
-			printf("-p and -V cannot be combined\n");
+			logprintf(LOG_NOTICE, "-p and -V cannot be combined");
 		} else {
 			struct protocols_t *pnode = protocols;
 			/* Retrieve the used protocol */
@@ -200,7 +196,7 @@ int main(int argc, char **argv) {
 					match=1;
 					/* Check if the protocol requires specific CLI arguments
 					   and merge them with the main CLI arguments */
-					if(protocol->options && help == 0) {
+					if(protocol->options != NULL && help == 0) {
 						options_merge(&options, &protocol->options);
 					} else if(help == 1) {
 						protohelp=1;
@@ -217,24 +213,8 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	/* Store all CLI arguments for later usage
-	   and also check if the CLI arguments where
-	   used correctly by the user. This will also
-	   fill all necessary values in the options struct */
-	while(1) {
-		int c;
-		c = options_parse(&options, argc, argv, 2, &args);
-
-		if(c == -1)
-			break;
-		if(c == -2) {
-			if(match == 1) {
-				protohelp = 1;
-			} else {
-				help = 1;
-			}
-		break;
-		}
+	if(options_parse(options, argc, argv) == -1) {
+		help = 1;
 	}
 
 	/* Display help or version information */
@@ -242,18 +222,20 @@ int main(int argc, char **argv) {
 		printf("%s v%s\n", progname, PILIGHT_VERSION);
 		goto close;
 	} else if(help == 1 || protohelp == 1 || match == 0) {
-		if(protohelp == 1 && match == 1 && protocol->printHelp)
+		if(protohelp == 1 && match == 1 && protocol->printHelp != NULL) {
 			printf("Usage: %s -p %s [options]\n", progname, protobuffer);
-		else
+		} else {
 			printf("Usage: %s -p protocol [options]\n", progname);
+		}
 		if(help == 1) {
-			printf("\t -H --help\t\t\tdisplay this message\n");
-			printf("\t -V --version\t\t\tdisplay version\n");
-			printf("\t -p --protocol=protocol\t\tthe protocol that you want to control\n");
-			printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
-			printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
-			printf("\t -C --config\t\t\tconfig file\n");
-			printf("\t -U --uuid=xxx-xx-xx-xx-xxxxxx\tUUID\n");
+			printf("\t -H  --help\t\t\tdisplay this message\n");
+			printf("\t -V  --version\t\t\tdisplay version\n");
+			printf("\t -p  --protocol=protocol\tthe protocol that you want to control\n");
+			printf("\t -S  --server=x.x.x.x\t\tconnect to server address\n");
+			printf("\t -P  --port=xxxx\t\tconnect to server port\n");
+			printf("\t -C  --config\t\t\tconfig file\n");
+			printf("\t -U  --uuid=xxx-xx-xx-xx-xxxxxx\tUUID\n");
+			// printf("\t -Ls --storage-root=xxxx\tlocation of storage lua modules\n");
 		}
 		if(protohelp == 1 && match == 1 && protocol->printHelp) {
 			printf("\n\t[%s]\n", protobuffer);
@@ -264,22 +246,19 @@ int main(int argc, char **argv) {
 			/* Retrieve the used protocol */
 			while(pnode) {
 				protocol = pnode->listener;
-				if(protocol->createCode) {
+				if(protocol->createCode != NULL) {
 					struct protocol_devices_t *tmpdev = protocol->devices;
 					while(tmpdev) {
 						struct pname_t *node = MALLOC(sizeof(struct pname_t));
 						if(node == NULL) {
-							fprintf(stderr, "out of memory\n");
-							exit(EXIT_FAILURE);
+							OUT_OF_MEMORY
 						}
 						if((node->name = MALLOC(strlen(tmpdev->id)+1)) == NULL) {
-							fprintf(stderr, "out of memory\n");
-							exit(EXIT_FAILURE);
+							OUT_OF_MEMORY
 						}
 						strcpy(node->name, tmpdev->id);
 						if((node->desc = MALLOC(strlen(tmpdev->desc)+1)) == NULL) {
-							fprintf(stderr, "out of memory\n");
-							exit(EXIT_FAILURE);
+							OUT_OF_MEMORY
 						}
 						strcpy(node->desc, tmpdev->desc);
 						node->next = pname;
@@ -294,10 +273,12 @@ int main(int argc, char **argv) {
 			while(pname) {
 				ptmp = pname;
 				printf("\t %s\t\t",ptmp->name);
-				if(strlen(ptmp->name) < 7)
+				if(strlen(ptmp->name) < 7) {
 					printf("\t");
-				if(strlen(ptmp->name) < 15)
+				}
+				if(strlen(ptmp->name) < 15) {
 					printf("\t");
+				}
 				printf("%s\n", ptmp->desc);
 				FREE(ptmp->name);
 				FREE(ptmp->desc);
@@ -310,33 +291,39 @@ int main(int argc, char **argv) {
 	}
 
 	code = json_mkobject();
-	int itmp = 0;
-	/* Check if we got sufficient arguments from this protocol */
 	struct options_t *tmp = options;
+	char *id = NULL;
 	while(tmp) {
 		if(strlen(tmp->name) > 0) {
 			/* Only send the CLI arguments that belong to this protocol, the protocol name
 			and those that are called by the user */
-			if((options_get_id(&protocol->options, tmp->name, &itmp) == 0)
-			    && tmp->vartype == JSON_STRING && tmp->string_ != NULL
-				&& (strlen(tmp->string_) > 0)) {
-				if(isNumeric(tmp->string_) == 0) {
-					json_append_member(code, tmp->name, json_mknumber(atof(tmp->string_), nrDecimals(tmp->string_)));
-				} else {
-					json_append_member(code, tmp->name, json_mkstring(tmp->string_));
+			if(options_get_id_by_name(protocol->options, tmp->name, &id) == 0) {
+				if(strcmp(id, "0") != 0 && (options_exists(options, id) == 0)) {
+					if(tmp->vartype == JSON_STRING && tmp->string_ != NULL && strlen(tmp->string_) > 0) {
+						if(isNumeric(tmp->string_) == 0) {
+							json_append_member(code, tmp->name, json_mknumber(atof(tmp->string_), nrDecimals(tmp->string_)));
+						} else {
+							json_append_member(code, tmp->name, json_mkstring(tmp->string_));
+						}
+					} else if(tmp->vartype == JSON_NUMBER) {
+						json_append_member(code, tmp->name, json_mknumber(tmp->number_, 0));
+					} else if(tmp->vartype == JSON_NULL) {
+						json_append_member(code, tmp->name, json_mknumber(1, 0));
+					}
 				}
 			}
-			if(strcmp(tmp->name, "protocol") == 0 && strlen(tmp->string_) > 0) {
-				JsonNode *jprotocol = json_mkarray();
-				json_append_element(jprotocol, json_mkstring(tmp->string_));
-				json_append_member(code, "protocol", jprotocol);
-			}
+				if(strcmp(tmp->name, "protocol") == 0 && tmp->string_ != NULL) {
+					JsonNode *jprotocol = json_mkarray();
+					json_append_element(jprotocol, json_mkstring(tmp->string_));
+					json_append_member(code, "protocol", jprotocol);
+				}
 		}
 		tmp = tmp->next;
 	}
 
-	memset(raw, 0, MAXPULSESTREAMLENGTH-1);
+	memset(raw, 0, sizeof(int)*(MAXPULSESTREAMLENGTH-1));
 	protocol->raw = raw;
+
 	if(protocol->createCode(code) == 0) {
 		if(protocol->message) {
 			json_delete(protocol->message);
@@ -391,15 +378,7 @@ close:
 	if(recvBuff != NULL) {
 		FREE(recvBuff);
 	}
-	if(server != NULL) {
-		FREE(server);
-	}
-	if(protobuffer != NULL) {
-		FREE(protobuffer);
-	}
-	if(uuid != NULL) {
-		FREE(uuid);
-	}
+
 	protocol_gc();
 	options_delete(options);
 	options_gc();

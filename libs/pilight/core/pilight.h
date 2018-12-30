@@ -54,6 +54,7 @@ typedef enum origin_t {
 #define ORIGIN_WEBSERVER 12
 #define ORIGIN_SENDER 1
 #define ORIGIN_MASTER 1
+#define ORIGIN_ACTION ACTION
 
 #endif
 

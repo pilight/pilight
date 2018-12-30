@@ -61,7 +61,7 @@ Trigger events based on time
 
    {
      "christmass-tree-off": {
-       "rule": "IF DATE_FORMAT(currentdatetime, %H.%M%S) == 23.0000 THEN switch DEVICE outsidelight TO on AFTER RANDOM(0, 90) . ' MINUTE' FOR RANDOM(5, 15) . ' MINUTE'",
+       "rule": "IF DATE_FORMAT(currentdatetime, %H%M%S) == 230000 THEN switch DEVICE outsidelight TO on AFTER RANDOM(0, 90) . ' MINUTE' FOR RANDOM(5, 15) . ' MINUTE'",
        "active": 1
      }
    }

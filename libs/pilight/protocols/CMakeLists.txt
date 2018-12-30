@@ -5,24 +5,7 @@ add_subdirectory(API)
 add_subdirectory(GPIO)
 add_subdirectory(generic)
 add_subdirectory(network)
-if(${ZWAVE} MATCHES "ON")
-	add_subdirectory(zwave)
-endif()
-if(${IR} MATCHES "ON")
-	add_subdirectory(IR)
-endif()
 add_subdirectory(core)
-
-file(REMOVE_RECURSE "protocol_header.h")
-file(REMOVE "protocol_header.h")
-file(REMOVE_RECURSE "protocol_init.h")
-file(REMOVE "protocol_init.h")
-
-file(GLOB_RECURSE ${PROJECT_NAME}_headers_includes "protocol_header.h")
-file(GLOB_RECURSE ${PROJECT_NAME}_init_includes "protocol_init.h")
-
-include(CMakeExclude.txt)
-include(CMakeInclude.txt)
 
 if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	file(GLOB ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/*.c")
@@ -30,9 +13,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 
 	set(${PROJECT_NAME}_files 
 		${pilight_protocols_433.92_files}
-		${pilight_protocols_ir_files}
 		${pilight_protocols_api_files}
-		${pilight_protocols_zwave_files}
 		${pilight_protocols_generic_files}
 		${pilight_protocols_network_files}
 		${pilight_protocols_gpio_files}
@@ -43,14 +24,12 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 else()
 	set(${PROJECT_NAME}_files 
 		${pilight_protocols_433.92_files}
-		${pilight_protocols_ir_files}
 		${pilight_protocols_api_files}
-		${pilight_protocols_zwave_files}
 		${pilight_protocols_generic_files}
 		${pilight_protocols_network_files}
 		${pilight_protocols_gpio_files}
 		${pilight_protocols_core_files}
-	)	
+	)
 
 	foreach(file ${${PROJECT_NAME}_files})
 		get_filename_component(name ${file} NAME_WE)

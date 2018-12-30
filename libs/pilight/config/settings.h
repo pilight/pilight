@@ -1,31 +1,19 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
-#ifndef _SETTINGS_H_
-#define _SETTINGS_H_
+#ifndef _CONFIG_SETTINGS_H_
+#define _CONFIG_SETTINGS_H_
 
-#include "../core/json.h"
-#include "../core/config.h"
+#include "../lua_c/lua.h"
 
-struct config_t *config_settings;
-
-int settings_find_number(const char *name, int *out);
-int settings_find_string(const char *name, char **out);
-void settings_init(void);
+int config_setting_get_number(char *key, int idx, int *ret);
+int config_setting_get_string(char *key, int idx, char **ret);
+int config_setting_set_number(char *key, int idx, int val);
+int config_setting_set_string(char *key, int idx, char *val);
 
 #endif

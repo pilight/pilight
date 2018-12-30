@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -21,344 +11,509 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <time.h>
-#include <sys/time.h>
-#include <libgen.h>
-#include <dirent.h>
+#include <assert.h>
 #ifndef _WIN32
 	#include <dlfcn.h>
+	#include <unistd.h>
+	#include <sys/time.h>
+	#include <libgen.h>
+	#include <dirent.h>
 #endif
 
-#include "../core/threads.h"
 #include "../core/pilight.h"
 #include "../core/common.h"
 #include "../core/options.h"
 #include "../core/dso.h"
 #include "../core/log.h"
 #include "../config/settings.h"
+#include "../lua_c/lua.h"
 
 #include "action.h"
-#include "actions/action_header.h"
 
-#ifndef _WIN32
-void event_action_remove(char *name) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	struct event_actions_t *currP, *prevP;
-
-	prevP = NULL;
-
-	for(currP = event_actions; currP != NULL; prevP = currP, currP = currP->next) {
-
-		if(strcmp(currP->name, name) == 0) {
-			if(prevP == NULL) {
-				event_actions = currP->next;
-			} else {
-				prevP->next = currP->next;
-			}
-
-			logprintf(LOG_DEBUG, "removed event action %s", currP->name);
-			FREE(currP->name);
-			FREE(currP);
-
-			break;
-		}
-	}
-}
+#ifdef _WIN32
+	#include <windows.h>
 #endif
 
+static int init = 0;
+
+typedef struct execution_t {
+	char *name;
+	unsigned long id;
+
+	struct execution_t *next;
+} execution_t;
+
+static struct execution_t *executions = NULL;
+
 void event_action_init(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	#include "actions/action_init.h"
+	if(init == 1) {
+		return;
+	}
+	init = 1;
+	plua_init();
 
-#ifndef _WIN32
-	void *handle = NULL;
-	void (*init)(void);
-	void (*compatibility)(struct module_t *module);
+
 	char path[PATH_MAX];
-	struct module_t module;
-	char pilight_version[strlen(PILIGHT_VERSION)+1];
-	char pilight_commit[3];
-	char *action_root = NULL;
-	int check1 = 0, check2 = 0, valid = 1, action_root_free = 0;
-	strcpy(pilight_version, PILIGHT_VERSION);
-
+	char *f = STRDUP(__FILE__);
 	struct dirent *file = NULL;
 	DIR *d = NULL;
 	struct stat s;
+	char *actions_root = ACTION_ROOT;
 
-	memset(pilight_commit, '\0', 3);
-
-	if(settings_find_string("actions-root", &action_root) != 0) {
-		/* If no action root was set, use the default action root */
-		if((action_root = MALLOC(strlen(ACTION_ROOT)+1)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
-		}
-		strcpy(action_root, ACTION_ROOT);
-		action_root_free = 1;
-	}
-	size_t len = strlen(action_root);
-	if(action_root[len-1] != '/') {
-		strcat(action_root, "/");
+	if(f == NULL) {
+		OUT_OF_MEMORY
 	}
 
-	if((d = opendir(action_root))) {
+	config_setting_get_string("actions-root", 0, &actions_root);
+
+	if((d = opendir(actions_root))) {
 		while((file = readdir(d)) != NULL) {
 			memset(path, '\0', PATH_MAX);
-			sprintf(path, "%s%s", action_root, file->d_name);
+			sprintf(path, "%s%s", actions_root, file->d_name);
 			if(stat(path, &s) == 0) {
 				/* Check if file */
 				if(S_ISREG(s.st_mode)) {
-					if(strstr(file->d_name, ".so") != NULL) {
-						valid = 1;
-
-						if((handle = dso_load(path)) != NULL) {
-							init = dso_function(handle, "init");
-							compatibility = dso_function(handle, "compatibility");
-							if(init && compatibility) {
-								compatibility(&module);
-								if(module.name != NULL && module.version != NULL && module.reqversion != NULL) {
-									char ver[strlen(module.reqversion)+1];
-									strcpy(ver, module.reqversion);
-
-									if((check1 = vercmp(ver, pilight_version)) > 0) {
-										valid = 0;
-									}
-
-									if(check1 == 0 && module.reqcommit != NULL) {
-										char com[strlen(module.reqcommit)+1];
-										strcpy(com, module.reqcommit);
-										sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
-
-										if(strlen(pilight_commit) > 0 && (check2 = vercmp(com, pilight_commit)) > 0) {
-											valid = 0;
-										}
-									}
-									if(valid == 1) {
-										char tmp[strlen(module.name)+1];
-										strcpy(tmp, module.name);
-										event_action_remove(tmp);
-										init();
-										logprintf(LOG_DEBUG, "loaded event action %s v%s", file->d_name, module.version);
-									} else {
-										if(module.reqcommit != NULL) {
-											logprintf(LOG_ERR, "event action %s requires at least pilight v%s (commit %s)", file->d_name, module.reqversion, module.reqcommit);
-										} else {
-											logprintf(LOG_ERR, "event action %s requires at least pilight v%s", file->d_name, module.reqversion);
-										}
-									}
-								} else {
-									logprintf(LOG_ERR, "invalid module %s", file->d_name);
-								}
-							}
-						}
+					if(strstr(file->d_name, ".lua") != NULL) {
+						plua_module_load(path, ACTION);
 					}
 				}
 			}
 		}
-		closedir(d);
 	}
-	if(action_root_free) {
-		FREE(action_root);
+	closedir(d);
+	FREE(f);
+
+	if(actions_root != (void *)ACTION_ROOT) {
+		FREE(actions_root);
 	}
+}
+
+unsigned long event_action_set_execution_id(char *name) {
+	struct timeval tv;
+#ifdef _WIN32
+	SleepEx(1, TRUE);
+#else
+	usleep(1);
 #endif
-}
+	gettimeofday(&tv, NULL);
 
-void event_action_register(struct event_actions_t **act, const char *name) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if((*act = MALLOC(sizeof(struct event_actions_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if(((*act)->name = MALLOC(strlen(name)+1)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	strcpy((*act)->name, name);
-
-	(*act)->options = NULL;
-	(*act)->run = NULL;
-	(*act)->nrthreads = 0;
-	(*act)->checkArguments = NULL;
-
-	(*act)->next = event_actions;
-	event_actions = (*act);
-}
-
-int event_action_gc(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	struct event_actions_t *tmp_action = NULL;
-	while(event_actions) {
-		tmp_action = event_actions;
-		if(tmp_action->nrthreads > 0) {
-			logprintf(LOG_DEBUG, "waiting for \"%s\" threads to finish", tmp_action->name);
+	int match = 0;
+	struct execution_t *tmp = executions;
+	while(tmp) {
+		if(strcmp(name, tmp->name) == 0) {
+			tmp->id = (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+			match = 1;
+			break;
 		}
-		FREE(tmp_action->name);
-		options_delete(tmp_action->options);
-		event_actions = event_actions->next;
-		FREE(tmp_action);
+		tmp = tmp->next;
 	}
-	if(event_actions != NULL) {
-		FREE(event_actions);
+	if(match == 0) {
+		if((tmp = MALLOC(sizeof(struct execution_t))) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		if((tmp->name = MALLOC(strlen(name)+1)) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		strcpy(tmp->name, name);
+		tmp->id = (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+
+		tmp->next = executions;
+		executions = tmp;
+	}
+	return tmp->id;
+}
+
+int event_action_get_execution_id(char *name, unsigned long *ret) {
+	struct execution_t *tmp = executions;
+	while(tmp) {
+		if(strcmp(tmp->name, name) == 0) {
+			*ret = tmp->id;
+			return 0;
+			break;
+		}
+		tmp = tmp->next;
+	}
+	return -1;
+}
+
+struct event_action_args_t *event_action_add_argument(struct event_action_args_t *head, char *key, struct varcont_t *var) {
+	struct event_action_args_t *node = head, *cpy = NULL;
+	while(node) {
+		if(strcmp(node->key, key) == 0) {
+			break;
+		}
+		node = node->next;
 	}
 
-	logprintf(LOG_DEBUG, "garbage collected event action library");
+	cpy = node;
+	if(node == NULL) {
+		if((node = MALLOC(sizeof(struct event_action_args_t))) == NULL) {
+			OUT_OF_MEMORY
+		}
+		memset(node, 0, sizeof(struct event_action_args_t));
+
+		cpy = node;
+		if((node->key = STRDUP(key)) == NULL) {
+			OUT_OF_MEMORY
+		}
+		node->var = NULL;
+		if(head != NULL) {
+			struct event_action_args_t *tmp = head;
+			while(tmp->next != NULL) {
+				tmp = tmp->next;
+			}
+			tmp->next = node;
+			node = tmp;
+		} else {
+			node->next = head;
+			head = node;
+		}
+	}
+
+	if(var != NULL) {
+		if((cpy->var = REALLOC(cpy->var, sizeof(struct varcont_t *)*(cpy->nrvalues+1))) == NULL) {
+			OUT_OF_MEMORY
+		}
+		if((cpy->var[cpy->nrvalues] = MALLOC(sizeof(struct varcont_t))) == NULL) {
+			OUT_OF_MEMORY
+		}
+		switch(var->type_) {
+			case JSON_NUMBER: {
+				cpy->var[cpy->nrvalues]->type_ = JSON_NUMBER;
+				cpy->var[cpy->nrvalues]->number_ = var->number_;
+				cpy->var[cpy->nrvalues]->decimals_ = var->decimals_;
+			} break;
+			case JSON_STRING: {
+				cpy->var[cpy->nrvalues]->type_ = JSON_STRING;
+				if((cpy->var[cpy->nrvalues]->string_ = STRDUP(var->string_)) == NULL) {
+					OUT_OF_MEMORY
+				}
+			} break;
+			case JSON_BOOL: {
+				cpy->var[cpy->nrvalues]->type_ = JSON_BOOL;
+				cpy->var[cpy->nrvalues]->bool_ = var->bool_;
+			} break;
+		}
+		cpy->nrvalues++;
+	}
+
+	return head;
+}
+
+static int plua_action_module_call(struct lua_State *L, char *file, char *func, struct event_action_args_t *args) {
+#if LUA_VERSION_NUM <= 502
+	lua_getfield(L, -1, func);
+	if(lua_type(L, -1) != LUA_TFUNCTION) {
+#else
+	if(lua_getfield(L, -1, func) == 0) {
+#endif
+		logprintf(LOG_ERR, "%s: %s action missing", file, func);
+		return 0;
+	}
+
+	int nrargs = 0, i = 0;
+	struct event_action_args_t *tmp1 = NULL;
+
+	lua_newtable(L);
+
+	while(args) {
+		tmp1 = args;
+
+		lua_pushstring(L, tmp1->key);
+		FREE(tmp1->key);
+
+		lua_createtable(L, 0, 2);
+		lua_pushstring(L, "value");
+
+		nrargs++;
+		lua_createtable(L, tmp1->nrvalues, 0);
+		for(i=0;i<tmp1->nrvalues;i++) {
+			lua_pushnumber(L, i+1);
+
+			switch(tmp1->var[i]->type_) {
+				case JSON_NUMBER: {
+					char *tmp = NULL;
+					int len = snprintf(NULL, 0, "%.*f", tmp1->var[i]->decimals_, tmp1->var[i]->number_);
+					if((tmp = MALLOC(len+1)) == NULL) {
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+					}
+					memset(tmp, 0, len+1);
+					sprintf(tmp, "%.*f", tmp1->var[i]->decimals_, tmp1->var[i]->number_);
+					lua_pushstring(L, tmp);
+					FREE(tmp);
+				} break;
+				case JSON_STRING:
+					lua_pushstring(L, tmp1->var[i]->string_);
+					FREE(tmp1->var[i]->string_);
+				break;
+				case JSON_BOOL:
+					lua_pushboolean(L, tmp1->var[i]->bool_);
+				break;
+			}
+			FREE(tmp1->var[i]);
+			lua_settable(L, -3);
+		}
+
+		lua_settable(L, -3);
+
+		lua_pushstring(L, "order");
+		lua_pushnumber(L, nrargs);
+		lua_settable(L, -3);
+		if(tmp1->nrvalues > 0) {
+			FREE(tmp1->var);
+		}
+
+		args = args->next;
+		FREE(tmp1);
+		lua_settable(L, -3);
+	}
+	args = NULL;
+
+	if(lua_pcall(L, 1, 1, 0) == LUA_ERRRUN) {
+		if(lua_type(L, -1) == LUA_TNIL) {
+			logprintf(LOG_ERR, "%s: syntax error", file);
+			return 0;
+		}
+		if(lua_type(L, -1) == LUA_TSTRING) {
+			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
+			lua_pop(L, 1);
+			return 0;
+		}
+	}
+
+	if(lua_isnumber(L, -1) == 0) {
+		logprintf(LOG_ERR, "%s: the %s function returned %s, number expected", file, func, lua_typename(L, lua_type(L, -1)));
+		return 0;
+	}
+
+	int ret = (int)lua_tonumber(L, -1);
+
+	lua_remove(L, -1);
+
+	return ret;
+}
+
+void event_action_free_argument(struct event_action_args_t *args) {
+	struct event_action_args_t *tmp1 = NULL;
+	int i = 0;
+
+	while(args) {
+		tmp1 = args;
+		FREE(tmp1->key);
+		for(i=0;i<args->nrvalues;i++) {
+			switch(tmp1->var[i]->type_) {
+				case JSON_STRING:
+					FREE(tmp1->var[i]->string_);
+				break;
+			}
+		}
+		if(tmp1->nrvalues > 0) {
+			FREE(tmp1->var);
+		}
+		args = args->next;
+		FREE(tmp1);
+	}
+}
+
+static int event_action_prepare_call(char *module, char *func, struct event_action_args_t *args) {
+	struct lua_state_t *state = plua_get_free_state();
+	struct lua_State *L = NULL;
+
+	if(state == NULL) {
+		return -1;
+	}
+	if((L = state->L) == NULL) {
+		uv_mutex_unlock(&state->lock);
+		return -1;
+	}
+
+	char *lower = STRDUP(module);
+	char name[255], *p = name;
+	memset(name, '\0', 255);
+
+	if(lower == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	strtolower(&lower);
+	sprintf(p, "action.%s", lower);
+	lua_getglobal(L, name);
+	FREE(lower);
+
+	if(lua_isnil(L, -1) != 0) {
+		event_action_free_argument(args);
+		lua_remove(L, -1);
+		assert(lua_gettop(L) == 0);
+		uv_mutex_unlock(&state->lock);
+		return -1;
+	}
+	if(lua_istable(L, -1) != 0) {
+		char *file = NULL;
+		struct plua_module_t *tmp = plua_get_modules();
+		while(tmp) {
+			if(stricmp(module, tmp->name) == 0) {
+				file = tmp->file;
+				state->module = tmp;
+				break;
+			}
+			tmp = tmp->next;
+		}
+		if(file != NULL) {
+			if(plua_action_module_call(L, file, func, args) == 0) {
+				lua_pop(L, -1);
+				assert(lua_gettop(L) == 0);
+				uv_mutex_unlock(&state->lock);
+				return -1;
+			}
+		} else {
+			event_action_free_argument(args);
+			assert(lua_gettop(L) == 0);
+			uv_mutex_unlock(&state->lock);
+			return -1;
+		}
+	}
+	lua_remove(L, -1);
+
+	assert(lua_gettop(L) == 0);
+	uv_mutex_unlock(&state->lock);
+
 	return 0;
 }
 
-void event_action_thread_init(struct devices_t *dev) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if((dev->action_thread = MALLOC(sizeof(struct event_action_thread_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+static int event_action_parameters_run(struct lua_State *L, char *file, int *nr, char ***ret) {
+#if LUA_VERSION_NUM <= 502
+	lua_getfield(L, -1, "parameters");
+	if(lua_type(L, -1) != LUA_TFUNCTION) {
+#else
+	if(lua_getfield(L, -1, "parameters") == 0) {
+#endif
+		logprintf(LOG_ERR, "%s: parameters function missing", file);
+		return 0;
 	}
 
-	pthread_mutexattr_init(&dev->action_thread->attr);
-	pthread_mutexattr_settype(&dev->action_thread->attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&dev->action_thread->mutex, &dev->action_thread->attr);
-	pthread_cond_init(&dev->action_thread->cond, NULL);
-	dev->action_thread->running = 0;
-	dev->action_thread->obj = NULL;
-	dev->action_thread->action = NULL;
-	dev->action_thread->loop = 0;
-	dev->action_thread->initialized = 0;
-	memset(&dev->action_thread->pth, '\0', sizeof(pthread_t));
+	if(lua_pcall(L, 0, LUA_MULTRET, 0) == LUA_ERRRUN) {
+		if(lua_type(L, -1) == LUA_TNIL) {
+			logprintf(LOG_ERR, "%s: syntax error", file);
+			return 0;
+		}
+		if(lua_type(L, -1) == LUA_TSTRING) {
+			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
+			lua_pop(L, 1);
+			return 0;
+		}
+	}
+
+	int i = 0, err = 0;
+	*nr = lua_gettop(L)-1;
+	for(i=0;i<*nr;i++) {
+		if(lua_type(L, -1) != LUA_TSTRING && err == 0) {
+			logprintf(LOG_ERR, "%s: the parameters function returned %s, (a list of) string(s) expected", file, lua_typename(L, lua_type(L, -1)));
+			err = 1;
+		}
+	}
+	if(err == 1) {
+		for(i=0;i<*nr;i++) {
+			lua_remove(L, -1);
+		}
+		lua_remove(L, -1);
+		return 0;
+	}
+
+	if(((*ret) = MALLOC((*nr)*sizeof(char *))) == NULL) {
+		OUT_OF_MEMORY
+	}
+	for(i=1;i<=*nr;i++) {
+		if(((*ret)[i-1] = STRDUP((char *)lua_tostring(L, -1))) == NULL) {
+			OUT_OF_MEMORY
+		}
+		lua_remove(L, -1);
+	}
+
+	lua_remove(L, -1);
+
+	return 1;
 }
 
-void event_action_thread_start(struct devices_t *dev, char *name, void *(*func)(void *), struct rules_actions_t *obj) {
-	struct event_action_thread_t *thread = dev->action_thread;
+int event_action_get_parameters(char *module, int *nr, char ***ret) {
+	struct lua_state_t *state = plua_get_free_state();
+	struct lua_State *L = NULL;
 
-	if(thread->running == 1) {
-		logprintf(LOG_DEBUG, "aborting previous \"%s\" action for device \"%s\"", thread->action, dev->id);
+	if(state == NULL) {
+		return -1;
 	}
 
-	thread->loop = 0;
-
-	pthread_mutex_unlock(&thread->mutex);
-	pthread_cond_signal(&thread->cond);
-
-	while(thread->running > 0) {
-		usleep(10);
+	if((L = state->L) == NULL) {
+		uv_mutex_unlock(&state->lock);
+		return -1;
 	}
 
-	if(thread->initialized == 1) {
-		pthread_join(thread->pth, NULL);
-		thread->initialized = 0;
+	char *lower = STRDUP(module);
+	char name[255], *p = name;
+	memset(name, '\0', 255);
+
+	if(lower == NULL) {
+		OUT_OF_MEMORY
 	}
 
-	// if(thread->param != NULL) {
-		// json_delete(thread->param);
-		// thread->param = NULL;
-	// }
+	strtolower(&lower);
+	sprintf(p, "action.%s", lower);
+	lua_getglobal(L, name);
+	FREE(lower);
 
-	// if(param != NULL) {
-		// char *json = json_stringify(param, NULL);
-		// thread->param = json_decode(json);
-		// json_free(json);
-	// }
-
-	thread->obj = obj;
-	thread->device = dev;
-	thread->loop = 1;
-	thread->action = REALLOC(thread->action, strlen(name)+1);
-	strcpy(thread->action, name);
-
-	thread->initialized = 1;
-	threads_create(&thread->pth, NULL, func, (void *)thread);
-}
-
-int event_action_thread_wait(struct devices_t *dev, int interval) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	struct timeval tp;
-	struct timespec ts;
-
-	pthread_mutex_unlock(&dev->action_thread->mutex);
-
-	gettimeofday(&tp, NULL);
-	ts.tv_sec = tp.tv_sec;
-	ts.tv_nsec = tp.tv_usec * 1000;
-	ts.tv_sec += interval;
-
-	pthread_mutex_lock(&dev->action_thread->mutex);
-
-	return pthread_cond_timedwait(&dev->action_thread->cond, &dev->action_thread->mutex, &ts);
-}
-
-void event_action_thread_stop(struct devices_t *dev) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	struct event_action_thread_t *thread = NULL;
-
-	if(dev != NULL) {
-		thread = dev->action_thread;
-		if(thread->running == 1) {
-			logprintf(LOG_DEBUG, "aborting running \"%s\" action for device \"%s\"", thread->action, dev->id);
-
-			thread->loop = 0;
-			pthread_mutex_unlock(&thread->mutex);
-			pthread_cond_signal(&thread->cond);
-
-			while(thread->running > 0) {
-				usleep(10);
+	if(lua_isnil(L, -1) != 0) {
+		lua_remove(L, -1);
+		assert(lua_gettop(L) == 0);
+		uv_mutex_unlock(&state->lock);
+		return -1;
+	}
+	if(lua_istable(L, -1) != 0) {
+		char *file = NULL;
+		struct plua_module_t *tmp = plua_get_modules();
+		while(tmp) {
+			if(strcmp(module, tmp->name) == 0) {
+				file = tmp->file;
+				state->module = tmp;
+				break;
 			}
+			tmp = tmp->next;
 		}
-		if(thread->initialized == 1) {
-			pthread_join(thread->pth, NULL);
-			thread->initialized = 0;
+		if(event_action_parameters_run(L, file, nr, ret) == 0) {
+			lua_pop(L, -1);
+			assert(lua_gettop(L) == 0);
+			uv_mutex_unlock(&state->lock);
+			return -1;
 		}
 	}
+	lua_pop(L, -1);
+
+	assert(lua_gettop(L) == 0);
+	uv_mutex_unlock(&state->lock);
+
+	return 0;
 }
 
-void event_action_thread_free(struct devices_t *dev) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+int event_action_check_arguments(char *module, struct event_action_args_t *args) {
+	return event_action_prepare_call(module, "check", args);
+}
 
-	struct event_action_thread_t *thread = NULL;
+int event_action_run(char *module, struct event_action_args_t *args) {
+	return event_action_prepare_call(module, "run", args);
+}
 
-	if(dev != NULL && dev->action_thread != NULL) {
-		thread = dev->action_thread;
-		if(thread->running == 1) {
-			logprintf(LOG_DEBUG, "aborting running \"%s\" action for device \"%s\"", thread->action, dev->id);
-
-			thread->loop = 0;
-			pthread_mutex_unlock(&thread->mutex);
-			pthread_cond_signal(&thread->cond);
-			while(thread->running > 0) {
-				usleep(10);
-			}
-		}
-		if(thread->action != NULL) {
-			FREE(thread->action);
-		}
-		// if(thread->param != NULL) {
-			// json_delete(thread->param);
-			// thread->param = NULL;
-		// }
-		if(thread->initialized == 1) {
-			pthread_join(thread->pth, NULL);
-			thread->initialized = 0;
-		}
-		FREE(dev->action_thread);
+int event_action_gc(void) {
+	struct execution_t *tmp = NULL;
+	while(executions) {
+		tmp = executions;
+		FREE(tmp->name);
+		executions = executions->next;
+		FREE(tmp);
 	}
-}
 
-void event_action_started(struct event_action_thread_t *thread) {
-	logprintf(LOG_INFO, "started \"%s\" action for device \"%s\"", thread->action, thread->device->id);
-	pthread_mutex_lock(&thread->mutex);
-	thread->running = 1;
-	pthread_mutex_unlock(&thread->mutex);
-}
+	init = 0;
 
-void event_action_stopped(struct event_action_thread_t *thread) {
-	logprintf(LOG_INFO, "stopped \"%s\" action for device \"%s\"", thread->action, thread->device->id);
-	pthread_mutex_lock(&thread->mutex);
-	thread->running = 0;
-	pthread_mutex_unlock(&thread->mutex);
+	logprintf(LOG_DEBUG, "garbage collected event action library");
+	return 0;
 }

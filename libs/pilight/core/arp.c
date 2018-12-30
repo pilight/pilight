@@ -36,6 +36,19 @@
  *
  */
 
+#include "log.h"
+
+#ifdef __aarch64__
+void arp_add_host(const char *host_name) {
+	return;
+}
+
+int arp_resolv(char *if_name, char *srcmac, char *dstmac, char **ip) {
+	logprintf(LOG_ERR, "the ARP library is not supported on aarch64");
+	return -1;
+}
+#else
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -80,7 +93,6 @@
 
 #include "network.h"
 #include "mem.h"
-#include "log.h"
 #include "arp.h"
 
 #define MAXLINE 						255
@@ -579,3 +591,5 @@ close:
 		return -1;
 	}
 }
+
+#endif

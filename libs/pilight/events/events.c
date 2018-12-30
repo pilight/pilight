@@ -27,7 +27,6 @@
 
 #include "../core/pilight.h"
 #include "../core/common.h"
-#include "../core/config.h"
 #include "../core/log.h"
 #include "../core/cast.h"
 #include "../core/options.h"
@@ -36,10 +35,11 @@
 #include "../core/socket.h"
 #include "../datatypes/stack.h"
 
-#include "../lua/lua.h"
+#include "../lua_c/lua.h"
 
 #include "../protocols/protocol.h"
 
+#include "../config/config.h"
 #include "../config/rules.h"
 #include "../config/settings.h"
 #include "../config/devices.h"
@@ -164,20 +164,20 @@ static int get_associativity(char *symbol) {
 	return -1;
 }
 
-struct event_actions_t *get_action(char *symbol, int size) {
-	struct event_actions_t *tmp_actions = NULL;
+static int is_action(char *symbol, int size) {
+	struct plua_module_t *modules = plua_get_modules();
 	int len = 0;
-
-	tmp_actions = event_actions;
-	while(tmp_actions) {
-		len = strlen(tmp_actions->name);
-		if((size == -1 && strnicmp(symbol, tmp_actions->name, len) == 0) ||
-			(size == len && strnicmp(symbol, tmp_actions->name, len) == 0)) {
-			return tmp_actions;
+	while(modules) {
+		if(modules->type == ACTION) {
+			len = strlen(modules->name);
+			if((size == -1 && strnicmp(symbol, modules->name, len) == 0) ||
+				(size == len && strnicmp(symbol, modules->name, len) == 0)) {
+				return len;
+			}
 		}
-		tmp_actions = tmp_actions->next;
+		modules = modules->next;
 	}
-	return NULL;
+	return -1;
 }
 
 static int is_function(char *symbol, int size) {
@@ -346,7 +346,7 @@ void event_cache_device(struct rules_t *obj, char *device) {
  * 0: Found variable and filled varcont
  * 1: Did not find variable and did not fill varcont
  */
-int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varcont, unsigned short validate, enum origin_t origin) {
+static int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varcont, unsigned short validate, int in_action) {
 	int recvtype = 0;
 	// int cached = 0;
 	if(strcmp(true_, "1") != 0) {
@@ -423,7 +423,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varc
 
 		if(recvtype == 2) {
 			if(validate == 1) {
-				if(origin == ORIGIN_RULE) {
+				if(in_action == 0) {
 					event_cache_device(obj, device);
 				}
 				if(strcmp(name, "repeats") != 0 && strcmp(name, "uuid") != 0) {
@@ -486,7 +486,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varc
 			return 0;
 		} else if(recvtype == 1) {
 			if(validate == 1) {
-				if(origin == ORIGIN_RULE) {
+				if(in_action == 0) {
 					event_cache_device(obj, device);
 				}
 #ifdef PILIGHT_REWRITE
@@ -621,13 +621,19 @@ int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varc
 			return -1;
 		}*/
 		array_free(&array, n);
-	} else if(nrdots > 2) {
+	}
+	/*
+	 * Multiple dots should also be allowed and not be seen as config device
+	 * e.g.: http://192.168.1.1/
+	 */
+	/*
+		else if(nrdots > 2) {
 		logprintf(LOG_ERR, "rule #%d invalid: variable \"%s\" is invalid", obj->nr, var);
 		varcont->string_ = NULL;
 		varcont->number_ = 0;
 		varcont->decimals_ = 0;
 		return -1;
-	}
+	} */
 
 	if(isNumeric(var) == 0) {
 		varcont->number_ = atof(var);
@@ -832,7 +838,6 @@ static int lexer_next_token(struct lexer_t *lexer) {
 			if((m = min(pos, 3)) != NULL) {
 				len = m-lexer->current_char;
 			}
-			struct event_actions_t *action = NULL;
 			if((len1 = is_function(lexer->current_char, len)) > 0) {
 				for(x=0;x<len1;x++) {
 					dt_stack_push(t, sizeof(char *), &lexer->current_char[x]);
@@ -847,8 +852,7 @@ static int lexer_next_token(struct lexer_t *lexer) {
 				type = TOPERATOR;
 				lexer->current_char = &lexer->text[lexer->pos+(len1-1)];
 				lexer->pos += len1;
-			} else if((action = get_action(lexer->current_char, len)) != NULL) {
-				len1 = strlen(action->name);
+			} else if((len1 = is_action(lexer->current_char, len)) > 0) {
 				for(x=0;x<len1;x++) {
 					dt_stack_push(t, sizeof(char *), &lexer->current_char[x]);
 				}
@@ -1039,7 +1043,7 @@ static int lexer_parse_function(struct lexer_t *lexer, struct tree_t *tree_in, s
 	struct token_t *token = lexer->current_token, *token_ret = NULL;
 	struct tree_t *p = ast_parent(token);
 	char *expected = NULL;
-	int pos = 0, err = -1;
+	int pos = 0, err = -1, loop = 1;
 
 	if((err = lexer_eat(lexer, TFUNCTION, &token_ret)) < 0) {
 		*tree_out = NULL;
@@ -1060,7 +1064,11 @@ static int lexer_parse_function(struct lexer_t *lexer, struct tree_t *tree_in, s
 		return err;
 	}
 	pos = node->token->pos+1;
-	while(1) {
+
+	if(lexer_peek(lexer, 0, RPAREN, NULL) == 0) {
+		loop = 0;
+	}
+	while(loop) {
 		if((err = lexer_eat(lexer, TCOMMA, &token_ret)) < 0) {
 			char *tmp = "a comma or closing parenthesis";
 			pos -= strlen(node->token->value);
@@ -1108,8 +1116,6 @@ error:
 static void print_ast(struct tree_t *tree);
 
 static int lexer_parse_action(struct lexer_t *lexer, struct tree_t *tree_in, struct tree_t **tree_out) {
-	struct event_actions_t *action = NULL;
-	struct options_t *options = NULL;
 	struct tree_t *node = NULL;
 	struct tree_t *p = NULL;
 	struct tree_t *p1 = NULL;
@@ -1120,8 +1126,7 @@ static int lexer_parse_action(struct lexer_t *lexer, struct tree_t *tree_in, str
 
 	p = ast_parent(token);
 
-	action = get_action(token->value, len);
-	if(action != NULL) {
+	if(is_action(token->value, len) > 0) {
 		if((err = lexer_eat(lexer, TACTION, &token_ret)) < 0) {
 			*tree_out = NULL;
 			return -1;
@@ -1170,13 +1175,16 @@ static int lexer_parse_action(struct lexer_t *lexer, struct tree_t *tree_in, str
 				goto error;
 			} else {
 				match = 0;
-				options = action->options;
-				while(options != NULL) {
-					if(stricmp(token_ret->value, options->name) == 0) {
-						match = 1;
-						break;
+				char **ret = NULL;
+				int nr = 0, i = 0;
+				if(event_action_get_parameters(token->value, &nr, &ret) == 0) {
+					for(i=0;i<nr;i++) {
+						if(stricmp(ret[i], token_ret->value) == 0 && match == 0) {
+							match = 1;
+						}
+						FREE(ret[i]);
 					}
-					options = options->next;
+					FREE(ret);
 				}
 				if(match == 0) {
 					char *tmp = "an action argument";
@@ -1264,7 +1272,7 @@ static int lexer_parse_action(struct lexer_t *lexer, struct tree_t *tree_in, str
 	return 0;
 
 error:
-		return print_error(lexer, p, NULL, NULL, err, expected, pos, lexer->ppos-1);
+	return print_error(lexer, p, NULL, NULL, err, expected, pos, lexer->ppos-1);
 }
 
 static int lexer_parse_if(struct lexer_t *lexer, struct tree_t *tree, struct tree_t **tree_out) {
@@ -1583,7 +1591,7 @@ static void print_ast(struct tree_t *tree) {
 	}
 }
 
-static int interpret(struct tree_t *tree, struct rules_t *obj, unsigned short validate, struct varcont_t *v);
+static int interpret(struct tree_t *tree, int in_action, struct rules_t *obj, unsigned short validate, struct varcont_t *v);
 
 static void varcont_free(struct varcont_t *v) {
 	if(v->free_ == 1) {
@@ -1594,7 +1602,7 @@ static void varcont_free(struct varcont_t *v) {
 	}
 }
 
-static int run_function(struct tree_t *tree, struct rules_t *obj, unsigned short validate, struct varcont_t *v) {
+static int run_function(struct tree_t *tree, int in_action, struct rules_t *obj, unsigned short validate, struct varcont_t *v) {
 	struct event_function_args_t *args = NULL;
 	struct varcont_t v_res, v1;
 	int i = 0;
@@ -1603,16 +1611,27 @@ static int run_function(struct tree_t *tree, struct rules_t *obj, unsigned short
 		memset(&v_res, '\0', sizeof(struct varcont_t));
 		memset(&v1, '\0', sizeof(struct varcont_t));
 
-		if(interpret(tree->child[i], obj, validate, &v_res) == -1) {
+		if(interpret(tree->child[i], in_action, obj, validate, &v_res) == -1) {
 			v = NULL;
 			return -1;
 		}
 		if(v_res.type_ == JSON_STRING) {
-			if(event_lookup_variable(v_res.string_, obj, &v1, validate, ORIGIN_RULE) == -1) {
+			if(event_lookup_variable(v_res.string_, obj, &v1, validate, in_action) == -1) {
 				varcont_free(&v1);
 				varcont_free(&v_res);
 				return -1;
 			} else {
+				if(v1.type_ == JSON_STRING) {
+#ifdef PILIGHT_REWRITE
+					struct device_t *dev = NULL;
+					if(in_action == 0 && devices_select_struct(ORIGIN_RULE, v1.string_, &dev) == 0) {
+#else
+					struct devices_t *dev = NULL;
+					if(in_action == 0 && devices_get(v1.string_, &dev) == 0) {
+#endif
+						event_cache_device(obj, v1.string_);
+					}
+				}
 				args = event_function_add_argument(&v1, args);
 				varcont_free(&v1);
 				varcont_free(&v_res);
@@ -1631,20 +1650,16 @@ static int run_function(struct tree_t *tree, struct rules_t *obj, unsigned short
 }
 
 static int run_action(struct tree_t *tree, struct rules_t *obj, unsigned short validate, struct varcont_t *v_out) {
-	struct JsonNode *jobject = json_mkobject();
-	struct JsonNode *jparam = NULL;
-	struct JsonNode *jvalues = NULL;
-	struct varcont_t v_res, v_res1, v1;
-	struct rules_actions_t *node = NULL;
-	struct event_actions_t *action = NULL;
+	struct event_action_args_t *args = NULL;
+	struct varcont_t v_res, v_res1, v1, v;
 	char *key = NULL;
-	int i = 0, x = 0, match = 0;
+	int i = 0, x = 0, len = 0;
 
-	action = get_action(tree->token->value, strlen(tree->token->value));
+	len = is_action(tree->token->value, strlen(tree->token->value));
 
 	for(i=0;i<tree->nrchildren;i++) {
 		if(tree->child[i]->token->type == TACTION) {
-			if(interpret(tree->child[i], obj, validate, &v_res) == -1) {
+			if(interpret(tree->child[i], 1, obj, validate, &v_res) == -1) {
 				v_out = NULL;
 				return -1;
 			}
@@ -1654,25 +1669,21 @@ static int run_action(struct tree_t *tree, struct rules_t *obj, unsigned short v
 		memset(&v_res, '\0', sizeof(struct varcont_t));
 		memset(&v1, '\0', sizeof(struct varcont_t));
 
-		jparam = json_mkobject();
-		jvalues = json_mkarray();
-		json_append_member(jparam, "order", json_mknumber(i+1, 0));
-		json_append_member(jparam, "value", jvalues);
-		if(interpret(tree->child[i], obj, validate, &v_res) == -1) {
+		if(interpret(tree->child[i], 1, obj, validate, &v_res) == -1) {
 			v_out = NULL;
 			return -1;
 		}
 		key = v_res.string_;
 
 		for(x=0;x<tree->child[i]->nrchildren;x++) {
-			if(interpret(tree->child[i]->child[x], obj, validate, &v_res1) == -1) {
+			if(interpret(tree->child[i]->child[x], 1, obj, validate, &v_res1) == -1) {
 				v_out = NULL;
 				return -1;
 			}
 
 			switch(v_res1.type_) {
 				case JSON_STRING: {
-					if(event_lookup_variable(v_res1.string_, obj, &v1, validate, ORIGIN_RULE) == -1) {
+					if(event_lookup_variable(v_res1.string_, obj, &v1, validate, 1) == -1) {
 						varcont_free(&v1);
 						varcont_free(&v_res);
 						varcont_free(&v_res1);
@@ -1681,68 +1692,50 @@ static int run_action(struct tree_t *tree, struct rules_t *obj, unsigned short v
 					} else {
 						switch(v1.type_) {
 							case JSON_NUMBER: {
-								json_append_element(jvalues, json_mknumber(v1.number_, v1.decimals_));
+								memset(&v, 0, sizeof(struct varcont_t));
+								v.number_ = v1.number_; v.decimals_ = v1.decimals_; v.type_ = JSON_NUMBER;
+								args = event_action_add_argument(args, key, &v);
 							} break;
 							case JSON_STRING: {
-								json_append_element(jvalues, json_mkstring(v1.string_));
+								memset(&v, 0, sizeof(struct varcont_t));
+								v.string_ = STRDUP(v1.string_); v.type_ = JSON_STRING;
+								args = event_action_add_argument(args, key, &v);
+								FREE(v.string_);
 							} break;
 							case JSON_BOOL: {
-								json_append_element(jvalues, json_mkbool(v1.bool_));
+								memset(&v, 0, sizeof(struct varcont_t));
+								v.bool_ = v1.bool_; v.type_ = JSON_BOOL;
+								args = event_action_add_argument(args, key, &v);
 							} break;
 						}
 						varcont_free(&v1);
 					}
 				} break;
 				case JSON_NUMBER: {
-					json_append_element(jvalues, json_mknumber(v_res1.number_, v_res1.decimals_));
+					memset(&v, 0, sizeof(struct varcont_t));
+					v.number_ = v_res1.number_; v.decimals_ = v_res1.decimals_; v.type_ = JSON_NUMBER;
+					args = event_action_add_argument(args, key, &v);
 				} break;
 				case JSON_BOOL: {
-					json_append_element(jvalues, json_mkbool(v_res1.bool_));
+					memset(&v, 0, sizeof(struct varcont_t));
+					v.bool_ = v_res1.bool_; v.type_ = JSON_BOOL;
+					args = event_action_add_argument(args, key, &v);
+					FREE(v.string_);
 				} break;
 			}
 			varcont_free(&v_res1);
 		}
-		json_append_member(jobject, key, jparam);
 		varcont_free(&v_res);
 	}
 
-	node = obj->actions;
-	while(node) {
-		if(node->ptr == tree) {
-			match = 1;
-			break;
-		}
-		node = node->next;
-	}
-	if(match == 0) {
-		if((node = MALLOC(sizeof(struct rules_actions_t))) == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
-		node->ptr = tree;
-		node->rule = obj;
-		node->arguments = NULL;
-		node->next = obj->actions;
-		obj->actions = node;
-	}
-
-	if(node->arguments != NULL) {
-		json_delete(node->arguments);
-		node->arguments = NULL;
-	}
-
-	node->arguments = jobject;
-	if(action != NULL) {
+	if(len > 0) {
 		if(validate == 1) {
-			if(action->checkArguments != NULL) {
-				if(action->checkArguments(node) == -1) {
-					return -1;
-				}
+			if(event_action_check_arguments(tree->token->value, args) == -1) {
+				return -1;
 			}
 		} else {
-			if(action->run != NULL) {
-				if(action->run(node) == -1) {
-					return -1;
-				}
+			if(event_action_run(tree->token->value, args) == -1) {
+				return -1;
 			}
 		}
 	}
@@ -1752,7 +1745,7 @@ static int run_action(struct tree_t *tree, struct rules_t *obj, unsigned short v
 	return 0;
 }
 
-static int interpret(struct tree_t *tree, struct rules_t *obj, unsigned short validate, struct varcont_t *v_out) {
+static int interpret(struct tree_t *tree, int in_action, struct rules_t *obj, unsigned short validate, struct varcont_t *v_out) {
 	struct varcont_t v_res;
 	memset(&v_res, 0, sizeof(struct varcont_t));
 	if(tree == NULL) {
@@ -1767,7 +1760,7 @@ static int interpret(struct tree_t *tree, struct rules_t *obj, unsigned short va
 			return 0;
 		} break;
 		case TFUNCTION: {
-			if(run_function(tree, obj, validate, v_out) == -1) {
+			if(run_function(tree, in_action, obj, validate, v_out) == -1) {
 				return -1;
 			}
 			return 0;
@@ -1784,7 +1777,7 @@ static int interpret(struct tree_t *tree, struct rules_t *obj, unsigned short va
 			return 0;
 		} break;
 		case TIF: {
-			if(interpret(tree->child[0], obj, validate, &v_res) == -1) {
+			if(interpret(tree->child[0], 0, obj, validate, &v_res) == -1) {
 				varcont_free(&v_res);
 				return -1;
 			} else {
@@ -1792,25 +1785,31 @@ static int interpret(struct tree_t *tree, struct rules_t *obj, unsigned short va
 					logprintf(LOG_ERR, "If condition did not result in a boolean expression");
 					return -1;
 				}
-				if(v_res.bool_ == 1) {
+				if(validate == 1 || v_res.bool_ == 1) {
 					varcont_free(&v_res);
-					if(interpret(tree->child[1], obj, validate, &v_res) == -1) {
+					if(interpret(tree->child[1], 0, obj, validate, &v_res) == -1) {
 						varcont_free(&v_res);
 						return -1;
 					}
 					memcpy(v_out, &v_res, sizeof(struct varcont_t));
 					varcont_free(&v_res);
-					return 0;
-				} else if(tree->nrchildren == 3) {
+					if(validate == 0) {
+						return 0;
+					}
+				}
+				if((validate == 1 || v_res.bool_ == 0) && tree->nrchildren == 3) {
 					varcont_free(&v_res);
-					if(interpret(tree->child[2], obj, validate, &v_res) == -1) {
+					if(interpret(tree->child[2], 0, obj, validate, &v_res) == -1) {
 						varcont_free(&v_res);
 						return -1;
 					}
 					memcpy(v_out, &v_res, sizeof(struct varcont_t));
 					varcont_free(&v_res);
-					return 0;
-				} else {
+					if(validate == 0) {
+						return 0;
+					}
+				}
+				if(validate == 1 || (v_res.bool_ == 0 && tree->nrchildren != 3)) {
 					v_out->bool_ = 1;
 					v_out->type_ = JSON_BOOL;
 					varcont_free(&v_res);
@@ -1829,16 +1828,16 @@ static int interpret(struct tree_t *tree, struct rules_t *obj, unsigned short va
 			memset(&v4, '\0', sizeof(struct varcont_t));
 
 			if(event_operator_exists(tree->token->value) == 0) {
-				if(interpret(tree->child[0], obj, validate, &v1) == -1) {
+				if(interpret(tree->child[0], in_action, obj, validate, &v1) == -1) {
 					varcont_free(&v1);
 					return -1;
 				}
-				if(interpret(tree->child[1], obj, validate, &v2) == -1) {
+				if(interpret(tree->child[1], in_action, obj, validate, &v2) == -1) {
 					varcont_free(&v2);
 					return -1;
 				}
 				if(v1.type_ == JSON_STRING) {
-					if(event_lookup_variable(v1.string_, obj, &v3, validate, ORIGIN_RULE) == -1) {
+					if(event_lookup_variable(v1.string_, obj, &v3, validate, in_action) == -1) {
 						varcont_free(&v1);
 						return -1;
 					} else {
@@ -1865,7 +1864,7 @@ static int interpret(struct tree_t *tree, struct rules_t *obj, unsigned short va
 					}
 				}
 				if(v2.type_ == JSON_STRING) {
-					if(event_lookup_variable(v2.string_, obj, &v4, validate, ORIGIN_RULE) == -1) {
+					if(event_lookup_variable(v2.string_, obj, &v4, validate, in_action) == -1) {
 						varcont_free(&v2);
 						return -1;
 					} else {
@@ -1946,7 +1945,7 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 		FREE(lexer);
 	}
 
-	if(interpret(obj->tree, obj, validate, &v_res) == -1) {
+	if(interpret(obj->tree, 0, obj, validate, &v_res) == -1) {
 		return -1;
 	}
 	if(v_res.type_ == JSON_BOOL) {
@@ -1966,7 +1965,7 @@ void *events_loop(void *param) {
 		eventslock_init = 1;
 	}
 
-	struct devices_t *dev = NULL;
+	// struct devices_t *dev = NULL;
 	struct JsonNode *jdevices = NULL, *jchilds = NULL;
 	struct rules_t *tmp_rules = NULL;
 	char *str = NULL, *origin = NULL, *protocol = NULL;
@@ -2016,17 +2015,17 @@ void *events_loop(void *param) {
 							for(i=0;i<tmp_rules->nrdevices;i++) {
 								if(jchilds->tag == JSON_STRING &&
 								   strcmp(jchilds->string_, tmp_rules->devices[i]) == 0) {
-									if(devices_get(jchilds->string_, &dev) == 0) {
-										if(dev->lastrule == tmp_rules->nr &&
-											 tmp_rules->nr == dev->prevrule &&
-											 dev->lastrule == dev->prevrule) {
-											logprintf(LOG_ERR, "skipped rule #%d because of an infinite loop triggered by device %s", tmp_rules->nr, jchilds->string_);
-										} else {
-											match = 1;
-										}
-									} else {
+									// if(devices_get(jchilds->string_, &dev) == 0) {
+										// if(dev->lastrule == tmp_rules->nr &&
+											 // tmp_rules->nr == dev->prevrule &&
+											 // dev->lastrule == dev->prevrule) {
+											// logprintf(LOG_ERR, "skipped rule #%d because of an infinite loop triggered by device %s", tmp_rules->nr, jchilds->string_);
+										// } else {
+											// match = 1;
+										// }
+									// } else {
 										match = 1;
-									}
+									// }
 									break;
 								}
 							}
@@ -2118,7 +2117,7 @@ void *events_clientize(void *param) {
 	char *out = NULL;
 	int standalone = 0;
 	int client_loop = 0;
-	settings_find_number("standalone", &standalone);
+	config_setting_get_number("standalone", 0, &standalone);
 
 	while(loop) {
 

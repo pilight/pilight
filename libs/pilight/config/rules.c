@@ -43,7 +43,7 @@ static struct rules_t *rules = NULL;
 static pthread_mutex_t mutex_lock;
 static pthread_mutexattr_t mutex_attr;
 
-static int rules_parse(JsonNode *root) {
+int config_rules_parse(struct JsonNode *root) {
 	int have_error = 0, match = 0, x = 0;
 	unsigned int i = 0;
 	struct JsonNode *jrules = NULL;
@@ -52,6 +52,7 @@ static int rules_parse(JsonNode *root) {
 
 	event_function_init();
 	event_operator_init();
+	event_action_init();
 
 	if(root->tag == JSON_OBJECT) {
 		jrules = json_first_child(root);
@@ -106,18 +107,15 @@ static int rules_parse(JsonNode *root) {
 						exit(EXIT_FAILURE);
 					}
 					strcpy(node->name, jrules->key);
-#ifndef WIN32
 					clock_gettime(CLOCK_MONOTONIC, &node->timestamp.first);
-#endif
 					if(event_parse_rule(rule, node, 0, 1) == -1) {
 						have_error = 1;
 					}
-#ifndef WIN32
 					clock_gettime(CLOCK_MONOTONIC, &node->timestamp.second);
 					logprintf(LOG_INFO, "rule #%d %s was parsed in %.6f seconds", node->nr, node->name,
 						((double)node->timestamp.second.tv_sec + 1.0e-9*node->timestamp.second.tv_nsec) -
 						((double)node->timestamp.first.tv_sec + 1.0e-9*node->timestamp.first.tv_nsec));
-#endif
+
 					node->status = 0;
 					if((node->rule = MALLOC(strlen(rule)+1)) == NULL) {
 						fprintf(stderr, "out of memory\n");
@@ -156,7 +154,7 @@ static int rules_parse(JsonNode *root) {
 	return have_error;
 }
 
-static JsonNode *rules_sync(int level, const char *media) {
+struct JsonNode *config_rules_sync(int level, const char *media) {
 	struct JsonNode *root = json_mkobject();
 	struct JsonNode *rule = NULL;
 	struct rules_t *tmp = NULL;
@@ -184,6 +182,7 @@ static JsonNode *rules_sync(int level, const char *media) {
 		if(strcmp(media, "all") == 0) {
 			match = tmp->nrdevices;
 		}
+
 		if(match == tmp->nrdevices) {
 			rule = json_mkobject();
 			json_append_member(rule, "rule", json_mkstring(tmp->rule));
@@ -192,6 +191,7 @@ static JsonNode *rules_sync(int level, const char *media) {
 		}
 		tmp = tmp->next;
 	}
+
 	return root;
 }
 
@@ -257,17 +257,7 @@ int rules_gc(void) {
 }
 
 void rules_init(void) {
-	event_action_init();
-
 	pthread_mutexattr_init(&mutex_attr);
 	pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&mutex_lock, &mutex_attr);
-
-	/* Request rules json object in main configuration */
-	config_register(&config_rules, "rules");
-	config_rules->readorder = 2;
-	config_rules->writeorder = 1;
-	config_rules->parse=&rules_parse;
-	config_rules->sync=&rules_sync;
-	config_rules->gc=&rules_gc;
 }

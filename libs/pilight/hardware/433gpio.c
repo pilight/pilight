@@ -30,9 +30,11 @@
 
 static int gpio_433_in = -1;
 static int gpio_433_out = -1;
+static int wait = 0;
+static int loopback = LOOPBACK;
 static int pollpri = UV_PRIORITIZED;
 
-#if defined(__arm__) || defined(__mips__) || defined(PILIGHT_UNITTEST)
+#if defined(__arm__) || defined(__mips__) || defined(__aarch64__) || defined(PILIGHT_UNITTEST)
 typedef struct timestamp_t {
 	unsigned long first;
 	unsigned long second;
@@ -73,28 +75,32 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 		timestamp.first = timestamp.second;
 		timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
-		duration = (int)((int)timestamp.second-(int)timestamp.first);
+		if((wait == 0 && loopback == 0) || loopback == 1) {
+			duration = (int)((int)timestamp.second-(int)timestamp.first);
 
-		if(duration > 0) {
-			data.rbuffer[data.rptr++] = duration;
-			if(data.rptr > MAXPULSESTREAMLENGTH-1) {
-				data.rptr = 0;
-			}
-			if(duration > gpio433->mingaplen) {
-				/* Let's do a little filtering here as well */
-				if(data.rptr >= gpio433->minrawlen && data.rptr <= gpio433->maxrawlen) {
-					struct reason_received_pulsetrain_t *data1 = MALLOC(sizeof(struct reason_received_pulsetrain_t));
-					if(data1 == NULL) {
-						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-					}
-					data1->length = data.rptr;
-					memcpy(data1->pulses, data.rbuffer, data.rptr*sizeof(int));
-					data1->hardware = gpio433->id;
-
-					eventpool_trigger(REASON_RECEIVED_PULSETRAIN, reason_received_pulsetrain_free, data1);
+			if(duration > 0) {
+				data.rbuffer[data.rptr++] = duration;
+				if(data.rptr > MAXPULSESTREAMLENGTH-1) {
+					data.rptr = 0;
 				}
-				data.rptr = 0;
+				if(duration > gpio433->mingaplen) {
+					/* Let's do a little filtering here as well */
+					if(data.rptr >= gpio433->minrawlen && data.rptr <= gpio433->maxrawlen) {
+						struct reason_received_pulsetrain_t *data1 = MALLOC(sizeof(struct reason_received_pulsetrain_t));
+						if(data1 == NULL) {
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+						}
+						data1->length = data.rptr;
+						memcpy(data1->pulses, data.rbuffer, data.rptr*sizeof(int));
+						data1->hardware = gpio433->id;
+
+						eventpool_trigger(REASON_RECEIVED_PULSETRAIN, reason_received_pulsetrain_free, data1);
+					}
+					data.rptr = 0;
+				}
 			}
+		} else {
+			data.rptr = 0;
 		}
 	};
 	if(events & UV_DISCONNECT) {
@@ -109,6 +115,8 @@ static void *gpio433Send(int reason, void *param) {
 	int rawlen = data1->rawlen;
 	int repeats = data1->txrpt;
 
+	wait = 1;
+	
 	int r = 0, x = 0;
 	if(gpio_433_out >= 0) {
 		for(r=0;r<repeats;r++) {
@@ -124,6 +132,8 @@ static void *gpio433Send(int reason, void *param) {
 		digitalWrite(gpio_433_out, 0);
 	}
 
+	wait = 0;
+
 	struct reason_code_sent_success_t *data2 = MALLOC(sizeof(struct reason_code_sent_success_t));
 	strcpy(data2->message, data1->message);
 	strcpy(data2->uuid, data1->uuid);
@@ -133,7 +143,7 @@ static void *gpio433Send(int reason, void *param) {
 #endif
 
 static unsigned short int gpio433HwInit(void) {
-#if defined(__arm__) || defined(__mips__) || defined(PILIGHT_UNITTEST)
+#if defined(__arm__) || defined(__mips__) || defined(__aarch64__) || defined(PILIGHT_UNITTEST)
 
 	/* Make sure the pilight sender gets
 	   the highest priority available */
@@ -149,23 +159,23 @@ static unsigned short int gpio433HwInit(void) {
 	uv_poll_t *poll_req = NULL;
 	char *platform = GPIO_PLATFORM;
 
-#ifdef PILIGHT_REWRITE
-	if(settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+	config_setting_get_number("loopback", 0, &loopback);
+
+	if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
 		logprintf(LOG_ERR, "no gpio-platform configured");
 		return EXIT_FAILURE;
 	}
-	if(wiringXSetup(platform, _logprintf) < 0) {
-		return EXIT_FAILURE;
-	}
-#else
-	if(settings_find_string("gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+	if(strcmp(platform, "none") == 0) {
+		FREE(platform);
 		logprintf(LOG_ERR, "no gpio-platform configured");
 		return EXIT_FAILURE;
 	}
 	if(wiringXSetup(platform, logprintf1) < 0) {
+		FREE(platform);
 		return EXIT_FAILURE;
 	}
-#endif
+	FREE(platform);
+
 	if(gpio_433_out >= 0) {
 		if(wiringXValidGPIO(gpio_433_out) != 0) {
 			logprintf(LOG_ERR, "invalid sender pin: %d", gpio_433_out);
@@ -242,8 +252,8 @@ void gpio433Init(void) {
 	hardware_register(&gpio433);
 	hardware_set_id(gpio433, "433gpio");
 
-	options_add(&gpio433->options, 'r', "receiver", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
-	options_add(&gpio433->options, 's', "sender", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
+	options_add(&gpio433->options, "r", "receiver", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
+	options_add(&gpio433->options, "s", "sender", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
 
 	gpio433->minrawlen = 1000;
 	gpio433->maxrawlen = 0;

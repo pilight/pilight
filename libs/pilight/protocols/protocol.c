@@ -38,7 +38,12 @@
 #include "../config/settings.h"
 
 #include "protocol.h"
-#include "protocol_header.h"
+#include "433.92/protocol_header.h"
+#include "API/protocol_header.h"
+#include "generic/protocol_header.h"
+#include "GPIO/protocol_header.h"
+#include "network/protocol_header.h"
+#include "core/protocol_header.h"
 
 struct protocols_t *protocols;
 
@@ -93,7 +98,12 @@ void protocol_remove(char *name) {
 void protocol_init(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	#include "protocol_init.h"
+	#include "433.92/protocol_init.h"
+	#include "API/protocol_init.h"
+	#include "generic/protocol_init.h"
+	#include "GPIO/protocol_init.h"
+	#include "network/protocol_init.h"
+	#include "core/protocol_init.h"
 
 #ifndef _WIN32
 	void *handle = NULL;
@@ -113,7 +123,7 @@ void protocol_init(void) {
 
 	memset(pilight_commit, '\0', 3);
 
-	if(settings_find_string("protocol-root", &protocol_root) != 0) {
+	if(config_setting_get_string("protocol-root", 0, &protocol_root) != 0) {
 		/* If no protocol root was set, use the default protocol root */
 		if((protocol_root = MALLOC(strlen(PROTOCOL_ROOT)+1)) == NULL) {
 			fprintf(stderr, "out of memory\n");
@@ -185,7 +195,7 @@ void protocol_init(void) {
 		}
 		closedir(d);
 	}
-	if(protocol_root_free) {
+	if(protocol_root_free == 1) {
 		FREE(protocol_root);
 	}
 #endif

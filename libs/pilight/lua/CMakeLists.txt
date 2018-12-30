@@ -1,6 +1,6 @@
-project(pilight_lua)
-
-file(GLOB ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/*.c")
-file(GLOB ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/*.h")
-
-set(${PROJECT_NAME}_files ${${PROJECT_NAME}_sources} ${${PROJECT_NAME}_headers} CACHE INTERNAL "")
+file(GLOB lua "${PROJECT_SOURCE_DIR}/lua/*.lua")
+if(WIN32)
+	install(FILES ${lua} DESTINATION lua/ COMPONENT pilight)
+else()
+	install(FILES ${lua} DESTINATION lib/pilight/lua/ COMPONENT pilight)
+endif()

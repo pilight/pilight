@@ -1,21 +1,50 @@
+set(module_name "protocol")
+
+string(TOUPPER ${module_name} module_name_cap)
+
+set(project_headers ${${PROJECT_NAME}_files})
+set(project_sources ${${PROJECT_NAME}_files})
+
+list(REMOVE_ITEM project_headers "${PROJECT_SOURCE_DIR}/${module_name}.h")
+
+foreach(header ${project_headers})
+	get_filename_component(ext ${header} EXT)
+	if(NOT ${ext} MATCHES ".h")
+		list(REMOVE_ITEM project_headers ${header})
+	endif()
+endforeach(header)
+
+foreach(source ${project_sources})
+	get_filename_component(ext ${source} EXT)
+	if(NOT ${ext} MATCHES ".c")
+		list(REMOVE_ITEM project_sources ${source})
+	endif()
+endforeach(source)
+
 set(headers)
-foreach(header ${${PROJECT_NAME}_headers_includes})
+foreach(header ${project_headers})
 	string(REPLACE "${PROJECT_SOURCE_DIR}/" "	#include \"" header1 ${header}) 
 	string(REPLACE ".h" ".h\"!" header2 ${header1})
 	list(APPEND headers ${header2})
 endforeach(header)
 
 string(REPLACE "!" "\n" header4 ${headers})
-set(PROTOCOL_HEADERS ${header4})
-configure_file(${PROJECT_SOURCE_DIR}/protocol_header.h.in ${PROJECT_SOURCE_DIR}/protocol_header.h)	
+set(${module_name_cap}_HEADERS ${header4})
+configure_file(${PROJECT_SOURCE_DIR}/${module_name}_header.h.in ${PROJECT_SOURCE_DIR}/${module_name}_header.h)	
+
+execute_process(
+COMMAND grep -h "void .*Init(void)" ${project_sources}
+	WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+	RESULT_VARIABLE ${module_name}_results
+	OUTPUT_VARIABLE ${module_name}_init)
 
 set(inits)
-foreach(init ${${PROJECT_NAME}_init_includes})
-	string(REPLACE "${PROJECT_SOURCE_DIR}/" "	#include \"" init1 ${init}) 
-	string(REPLACE ".h" ".h\"!" init2 ${init1})
+foreach(init ${${module_name}_init})
+	string(REPLACE "void " "	" init1 ${init})
+	string(REPLACE "(void) {" "()!" init2 ${init1})
 	list(APPEND inits ${init2})
 endforeach(init)
 
-string(REPLACE "!" "\n" init4 ${inits})
-set(PROTOCOL_INIT ${init4})
-configure_file(${PROJECT_SOURCE_DIR}/protocol_init.h.in ${PROJECT_SOURCE_DIR}/protocol_init.h)	
+string(REPLACE "!" ";" init4 ${inits})
+set(${module_name_cap}_INIT ${init4})
+configure_file(${PROJECT_SOURCE_DIR}/${module_name}_init.h.in ${PROJECT_SOURCE_DIR}/${module_name}_init.h)	

@@ -75,7 +75,7 @@ chip_erase:			chip_erase
 writepage_bits:	memory flash - writepage
 ...
 */
- 
+
 #ifdef _WIN32
 	static int baudrate = 57600;
 #else
@@ -564,6 +564,7 @@ static void firmware_init_pgm(PROGRAMMER **pgm) {
 
 	*pgm = pgm_new();
 #ifndef _WIN32
+	int itmp = 0;
 	if(strlen(comport) == 0) {
 		gpio_initpgm(*pgm);
 		(*pgm)->pinno[3] = FIRMWARE_GPIO_RESET;
@@ -572,10 +573,10 @@ static void firmware_init_pgm(PROGRAMMER **pgm) {
 		(*pgm)->pinno[6] = FIRMWARE_GPIO_MISO;
 		// (*pgm)->ispdelay = 50;
 
-		settings_find_number("firmware-gpio-reset", (int *)&(*pgm)->pinno[3]);
-		settings_find_number("firmware-gpio-sck", (int *)&(*pgm)->pinno[4]);
-		settings_find_number("firmware-gpio-mosi", (int *)&(*pgm)->pinno[5]);
-		settings_find_number("firmware-gpio-miso", (int *)&(*pgm)->pinno[6]);
+		if(config_setting_get_number("firmware-gpio-reset", 0, &itmp) == 0) { (*pgm)->pinno[3] = itmp; }
+		if(config_setting_get_number("firmware-gpio-sck", 0, &itmp) == 0) { (*pgm)->pinno[4] = itmp; }
+		if(config_setting_get_number("firmware-gpio-mosi", 0, &itmp) == 0) { (*pgm)->pinno[5] = itmp; }
+		if(config_setting_get_number("firmware-gpio-miso", 0, &itmp) == 0) { (*pgm)->pinno[6] = itmp; }
 	} else {
 #endif
 		arduino_initpgm(*pgm);
@@ -666,7 +667,7 @@ static int firmware_identifymp(struct avrpart **p) {
 	int attempt = 0;
 	int waittime = 10000;       /* 10 ms */
 
-sig_again:	 
+sig_again:
 	usleep(waittime);
 	if(init_ok) {
 		if(avr_signature(pgm, *p) != 0) {
@@ -1160,7 +1161,7 @@ int firmware_getmp(char *port) {
 	if(!match && firmware_identifymp(&p) != 0) {
 		logprintf(LOG_INFO, "Not an ATMega32u4");
 		mptype = FW_MP_ATMEL328P;
-		firmware_atmega328p(&p);	
+		firmware_atmega328p(&p);
 		match = 0;
 	} else {
 		return mptype;
@@ -1186,7 +1187,7 @@ int firmware_getmp(char *port) {
 		firmware_attiny25(&p);
 	} else {
 		return mptype;
-	}	
+	}
 	logprintf(LOG_INFO, "Checking for an ATTiny25 @%d", baudrate);
 	if(!match && firmware_identifymp(&p) != 0) {
 		logprintf(LOG_INFO, "Not an ATTiny45");

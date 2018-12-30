@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ $1 == "install" -o $1 == "upgrade" ]; then
+
+	test -d /usr/local/pilight/webgui && rm -rf /usr/local/pilight/webgui 1>/dev/null 2>/dev/null || true;
+
+	test -d /usr/local/pilight/share/webgui && rm -rf /usr/local/share/pilight/webgui 1>/dev/null 2>/dev/null || true;
+	
+	test ! -d /usr/local/share/pilight/webgui || mkdir -p /usr/local/share/pilight/webgui 1>/dev/null 2>/dev/null;
+
+fi

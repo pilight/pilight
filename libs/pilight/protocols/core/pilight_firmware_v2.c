@@ -89,9 +89,9 @@ void pilightFirmwareV2Init(void) {
 	pilight_firmware_v2->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	pilight_firmware_v2->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
-  options_add(&pilight_firmware_v2->options, 'v', "version", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]+$");
-  options_add(&pilight_firmware_v2->options, 'l', "lpf", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]+$");
-  options_add(&pilight_firmware_v2->options, 'h', "hpf", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]+$");
+  options_add(&pilight_firmware_v2->options, "v", "version", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]+$");
+  options_add(&pilight_firmware_v2->options, "l", "lpf", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]+$");
+  options_add(&pilight_firmware_v2->options, "h", "hpf", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]+$");
 
   pilight_firmware_v2->parseCode=&parseCode;
   pilight_firmware_v2->validate=&validate;

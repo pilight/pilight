@@ -17,6 +17,7 @@
 #include <sys/time.h>
 #include <libgen.h>
 #include <dirent.h>
+#include <assert.h>
 #ifndef _WIN32
 	#include <dlfcn.h>
 #endif
@@ -26,7 +27,7 @@
 #include "../core/options.h"
 #include "../core/dso.h"
 #include "../core/log.h"
-#include "../lua/lua.h"
+#include "../lua_c/lua.h"
 #include "../config/settings.h"
 
 #include "function.h"
@@ -51,11 +52,7 @@ void event_function_init(void) {
 		OUT_OF_MEMORY
 	}
 
-#ifdef PILIGHT_REWRITE
-	settings_select_string(ORIGIN_MASTER, "functions-root", &functions_root);
-#else
-	settings_find_string("functions-root", &functions_root);
-#endif
+	config_setting_get_string("functions-root", 0, &functions_root);
 
 	if((d = opendir(functions_root))) {
 		while((file = readdir(d)) != NULL) {
@@ -73,12 +70,16 @@ void event_function_init(void) {
 	}
 	closedir(d);
 	FREE(f);
+
+	if(functions_root != (void *)FUNCTION_ROOT) {
+		FREE(functions_root);
+	}
 }
 
 static int plua_function_module_run(struct lua_State *L, char *file, struct event_function_args_t *args, struct varcont_t *v) {
 #if LUA_VERSION_NUM <= 502
 	lua_getfield(L, -1, "run");
-	if(strcmp(lua_typename(L, lua_type(L, -1)), "function") != 0) {
+	if(lua_type(L, -1) != LUA_TFUNCTION) {
 #else
 	if(lua_getfield(L, -1, "run") == 0) {
 #endif
@@ -117,11 +118,11 @@ static int plua_function_module_run(struct lua_State *L, char *file, struct even
 	args = NULL;
 
 	if(lua_pcall(L, nrargs, 1, 0) == LUA_ERRRUN) {
-		if(strcmp(lua_typename(L, lua_type(L, -1)), "nil") == 0) {
+		if(lua_type(L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", file);
 			return 0;
 		}
-		if(strcmp(lua_typename(L, lua_type(L, -1)), "string") == 0) {
+		if(lua_type(L, -1) == LUA_TSTRING) {
 			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
 			lua_pop(L, 1);
 			return 0;
@@ -221,6 +222,7 @@ int event_function_callback(char *module, struct event_function_args_t *args, st
 		return -1;
 	}
 	if((L = state->L) == NULL) {
+		assert(lua_gettop(L) == 0);
 		uv_mutex_unlock(&state->lock);
 		return -1;
 	}
@@ -233,6 +235,8 @@ int event_function_callback(char *module, struct event_function_args_t *args, st
 	lua_getglobal(L, name);
 	if(lua_isnil(L, -1) != 0) {
 		event_function_free_argument(args);
+		lua_remove(L, -1);
+		assert(lua_gettop(L) == 0);
 		uv_mutex_unlock(&state->lock);
 		return -1;
 	}
@@ -250,17 +254,20 @@ int event_function_callback(char *module, struct event_function_args_t *args, st
 		if(file != NULL) {
 			if(plua_function_module_run(L, file, args, v) == 0) {
 				lua_pop(L, -1);
+				assert(lua_gettop(L) == 0);
 				uv_mutex_unlock(&state->lock);
 				return -1;
 			}
 		} else {
 			event_function_free_argument(args);
+			assert(lua_gettop(L) == 0);
 			uv_mutex_unlock(&state->lock);
 			return -1;
 		}
 	}
 	lua_pop(L, -1);
 
+	assert(lua_gettop(L) == 0);
 	uv_mutex_unlock(&state->lock);
 
 	return 0;

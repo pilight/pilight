@@ -27,9 +27,9 @@ typedef struct devices_t devices_t;
 
 #include "../core/pilight.h"
 #include "../core/threads.h"
-#include "../core/config.h"
 #include "../protocols/protocol.h"
 #include "../events/action.h"
+#include "config.h"
 
 /*
 |------------------|
@@ -83,8 +83,6 @@ struct devices_t {
 #ifdef EVENTS
 	int lastrule;
 	int prevrule;
-	enum origin_t lastorigin;
-	enum origin_t prevorigin;
 	struct event_action_thread_t *action_thread;
 #endif
 	struct protocols_t *protocols;
@@ -100,7 +98,18 @@ int devices_get(char *sid, struct devices_t **dev);
 int devices_valid_state(char *sid, char *state);
 int devices_valid_value(char *sid, char *name, char *value);
 struct JsonNode *devices_values(const char *media);
+int config_devices_parse(struct JsonNode *root);
 void devices_init(void);
 int devices_gc(void);
+struct JsonNode *config_devices_sync(int level, const char *media);
+
+/*
+ * Rewrite backported functions
+ */
+int devices_select_protocol(enum origin_t origin, char *id, int element, struct protocol_t **out);
+int devices_select_number_setting(enum origin_t origin, char *id, char *setting, double *out, int *decimals);
+int devices_select_string_setting(enum origin_t origin, char *id, char *setting, char **out);
+int devices_select_settings(enum origin_t origin, char *id, int i, char **setting, struct varcont_t *out);
+int devices_select(enum origin_t origin, char *id, struct JsonNode **jdevice);
 
 #endif

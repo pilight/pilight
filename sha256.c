@@ -78,9 +78,9 @@ int main(int argc, char **argv) {
 
 	struct options_t *options = NULL;
   unsigned char output[33];
-	char converted[65], *password = NULL, *args = NULL;
+	char converted[65], *password = NULL;
 	mbedtls_sha256_context ctx;
-	int i = 0, x = 0;
+	int i = 0, x = 0, help = 0;
 
 	if((progname = MALLOC(15)) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -94,41 +94,30 @@ int main(int argc, char **argv) {
 	uv_signal_init(uv_default_loop(), signal_req);
 	uv_signal_start(signal_req, signal_cb, SIGINT);	
 
-	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'p', "password", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
+	options_add(&options, "H", "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "V", "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "p", "password", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
 
-	while (1) {
-		int c;
-		c = options_parse(&options, argc, argv, 1, &args);
-		if(c == -1)
-			break;
-		if(c == -2)
-			c = 'H';
-		switch (c) {
-			case 'H':
-				printf("Usage: %s [options]\n", progname);
-				printf("\t -H --help\t\tdisplay usage summary\n");
-				printf("\t -V --version\t\tdisplay version\n");
-				printf("\t -p --password=password\tpassword to encrypt\n");
-				goto close;
-			break;
-			case 'V':
-				printf("%s v%s\n", progname, PILIGHT_VERSION);
-				goto close;
-			break;
-			case 'p':
-				if((password = MALLOC(strlen(args)+1)) == NULL) {
-					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-				}
-				strcpy(password, args);
-			break;
-			default:
-				printf("Usage: %s [options]\n", progname);
-				goto close;
-			break;
-		}
+	if(options_parse(options, argc, argv) == -1) {
+		help = 1;
 	}
+
+	if(options_exists(options, "H") == 0 || help == 1) {
+		printf("Usage: %s [options]\n", progname);
+		printf("\t -H --help\t\tdisplay usage summary\n");
+		printf("\t -V --version\t\tdisplay version\n");
+		printf("\t -p --password=password\tpassword to encrypt\n");
+		goto close;
+	}
+	if(options_exists(options, "V") == 0) {
+		printf("%s v%s\n", progname, PILIGHT_VERSION);
+		goto close;
+	}
+
+	if(options_exists(options, "p") == 0) {
+		options_get_string(options, "p", &password);
+	}
+
 	options_delete(options);
 
 	if(password == NULL) {

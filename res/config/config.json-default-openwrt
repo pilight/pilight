@@ -7,8 +7,9 @@
 		"pid-file": "/var/run/pilight.pid",
 		"log-file": "/var/log/pilight.log",
 		"webserver-enable": 1,
-		"webserver-root": "/usr/share/pilight/",
+		"webserver-root": "/usr/local/share/pilight/webgui",
 		"webserver-http-port": 5001,
+		"webserver-https-port": 5002,
 		"webserver-cache": 1,
 		"whitelist": "",
 		"gpio-platform": "none"

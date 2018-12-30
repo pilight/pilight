@@ -145,15 +145,25 @@ static void gpio_close(PROGRAMMER *pgm) {
 
 void gpio_initpgm(PROGRAMMER *pgm)
 {
+#if defined(__arm__) || defined(__mips__)
   strcpy(pgm->type, "GPIO");
 	char *platform = GPIO_PLATFORM;
-	if(settings_find_string("gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
-		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
+
+	if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
+		logprintf(LOG_ERR, "no gpio-platform configured");
+		exit(EXIT_FAILURE);
+	}
+	if(strcmp(platform, "none") == 0) {
+		FREE(platform);
+		logprintf(LOG_ERR, "no gpio-platform configured");
 		exit(EXIT_FAILURE);
 	}
 	if(wiringXSetup(platform, logprintf1) < 0) {
+		FREE(platform);
 		exit(EXIT_FAILURE);
 	}
+	FREE(platform);
+
   pgm->rdy_led        = bitbang_rdy_led;
   pgm->err_led        = bitbang_err_led;
   pgm->pgm_led        = bitbang_pgm_led;
@@ -174,4 +184,8 @@ void gpio_initpgm(PROGRAMMER *pgm)
   pgm->highpulsepin   = gpio_highpulsepin;
   pgm->read_byte      = avr_read_byte_default;
   pgm->write_byte     = avr_write_byte_default;
+#else
+	logprintf(LOG_WARNING, "gpio firmware flashing is not supported on this hardware");
+	exit(EXIT_FAILURE);
+#endif
 }

@@ -17,9 +17,8 @@ function M.run(a, b, c)
 		error(string.format("RANDOM argument #2 expected number, \"%s\" given", type(b)));
 	end
 
-	return pilight.random(a, b);
+	return pilight.common.random(tonumber(a), tonumber(b));
 end
-
 
 function M.info()
 	return {

@@ -1,0 +1,23 @@
+#!/bin/bash
+
+if [[ $1 == "configure" ]]; then
+
+	if [ ! -f /etc/pilight/config.json ]; then
+		cp /etc/pilight/config.json-default /etc/pilight/config.json 1>/dev/null 2>/dev/null;
+	fi
+
+	chmod +x /etc/init.d/pilight 1>/dev/null 2>/dev/null;
+
+	update-rc.d pilight defaults 1>/dev/null 2>/dev/null;
+	systemctl enable pilight.service 1>/dev/null 2>/dev/null;
+
+	if [ -L /usr/local/lib/libpilight.so ]; then
+		rm /usr/local/lib/libpilight.so 1>/dev/null 2>/dev/null;
+	fi
+
+	ln -sf /usr/local/lib/libpilight.so.@version@ /usr/local/lib/libpilight.so 1>/dev/null 2>/dev/null;
+	chmod 644 /usr/local/lib/libpilight.so.@version@
+	chmod 644 /usr/local/lib/libpilight.a
+	ldconfig 1>/dev/null 2>/dev/null;
+
+fi

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [[ $1 == "purge" ]]; then
+
+	test -d /usr/local/pilight/webgui && rm -r /usr/local/pilight/webgui 1>/dev/null 2>/dev/null || true;
+	test -d /usr/local/share/pilight/webgui && rm -r /usr/local/share/pilight/webgui 1>/dev/null 2>/dev/null || true;
+
+fi

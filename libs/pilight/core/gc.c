@@ -26,10 +26,10 @@
 	#include <windows.h>
 #else
 	#include <execinfo.h>
-	#define UNW_LOCAL_ONLY
-	#ifndef __mips__
-		#include <libunwind.h>
-	#endif
+	// #define UNW_LOCAL_ONLY
+	// #if !defined(__mips__) && !defined(__aarch64__)
+		// #include <libunwind.h>
+	// #endif
 #endif
 #include <signal.h>
 
@@ -39,60 +39,60 @@
 #include "log.h"
 #include "mem.h"
 #include "common.h"
-#include "config.h"
+#include "../config/config.h"
 
 static unsigned short gc_enable = 1;
 static int (*gc)(void) = NULL;
 
 void gc_handler(int sig) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-#if !defined(_WIN32) && !defined(__mips__)
-	char name[256];
-	unw_cursor_t cursor; unw_context_t uc;
-	unw_word_t ip, sp, offp;
-#endif
+// #if !defined(_WIN32) && !defined(__mips__) && !defined(__aarch64__)
+	// char name[256];
+	// unw_cursor_t cursor; unw_context_t uc;
+	// unw_word_t ip, sp, offp;
+// #endif
 
-	switch(sig) {
-		case SIGSEGV:
-#ifndef _WIN32
-		case SIGBUS:
-#endif
-		case SIGILL:
-		case SIGABRT:
-		case SIGFPE: {
-#if !defined(_WIN32) && !defined(__mips__)
-			log_shell_disable();
-			void *stack[50];
-			int n = backtrace(stack, 50);
-			printf("-- STACKTRACE (%d FRAMES) --\n", n);
-			logerror("-- STACKTRACE (%d FRAMES) --", n);
+	// switch(sig) {
+		// case SIGSEGV:
+// #ifndef _WIN32
+		// case SIGBUS:
+// #endif
+		// case SIGILL:
+		// case SIGABRT:
+		// case SIGFPE: {
+// #if !defined(_WIN32) && !defined(__mips__) && !defined(__aarch64__)
+			// log_shell_disable();
+			// void *stack[50];
+			// int n = backtrace(stack, 50);
+			// printf("-- STACKTRACE (%d FRAMES) --\n", n);
+			// // logerror("-- STACKTRACE (%d FRAMES) --", n);
 
-			unw_getcontext(&uc);
-			unw_init_local(&cursor, &uc);
+			// unw_getcontext(&uc);
+			// unw_init_local(&cursor, &uc);
 
-			while(unw_step(&cursor) > 0) {
-				name[0] = '\0';
-				unw_get_proc_name(&cursor, name, 256, &offp);
-				unw_get_reg(&cursor, UNW_REG_IP, &ip);
-				unw_get_reg(&cursor, UNW_REG_SP, &sp);
+			// while(unw_step(&cursor) > 0) {
+				// name[0] = '\0';
+				// unw_get_proc_name(&cursor, name, 256, &offp);
+				// unw_get_reg(&cursor, UNW_REG_IP, &ip);
+				// unw_get_reg(&cursor, UNW_REG_SP, &sp);
 
-				printf("%-30s ip = %10p, sp = %10p\n", name, (void *)ip, (void *)sp);
-				logerror("%-30s ip = %10p, sp = %10p", name, (void *)ip, (void *)sp);
-			}
-#endif
-		}
-		break;
-		default:;
-	}
-	if(sig == SIGSEGV) {
-		fprintf(stderr, "segmentation fault\n");
-		exit(EXIT_FAILURE);
-#ifndef _WIN32
-	} else if(sig == SIGBUS) {
-		fprintf(stderr, "buserror\n");
-		exit(EXIT_FAILURE);
-#endif
-	}
+				// printf("%-30s ip = %10p, sp = %10p\n", name, (void *)ip, (void *)sp);
+				// // logerror("%-30s ip = %10p, sp = %10p", name, (void *)ip, (void *)sp);
+			// }
+// #endif
+		// }
+		// break;
+		// default:;
+	// }
+	// if(sig == SIGSEGV) {
+		// fprintf(stderr, "segmentation fault\n");
+		// exit(EXIT_FAILURE);
+// #ifndef _WIN32
+	// } else if(sig == SIGBUS) {
+		// fprintf(stderr, "buserror\n");
+		// exit(EXIT_FAILURE);
+// #endif
+	// }
 #ifdef _WIN32
 	if(((sig == SIGINT || sig == SIGTERM) && gc_enable == 1) ||
 		(!(sig == SIGINT || sig == SIGTERM) && gc_enable == 0)) {
@@ -168,11 +168,11 @@ void gc_catch(void) {
 	sigaction(SIGTERM, &act, NULL);
 
 	sigaction(SIGABRT, &act, NULL);
-	sigaction(SIGTSTP, &act, NULL);
+	// sigaction(SIGTSTP, &act, NULL);
 
-	sigaction(SIGBUS,  &act, NULL);
-	sigaction(SIGILL,  &act, NULL);
-	sigaction(SIGSEGV, &act, NULL);
-	sigaction(SIGFPE,  &act, NULL);
+	// sigaction(SIGBUS,  &act, NULL);
+	// sigaction(SIGILL,  &act, NULL);
+	// sigaction(SIGSEGV, &act, NULL);
+	// sigaction(SIGFPE,  &act, NULL);
 #endif
 }

@@ -38,6 +38,7 @@
 #include "../core/json.h"
 #include "../core/log.h"
 #include "../core/dso.h"
+#include "../core/eventpool.h"
 #include "../core/firmware.h"
 #include "../config/registry.h"
 #include "../config/hardware.h"
@@ -49,6 +50,16 @@ typedef struct timestamp_t {
 } timestamp_t;
 
 timestamp_t timestamp;
+
+typedef struct data_t {
+	char buffer[1024];
+	int startv;
+	int start;
+	int startp;
+	int bytes;
+} data_t;
+
+static struct data_t data;
 
 /* What is the minimum rawlenth to consider a pulse stream valid */
 static int minrawlen = 1000;
@@ -68,10 +79,27 @@ static int nano_433_initialized = 0;
 
 static char com[255];
 static unsigned short loop = 1;
-static unsigned short running = 0;
 static unsigned short threads = 0;
 static unsigned short sendSync = 0;
 static pthread_t pth;
+
+static void *reason_send_code_success_free(void *param) {
+	struct reason_send_code_success_free *data = param;
+	FREE(data);
+	return NULL;
+}
+
+static void *reason_send_code_fail_free(void *param) {
+	struct reason_send_code_fail_free *data = param;
+	FREE(data);
+	return NULL;
+}
+
+static void *reason_received_pulsetrain_free(void *param) {
+	struct reason_received_pulsetrain_t *data = param;
+	FREE(data);
+	return NULL;
+}
 
 void *syncFW(void *param) {
 
@@ -163,6 +191,210 @@ static int serial_interface_attribs(int fd, speed_t speed, tcflag_t parity) {
 }
 #endif
 
+static void *nano433Send(int reason, void *param) {
+	struct reason_send_code_t *data1 = param;
+	int *code = data1->pulses;
+	int rawlen = data1->rawlen;
+	int repeats = data1->txrpt;
+
+	unsigned int i = 0, x = 0, y = 0, len = 0, nrpulses = 0;
+	int pulses[10], match = 0;
+	char c[16], send[MAXPULSESTREAMLENGTH+1];
+#ifdef _WIN32
+	DWORD n;
+#else
+	int n = 0;
+#endif
+
+	memset(send, 0, MAXPULSESTREAMLENGTH);
+	strncpy(&send[0], "c:", 2);
+	len += 2;
+
+	for(i=0;i<rawlen;i++) {
+		match = -1;
+		for(x=0;x<nrpulses;x++) {
+			if(pulses[x] == code[i]) {
+				match = (int)x;
+				break;
+			}
+		}
+		if(match == -1) {
+			pulses[nrpulses] = code[i];
+			match = (int)nrpulses;
+			nrpulses++;
+		}
+		if(match < 10) {
+			send[len++] = (char)(((int)'0')+match);
+		} else {
+			logprintf(LOG_ERR, "too many distinct pulses for pilight usb nano to send");
+			struct reason_code_sent_fail_t *data2 = MALLOC(sizeof(struct reason_code_sent_fail_t));
+			strcpy(data2->message, data1->message);
+			strcpy(data2->uuid, data1->uuid);
+			eventpool_trigger(REASON_CODE_SEND_FAIL, reason_send_code_fail_free, data2);
+			return NULL;
+		}
+	}
+
+	strncpy(&send[len], ";p:", 3);
+	len += 3;
+	for(i=0;i<nrpulses;i++) {
+		y = (unsigned int)snprintf(c, sizeof(c), "%d", pulses[i]);
+		strncpy(&send[len], c, y);
+		len += y;
+		if(i+1 < nrpulses) {
+			strncpy(&send[len++], ",", 1);
+		}
+	}
+	strncpy(&send[len], ";r:", 3);
+	len += 3;
+	y = (unsigned int)snprintf(c, sizeof(c), "%d", repeats);
+	strncpy(&send[len], c, y);
+	len += y;
+	strncpy(&send[len], "@", 3);
+	len += 3;
+
+#ifdef _WIN32
+	WriteFile(serial_433_fd, &send, len, &n, NULL);
+#else
+	n = write(serial_433_fd, send, len);
+#endif
+
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	timestamp.first = timestamp.second;
+	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+
+	if(((int)timestamp.second-(int)timestamp.first) < 1000000) {
+		sleep(1);
+	}
+
+	if(n == len) {
+		struct reason_code_sent_success_t *data2 = MALLOC(sizeof(struct reason_code_sent_success_t));
+		strcpy(data2->message, data1->message);
+		strcpy(data2->uuid, data1->uuid);
+		eventpool_trigger(REASON_CODE_SEND_SUCCESS, reason_send_code_success_free, data2);
+	} else {
+		struct reason_code_sent_fail_t *data2 = MALLOC(sizeof(struct reason_code_sent_fail_t));
+		strcpy(data2->message, data1->message);
+		strcpy(data2->uuid, data1->uuid);
+		eventpool_trigger(REASON_CODE_SEND_FAIL, reason_send_code_fail_free, data2);
+	}
+	return NULL;
+}
+
+static void poll_cb(uv_poll_t *req, int status, int events) {
+	char c[1];
+	int s = 0, nrpulses = 0, y = 0;
+	int pulses[10];
+	size_t x = 0;
+	int error = 0;
+
+	int fd = req->io_watcher.fd;
+#ifdef _WIN32
+	DWORD n;
+#else
+	int n = 0;
+#endif
+
+	if(events & UV_READABLE) {
+#ifdef _WIN32
+		ReadFile(fd, c, 1, &n, NULL);
+#else
+		n = read(fd, c, 1);
+#endif
+		if(n > 0) {
+			if(c[0] == '\n') {
+				sendSync = 1;
+				return;
+			} else {
+				if(c[0] == 'v') {
+					data.startv = 1;
+					data.start = 1;
+					data.bytes = 0;
+				}
+				if(c[0] == 'c') {
+					data.start = 1;
+					data.bytes = 0;
+				}
+				if(c[0] == 'p') {
+					data.startp = data.bytes+2;
+					data.buffer[data.bytes-1] = '\0';
+				}
+				if(c[0] == '@') {
+					data.buffer[data.bytes] = '\0';
+					if(data.startv == 1) {
+						data.start = 0;
+						data.startv = 0;
+						char **array = NULL;
+						int c = explode(&data.buffer[2], ",", &array);
+						if(c == 7) {
+							if(!(minrawlen == atoi(array[0]) && maxrawlen == atoi(array[1]) &&
+							     mingaplen == atoi(array[2]) && maxgaplen == atoi(array[3]))) {
+								logprintf(LOG_WARNING, "could not sync FW values");
+							}
+							firmware.version = atof(array[4]);
+							firmware.lpf = atof(array[5]);
+							firmware.hpf = atof(array[6]);
+
+							if(firmware.version > 0 && firmware.lpf > 0 && firmware.hpf > 0) {
+								config_registry_set_number("pilight.firmware.version", firmware.version);
+								config_registry_set_number("pilight.firmware.lpf", firmware.lpf);
+								config_registry_set_number("pilight.firmware.hpf", firmware.hpf);
+								logprintf(LOG_INFO, "pilight-usb-nano version: %d, lpf: %d, hpf: %d", (int)firmware.version, (int)firmware.lpf, (int)firmware.hpf);
+							}
+						}
+						array_free(&array, c);
+					} else {
+						x = strlen(&data.buffer[data.startp]);
+						s = data.startp;
+						nrpulses = 0;
+						for(y = data.startp; y < data.startp + (int)x; y++) {
+							if(data.buffer[y] == ',') {
+								data.buffer[y] = '\0';
+								pulses[nrpulses++] = atoi(&data.buffer[s]);
+								s = y+1;
+							}
+							if(nrpulses > 9 || s > 1023) {
+								logprintf(LOG_NOTICE, "433nano: discarded invalid pulse train");
+								error = 1;
+								break;
+							}
+						}
+						if(error == 0) {
+							pulses[nrpulses++] = atoi(&data.buffer[s]);
+							x = strlen(&data.buffer[2]);
+
+							struct reason_received_pulsetrain_t *data1 = MALLOC(sizeof(struct reason_received_pulsetrain_t));
+							if(data1 == NULL) {
+								OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+							}
+
+							data1->length = 0;
+
+							for(y = 2; y < 2 + x; y++) {
+								data1->pulses[data1->length++] = pulses[0];
+								data1->pulses[data1->length++] = pulses[data.buffer[y] - '0'];
+							}
+
+							data1->hardware = nano433->id;
+
+							eventpool_trigger(REASON_RECEIVED_PULSETRAIN, reason_received_pulsetrain_free, data1);
+						}
+						data.bytes = 0;
+					}
+				}
+				if(data.start == 1) {
+					data.buffer[data.bytes++] = c[0];
+				}
+			}
+		}
+	}
+	if(events == 0) {
+		logprintf(LOG_ERR, "connection lost to pilight-usb-nano on port %s", com);
+		nano_433_initialized = 0;
+	}
+}
+
 static unsigned short int nano433HwInit(void) {
 #ifdef _WIN32
 	COMMTIMEOUTS timeouts;
@@ -210,6 +442,17 @@ static unsigned short int nano433HwInit(void) {
 	if((serial_433_fd = open(com, O_RDWR | O_SYNC)) >= 0) {
 		serial_interface_attribs(serial_433_fd, B57600, 0);
 		nano_433_initialized = 1;
+
+		uv_poll_t *poll_req = NULL;
+		if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		memset(data.buffer, '\0', sizeof(data.buffer));
+		data.bytes = 0;
+
+		uv_poll_init(uv_default_loop(), poll_req, serial_433_fd);
+		uv_poll_start(poll_req, UV_READABLE, poll_cb);
+
 	} else {
 		logprintf(LOG_NOTICE, "could not open port %s", com);
 		return EXIT_FAILURE;
@@ -219,14 +462,13 @@ static unsigned short int nano433HwInit(void) {
 	pthread_create(&pth, NULL, &syncFW, (void *)NULL);
 	pthread_detach(pth);
 
+	eventpool_callback(REASON_SEND_CODE, nano433Send);
+
 	return EXIT_SUCCESS;
 }
 
 static unsigned short nano433HwDeinit(void) {
 	loop = 0;
-	while(running > 0 && threads > 0) {
-		usleep(10);
-	}
 #ifdef _WIN32
 	CloseHandle(serial_433_fd);
 #else
@@ -236,200 +478,6 @@ static unsigned short nano433HwDeinit(void) {
 	}
 #endif
 	return EXIT_SUCCESS;
-}
-
-static int nano433Send(int *code, int rawlen, int repeats) {
-	unsigned int i = 0, x = 0, y = 0, len = 0, nrpulses = 0;
-	int pulses[10], match = 0;
-	char c[16], send[MAXPULSESTREAMLENGTH+1];
-#ifdef _WIN32
-	DWORD n;
-#else
-	int n = 0;
-#endif
-
-	memset(send, 0, MAXPULSESTREAMLENGTH);
-	strncpy(&send[0], "c:", 2);
-	len += 2;
-
-	for(i=0;i<rawlen;i++) {
-		match = -1;
-		for(x=0;x<nrpulses;x++) {
-			if(pulses[x] == code[i]) {
-				match = (int)x;
-				break;
-			}
-		}
-		if(match == -1) {
-			pulses[nrpulses] = code[i];
-			match = (int)nrpulses;
-			nrpulses++;
-		}
-		if(match < 10) {
-			send[len++] = (char)(((int)'0')+match);
-		} else {
-			logprintf(LOG_ERR, "too many distinct pulses for pilight usb nano to send");
-			return EXIT_FAILURE;
-		}
-	}
-
-	strncpy(&send[len], ";p:", 3);
-	len += 3;
-	for(i=0;i<nrpulses;i++) {
-		y = (unsigned int)snprintf(c, sizeof(c), "%d", pulses[i]);
-		strncpy(&send[len], c, y);
-		len += y;
-		if(i+1 < nrpulses) {
-			strncpy(&send[len++], ",", 1);
-		}
-	}
-	strncpy(&send[len], ";r:", 3);
-	len += 3;
-	y = (unsigned int)snprintf(c, sizeof(c), "%d", repeats);
-	strncpy(&send[len], c, y);
-	len += y;
-	strncpy(&send[len], "@", 3);
-	len += 3;
-
-#ifdef _WIN32
-	WriteFile(serial_433_fd, &send, len, &n, NULL);
-#else
-	n = write(serial_433_fd, send, len);
-#endif
-
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	timestamp.first = timestamp.second;
-	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
-
-	if(((int)timestamp.second-(int)timestamp.first) < 1000000) {
-		sleep(1);
-	}
-
-	if(n == len) {
-		return EXIT_SUCCESS;
-	} else {
-		return EXIT_FAILURE;
-	}
-}
-
-static int nano433Receive(struct rawcode_t *r) {
-	char buffer[1024], c[1];
-	int start = 0, bytes = 0, startv = 0;
-	int s = 0, nrpulses = 0, y = 0;
-	int startp = 0, pulses[10];
-	size_t x = 0;
-#ifdef _WIN32
-	DWORD n;
-#else
-	int n = 0;
-#endif
-
-	r->length = 0;
-	memset(r->pulses, 0, MAXPULSESTREAMLENGTH);
-
-	running = 1;
-
-	while(loop) {
-#ifdef _WIN32
-		if(WriteFile(serial_433_fd, "ping", 0, &n, NULL) == 0) {
-			logprintf(LOG_INFO, "lost connection to %s", com);
-			CloseHandle(serial_433_fd);
-			r->length = -1;
-			return -1;
-		}
-		ReadFile(serial_433_fd, c, 1, &n, NULL);
-#else
-		n = read(serial_433_fd, c, 1);
-#endif
-		if(n > 0) {
-			if(c[0] == '\n') {
-				sendSync = 1;
-				break;
-			} else {
-				if(c[0] == 'v') {
-					startv = 1;
-					start = 1;
-					bytes = 0;
-				}
-				if(c[0] == 'c') {
-					start = 1;
-					bytes = 0;
-				}
-				if(c[0] == 'p') {
-					startp = bytes+2;
-					buffer[bytes-1] = '\0';
-				}
-				if(c[0] == '@') {
-					buffer[bytes] = '\0';
-					if(startv == 1) {
-						start = 0;
-						startv = 0;
-						char **array = NULL;
-						int c = explode(&buffer[2], ",", &array);
-						if(c == 7) {
-							if(!(minrawlen == atoi(array[0]) && maxrawlen == atoi(array[1]) &&
-							     mingaplen == atoi(array[2]) && maxgaplen == atoi(array[3]))) {
-								logprintf(LOG_WARNING, "could not sync FW values");
-							}
-							firmware.version = atof(array[4]);
-							firmware.lpf = atof(array[5]);
-							firmware.hpf = atof(array[6]);
-
-							if(firmware.version > 0 && firmware.lpf > 0 && firmware.hpf > 0) {
-								registry_set_number("pilight.firmware.version", firmware.version, 0);
-								registry_set_number("pilight.firmware.lpf", firmware.lpf, 0);
-								registry_set_number("pilight.firmware.hpf", firmware.hpf, 0);
-
-								struct JsonNode *jmessage = json_mkobject();
-								struct JsonNode *jcode = json_mkobject();
-								json_append_member(jcode, "version", json_mknumber(firmware.version, 0));
-								json_append_member(jcode, "lpf", json_mknumber(firmware.lpf, 0));
-								json_append_member(jcode, "hpf", json_mknumber(firmware.hpf, 0));
-								json_append_member(jmessage, "values", jcode);
-								json_append_member(jmessage, "origin", json_mkstring("core"));
-								json_append_member(jmessage, "type", json_mknumber(FIRMWARE, 0));
-								char pname[17];
-								strcpy(pname, "pilight-firmware");
-								if(pilight.broadcast != NULL) {
-									pilight.broadcast(pname, jmessage, FW);
-								}
-								json_delete(jmessage);
-								jmessage = NULL;
-							}
-						}
-						array_free(&array, c);
-					} else {
-						x = strlen(&buffer[startp]);
-						s = startp;
-						nrpulses = 0;
-						for(y = startp; y < startp + (int)x; y++) {
-							if(buffer[y] == ',') {
-								buffer[y] = '\0';
-								pulses[nrpulses++] = atoi(&buffer[s]);
-								s = y+1;
-							}
-						}
-						pulses[nrpulses++] = atoi(&buffer[s]);
-						x = strlen(&buffer[2]);
-						for(y = 2; y < 2 + x; y++) {
-							r->pulses[r->length++] = pulses[0];
-							r->pulses[r->length++] = pulses[buffer[y] - '0'];
-						}
-						bytes = 0;
-						return 0;
-					}
-				}
-				if(start == 1) {
-					buffer[bytes++] = c[0];
-				}
-			}
-		}
-	}
-
-	running = 0;
-
-  return -1;
 }
 
 static unsigned short nano433Settings(JsonNode *json) {
@@ -450,14 +498,12 @@ void nano433Init(void) {
 	hardware_register(&nano433);
 	hardware_set_id(nano433, "433nano");
 
-	options_add(&nano433->options, 'p', "comport", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&nano433->options, "p", "comport", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 
 	nano433->hwtype=RF433;
 	nano433->comtype=COMPLSTRAIN;
 	nano433->init=&nano433HwInit;
 	nano433->deinit=&nano433HwDeinit;
-	nano433->sendOOK=&nano433Send;
-	nano433->receivePulseTrain=&nano433Receive;
 	nano433->settings=&nano433Settings;
 }
 

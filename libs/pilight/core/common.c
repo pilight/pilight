@@ -198,12 +198,12 @@ int unsetenv(const char *name) {
 	return putenv(c);
 }
 
-int isrunning(const char *program) {
+int isrunning(const char *program, int **ret) {
 	DWORD aiPID[1000], iCb = 1000;
 	DWORD iCbneeded = 0;
 	int iNumProc = 0, i = 0;
 	char szName[MAX_PATH];
-	int iLenP = 0;
+	int iLenP = 0, nr = 0;
 	HANDLE hProc;
 	HMODULE hMod;
 
@@ -229,42 +229,44 @@ int isrunning(const char *program) {
 		CloseHandle(hProc);
 
 		if(strstr(szName, program) != NULL) {
-			return aiPID[i];
+			if(((*ret) = REALLOC((*ret), (nr+1)*sizeof(int *))) == NULL) {
+				OUT_OF_MEMORY
+			}
+			(*ret)[nr] = (int)aiPID[i];
+			nr++;
 		}
 	}
 
-	return -1;
+	return nr;
 }
 #else
-int isrunning(const char *program) {
-	int pid = -1;
+int isrunning(const char *program, int **ret) {
+	int n = 0;
 	char *tmp = MALLOC(strlen(program)+1);
 	if(tmp == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	strcpy(tmp, program);
-	if((pid = findproc(tmp, NULL, 1)) > 0) {
+	if((n = findproc(tmp, NULL, 1, ret)) > 0) {
 		FREE(tmp);
-		return pid;
+		return n;
 	}
 	FREE(tmp);
-	return -1;
+	return n;
 }
 #endif
 
 #ifdef __FreeBSD__
-int findproc(char *cmd, char *args, int loosely) {
+int findproc(char *cmd, char *args, int loosely, int **ret) {
 #else
-pid_t findproc(char *cmd, char *args, int loosely) {
+pid_t findproc(char *cmd, char *args, int loosely, int **ret) {
 #endif
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 #ifndef _WIN32
 	DIR* dir;
 	struct dirent* ent;
 	char fname[512], cmdline[1024];
-	int fd = 0, ptr = 0, match = 0, i = 0, y = '\n', x = 0;
+	int fd = 0, ptr = 0, match = 0, i = 0, y = '\n', x = 0, nr = 0;
 
 	if(procmounted == 0) {
 		if((dir = opendir("/proc"))) {
@@ -344,27 +346,19 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 
 							if(match == 2) {
 								pid_t pid = (pid_t)atol(ent->d_name);
-								close(fd);
-								closedir(dir);
-								for(x=0;x<n;x++) {
-									FREE(array[x]);
+								if(((*ret) = REALLOC((*ret), (nr+1)*sizeof(int *))) == NULL) {
+									OUT_OF_MEMORY
 								}
-								if(n > 0) {
-									FREE(array);
-								}
-								return pid;
+								(*ret)[nr] = (int)pid;
+								nr++;
 							}
 						} else if(match > 0) {
 							pid_t pid = (pid_t)atol(ent->d_name);
-							close(fd);
-							closedir(dir);
-							for(x=0;x<n;x++) {
-								FREE(array[x]);
+							if(((*ret) = REALLOC((*ret), (nr+1)*sizeof(int *))) == NULL) {
+								OUT_OF_MEMORY
 							}
-							if(n > 0) {
-								FREE(array);
-							}
-							return pid;
+							(*ret)[nr] = (int)pid;
+							nr++;
 						}
 						for(x=0;x<n;x++) {
 							FREE(array[x]);
@@ -380,7 +374,7 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 		closedir(dir);
 	}
 #endif
-	return -1;
+	return nr;
 }
 
 int isNumeric(char *s) {
@@ -994,6 +988,13 @@ int str_replace(char *search, char *replace, char **str) {
 		return (int)len;
 	} else {
 		return -1;
+	}
+}
+
+void strtolower(char **a) {
+	int i = 0;
+	for(i = 0; (*a)[i]; i++){
+		(*a)[i] = tolower((*a)[i]);
 	}
 }
 

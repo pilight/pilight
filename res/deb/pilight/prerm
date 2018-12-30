@@ -1,0 +1,36 @@
+#!/bin/bash
+
+if [[ $1 == "remove" || $1 == "purge" ]]; then
+
+	find /usr/local/lib -name '*pilight*' -exec rm -r {} \; 1>/dev/null 2>/dev/null;
+	find /usr/local/bin -name '*pilight*' -exec rm -r {} \; 1>/dev/null 2>/dev/null;
+	find /usr/local/sbin -name '*pilight*' -exec rm -r {} \; 1>/dev/null 2>/dev/null;
+
+	test -d /usr/local/pilight && rm -r /usr/local/pilight 1>/dev/null 2>/dev/null || true;
+
+	if [[ $1 == "purge" ]]; then
+		test -d /etc/pilight && true || mkdir -p /etc/pilight 1>/dev/null 2>/dev/null;
+	else
+		if [ -f /etc/pilight/config.json ]; then
+			if ! [ -f /etc/pilight/config.json.bak ] || [ "$(md5sum /etc/pilight/config.json)" != "$(md5sum /etc/pilight/config.json.bak)" ]; then
+				mv --backup=t /etc/pilight/config.json /etc/pilight/config.json.bak
+			fi
+		fi
+
+		if [ -f /etc/pilight/pilight.pem ]; then
+			if ! [ -f /etc/pilight/pilight.pem.bak ] || [ "$(md5sum /etc/pilight/pilight.pem)" != "$(md5sum /etc/pilight/pilight.pem.bak)" ]; then
+				mv --backup=t /etc/pilight/pilight.pem /etc/pilight/pilight.pem.bak
+			fi
+		fi
+	fi
+
+	ln -sf /usr/local/lib/libpilight.so.@version@ /usr/local/lib/libpilight.so 1>/dev/null 2>/dev/null;
+	rm /usr/local/lib/libpilight.so.@version@ 1>/dev/null 2>/dev/null;
+
+	test -f /etc/pilight/tzdata.conf && rm /etc/pilight/tzdata.conf || true 1>/dev/null 2>/dev/null;
+
+	test -f /etc/init.d/pilight && update-rc.d pilight remove 1>/dev/null 2>/dev/null;
+	test -f /etc/init.d/pilight.sh && update-rc.d pilight.sh remove 1>/dev/null 2>/dev/null;
+	systemctl disable pilight.service 1>/dev/null 2>/dev/null;
+
+fi

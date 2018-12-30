@@ -65,7 +65,7 @@ To present one of these two devices to our GUI, we add the to the GUI list like 
      }
    }
 
-Each device you want to add to the GUI has its own entry. You can only add devices that are also registered in the device set-up, but of course, you do not have to present all those devices to the GUIs. There are some fixed fields that are common for all GUI elements:
+Each device you want to add to the GUI has its own entry. You can only add devices that are also registered in the device set-up, but of course, you do not have to present all those devices to the GUIs. There are some fixed fields that are common for most GUI elements:
 
 - name
    The display name inside the GUI.

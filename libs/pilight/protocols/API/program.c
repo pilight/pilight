@@ -79,7 +79,6 @@ static void *thread(void *param) {
 	char *prog = NULL, *args = NULL, *stopcmd = NULL, *startcmd = NULL;
 
 	int interval = 1, nrloops = 0;
-	int pid = 0;
 	double itmp = 0;
 
 	threads++;
@@ -171,10 +170,12 @@ static void *thread(void *param) {
 				JsonNode *code = json_mkobject();
 				json_append_member(code, "name", json_mkstring(lnode->name));
 
-				if((pid = (int)findproc(lnode->program, lnode->arguments, 0)) > 0) {
+				int *ret = NULL, n = 0;
+				if((n = (int)findproc(lnode->program, lnode->arguments, 0, &ret)) > 0) {
 					lnode->currentstate = 1;
 					json_append_member(code, "state", json_mkstring("running"));
-					json_append_member(code, "pid", json_mknumber((int)pid, 0));
+					json_append_member(code, "pid", json_mknumber(ret[0], 0));
+					FREE(ret);
 				} else {
 					lnode->currentstate = 0;
 					json_append_member(code, "state", json_mkstring("stopped"));
@@ -214,22 +215,24 @@ static struct threadqueue_t *initDev(JsonNode *jdevice) {
 
 static void *execute(void *param) {
 	struct settings_t *p = (struct settings_t *)param;
-	int pid = 0;
 	int result = 0;
+	int n = 0;
+	int *ret = NULL;
 
-	if((pid = (int)findproc(p->program, p->arguments, 0)) > 0) {
+	if((n = (int)findproc(p->program, p->arguments, 0, &ret)) > 0) {
 		result = system(p->stop);
+		FREE(ret);
 	} else {
 		result = system(p->start);
 	}
 
 	/* Check of the user wanted to stop pilight */
 	if(WIFSIGNALED(result)) {
-		int ppid = 0;
+		int n = 0, *ret = NULL;
 		/* Find the pilight daemon pid */
-		if((ppid = (int)findproc(progname, NULL, 0)) > 0) {
+		if((n = (int)findproc(progname, NULL, 0, &ret)) > 0) {
 			/* Send a sigint to ourself */
-			kill(ppid, SIGINT);
+			kill(ret[0], SIGINT);
 		}
 	}
 
@@ -248,7 +251,8 @@ static int createCode(JsonNode *code) {
 	char *name = NULL;
 	double itmp = -1;
 	int state = -1;
-	int pid = 0;
+	int n = 0;
+	int *ret = NULL;
 
 	if(json_find_string(code, "name", &name) == 0) {
 		if(strstr(progname, "daemon") != NULL) {
@@ -263,9 +267,9 @@ static int createCode(JsonNode *code) {
 							else if(json_find_number(code, "stopped", &itmp) == 0)
 								state = 0;
 
-							if((pid = (int)findproc(tmp->program, tmp->arguments, 0)) > 0 && state == 1) {
+							if((n = (int)findproc(tmp->program, tmp->arguments, 0, &ret)) > 0 && state == 1) {
 								logprintf(LOG_INFO, "program \"%s\" already running", tmp->name);
-							} else if(pid == -1 && state == 0) {
+							} else if(n == 0 && state == 0) {
 								logprintf(LOG_INFO, "program \"%s\" already stopped", tmp->name);
 								break;
 							} else {
@@ -377,19 +381,19 @@ void programInit(void) {
 	program->hwtype = API;
 	program->multipleId = 0;
 
-	options_add(&program->options, 'n', "name", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
-	options_add(&program->options, 'x', "start-command", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&program->options, 'y', "stop-command", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&program->options, 'p', "program", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&program->options, 'i', "pid", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
-	options_add(&program->options, 'a', "arguments", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&program->options, 't', "running", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&program->options, 'd', "pending", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&program->options, 'f', "stopped", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&program->options, "n", "name", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
+	options_add(&program->options, "x", "start-command", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&program->options, "y", "stop-command", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&program->options, "p", "program", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&program->options, "i", "pid", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&program->options, "a", "arguments", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&program->options, "t", "running", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&program->options, "d", "pending", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&program->options, "f", "stopped", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
-	options_add(&program->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	options_add(&program->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	options_add(&program->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&program->options, "0", "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&program->options, "0", "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&program->options, "0", "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
 
 #ifndef _WIN32
 	program->createCode=&createCode;

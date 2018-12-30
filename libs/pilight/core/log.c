@@ -151,10 +151,31 @@ int log_gc(void) {
  * A compatible logprint for wiringX
  */
 void logprintf1(int prio, char *file, int line, const char *format_str, ...) {
-	va_list args;
-	va_start(args, format_str);
-	logprintf(prio, format_str, args);
-	va_end(args);
+	char *a = MALLOC(128);
+	va_list ap, apcpy;
+	int bytes = 0;
+
+	va_copy(apcpy, ap);
+	va_start(apcpy, format_str);
+#ifdef _WIN32
+	bytes = _vscprintf(format_str, apcpy);
+#else
+	bytes = vsnprintf(NULL, 0, format_str, apcpy);
+#endif
+	if(bytes == -1) {
+		fprintf(stderr, "ERROR: unproperly formatted logprintf message %s\n", format_str);
+	} else {
+		va_end(apcpy);
+		if((a = REALLOC(a, (size_t)bytes+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
+			exit(EXIT_FAILURE);
+		}
+		va_start(ap, format_str);
+		vsprintf(a, format_str, ap);
+		va_end(ap);
+		logprintf(prio, a);
+	}
+	FREE(a);
 }
 
 void logprintf(int prio, const char *format_str, ...) {
@@ -449,9 +470,15 @@ int log_level_get(void) {
 	return loglevel;
 }
 
-void logerror(const char *format_str, ...) {
+/*
+ * We don't want a formatted string here
+ * because that will crash on strings like
+ * DATE_FORMAT(dt, "%H%M%S") due to the
+ * unescaped percentages.
+ */
+void logerror(char *str) {
 	char line[1024];
-	va_list ap;
+	// va_list ap;
 	struct stat sb;
 	FILE *f = NULL;
 	char fmt[64], buf[64];
@@ -464,7 +491,7 @@ void logerror(const char *format_str, ...) {
 	const char *errpath = "/var/log/pilight.err";
 #endif
 	memset(line, '\0', 1024);
-	memset(&ap, '\0', sizeof(va_list));
+	// memset(&ap, '\0', sizeof(va_list));
 	memset(&sb, '\0', sizeof(struct stat));
 	memset(&tv, '\0', sizeof(struct timeval));
 	memset(date, '\0', 128);
@@ -482,8 +509,9 @@ void logerror(const char *format_str, ...) {
 
 	sprintf(date, "[%22.22s] %s: ", buf, progname);
 	strcat(line, date);
-	va_start(ap, format_str);
-	vsprintf(&line[strlen(line)], format_str, ap);
+	// va_start(ap, format_str);
+	// vsprintf(&line[strlen(line)], format_str, ap);
+	memcpy(&line[strlen(line)], str, strlen(str));
 	strcat(line, "\n");
 
 	if((stat(errpath, &sb)) >= 0) {
@@ -515,5 +543,5 @@ void logerror(const char *format_str, ...) {
 		fclose(f);
 		f = NULL;
 	}
-	va_end(ap);
+	// va_end(ap);
 }

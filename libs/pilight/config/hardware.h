@@ -25,7 +25,6 @@ typedef enum {
 	RF433,
 	RF868,
 	RFIR,
-	ZWAVE,
 	SENSOR,
 	HWRELAY,
 	API
@@ -41,7 +40,7 @@ typedef enum {
 #include <pthread.h>
 #include "../core/options.h"
 #include "../core/json.h"
-#include "../core/config.h"
+#include "config.h"
 #include "defines.h"
 
 struct config_t *config_hardware;
@@ -93,7 +92,10 @@ extern struct hardware_t *hardware;
 extern struct conf_hardware_t *conf_hardware;
 
 void hardware_init(void);
+int hardware_gc(void);
 void hardware_register(struct hardware_t **hw);
 void hardware_set_id(struct hardware_t *hw, const char *id);
+int config_hardware_parse(struct JsonNode *root);
+struct JsonNode *config_hardware_sync(int level, const char *media);
 
 #endif
