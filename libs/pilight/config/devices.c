@@ -1294,6 +1294,11 @@ static int devices_parse_elements(JsonNode *jdevices, struct devices_t *device) 
 		if(strcmp(jsettings->key, "timestamp") == 0) {
 			nrtimestamps++;
 		}
+		if(jsettings->tag == JSON_ARRAY && strcmp(jsettings->key, "id") == 0) {
+			logprintf(LOG_ERR, "config device setting \"id\" is the only setting that can be defined as an array");
+			have_error = 1;
+			goto clear;
+		}
 		if(nrstate > 1 || nrprotocol > 1 || nruuid > 1 || nrtimestamps > 1) {
 			logprintf(LOG_ERR, "config device setting #%d \"%s\" of \"%s\", duplicate", i, jsettings->key, device->id);
 			have_error = 1;
