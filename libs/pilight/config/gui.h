@@ -20,7 +20,7 @@
 #define _GUI_H_
 
 #include "../core/json.h"
-#include "../core/config.h"
+#include "../config/config.h"
 
 struct gui_values_t {
 	union {
@@ -50,6 +50,8 @@ struct config_t *config_gui;
 
 struct gui_values_t *gui_media(char *name);
 void gui_init(void);
+struct JsonNode *config_gui_sync(int level, const char *media);
+int config_gui_parse(struct JsonNode *root);
 int gui_gc(void);
 
 #endif

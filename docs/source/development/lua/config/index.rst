@@ -1,23 +1,42 @@
 Config
 ======
 
-The config library allows for interaction between pilight configuration and especially pilight devices.
+The config library allows for interaction between the pilight configuration and configured pilight devices.
 
 - `Devices`_
    - `Datetime`_
    - `Dimmer`_
    - `Label`_
    - `Switch`_
+   - `Screen`_
 - `Settings`_
 
 .. warning::
 
    Not all devices are currently supported in the config library. More devices will be added in the future.
 
+.. versionadded:: 8.1.3
+
+A new version object must be initialized before the different configuration subsections can be used:
+
+.. code-block:: lua
+
+	local config = pilight.config();
+	local devobj = config.getDevice("switch");
+	local standalone = config.getSetting("standalone");
+
 Devices
 -------
 
-.. c:function:: userdata pilight.config.device(string device)
+.. versionchanged:: 8.1.3
+
+.. c:function:: userdata [pilight.config()].getDevice(string device)
+
+   The device parameter should correspond to a valid configured device. If the device isn't configured a ``nil`` is returned.
+
+.. versionadded:: 8.1.2
+
+.. c:function:: userdata pilight.config.getDevice(string device)
 
    The device parameter should correspond to a valid configured device. If the device isn't configured a ``nil`` is returned.
 
@@ -31,7 +50,8 @@ Devices
 
    .. code-block:: lua
 
-      local dev = pilight.config.device("dimmer");
+      local config = pilight.config();
+      local dev = config.device("dimmer");
       local id = dev.getId();
       print(id[1]['id']); -- 1
       print(id[1]['unit']); -- 0
@@ -166,9 +186,36 @@ Switch
 
    Sends the new settings to the switch.
 
+Screen
+^^^^^^
+
+.. c:function:: string getState()
+
+   Returns the state of the screen.
+
+.. c:function:: boolean hasState(string state)
+
+   Check if this screen can be set to a specific state.
+
+.. c:function:: boolean setState(string state)
+
+   Set the screen to a specific state.
+
+.. c:function:: string send()
+
+   Sends the new settings to the screen.
+
 Settings
 --------
 
-.. c:function:: number | string pilight.config.setting(string device)
+.. versionchanged:: 8.1.3
+
+.. c:function:: number | string [pilight.config()].getSetting(string setting)
+
+   Returns the value of a specific setting in the pilight configuration. If a setting was not configured, a ``nil`` is returned.
+
+.. versionadded:: 8.1.2
+
+.. c:function:: number | string [pilight.config.setting(string setting)
 
    Returns the value of a specific setting in the pilight configuration. If a setting was not configured, a ``nil`` is returned.

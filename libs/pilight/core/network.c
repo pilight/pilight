@@ -567,11 +567,12 @@ int whitelist_check(char *ip) {
 	char wip[16] = {'\0'};
 
 	/* Check if there are any whitelisted ip address */
-	if(settings_find_string("whitelist", &whitelist) != 0) {
+	if(config_setting_get_string("whitelist", 0, &whitelist) != 0) {
 		return 0;
 	}
 
 	if(strlen(whitelist) == 0) {
+		FREE(whitelist);
 		return 0;
 	}
 
@@ -663,6 +664,9 @@ int whitelist_check(char *ip) {
 		}
 	}
 
+	if(whitelist != NULL) {
+		FREE(whitelist);
+	}
 	return error;
 }
 

@@ -43,9 +43,6 @@ Operators
 | !=           | | Checks if the first and second (nummeric)     | | 20 != 10 = true        |
 |              | | operand are unequal.                          | | 10 != 10 = false       |
 +--------------+-------------------------------------------------+--------------------------+
-| IS           | | Checks if the first and second (character)    | | a IS b = false         |
-|              | | operand are equal.                            | | a IS a = true          |
-+--------------+-------------------------------------------------+--------------------------+
 | >=           | | Checks if the first operand is greater or     | | 20 >= 10 = true        |
 |              | | equal to the second operand.                  | | 10 >= 20 = false       |
 |              |                                                 | | 10 >= 10 = true        |
@@ -72,6 +69,9 @@ Operators
 +--------------+-------------------------------------------------+--------------------------+
 | ISNOT        | | Checks if the first and second (character)    | | a ISNOT b = true       |
 |              | | operand are equal.                            | | a ISNOT a = false      |
++--------------+-------------------------------------------------+--------------------------+
+| IS           | | Checks if the first and second (character)    | | a IS b = false         |
+|              | | operand are equal.                            | | a IS a = true          |
 +--------------+-------------------------------------------------+--------------------------+
 
 .. rubric:: Logical

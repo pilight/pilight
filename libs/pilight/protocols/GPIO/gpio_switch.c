@@ -98,50 +98,67 @@ static void *thread(void *param) {
 
 static struct threadqueue_t *initDev(JsonNode *jdevice) {
 	char *platform = GPIO_PLATFORM;
-	if(settings_find_string("gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
-		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
-		exit(EXIT_FAILURE);
-	}
-	if(wiringXSetup(platform, logprintf1) == 0) {
-		loop = 1;
-		char *output = json_stringify(jdevice, NULL);
-		JsonNode *json = json_decode(output);
-		json_free(output);
 
-		struct protocol_threads_t *node = protocol_thread_init(gpio_switch, json);
-		return threads_register("gpio_switch", &thread, (void *)node, 0);
-	} else {
+	if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
+		logprintf(LOG_ERR, "no gpio-platform configured");
 		return NULL;
 	}
+	if(strcmp(platform, "none") == 0) {
+		FREE(platform);
+		logprintf(LOG_ERR, "no gpio-platform configured");
+		return NULL;
+	}
+	if(wiringXSetup(platform, logprintf1) < 0) {
+		FREE(platform);
+		return NULL;
+	}
+	FREE(platform);
+
+	loop = 1;
+	char *output = json_stringify(jdevice, NULL);
+	JsonNode *json = json_decode(output);
+	json_free(output);
+
+	struct protocol_threads_t *node = protocol_thread_init(gpio_switch, json);
+	return threads_register("gpio_switch", &thread, (void *)node, 0);
 }
 
 static int checkValues(struct JsonNode *jvalues) {
 	double readonly = 0.0;
-
 	char *platform = GPIO_PLATFORM;
-	if(settings_find_string("gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
-		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
-		exit(EXIT_FAILURE);
-	}
-	if(wiringXSetup(platform, logprintf1) == 0) {
-		struct JsonNode *jid = NULL;
-		if((jid = json_find_member(jvalues, "id"))) {
-			struct JsonNode *jchild = NULL;
-			struct JsonNode *jchild1 = NULL;
 
-			jchild = json_first_child(jid);
-			while(jchild) {
-				jchild1 = json_first_child(jchild);
-				while(jchild1) {
-					if(strcmp(jchild1->key, "gpio") == 0) {
-						if(wiringXValidGPIO((int)round(jchild1->number_)) != 0) {
-							return -1;
-						}
+	if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
+		logprintf(LOG_ERR, "no gpio-platform configured");
+		return -1;
+	}
+	if(strcmp(platform, "none") == 0) {
+		FREE(platform);
+		logprintf(LOG_ERR, "no gpio-platform configured");
+		return -1;
+	}
+	if(wiringXSetup(platform, logprintf1) < 0) {
+		FREE(platform);
+		return -1;
+	}
+	FREE(platform);
+
+	struct JsonNode *jid = NULL;
+	if((jid = json_find_member(jvalues, "id"))) {
+		struct JsonNode *jchild = NULL;
+		struct JsonNode *jchild1 = NULL;
+
+		jchild = json_first_child(jid);
+		while(jchild) {
+			jchild1 = json_first_child(jchild);
+			while(jchild1) {
+				if(strcmp(jchild1->key, "gpio") == 0) {
+					if(wiringXValidGPIO((int)round(jchild1->number_)) != 0) {
+						return -1;
 					}
-					jchild1 = jchild1->next;
 				}
-				jchild = jchild->next;
+				jchild1 = jchild1->next;
 			}
+			jchild = jchild->next;
 		}
 	}
 
@@ -175,12 +192,12 @@ void gpioSwitchInit(void) {
 	gpio_switch->devtype = SWITCH;
 	gpio_switch->hwtype = SENSOR;
 
-	options_add(&gpio_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&gpio_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&gpio_switch->options, 'g', "gpio", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1}|1[0-9]|20)$");
+	options_add(&gpio_switch->options, "t", "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&gpio_switch->options, "f", "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&gpio_switch->options, "g", "gpio", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1}|1[0-9]|20)$");
 
-	options_add(&gpio_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&gpio_switch->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&gpio_switch->options, "0", "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&gpio_switch->options, "0", "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 	gpio_switch->initDev=&initDev;

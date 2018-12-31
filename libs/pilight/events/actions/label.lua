@@ -61,11 +61,9 @@ function M.check(parameters)
 
 		if nr3 < nr2 then
 			error("label actions are formatted as \"label DEVICE ... TO ... FOR ...\"");
-			return -1;
 		end
 		if nr5 > 0 and nr3 < nr5 then
 			error("label actions are formatted as \"label DEVICE ... TO ... COLOR ... FOR ...\"");
-			return -1;
 		end
 	end
 
@@ -103,8 +101,9 @@ function M.check(parameters)
 	end
 
 	local nrdev = #parameters['DEVICE']['value'];
+	local config = pilight.config();
 	for i = 1, nrdev, 1 do
-		local dev = pilight.config.device(parameters['DEVICE']['value'][i]);
+		local dev = config.getDevice(parameters['DEVICE']['value'][i]);
 		if dev == nil then
 			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" does not exist");
 		end
@@ -122,7 +121,8 @@ end
 function M.timer_for(timer)
 	local data = timer.getUserdata();
 	local devname = data['device'];
-	local devobj = pilight.config.device(devname);
+	local config = pilight.config();
+	local devobj = config.getDevice(devname);
 
 	if devobj.setColor(data['old_color']) == false then
 		error("device \"" .. devname .. "\" could not be set to state \"" .. data['new_color'] .. "\"")
@@ -159,11 +159,11 @@ end
 function M.thread(thread)
 	local data = thread.getUserdata();
 	local devname = data['device'];
-	local devobj = pilight.config.device(devname);
+	local config = pilight.config();
+	local devobj = config.getDevice(devname);
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		error("skipping overridden action label for device " .. devname);
-		return;
 	end
 
 	if data['new_color'] ~= nil then
@@ -188,11 +188,11 @@ end
 function M.timer_after(timer)
 	local data = timer.getUserdata();
 	local devname = data['device'];
-	local devobj = pilight.config.device(devname);
+	local config = pilight.config();
+	local devobj = config.getDevice(devname);
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		error("skipping overridden action label for device " .. devname);
-		return;
 	end
 
 	if data['new_color'] ~= nil then
@@ -219,7 +219,8 @@ function M.run(parameters)
 
 	for i = 1, nrdev, 1 do
 		local devname = parameters['DEVICE']['value'][i];
-		local devobj = pilight.config.device(devname);
+		local config = pilight.config();
+		local devobj = config.getDevice(devname);
 		local old_color = nil;
 		local new_color = nil;
 		local old_label = nil;
@@ -322,8 +323,8 @@ function M.info()
 	return {
 		name = "label",
 		version = "4.1",
-		reqversion = "7.0",
-		reqcommit = "94"
+		reqversion = "8.1.2",
+		reqcommit = "23"
 	}
 end
 

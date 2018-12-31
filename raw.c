@@ -33,7 +33,6 @@
 #include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/network.h"
-#include "libs/pilight/core/config.h"
 #include "libs/pilight/core/options.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/datetime.h"
@@ -42,12 +41,14 @@
 #include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/dso.h"
 #include "libs/pilight/core/gc.h"
+#include "libs/pilight/config/config.h"
+#include "libs/pilight/config/hardware.h"
+#include "libs/pilight/lua_c/lua.h"
 
 #include "libs/pilight/protocols/protocol.h"
 
 #include "libs/pilight/events/events.h"
 
-#include "libs/pilight/config/hardware.h"
 
 #ifndef PILIGHT_DEVELOPMENT
 static uv_signal_t *signal_req = NULL;
@@ -55,6 +56,8 @@ static uv_signal_t *signal_req = NULL;
 
 static unsigned short main_loop = 1;
 static unsigned short linefeed = 0;
+
+static char *lua_root = LUA_ROOT;
 
 int main_gc(void) {
 	log_shell_disable();
@@ -118,33 +121,7 @@ void *receiveOOK(void *param) {
 	return NULL;
 }
 
-void *receivePulseTrain(void *param) {
-	struct rawcode_t r;
-	int i = 0;
-
-	struct hardware_t *hw = (hardware_t *)param;
-	while(main_loop && hw->receivePulseTrain) {
-		hw->receivePulseTrain(&r);
-		if(r.length == -1) {
-			main_gc();
-			break;
-		} else if(r.length > 0) {
-			for(i=0;i<r.length;i++) {
-				if(linefeed == 1) {
-					printf(" %d", r.pulses[i]);
-					if(r.pulses[i] > 5100) {
-						printf(" -# %d\n %s:", i, hw->id);
-					}
-				} else {
-					printf("%s: %d\n", hw->id, r.pulses[i]);
-				}
-			}
-		}
-	};
-	return NULL;
-}
-
-static void *receivePulseTrain1(int reason, void *param) {
+static void *receivePulseTrain(int reason, void *param) {
 	struct reason_received_pulsetrain_t *data = param;
 	int i = 0;
 
@@ -226,10 +203,8 @@ int main(int argc, char **argv) {
 	atomicinit();
 	struct options_t *options = NULL;
 	char *args = NULL;
-	char *configtmp = MALLOC(strlen(CONFIG_FILE)+1);
-	pid_t pid = 0;
-
-	strcpy(configtmp, CONFIG_FILE);
+	char *configtmp = CONFIG_FILE;
+	int help = 0;
 
 	gc_attach(main_gc);
 
@@ -263,66 +238,102 @@ int main(int argc, char **argv) {
 	log_file_disable();
 	log_level_set(LOG_NOTICE);
 
-	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'L', "linefeed", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "H", "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "V", "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "C", "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "L", "linefeed", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "Ls", "storage-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "Ll", "lua-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
-	while (1) {
-		int c;
-		c = options_parse(&options, argc, argv, 1, &args);
-		if(c == -1)
-			break;
-		if(c == -2)
-			c = 'H';
-		switch (c) {
-			case 'H':
-				printf("Usage: %s [options]\n", progname);
-				printf("\t -H --help\t\tdisplay usage summary\n");
-				printf("\t -V --version\t\tdisplay version\n");
- 				printf("\t -L --linefeed\t\tstructure raw printout\n");
- 				printf("\t -C --config\t\tconfig file\n");
-				goto close;
-			break;
-			case 'L':
-				linefeed = 1;
-			break;
-			case 'V':
-				printf("%s v%s\n", progname, PILIGHT_VERSION);
-				goto close;
-			break;
-			case 'C':
-				configtmp = REALLOC(configtmp, strlen(args)+1);
-				strcpy(configtmp, args);
-			break;
-			default:
-				printf("Usage: %s [options]\n", progname);
-				goto close;
-			break;
+	if(options_parse(options, argc, argv) == -1) {
+		help = 1;
+	}
+
+	if(options_exists(options, "H") == 0 || help == 1) {
+		printf("Usage: %s [options]\n", progname);
+		printf("\t -H  --help\t\t\tdisplay usage summary\n");
+		printf("\t -V  --version\t\t\tdisplay version\n");
+		printf("\t -L  --linefeed\t\t\tstructure raw printout\n");
+		printf("\t -C  --config\t\t\tconfig file\n");
+		printf("\t -Ls --storage-root=xxxx\tlocation of the storage lua modules\n");
+		printf("\t -Ll --lua-root=xxxx\t\tlocation of the plain lua modules\n");
+		goto close;
+	}
+
+	if(options_exists(options, "L") == 0) {
+		linefeed = 1;
+	}
+
+	if(options_exists(options, "V") == 0) {
+		printf("%s v%s\n", progname, PILIGHT_VERSION);
+		goto close;
+	}
+
+	if(options_exists(options, "C") == 0) {
+		options_get_string(options, "C", &configtmp);
+	}
+
+	if(options_exists(options, "Ls") == 0) {
+		char *arg = NULL;
+		options_get_string(options, "Ls", &arg);
+		if(config_root(arg) == -1) {
+			logprintf(LOG_ERR, "%s is not valid storage lua modules path", arg);
+			goto close;
 		}
 	}
-	options_delete(options);
 
-#ifdef _WIN32
-	if((pid = check_instances(L"pilight-raw")) != -1) {
-		logprintf(LOG_NOTICE, "pilight-raw is already running");
-		goto close;
-	}
-#endif
-
-	if((pid = isrunning("pilight-daemon")) != -1) {
-		logprintf(LOG_NOTICE, "pilight-daemon instance found (%d)", (int)pid);
-		goto close;
+	if(options_exists(options, "Ll") == 0) {
+		options_get_string(options, "Ll", &lua_root);
 	}
 
-	if((pid = isrunning("pilight-debug")) != -1) {
-		logprintf(LOG_NOTICE, "pilight-debug instance found (%d)", (int)pid);
+	{
+		int len = strlen(lua_root)+strlen("lua/?/?.lua")+1;
+		char *lua_path = MALLOC(len);
+
+		if(lua_path == NULL) {
+			OUT_OF_MEMORY
+		}
+
+		plua_init();
+
+		memset(lua_path, '\0', len);
+		snprintf(lua_path, len, "%s/?/?.lua", lua_root);
+		plua_package_path(lua_path);
+
+		memset(lua_path, '\0', len);
+		snprintf(lua_path, len, "%s/?.lua", lua_root);
+		plua_package_path(lua_path);
+
+		FREE(lua_path);
+	}
+
+	int *ret = NULL, n = 0;
+	if((n = isrunning("pilight-raw", &ret)) > 1) {
+		int i = 0;
+		for(i=0;i<n;i++) {
+			if(ret[i] != getpid()) {
+				logprintf(LOG_NOTICE, "pilight-raw is already running (%d)", ret[i]);
+				break;
+			}
+		}
+		FREE(ret);
+		goto close;
+	}
+
+	if((n = isrunning("pilight-daemon", &ret)) > 0) {
+		logprintf(LOG_NOTICE, "pilight-daemon instance found (%d)", ret[0]);
+		FREE(ret);
+		goto close;
+	}
+
+	if((n = isrunning("pilight-debug", &ret)) > 0) {
+		logprintf(LOG_NOTICE, "pilight-debug instance found (%d)", ret[0]);
+		FREE(ret);
 		goto close;
 	}
 
 	if(config_set_file(configtmp) == EXIT_FAILURE) {
-		FREE(configtmp);
-		return EXIT_FAILURE;
+		goto close;
 	}
 
 #ifndef PILIGHT_DEVELOPMENT
@@ -330,19 +341,18 @@ int main(int argc, char **argv) {
 #endif
 	protocol_init();
 	config_init();
-	if(config_read() != EXIT_SUCCESS) {
-		FREE(configtmp);
+	if(config_read(CONFIG_SETTINGS | CONFIG_HARDWARE) != EXIT_SUCCESS) {
 		goto close;
 	}
-	FREE(configtmp);
 
 #ifndef PILIGHT_DEVELOPMENT
-	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain1);
+	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain);
 #endif
 
 	/* Start threads library that keeps track of all threads used */
 	threads_start();
 
+	int has_hardware = 0;
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
 	while(tmp_confhw) {
 		if(tmp_confhw->hardware->init) {
@@ -355,16 +365,16 @@ int main(int argc, char **argv) {
 			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
 				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
 				goto close;
-			}
-			if(tmp_confhw->hardware->comtype == COMOOK) {
-#ifdef PILIGHT_DEVELOPMENT
-					// threads_register(tmp_confhw->hardware->id, &receiveOOK, (void *)tmp_confhw->hardware, 0);
-#endif
-			} else if(tmp_confhw->hardware->comtype == COMPLSTRAIN) {
-				threads_register(tmp_confhw->hardware->id, &receivePulseTrain, (void *)tmp_confhw->hardware, 0);
+			} else {
+				has_hardware = 1;
 			}
 		}
 		tmp_confhw = tmp_confhw->next;
+	}
+
+	if(has_hardware == 0) {
+		logprintf(LOG_NOTICE, "there are no hardware modules configured");
+		uv_stop(uv_default_loop());
 	}
 
 #ifdef PILIGHT_DEVELOPMENT
@@ -376,6 +386,7 @@ int main(int argc, char **argv) {
 #endif
 
 close:
+	options_delete(options);
 	if(args != NULL) {
 		FREE(args);
 	}

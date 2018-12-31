@@ -12,13 +12,13 @@ function M.run(a, b, c, d)
 
 	if d ~= nil then
 		error("DATE_FORMAT requires no more than three arguments");
-		return nil;
 	elseif a ~= nil and b ~= nil and c ~= nil then
 		e = c;
 		tm = pilight.datetime.strptime(a, b);
 	elseif a ~= nil and b ~= nil then
 		e = b;
-		local dev = pilight.config.device(a);
+		local config = pilight.config();
+		local dev = config.getDevice(a);
 		if dev == nil then
 			error(string.format("DATE_FORMAT device \"%s\" is not a datetime protocol", a));
 		else
@@ -32,7 +32,6 @@ function M.run(a, b, c, d)
 			end
 			if match == 0 then
 				error(string.format("DATE_FORMAT device \"%s\" is not a datetime protocol", a));
-				return nil;
 			end
 			local datetime = dev.getTable();
 			tm = pilight.datetime.strptime(
@@ -46,7 +45,6 @@ function M.run(a, b, c, d)
 		end
 	else
 		error("DATE_FORMAT requires at least two arguments");
-		return nil;
 	end
 	local t = os.time(tm);
 	return os.date(e, t);

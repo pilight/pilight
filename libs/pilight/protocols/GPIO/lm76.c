@@ -172,11 +172,22 @@ static void *thread(void *param) {
 
 static struct threadqueue_t *initDev(JsonNode *jdevice) {
 	char *platform = GPIO_PLATFORM;
-	if(settings_find_string("gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
-		logprintf(LOG_ERR, "lm75: no gpio-platform configured");
-		exit(EXIT_FAILURE);
+
+	if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
+		logprintf(LOG_ERR, "no gpio-platform configured");
+		return NULL;
 	}
-	if(wiringXSetup(platform, logprintf1) == 0) {
+	if(strcmp(platform, "none") == 0) {
+		FREE(platform);
+		logprintf(LOG_ERR, "no gpio-platform configured");
+		return NULL;
+	}
+	if(wiringXSetup(platform, logprintf1) < 0) {
+		FREE(platform);
+		return NULL;
+	} else {
+		FREE(platform);
+
 		loop = 1;
 
 		char *output = json_stringify(jdevice, NULL);
@@ -185,8 +196,6 @@ static struct threadqueue_t *initDev(JsonNode *jdevice) {
 
 		struct protocol_threads_t *node = protocol_thread_init(lm76, json);
 		return threads_register("lm76", &thread, (void *)node, 0);
-	} else {
-		return NULL;
 	}
 }
 
@@ -216,13 +225,13 @@ void lm76Init(void) {
 	lm76->devtype = WEATHER;
 	lm76->hwtype = SENSOR;
 
-	options_add(&lm76->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-	options_add(&lm76->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "0x[0-9a-f]{2}");
-	options_add(&lm76->options, 'd', "i2c-path", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^/dev/i2c-[0-9]{1,2}$");
+	options_add(&lm76->options, "t", "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&lm76->options, "i", "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "0x[0-9a-f]{2}");
+	options_add(&lm76->options, "d", "i2c-path", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^/dev/i2c-[0-9]{1,2}$");
 
 	// options_add(&lm76->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
-	options_add(&lm76->options, 0, "temperature-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
-	options_add(&lm76->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&lm76->options, "0", "temperature-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
+	options_add(&lm76->options, "0", "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 	lm76->initDev=&initDev;

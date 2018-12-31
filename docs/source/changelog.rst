@@ -1,7 +1,61 @@
 Changelog
 =========
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.4
+
+.. rubric:: Improvements
+
+- Remove libunwind as a dependency
+- Add pointer location to memory debugger
+- Make sure lua is not initialized multiple times
+- Differentiate between plain lua and lua_c libraries
+- Ported config registry to lua
+- Add CLI parameter for changing the lua-root library folder
+- Add CLI paremeter for changing the storage-root library folder
+- Better detect if multiple pilight-daemons are running
+- Continue generating uuid when initial attempt failed
+
+.. rubric:: Fixes
+
+- Fixed version parameter in pilight-daemon
+- Fixed lua wiringx aarch64 detection
+- Fixed pilight-debug timing parameters
+- Fixed pilight-control not respecting server/port parameters
+- Fixed case sensitive event action parsing
+- Fixed pilight-receive server/port CLI arguments
+- Fixed uninitialized value in lua io file lib
+- Fixed memory leak in lua config lib
+- Properly gc config memory on shutdown
+- Fixed memory leak in ssl library
+- Fixed memory leak in event module loaders
+- Allow compilation without webserver(_https)
+- Fixed possible deadlock when clearing lua state
+- Prevent buffer overflow in 433nano hardware module
+- Fixed possible segfault in plua_gc_unreg
+
+.. versionadded:: 8.1.3
+
+.. rubric:: Improvements
+
+- Added aarch64 / arm64 packages
+- Added lua file and dir io
+- Improved lua config library
+- Allow nested metatables in lua modules
+- Allow boolean values in lua metatables
+- Added pilight defaults to lua modules
+- Added from parameter to switch action
+- Allow multi-character short options
+- Added storage-root to clients
+- Added eventing MAX and MIN function
+
+.. rubric:: Fixes
+
+- Fix arctech dimmer in which dimlevel 0 would turn the dimmer off
+- Fix eventing library in which a rule was triggered by a device affected in an action
+- Do not partially write config when partially read
+- Fixed a segfault in pilight-debug and pilight-raw
+
+.. versionadded:: 8.1.2
 
 .. rubric:: Improvements
 
@@ -14,6 +68,9 @@ Changelog
 
 - Allow multiple dots in rules for e.g. IP addresses.
 - Fixed bug in which didn't close opened files.
+- Few fixes in mail library.
+- Fixed pushbullet SSL handshake error.
+- Improved Alecto WX500
 
 .. versionadded:: 8.1.1
 

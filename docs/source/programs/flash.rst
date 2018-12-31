@@ -48,6 +48,9 @@ Mandatory arguments to long options are mandatory for short options too.
 |
 | ``-f``, ``--file=PATH_TO_FIRMWARE``
 |   Firmware file to flashed
+|
+| ``-Ls``, ``--storage-root``
+|  Location of storage lua modules
 
 BUGS
 ====

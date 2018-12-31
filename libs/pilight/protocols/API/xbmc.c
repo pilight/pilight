@@ -398,13 +398,13 @@ void xbmcInit(void) {
 	xbmc->hwtype = API;
 	xbmc->multipleId = 0;
 
-	options_add(&xbmc->options, 'a', "action", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&xbmc->options, 'm', "media", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&xbmc->options, 's', "server", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
-	options_add(&xbmc->options, 'p', "port", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
+	options_add(&xbmc->options, "a", "action", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&xbmc->options, "m", "media", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&xbmc->options, "s", "server", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
+	options_add(&xbmc->options, "p", "port", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
 
-	options_add(&xbmc->options, 0, "show-media", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&xbmc->options, 0, "show-action", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&xbmc->options, "0", "show-media", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&xbmc->options, "0", "show-action", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	xbmc->initDev=&initDev;
 	xbmc->threadGC=&threadGC;

@@ -28,7 +28,7 @@
 #include "../core/dso.h"
 #include "../core/log.h"
 #include "../config/settings.h"
-#include "../lua/lua.h"
+#include "../lua_c/lua.h"
 
 #include "action.h"
 
@@ -67,7 +67,7 @@ void event_action_init(void) {
 		OUT_OF_MEMORY
 	}
 
-	settings_select_string(ORIGIN_MASTER, "actions-root", &actions_root);
+	config_setting_get_string("actions-root", 0, &actions_root);
 
 	if((d = opendir(actions_root))) {
 		while((file = readdir(d)) != NULL) {
@@ -85,6 +85,10 @@ void event_action_init(void) {
 	}
 	closedir(d);
 	FREE(f);
+
+	if(actions_root != (void *)ACTION_ROOT) {
+		FREE(actions_root);
+	}
 }
 
 unsigned long event_action_set_execution_id(char *name) {
@@ -326,12 +330,18 @@ static int event_action_prepare_call(char *module, char *func, struct event_acti
 		return -1;
 	}
 
+	char *lower = STRDUP(module);
 	char name[255], *p = name;
 	memset(name, '\0', 255);
 
-	sprintf(p, "action.%s", module);
+	if(lower == NULL) {
+		OUT_OF_MEMORY
+	}
 
+	strtolower(&lower);
+	sprintf(p, "action.%s", lower);
 	lua_getglobal(L, name);
+	FREE(lower);
 
 	if(lua_isnil(L, -1) != 0) {
 		event_action_free_argument(args);
@@ -344,7 +354,7 @@ static int event_action_prepare_call(char *module, char *func, struct event_acti
 		char *file = NULL;
 		struct plua_module_t *tmp = plua_get_modules();
 		while(tmp) {
-			if(strcmp(module, tmp->name) == 0) {
+			if(stricmp(module, tmp->name) == 0) {
 				file = tmp->file;
 				state->module = tmp;
 				break;
@@ -440,12 +450,19 @@ int event_action_get_parameters(char *module, int *nr, char ***ret) {
 		return -1;
 	}
 
+	char *lower = STRDUP(module);
 	char name[255], *p = name;
 	memset(name, '\0', 255);
 
-	sprintf(p, "action.%s", module);
+	if(lower == NULL) {
+		OUT_OF_MEMORY
+	}
 
+	strtolower(&lower);
+	sprintf(p, "action.%s", lower);
 	lua_getglobal(L, name);
+	FREE(lower);
+
 	if(lua_isnil(L, -1) != 0) {
 		lua_remove(L, -1);
 		assert(lua_gettop(L) == 0);

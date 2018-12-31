@@ -3,13 +3,24 @@ cmake_minimum_required(VERSION 2.8.8)
 include(CMakeConfig.txt)
 
 project(pilight)
-set(VERSION 8.1.1)
+set(VERSION 8.1.4)
 
 set(MODULESPACK OFF)
 set(CMAKE_BUILD_TYPE Debug)
 
 set(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
 set(CPACK_DEB_COMPONENT_INSTALL TRUE)
+
+MACRO(SUBDIRLIST result curdir)
+  FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
+  SET(dirlist "")
+  FOREACH(child ${children})
+    IF(IS_DIRECTORY ${curdir}/${child})
+      LIST(APPEND dirlist ${curdir}/${child})
+    ENDIF()
+  ENDFOREACH()
+  SET(${result} ${dirlist})
+ENDMACRO()
 
 if(CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")
   # Use the highest warning level for visual studio.
@@ -123,9 +134,21 @@ execute_process(COMMAND git describe --always --abbrev=0
 	RESULT_VARIABLE git_result
 	OUTPUT_VARIABLE git_ver)
 
+execute_process(COMMAND git describe
+	WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+	RESULT_VARIABLE git_result
+	OUTPUT_VARIABLE git_check)
+
+string(FIND "${git_check}" "-" git_pos)
+
 string(REGEX REPLACE "\n" "" git_ver "${git_ver}")
 string(REGEX REPLACE "\"" "" git_hash "${git_hash}")
-add_definitions(-DHASH="${git_ver}-nightly-${git_hash}")
+
+if(${git_pos} MATCHES "-1")
+	add_definitions(-DHASH="${git_ver}")
+else()
+	add_definitions(-DHASH="${git_ver}-nightly-${git_hash}")
+endif()
 
 file(MD5 ${PROJECT_SOURCE_DIR}/res/pilight.pem md5sum)
 add_definitions(-DPILIGHT_PEM_MD5="${md5sum}")
@@ -135,7 +158,7 @@ if(${MODULESPACK} MATCHES "ON" AND NOT WIN32)
 endif()
 
 if(NOT WIN32)
-	if(${PROTOCOL_ARPING} MATCHES "ON")
+	if(${PROTOCOL_ARPING} MATCHES "ON" AND NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^aarch64")
 		set(CMAKE_PCAP_LIBS_INIT)
 
 		find_library(CMAKE_PCAP_LIBS_INIT
@@ -162,32 +185,32 @@ if(NOT WIN32)
 		endif()
 	endif()
 
-	set(CMAKE_UNWIND_LIBS_INIT)
+	# set(CMAKE_UNWIND_LIBS_INIT)
 
-	if(NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^mips")
-		find_library(CMAKE_UNWIND_LIBS_INIT
-		NAME unwind
-		PATHS
-			${CROSS_COMPILE_LIBS}
-			/usr/lib
-			/usr/lib32
-			/usr/lib64
-			/usr/lib/i386-linux-gnu		
-			/usr/lib/x86_64-linux-gnu
-			/usr/local/lib
-			/usr/local/lib32
-			/usr/local/lib64
-			/usr/lib/arm-linux-gnueabi
-			/usr/lib/arm-linux-gnueabihf
-			/usr/lib/aarch64-linux-gnu
-		NO_DEFAULT_PATH)
+	# if(NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^mips" AND NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^aarch64")
+		# find_library(CMAKE_UNWIND_LIBS_INIT
+		# NAME unwind
+		# PATHS
+			# ${CROSS_COMPILE_LIBS}
+			# /usr/lib
+			# /usr/lib32
+			# /usr/lib64
+			# /usr/lib/i386-linux-gnu
+			# /usr/lib/x86_64-linux-gnu
+			# /usr/local/lib
+			# /usr/local/lib32
+			# /usr/local/lib64
+			# /usr/lib/arm-linux-gnueabi
+			# /usr/lib/arm-linux-gnueabihf
+			# /usr/lib/aarch64-linux-gnu
+		# NO_DEFAULT_PATH)
 
-		if(${CMAKE_UNWIND_LIBS_INIT} MATCHES "CMAKE_UNWIND_LIBS_INIT-NOTFOUND")
-			message(FATAL_ERROR "Looking for libunwind - not found")
-		else()
-			message(STATUS "Looking for libunwind - found (${CMAKE_UNWIND_LIBS_INIT})")
-		endif()
-	endif()
+		# if(${CMAKE_UNWIND_LIBS_INIT} MATCHES "CMAKE_UNWIND_LIBS_INIT-NOTFOUND")
+			# message(FATAL_ERROR "Looking for libunwind - not found")
+		# else()
+			# message(STATUS "Looking for libunwind - found (${CMAKE_UNWIND_LIBS_INIT})")
+		# endif()
+	# endif()
 
 	find_library(CMAKE_WIRINGX_LIBS_INIT
 		NAME wiringx
@@ -282,27 +305,52 @@ else()
 	message(STATUS "Looking for libmbedx509 - found (${CMAKE_MBEDX509_LIBS_INIT})")
 endif()
 
-find_library(CMAKE_LUA_LIBS_INIT
-	NAME luajit-5.1
-	PATHS
-	${CROSS_COMPILE_LIBS}
-	/usr/lib
-	/usr/lib32
-	/usr/lib64
-	/usr/lib/i386-linux-gnu
-	/usr/lib/x86_64-linux-gnu
-	/usr/local/lib
-	/usr/local/lib32
-	/usr/local/lib64
-	/usr/lib/arm-linux-gnueabi
-	/usr/lib/arm-linux-gnueabihf
-	/usr/lib/aarch64-linux-gnu
-NO_DEFAULT_PATH)
+if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^aarch64")
+	find_library(CMAKE_LUA_LIBS_INIT
+		NAME lua5.1
+		PATHS
+		${CROSS_COMPILE_LIBS}
+		/usr/lib
+		/usr/lib32
+		/usr/lib64
+		/usr/lib/i386-linux-gnu
+		/usr/lib/x86_64-linux-gnu
+		/usr/local/lib
+		/usr/local/lib32
+		/usr/local/lib64
+		/usr/lib/arm-linux-gnueabi
+		/usr/lib/arm-linux-gnueabihf
+		/usr/lib/aarch64-linux-gnu
+	NO_DEFAULT_PATH)
 
-if(${CMAKE_LUA_LIBS_INIT} MATCHES "CMAKE_LUA_LIBS_INIT-NOTFOUND")
-	message(FATAL_ERROR "Looking for libluajit - not found")
+	if(${CMAKE_LUA_LIBS_INIT} MATCHES "CMAKE_LUA_LIBS_INIT-NOTFOUND")
+		message(FATAL_ERROR "Looking for libluajit - not found")
+	else()
+		message(STATUS "Looking for libluajit - found (${CMAKE_LUA_LIBS_INIT})")
+	endif()
 else()
-	message(STATUS "Looking for libluajit - found (${CMAKE_LUA_LIBS_INIT})")
+	find_library(CMAKE_LUA_LIBS_INIT
+		NAME luajit-5.1
+		PATHS
+		${CROSS_COMPILE_LIBS}
+		/usr/lib
+		/usr/lib32
+		/usr/lib64
+		/usr/lib/i386-linux-gnu
+		/usr/lib/x86_64-linux-gnu
+		/usr/local/lib
+		/usr/local/lib32
+		/usr/local/lib64
+		/usr/lib/arm-linux-gnueabi
+		/usr/lib/arm-linux-gnueabihf
+		/usr/lib/aarch64-linux-gnu
+	NO_DEFAULT_PATH)
+
+	if(${CMAKE_LUA_LIBS_INIT} MATCHES "CMAKE_LUA_LIBS_INIT-NOTFOUND")
+		message(FATAL_ERROR "Looking for libluajit - not found")
+	else()
+		message(STATUS "Looking for libluajit - found (${CMAKE_LUA_LIBS_INIT})")
+	endif()
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/inc)
@@ -398,10 +446,10 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_PCAP_LIBS_INIT})
 	endif()
 
-	if(NOT WIN32)
-		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_UNWIND_LIBS_INIT})
-		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_UNWIND_LIBS_INIT})
-	endif()
+	# if(NOT WIN32)
+		# target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_UNWIND_LIBS_INIT})
+		# target_link_libraries(${PROJECT_NAME}_static ${CMAKE_UNWIND_LIBS_INIT})
+	# endif()
 
 	set_target_properties(${PROJECT_NAME}_shared ${PROJECT_NAME}_static PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 
@@ -411,6 +459,9 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		install(FILES ${CMAKE_BINARY_DIR}/lib${PROJECT_NAME}.a DESTINATION lib RENAME lib${PROJECT_NAME}.a COMPONENT ${PROJECT_NAME})
 		install(CODE "execute_process(COMMAND ln -s \"/usr/local/lib/lib${PROJECT_NAME}.so.${VERSION}\" \"/usr/local/lib/lib${PROJECT_NAME}.so\")")
 
+		if(EXISTS "/usr/local/lib/${PROJECT_NAME}/storage")
+			install(CODE "execute_process(COMMAND find /usr/local/lib/${PROJECT_NAME}/storage/ -type f -exec rm {} \\;)")
+		endif()
 		if(EXISTS "/usr/local/lib/${PROJECT_NAME}/protocols")
 			install(CODE "execute_process(COMMAND find /usr/local/lib/${PROJECT_NAME}/protocols/ -type f -exec rm {} \\;)")
 		endif()
@@ -716,6 +767,8 @@ else()
 	message("")
 	message("${Red}-- WARNING --${ColorReset}")
 	message("${Yellow}Manually compiling and installing ${PROJECT_NAME} will also clear all module folders:
+/usr/local/lib/${PROJECT_NAME}/lua/
+/usr/local/lib/${PROJECT_NAME}/storage/
 /usr/local/lib/${PROJECT_NAME}/protocols/
 /usr/local/lib/${PROJECT_NAME}/hardware/
 /usr/local/lib/${PROJECT_NAME}/actions/

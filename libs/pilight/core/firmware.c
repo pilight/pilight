@@ -564,6 +564,7 @@ static void firmware_init_pgm(PROGRAMMER **pgm) {
 
 	*pgm = pgm_new();
 #ifndef _WIN32
+	int itmp = 0;
 	if(strlen(comport) == 0) {
 		gpio_initpgm(*pgm);
 		(*pgm)->pinno[3] = FIRMWARE_GPIO_RESET;
@@ -572,10 +573,10 @@ static void firmware_init_pgm(PROGRAMMER **pgm) {
 		(*pgm)->pinno[6] = FIRMWARE_GPIO_MISO;
 		// (*pgm)->ispdelay = 50;
 
-		settings_find_number("firmware-gpio-reset", (int *)&(*pgm)->pinno[3]);
-		settings_find_number("firmware-gpio-sck", (int *)&(*pgm)->pinno[4]);
-		settings_find_number("firmware-gpio-mosi", (int *)&(*pgm)->pinno[5]);
-		settings_find_number("firmware-gpio-miso", (int *)&(*pgm)->pinno[6]);
+		if(config_setting_get_number("firmware-gpio-reset", 0, &itmp) == 0) { (*pgm)->pinno[3] = itmp; }
+		if(config_setting_get_number("firmware-gpio-sck", 0, &itmp) == 0) { (*pgm)->pinno[4] = itmp; }
+		if(config_setting_get_number("firmware-gpio-mosi", 0, &itmp) == 0) { (*pgm)->pinno[5] = itmp; }
+		if(config_setting_get_number("firmware-gpio-miso", 0, &itmp) == 0) { (*pgm)->pinno[6] = itmp; }
 	} else {
 #endif
 		arduino_initpgm(*pgm);

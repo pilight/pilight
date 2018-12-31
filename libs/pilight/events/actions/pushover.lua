@@ -72,7 +72,7 @@ function M.info()
 		name = "pushover",
 		version = "1.0",
 		reqversion = "8.1.2",
-		reqcommit = "0"
+		reqcommit = "23"
 	}
 end
 

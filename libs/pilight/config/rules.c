@@ -43,7 +43,7 @@ static struct rules_t *rules = NULL;
 static pthread_mutex_t mutex_lock;
 static pthread_mutexattr_t mutex_attr;
 
-static int rules_parse(JsonNode *root) {
+int config_rules_parse(struct JsonNode *root) {
 	int have_error = 0, match = 0, x = 0;
 	unsigned int i = 0;
 	struct JsonNode *jrules = NULL;
@@ -154,7 +154,7 @@ static int rules_parse(JsonNode *root) {
 	return have_error;
 }
 
-static JsonNode *rules_sync(int level, const char *media) {
+struct JsonNode *config_rules_sync(int level, const char *media) {
 	struct JsonNode *root = json_mkobject();
 	struct JsonNode *rule = NULL;
 	struct rules_t *tmp = NULL;
@@ -182,6 +182,7 @@ static JsonNode *rules_sync(int level, const char *media) {
 		if(strcmp(media, "all") == 0) {
 			match = tmp->nrdevices;
 		}
+
 		if(match == tmp->nrdevices) {
 			rule = json_mkobject();
 			json_append_member(rule, "rule", json_mkstring(tmp->rule));
@@ -190,6 +191,7 @@ static JsonNode *rules_sync(int level, const char *media) {
 		}
 		tmp = tmp->next;
 	}
+
 	return root;
 }
 
@@ -258,12 +260,4 @@ void rules_init(void) {
 	pthread_mutexattr_init(&mutex_attr);
 	pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&mutex_lock, &mutex_attr);
-
-	/* Request rules json object in main configuration */
-	config_register(&config_rules, "rules");
-	config_rules->readorder = 2;
-	config_rules->writeorder = 1;
-	config_rules->parse=&rules_parse;
-	config_rules->sync=&rules_sync;
-	config_rules->gc=&rules_gc;
 }

@@ -27,7 +27,6 @@
 
 #include "../core/pilight.h"
 #include "../core/common.h"
-#include "../core/config.h"
 #include "../core/log.h"
 #include "../core/cast.h"
 #include "../core/options.h"
@@ -36,10 +35,11 @@
 #include "../core/socket.h"
 #include "../datatypes/stack.h"
 
-#include "../lua/lua.h"
+#include "../lua_c/lua.h"
 
 #include "../protocols/protocol.h"
 
+#include "../config/config.h"
 #include "../config/rules.h"
 #include "../config/settings.h"
 #include "../config/devices.h"
@@ -346,7 +346,7 @@ void event_cache_device(struct rules_t *obj, char *device) {
  * 0: Found variable and filled varcont
  * 1: Did not find variable and did not fill varcont
  */
-int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varcont, unsigned short validate, enum origin_t origin) {
+static int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varcont, unsigned short validate, int in_action) {
 	int recvtype = 0;
 	// int cached = 0;
 	if(strcmp(true_, "1") != 0) {
@@ -423,7 +423,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varc
 
 		if(recvtype == 2) {
 			if(validate == 1) {
-				if(origin == ORIGIN_RULE) {
+				if(in_action == 0) {
 					event_cache_device(obj, device);
 				}
 				if(strcmp(name, "repeats") != 0 && strcmp(name, "uuid") != 0) {
@@ -486,7 +486,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, struct varcont_t *varc
 			return 0;
 		} else if(recvtype == 1) {
 			if(validate == 1) {
-				if(origin == ORIGIN_RULE) {
+				if(in_action == 0) {
 					event_cache_device(obj, device);
 				}
 #ifdef PILIGHT_REWRITE
@@ -1043,7 +1043,7 @@ static int lexer_parse_function(struct lexer_t *lexer, struct tree_t *tree_in, s
 	struct token_t *token = lexer->current_token, *token_ret = NULL;
 	struct tree_t *p = ast_parent(token);
 	char *expected = NULL;
-	int pos = 0, err = -1;
+	int pos = 0, err = -1, loop = 1;
 
 	if((err = lexer_eat(lexer, TFUNCTION, &token_ret)) < 0) {
 		*tree_out = NULL;
@@ -1064,7 +1064,11 @@ static int lexer_parse_function(struct lexer_t *lexer, struct tree_t *tree_in, s
 		return err;
 	}
 	pos = node->token->pos+1;
-	while(1) {
+
+	if(lexer_peek(lexer, 0, RPAREN, NULL) == 0) {
+		loop = 0;
+	}
+	while(loop) {
 		if((err = lexer_eat(lexer, TCOMMA, &token_ret)) < 0) {
 			char *tmp = "a comma or closing parenthesis";
 			pos -= strlen(node->token->value);
@@ -1612,7 +1616,7 @@ static int run_function(struct tree_t *tree, int in_action, struct rules_t *obj,
 			return -1;
 		}
 		if(v_res.type_ == JSON_STRING) {
-			if(event_lookup_variable(v_res.string_, obj, &v1, validate, ORIGIN_RULE) == -1) {
+			if(event_lookup_variable(v_res.string_, obj, &v1, validate, in_action) == -1) {
 				varcont_free(&v1);
 				varcont_free(&v_res);
 				return -1;
@@ -1679,7 +1683,7 @@ static int run_action(struct tree_t *tree, struct rules_t *obj, unsigned short v
 
 			switch(v_res1.type_) {
 				case JSON_STRING: {
-					if(event_lookup_variable(v_res1.string_, obj, &v1, validate, ORIGIN_RULE) == -1) {
+					if(event_lookup_variable(v_res1.string_, obj, &v1, validate, 1) == -1) {
 						varcont_free(&v1);
 						varcont_free(&v_res);
 						varcont_free(&v_res1);
@@ -1833,7 +1837,7 @@ static int interpret(struct tree_t *tree, int in_action, struct rules_t *obj, un
 					return -1;
 				}
 				if(v1.type_ == JSON_STRING) {
-					if(event_lookup_variable(v1.string_, obj, &v3, validate, ORIGIN_RULE) == -1) {
+					if(event_lookup_variable(v1.string_, obj, &v3, validate, in_action) == -1) {
 						varcont_free(&v1);
 						return -1;
 					} else {
@@ -1860,7 +1864,7 @@ static int interpret(struct tree_t *tree, int in_action, struct rules_t *obj, un
 					}
 				}
 				if(v2.type_ == JSON_STRING) {
-					if(event_lookup_variable(v2.string_, obj, &v4, validate, ORIGIN_RULE) == -1) {
+					if(event_lookup_variable(v2.string_, obj, &v4, validate, in_action) == -1) {
 						varcont_free(&v2);
 						return -1;
 					} else {
@@ -1961,7 +1965,7 @@ void *events_loop(void *param) {
 		eventslock_init = 1;
 	}
 
-	struct devices_t *dev = NULL;
+	// struct devices_t *dev = NULL;
 	struct JsonNode *jdevices = NULL, *jchilds = NULL;
 	struct rules_t *tmp_rules = NULL;
 	char *str = NULL, *origin = NULL, *protocol = NULL;
@@ -2011,17 +2015,17 @@ void *events_loop(void *param) {
 							for(i=0;i<tmp_rules->nrdevices;i++) {
 								if(jchilds->tag == JSON_STRING &&
 								   strcmp(jchilds->string_, tmp_rules->devices[i]) == 0) {
-									if(devices_get(jchilds->string_, &dev) == 0) {
-										if(dev->lastrule == tmp_rules->nr &&
-											 tmp_rules->nr == dev->prevrule &&
-											 dev->lastrule == dev->prevrule) {
-											logprintf(LOG_ERR, "skipped rule #%d because of an infinite loop triggered by device %s", tmp_rules->nr, jchilds->string_);
-										} else {
-											match = 1;
-										}
-									} else {
+									// if(devices_get(jchilds->string_, &dev) == 0) {
+										// if(dev->lastrule == tmp_rules->nr &&
+											 // tmp_rules->nr == dev->prevrule &&
+											 // dev->lastrule == dev->prevrule) {
+											// logprintf(LOG_ERR, "skipped rule #%d because of an infinite loop triggered by device %s", tmp_rules->nr, jchilds->string_);
+										// } else {
+											// match = 1;
+										// }
+									// } else {
 										match = 1;
-									}
+									// }
 									break;
 								}
 							}
@@ -2113,7 +2117,7 @@ void *events_clientize(void *param) {
 	char *out = NULL;
 	int standalone = 0;
 	int client_loop = 0;
-	settings_find_number("standalone", &standalone);
+	config_setting_get_number("standalone", 0, &standalone);
 
 	while(loop) {
 

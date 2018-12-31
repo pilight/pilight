@@ -406,6 +406,13 @@ static void process_chunk(char **buf, ssize_t *size, struct request_t *request) 
 			}
 		}
 
+		if(request->chunksize == 0) {
+			request->chunked = 0;
+			request->reading = 0;
+			request->content_len = request->bytes_read;
+			break;
+		}
+
 		if((request->chunksize-request->chunkread) < *size) {
 			toread = request->chunksize-request->chunkread;
 		}
@@ -530,11 +537,12 @@ static void timeout(uv_timer_t *req) {
 	struct request_t *request = req->data;
 	void (*callback)(int, char *, int, char *, void *) = request->callback;
 	void *userdata = request->userdata;
+	int called = request->called;
 	if(request->timer_req != NULL) {
 		uv_timer_stop(request->timer_req);
 	}
 	http_client_close(request->poll_req);
-	if(callback != NULL && request->called == 0) {
+	if(callback != NULL && called == 0) {
 		callback(408, NULL, 0, NULL, userdata);
 	}
 }
@@ -574,9 +582,8 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 			struct connection_t c;
 			char *location = NULL;
-			const char *p = location;
 			http_parse_request(header, &c);
-			if(c.status_code == 301 && (p = http_get_header(&c, "Location")) != NULL) {
+			if(c.status_code == 301 && (location = (char *)http_get_header(&c, "Location")) != NULL) {
 				uv_timer_stop(request->timer_req);
 				if(request->callback != NULL && request->called == 0) {
 					request->called = 1;

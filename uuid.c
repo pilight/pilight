@@ -73,42 +73,36 @@ int main(int argc, char **argv) {
 
 	struct options_t *options = NULL;
 	char *p = NULL;
-	char *args = NULL;
+	int help = 0;
 
 	if((progname = MALLOC(13)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	strcpy(progname, "pilight-uuid");
 
-	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "H", "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "V", "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 
-	while (1) {
-		int c;
-		c = options_parse(&options, argc, argv, 1, &args);
-		if(c == -1)
-			break;
-		if(c == -2)
-			c = 'H';
-		switch (c) {
-			case 'H':
-				printf("Usage: %s [options]\n", progname);
-				printf("\t -H --help\t\tdisplay usage summary\n");
-				printf("\t -V --version\t\tdisplay version\n");
-				return (EXIT_SUCCESS);
-			break;
-			case 'V':
-				printf("%s v%s\n", progname, PILIGHT_VERSION);
-				return (EXIT_SUCCESS);
-			break;
-			default:
-				printf("Usage: %s [options]\n", progname);
-				return (EXIT_FAILURE);
-			break;
-		}
+	// if(argc == 1) {
+		// printf("Usage: %s [options]\n", progname);
+		// goto close;
+	// }
+
+	if(options_parse(options, argc, argv) == -1) {
+		help = 1;
 	}
-	options_delete(options);
+
+	if(options_exists(options, "H") == 0 || help == 1) {
+		printf("Usage: %s [options]\n", progname);
+		printf("\t -H --help\t\tdisplay usage summary\n");
+		printf("\t -V --version\t\tdisplay version\n");
+		goto close;
+	}
+
+	if(options_exists(options, "V") == 0) {
+		printf("%s v%s\n", progname, PILIGHT_VERSION);
+		goto close;
+	}
 
 	int nrdevs = 0, x = 0;
 	char **devs = NULL;
@@ -127,6 +121,8 @@ int main(int argc, char **argv) {
 
 	printf("%s\n", pilight_uuid);
 
+close:
+	options_delete(options);
 	main_gc();
 	return (EXIT_FAILURE);
 }

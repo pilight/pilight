@@ -18,9 +18,10 @@ cd deb
 DEBVER=$(git describe --always | sed -e 's/^v//g');
 VERSION=$(echo $DEBVER | sed -e 's/-g.*//g');
 WEBGUI=$(cat ../libs/webgui/version.txt)
+WEBDEP=$(cat ../libs/webgui/depends.txt)
 
-dpkg -X pilight-8.1.1-Linux-pilight.deb source
-dpkg -e pilight-8.1.1-Linux-pilight.deb control
+dpkg -X pilight-8.1.4-Linux-pilight.deb source
+dpkg -e pilight-8.1.4-Linux-pilight.deb control
 
 mkdir -p source/etc/init.d
 mkdir -p source/etc/systemd/system
@@ -58,12 +59,16 @@ if [ $# -eq 1 ] || [ "$2" != "debug" ]; then
 		find source/usr -type f -exec strip {} \; 2>/dev/null;
 	elif [[ $ARCH =~ mips ]]; then
 		find source/usr -type f -exec mipsel-linux-gnu-strip {} \; 2>/dev/null;
+	elif [[ $ARCH =~ aarch64 ]]; then
+		find source/usr -type f -exec aarch64-linux-gnu-strip {} \; 2>/dev/null;
+	elif [[ $ARCH =~ arm64 ]]; then
+		find source/usr -type f -exec aarch64-linux-gnu-strip {} \; 2>/dev/null;
 	fi
 fi
 
 find source -type f -exec md5sum {} \; | sed -e 's@source/@@g' -e "s/ /  /g" > control/md5sums
 
-tar -C control -czf control.tar.gz control md5sums postinst postrm preinst prerm 
+tar -C control -czf control.tar.gz control md5sums postinst postrm preinst prerm
 
 chmod 755 source/usr/local/sbin/*
 chmod 755 source/usr/local/bin/*
@@ -84,14 +89,14 @@ rm -r control source debian-binary control.tar.gz data.tar.gz 1>/dev/null 2>/dev
 # pilight webgui
 #
 
-dpkg -X pilight-8.1.1-Linux-webgui.deb source
-dpkg -e pilight-8.1.1-Linux-webgui.deb control
+dpkg -X pilight-8.1.4-Linux-webgui.deb source
+dpkg -e pilight-8.1.4-Linux-webgui.deb control
 
 cp ../res/deb/webgui/* control/
 
 SIZE=$(du -sk source | cut -f1)
 
-sed -i "s/@version@/$DEBVER/g" control/control
+sed -i "s/@version@/$WEBDEP/g" control/control
 sed -i "s/@webgui@/$WEBGUI/g" control/control
 sed -i "s/@arch@/$ARCH/g" control/control
 sed -i "s/@size@/$SIZE/g" control/control

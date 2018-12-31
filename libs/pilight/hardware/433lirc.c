@@ -197,7 +197,7 @@ void lirc433Init(void) {
 	hardware_register(&lirc433);
 	hardware_set_id(lirc433, "433lirc");
 
-	options_add(&lirc433->options, 's', "socket", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, "^/dev/([a-z]+)[0-9]+$");
+	options_add(&lirc433->options, "s", "socket", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, "^/dev/([a-z]+)[0-9]+$");
 
 	lirc433->minrawlen = 1000;
 	lirc433->maxrawlen = 0;

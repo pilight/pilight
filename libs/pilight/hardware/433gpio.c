@@ -34,7 +34,7 @@ static int wait = 0;
 static int loopback = LOOPBACK;
 static int pollpri = UV_PRIORITIZED;
 
-#if defined(__arm__) || defined(__mips__) || defined(PILIGHT_UNITTEST)
+#if defined(__arm__) || defined(__mips__) || defined(__aarch64__) || defined(PILIGHT_UNITTEST)
 typedef struct timestamp_t {
 	unsigned long first;
 	unsigned long second;
@@ -143,7 +143,7 @@ static void *gpio433Send(int reason, void *param) {
 #endif
 
 static unsigned short int gpio433HwInit(void) {
-#if defined(__arm__) || defined(__mips__) || defined(PILIGHT_UNITTEST)
+#if defined(__arm__) || defined(__mips__) || defined(__aarch64__) || defined(PILIGHT_UNITTEST)
 
 	/* Make sure the pilight sender gets
 	   the highest priority available */
@@ -159,25 +159,23 @@ static unsigned short int gpio433HwInit(void) {
 	uv_poll_t *poll_req = NULL;
 	char *platform = GPIO_PLATFORM;
 
-#ifdef PILIGHT_REWRITE
-	if(settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+	config_setting_get_number("loopback", 0, &loopback);
+
+	if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
 		logprintf(LOG_ERR, "no gpio-platform configured");
 		return EXIT_FAILURE;
 	}
-	if(wiringXSetup(platform, _logprintf) < 0) {
-		return EXIT_FAILURE;
-	}
-#else
-	settings_find_number("loopback", &loopback);
-
-	if(settings_find_string("gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+	if(strcmp(platform, "none") == 0) {
+		FREE(platform);
 		logprintf(LOG_ERR, "no gpio-platform configured");
 		return EXIT_FAILURE;
 	}
 	if(wiringXSetup(platform, logprintf1) < 0) {
+		FREE(platform);
 		return EXIT_FAILURE;
 	}
-#endif
+	FREE(platform);
+
 	if(gpio_433_out >= 0) {
 		if(wiringXValidGPIO(gpio_433_out) != 0) {
 			logprintf(LOG_ERR, "invalid sender pin: %d", gpio_433_out);
@@ -254,8 +252,8 @@ void gpio433Init(void) {
 	hardware_register(&gpio433);
 	hardware_set_id(gpio433, "433gpio");
 
-	options_add(&gpio433->options, 'r', "receiver", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
-	options_add(&gpio433->options, 's', "sender", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
+	options_add(&gpio433->options, "r", "receiver", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
+	options_add(&gpio433->options, "s", "sender", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
 
 	gpio433->minrawlen = 1000;
 	gpio433->maxrawlen = 0;

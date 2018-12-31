@@ -9,6 +9,10 @@
 local M = {}
 
 function M.check(parameters)
+	if parameters == nil then
+		return 0;
+	end
+
 	if parameters['TITLE'] == nil then
 		error("pushbullet action is missing a \"TITLE\" statement");
 	else
@@ -37,17 +41,32 @@ function M.check(parameters)
 end
 
 function M.callback(http)
-	if http.getCode() == 200 then
-		error("pushbullet action succeeded with message \" " .. http.getData() .. "\"");
-	else
-		error("pushbullet action failed (" .. http.getCode() .. ") with message \" " .. http.getData() .. "\"");
+	if http ~= nil then
+		if http.getCode() == 200 then
+			error("pushbullet action succeeded with message \"" .. http.getData() .. "\"");
+		else
+			error("pushbullet action failed (" .. http.getCode() .. ") with message \" " .. http.getData() .. "\"");
+		end
 	end
 end
 
 function M.run(parameters)
+	if parameters == nil then
+		return 0;
+	end
+
 	local httpobj = pilight.network.http();
+	local url = "https://" .. parameters['TOKEN']['value'][1] .. "@api.pushbullet.com/v2/pushes";
+
+	--
+	-- Allow overriding the url for unittesting purposes
+	--
+	if parameters['URL']['value'][1] ~= nil then
+		url = parameters['URL']['value'][1];
+	end
+
 	httpobj.setCallback("callback");
-	httpobj.setUrl("https://" .. parameters['TOKEN']['value'][1] .. "@api.pushbullet.com/v2/pushes");
+	httpobj.setUrl(url);
 	httpobj.setMimetype("application/json");
 	httpobj.setData("{\"type\": \"note\", \"title\": \"" .. parameters['TITLE']['value'][1] .."\", \"body\": \"" .. parameters['BODY']['value'][1] .. "\"}");
 	httpobj.post();
@@ -64,7 +83,7 @@ function M.info()
 		name = "pushbullet",
 		version = "1.0",
 		reqversion = "8.1.2",
-		reqcommit = "0"
+		reqcommit = "23"
 	}
 end
 

@@ -27,9 +27,9 @@ typedef struct devices_t devices_t;
 
 #include "../core/pilight.h"
 #include "../core/threads.h"
-#include "../core/config.h"
 #include "../protocols/protocol.h"
 #include "../events/action.h"
+#include "config.h"
 
 /*
 |------------------|
@@ -98,8 +98,10 @@ int devices_get(char *sid, struct devices_t **dev);
 int devices_valid_state(char *sid, char *state);
 int devices_valid_value(char *sid, char *name, char *value);
 struct JsonNode *devices_values(const char *media);
+int config_devices_parse(struct JsonNode *root);
 void devices_init(void);
 int devices_gc(void);
+struct JsonNode *config_devices_sync(int level, const char *media);
 
 /*
  * Rewrite backported functions

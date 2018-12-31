@@ -287,6 +287,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 	int s = 0, nrpulses = 0, y = 0;
 	int pulses[10];
 	size_t x = 0;
+	int error = 0;
 
 	int fd = req->io_watcher.fd;
 #ifdef _WIN32
@@ -336,9 +337,9 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 							firmware.hpf = atof(array[6]);
 
 							if(firmware.version > 0 && firmware.lpf > 0 && firmware.hpf > 0) {
-								registry_set_number("pilight.firmware.version", firmware.version, 0);
-								registry_set_number("pilight.firmware.lpf", firmware.lpf, 0);
-								registry_set_number("pilight.firmware.hpf", firmware.hpf, 0);
+								config_registry_set_number("pilight.firmware.version", firmware.version);
+								config_registry_set_number("pilight.firmware.lpf", firmware.lpf);
+								config_registry_set_number("pilight.firmware.hpf", firmware.hpf);
 								logprintf(LOG_INFO, "pilight-usb-nano version: %d, lpf: %d, hpf: %d", (int)firmware.version, (int)firmware.lpf, (int)firmware.hpf);
 							}
 						}
@@ -353,26 +354,33 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 								pulses[nrpulses++] = atoi(&data.buffer[s]);
 								s = y+1;
 							}
+							if(nrpulses > 9 || s > 1023) {
+								logprintf(LOG_NOTICE, "433nano: discarded invalid pulse train");
+								error = 1;
+								break;
+							}
 						}
-						pulses[nrpulses++] = atoi(&data.buffer[s]);
-						x = strlen(&data.buffer[2]);
+						if(error == 0) {
+							pulses[nrpulses++] = atoi(&data.buffer[s]);
+							x = strlen(&data.buffer[2]);
 
-						struct reason_received_pulsetrain_t *data1 = MALLOC(sizeof(struct reason_received_pulsetrain_t));
-						if(data1 == NULL) {
-							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-						}
+							struct reason_received_pulsetrain_t *data1 = MALLOC(sizeof(struct reason_received_pulsetrain_t));
+							if(data1 == NULL) {
+								OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+							}
 
-						data1->length = 0;
+							data1->length = 0;
 
-						for(y = 2; y < 2 + x; y++) {
-							data1->pulses[data1->length++] = pulses[0];
-							data1->pulses[data1->length++] = pulses[data.buffer[y] - '0'];
+							for(y = 2; y < 2 + x; y++) {
+								data1->pulses[data1->length++] = pulses[0];
+								data1->pulses[data1->length++] = pulses[data.buffer[y] - '0'];
+							}
+
+							data1->hardware = nano433->id;
+
+							eventpool_trigger(REASON_RECEIVED_PULSETRAIN, reason_received_pulsetrain_free, data1);
 						}
 						data.bytes = 0;
-
-						data1->hardware = nano433->id;
-
-						eventpool_trigger(REASON_RECEIVED_PULSETRAIN, reason_received_pulsetrain_free, data1);
 					}
 				}
 				if(data.start == 1) {
@@ -490,7 +498,7 @@ void nano433Init(void) {
 	hardware_register(&nano433);
 	hardware_set_id(nano433, "433nano");
 
-	options_add(&nano433->options, 'p', "comport", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&nano433->options, "p", "comport", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 
 	nano433->hwtype=RF433;
 	nano433->comtype=COMPLSTRAIN;

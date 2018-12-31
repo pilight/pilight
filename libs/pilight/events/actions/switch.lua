@@ -17,6 +17,7 @@ local units = {
 };
 
 function M.check(parameters)
+	local _to = nil;
 	if parameters['DEVICE'] == nil then
 		error("switch action is missing a \"DEVICE\" statement");
 	end
@@ -31,6 +32,20 @@ function M.check(parameters)
 
 	if #parameters['TO']['value'] ~= 1 or parameters['TO']['value'][2] ~= nil then
 		error("switch action \"TO\" only takes one argument");
+	else
+		_to = parameters['TO']['value'][1];
+	end
+
+	if parameters['FROM'] ~= nil and (#parameters['FROM']['value'] ~= 1 or parameters['FROM']['value'][2] ~= nil) then
+		error("switch action \"FROM\" only takes one argument");
+	else
+		if parameters['FROM'] ~= nil and #parameters['FROM']['value'] == 1 then
+			_from = parameters['FROM']['value'][1];
+		end
+	end
+
+	if _to == _from then
+		error("switch action \"TO\" and \"FROM\" cannot be the same");
 	end
 
 	if parameters['FOR'] ~= nil then
@@ -67,14 +82,27 @@ function M.check(parameters)
 		end
 	end
 
+	if (parameters['FROM'] ~= nil and parameters['FOR'] == nil) then
+		error("switch action \"FROM\" can only be combined with the \"FOR\" parameter");
+	end
+
+	local config = pilight.config();
 	local nrdev = #parameters['DEVICE']['value'];
 	for i = 1, nrdev, 1 do
-		local dev = pilight.config.device(parameters['DEVICE']['value'][i]);
+		local dev = config.getDevice(parameters['DEVICE']['value'][i]);
 		if dev == nil then
 			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" does not exist");
 		end
-		if dev.hasState == nil or dev.setState == nil or dev.hasState(parameters['TO']['value'][1]) == false then
+		if dev.setState == nil then
 			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['TO']['value'][1] .. "\"");
+		end
+		if dev.hasState ~= nil then
+			if dev.hasState(parameters['TO']['value'][1]) == false then
+				error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['TO']['value'][1] .. "\"");
+			end
+			if parameters['FROM'] ~= nil and dev.hasState(parameters['FROM']['value'][1]) == false then
+				error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['FROM']['value'][1] .. "\"");
+			end
 		end
 	end
 
@@ -84,11 +112,11 @@ end
 function M.timer_for(timer)
 	local data = timer.getUserdata();
 	local devname = data['device'];
-	local devobj = pilight.config.device(devname);
+	local config = pilight.config();
+	local devobj = config.getDevice(devname);
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		error("skipping overridden action switch for device " .. devname);
-		return;
 	end
 
 	if devobj.setState(data['old_state']) == false then
@@ -123,11 +151,11 @@ end
 function M.thread(thread)
 	local data = thread.getUserdata();
 	local devname = data['device'];
-	local devobj = pilight.config.device(devname);
+	local config = pilight.config();
+	local devobj = config.getDevice(devname);
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		error("skipping overridden action switch for device " .. devname);
-		return;
 	end
 
 	if devobj.setState(data['new_state']) == false then
@@ -144,11 +172,11 @@ end
 function M.timer_after(timer)
 	local data = timer.getUserdata();
 	local devname = data['device'];
-	local devobj = pilight.config.device(devname);
+	local config = pilight.config();
+	local devobj = config.getDevice(devname);
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		error("skipping overridden action switch for device " .. devname);
-		return;
 	end
 
 	if devobj.setState(data['new_state']) == false then
@@ -167,7 +195,8 @@ function M.run(parameters)
 
 	for i = 1, nrdev, 1 do
 		local devname = parameters['DEVICE']['value'][i];
-		local devobj = pilight.config.device(devname);
+		local config = pilight.config();
+		local devobj = config.getDevice(devname);
 		local old_state = nil;
 		local new_state = parameters['TO']['value'][1];
 		local after = nil;
@@ -181,9 +210,13 @@ function M.run(parameters)
 			for_ = pilight.common.explode(parameters['FOR']['value'][1], " ");
 		end
 
-		if devobj.hasSetting("state") == true then
-			if devobj.getState ~= nil then
-				old_state = devobj.getState();
+		if parameters['FROM'] ~= nil then
+			old_state = parameters['FROM']['value'][1];
+		else
+			if devobj.hasSetting("state") == true then
+				if devobj.getState ~= nil then
+					old_state = devobj.getState();
+				end
 			end
 		end
 
@@ -241,15 +274,15 @@ function M.run(parameters)
 end
 
 function M.parameters()
-	return "DEVICE", "TO", "FOR", "AFTER";
+	return "DEVICE", "TO", "FOR", "AFTER", "FROM";
 end
 
 function M.info()
 	return {
 		name = "switch",
 		version = "4.1",
-		reqversion = "7.0",
-		reqcommit = "94"
+		reqversion = "8.1.2",
+		reqcommit = "23"
 	}
 end
 

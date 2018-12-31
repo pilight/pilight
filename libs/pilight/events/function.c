@@ -27,7 +27,7 @@
 #include "../core/options.h"
 #include "../core/dso.h"
 #include "../core/log.h"
-#include "../lua/lua.h"
+#include "../lua_c/lua.h"
 #include "../config/settings.h"
 
 #include "function.h"
@@ -52,11 +52,7 @@ void event_function_init(void) {
 		OUT_OF_MEMORY
 	}
 
-#ifdef PILIGHT_REWRITE
-	settings_select_string(ORIGIN_MASTER, "functions-root", &functions_root);
-#else
-	settings_find_string("functions-root", &functions_root);
-#endif
+	config_setting_get_string("functions-root", 0, &functions_root);
 
 	if((d = opendir(functions_root))) {
 		while((file = readdir(d)) != NULL) {
@@ -74,6 +70,10 @@ void event_function_init(void) {
 	}
 	closedir(d);
 	FREE(f);
+
+	if(functions_root != (void *)FUNCTION_ROOT) {
+		FREE(functions_root);
+	}
 }
 
 static int plua_function_module_run(struct lua_State *L, char *file, struct event_function_args_t *args, struct varcont_t *v) {

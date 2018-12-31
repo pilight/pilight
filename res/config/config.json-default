@@ -1,11 +1,12 @@
 {
-	"devices": { },
-	"gui": { },
-	"rules": { },
+	"devices": {},
+	"rules": {},
+	"gui": {},
 	"settings": {
 		"log-level": 6,
 		"pid-file": "/var/run/pilight.pid",
 		"log-file": "/var/log/pilight.log",
+		"standalone": 1,
 		"webserver-enable": 1,
 		"webserver-root": "/usr/local/share/pilight/webgui",
 		"webserver-http-port": 5001,
@@ -14,6 +15,19 @@
 		"whitelist": "",
 		"gpio-platform": "none"
 	},
-	"hardware": { },
-	"registry": { }
+	"hardware": {},
+	"registry": {
+		"webserver": {
+			"ssl": {
+				"certificate": {
+					"location": "/etc/pilight/pilight.pem"
+				}
+			}
+		},
+		"pilight": {
+			"version": {
+				"current": "8.1.3"
+			}
+		}
+	}
 }

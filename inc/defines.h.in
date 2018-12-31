@@ -22,7 +22,7 @@
 #cmakedefine WEBSERVER
 #cmakedefine EVENTS
 
-#define PILIGHT_VERSION					"8.1.1"
+#define PILIGHT_VERSION					"8.1.4"
 #define PULSE_DIV								34
 #define MAXPULSESTREAMLENGTH		512
 #define EPSILON									0.00001
@@ -52,21 +52,25 @@
 #define EOSS										"\n\n" // End Of Socket Stream
 
 #ifdef _WIN32
+	#define STORAGE_ROOT						"c:/pilight/storage/"
 	#define PROTOCOL_ROOT						"c:/pilight/protocols/"
 	#define HARDWARE_ROOT						"c:/pilight/hardware/"
 	#define OPERATOR_ROOT						"c:/pilight/operators/"
 	#define FUNCTION_ROOT						"c:/pilight/functions/"
 	#define ACTION_ROOT							"c:/pilight/actions/"
+	#define LUA_ROOT								"c:/pilight/lua/"
 
 	#define CONFIG_FILE							"c:/pilight/config.json"
 	#define LOG_FILE								"c:/pilight/pilight.log"
 	#define PEM_FILE								"c:/pilight/pilight.pem"
 #else
+	#define STORAGE_ROOT						"/usr/local/lib/pilight/storage/"
 	#define PROTOCOL_ROOT						"/usr/local/lib/pilight/protocols/"
 	#define HARDWARE_ROOT						"/usr/local/lib/pilight/hardware/"
 	#define OPERATOR_ROOT						"/usr/local/lib/pilight/operators/"
 	#define FUNCTION_ROOT						"/usr/local/lib/pilight/functions/"
 	#define ACTION_ROOT							"/usr/local/lib/pilight/actions/"
+	#define LUA_ROOT								"/usr/local/lib/pilight/lua/"
 
 	#define PID_FILE								"/var/run/pilight.pid"
 	#define CONFIG_FILE							"/etc/pilight/config.json"

@@ -75,51 +75,56 @@ static int createCode(JsonNode *code) {
 		state=1;
 
 	char *platform = GPIO_PLATFORM;
-	if(settings_find_string("gpio-platform", &platform) != 0) {
-		logprintf(LOG_ERR, "relay: no gpio-platform configured");
-		have_error = 1;
-		goto clear;
-	} else if(strcmp(platform, "none") == 0) {
-		logprintf(LOG_ERR, "relay: no gpio-platform configured");
-		have_error = 1;
-		goto clear;
-	}
 
 	if(gpio == -1 || state == -1) {
 		logprintf(LOG_ERR, "relay: insufficient number of arguments");
 		have_error = 1;
 		goto clear;
-	} else if(wiringXSetup(platform, logprintf1) < 0) {
-		logprintf(LOG_ERR, "unable to setup wiringX") ;
+	}
+
+	if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
+		logprintf(LOG_ERR, "no gpio-platform configured");
+		have_error = 1;
+		goto clear;
+	}
+	if(strcmp(platform, "none") == 0) {
+		FREE(platform);
+		logprintf(LOG_ERR, "no gpio-platform configured");
+		have_error = 1;
+		goto clear;
+	}
+	if(wiringXSetup(platform, logprintf1) < 0) {
+		FREE(platform);
+		have_error = 1;
+		goto clear;
+	}
+	FREE(platform);
+
+	if(wiringXValidGPIO(gpio) != 0) {
+		logprintf(LOG_ERR, "relay: invalid gpio range");
 		have_error = 1;
 		goto clear;
 	} else {
-		if(wiringXValidGPIO(gpio) != 0) {
-			logprintf(LOG_ERR, "relay: invalid gpio range");
-			have_error = 1;
-			goto clear;
-		} else {
-			if(strstr(progname, "daemon") != NULL) {
-				pinMode(gpio, PINMODE_OUTPUT);
-				if(strcmp(def, "off") == 0) {
-					if(state == 1) {
-						digitalWrite(gpio, LOW);
-					} else if(state == 0) {
-						digitalWrite(gpio, HIGH);
-					}
-				} else {
-					if(state == 0) {
-						digitalWrite(gpio, LOW);
-					} else if(state == 1) {
-						digitalWrite(gpio, HIGH);
-					}
+		if(strstr(progname, "daemon") != NULL) {
+			pinMode(gpio, PINMODE_OUTPUT);
+			if(strcmp(def, "off") == 0) {
+				if(state == 1) {
+					digitalWrite(gpio, LOW);
+				} else if(state == 0) {
+					digitalWrite(gpio, HIGH);
 				}
 			} else {
-				wiringXGC();
+				if(state == 0) {
+					digitalWrite(gpio, LOW);
+				} else if(state == 1) {
+					digitalWrite(gpio, HIGH);
+				}
 			}
-			createMessage(gpio, state);
-			goto clear;
+		} else {
+			wiringXGC();
 		}
+		createMessage(gpio, state);
+		goto clear;
 	}
 
 clear:
@@ -168,7 +173,7 @@ static int checkValues(JsonNode *code) {
 				int gpio = (int)itmp;
 				int state = -1;
 				char *platform = GPIO_PLATFORM;
-				if(settings_find_string("gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+				if(config_setting_get_string("gpio-platform", 0, &platform) != 0 || strcmp(platform, "none") == 0) {
 					logprintf(LOG_ERR, "relay: no gpio-platform configured");
 					return -1;
 				} else if(wiringXSetup(platform, logprintf1) < 0) {
@@ -229,15 +234,15 @@ void relayInit(void) {
 	relay->hwtype = HWRELAY;
 	relay->multipleId = 0;
 
-	options_add(&relay->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&relay->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&relay->options, 'g', "gpio", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
+	options_add(&relay->options, "t", "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&relay->options, "f", "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&relay->options, "g", "gpio", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
 
 	state = MALLOC(4);
 	strcpy(state, "off");
-	options_add(&relay->options, 0, "default-state", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_STRING, (void *)state, NULL);
-	options_add(&relay->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	options_add(&relay->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&relay->options, "0", "default-state", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_STRING, (void *)state, NULL);
+	options_add(&relay->options, "0", "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&relay->options, "0", "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 	relay->checkValues=&checkValues;

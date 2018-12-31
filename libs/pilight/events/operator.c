@@ -28,7 +28,7 @@
 #include "../core/dso.h"
 #include "../core/log.h"
 #include "../config/settings.h"
-#include "../lua/lua.h"
+#include "../lua_c/lua.h"
 
 #include "operator.h"
 
@@ -52,7 +52,7 @@ void event_operator_init(void) {
 		OUT_OF_MEMORY
 	}
 
-	settings_select_string(ORIGIN_MASTER, "operators-root", &operator_root);
+	config_setting_get_string("operators-root", 0, &operator_root);
 
 	if((d = opendir(operator_root))) {
 		while((file = readdir(d)) != NULL) {
@@ -70,6 +70,10 @@ void event_operator_init(void) {
 	}
 	closedir(d);
 	FREE(f);
+
+	if(operator_root != (void *)OPERATOR_ROOT) {
+		FREE(operator_root);
+	}
 }
 
 static int plua_operator_precedence_run(struct lua_State *L, char *file, int *ret) {

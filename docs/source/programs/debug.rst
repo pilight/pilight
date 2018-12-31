@@ -40,6 +40,9 @@ Mandatory arguments to long options are mandatory for short options too.
 |
 | ``-C``, ``--config=PATH_TO_CONFIG``
 |  Path to configuration file
+|
+| ``-Ls``, ``--storage-root``
+|  Location of storage lua modules
 
 BUGS
 ====

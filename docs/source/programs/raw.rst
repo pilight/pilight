@@ -42,7 +42,10 @@ Mandatory arguments to long options are mandatory for short options too.
 |  Path to configuration file
 |
 | ``-L``, ``--linefeed``
-|  Structure raw printout with newlines between (probably) separate pulsetrains.
+|  Structure raw printout with newlines between (probably) separate pulsetrains
+|
+| ``-Ls``, ``--storage-root``
+|  Location of storage lua modules
 
 BUGS
 ====
