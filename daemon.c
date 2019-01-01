@@ -1679,9 +1679,9 @@ int start_pilight(int argc, char **argv) {
 		int z = 0;
 		wiringXSetup("", _logprintf);
 		printf("\t- none\n");
-		while((tmp = platform_iterate_name(z++)) != NULL) {
-			printf("\t- %s\n", tmp);
-		}
+//		while((tmp = platform_iterate_name(z++)) != NULL) {
+//			printf("\t- %s\n", tmp);
+//		}
 		printf("\n");
 #endif
 		goto clear;
