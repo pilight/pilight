@@ -1294,7 +1294,7 @@ static int devices_parse_elements(JsonNode *jdevices, struct devices_t *device) 
 		if(strcmp(jsettings->key, "timestamp") == 0) {
 			nrtimestamps++;
 		}
-		if(jsettings->tag == JSON_ARRAY && strcmp(jsettings->key, "id") == 0) {
+		if(jsettings->tag == JSON_ARRAY && strcmp(jsettings->key, "id") != 0 && strcmp(jsettings->key, "protocol") != 0 ) {
 			logprintf(LOG_ERR, "config device setting \"id\" is the only setting that can be defined as an array");
 			have_error = 1;
 			goto clear;
