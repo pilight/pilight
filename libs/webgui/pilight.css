@@ -129,11 +129,26 @@ div.ui-slider-switch, div.screen {
 	right: 10px;
 }
 
+@keyframes blink {
+	0% { opacity: 1; }
+	50% { opacity: 1; }
+	50.01% { opacity: 0; }
+	100% { opacity: 0; }
+}
+
+@keyframes none {
+	0% { opacity: 1; }
+}
+
 li.label .text {
 	position: relative;
 	right: 0px;
-	margin: 2px 5px 0px 5px;
 	color: black;
+	margin: 2px 5px 0px 5px;
+	animation-name: none;
+	animation-duration: .75s;
+	animation-timing-function: linear;
+	animation-iteration-count: infinite;
 }
 
 li.label .marquee {

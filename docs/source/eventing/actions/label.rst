@@ -38,6 +38,14 @@ Changes the text and color of a generic label device.
    - HOUR
    - DAY
 
+.. versionadded:: nightly
+
++----------+------------------+---------------------+---------------------------------------------------+
+| **Name** | **Required**     | **Multiple Values** | **Description**                                   |
++----------+------------------+---------------------+---------------------------------------------------+
+| BLINK    | |no|             | |no|                | Blinking label text ``on`` or ``off``             |
++----------+------------------+---------------------+---------------------------------------------------+
+
 .. rubric:: Examples
 
 .. code-block:: console
@@ -57,3 +65,9 @@ Changes the text and color of a generic label device.
    IF 1 == 1 THEN label DEVICE tempLabel TO 23.5 FOR '10 SECOND'
    IF 1 == 1 THEN label DEVICE tempLabel TO 'Bell rang' AFTER '30 SECOND'
    IF 1 == 1 THEN label DEVICE tempLabel TO None FOR '10 MINUTE' AFTER '30 SECOND'
+
+.. versionadded:: nigtly
+
+.. code-block:: console
+
+   IF 1 == 1 THEN label DEVICE tempLabel TO Door was opened BLINK on FOR 1 MINUTE

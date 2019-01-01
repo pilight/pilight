@@ -28,6 +28,8 @@ Label
    -i --id=id               control a device with this id
    -l --label=label         show a specific label
    -c --color=color         give the label a specific color
+   -b --blink=on|off        enable or disable blinking of the label
+
 
 .. rubric:: Config
 
@@ -42,7 +44,8 @@ Label
            "id": 100
          }],
          "label": "test1234",
-         "color": "red"
+         "color": "red",
+         "blink": "off"
        }
      },
      "gui": {
@@ -54,16 +57,28 @@ Label
      }
    }
 
-+------------------+-----------------+
-| **Option**       | **Value**       |
-+------------------+-----------------+
-| id               | 0 - 99999       |
-+------------------+-----------------+
-| label            | *any value*     |
-+------------------+-----------------+
-| color            | *any color*     |
-+------------------+-----------------+
++------------------+----------------------+
+| **Option**       | **Value**            |
++------------------+----------------------+
+| id               | 0 - 99999            |
++------------------+----------------------+
+| label            | *any value*          |
++------------------+----------------------+
+| color            | *any color*          |
++------------------+----------------------+
 
 .. note::
 
    Please notice that the label color is not validated in any way. The color information is just forwarded to the GUIs as is. So it could be that some GUIs do not support certain color naming. Using hex colors is therefore the safest, e.g. #000000.
+
+.. versionadded:: nightly
+
++------------------+----------------------+
+| **Option**       | **Value**            |
++------------------+----------------------+
+| blink            | on / off             |
++------------------+----------------------+
+
+.. note::
+
+   The blink option is optional, but must be configured if blinking of the label is desired.

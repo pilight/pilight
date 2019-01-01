@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2015 CurlyMo
+	Copyright (C) 2015 - 2017 CurlyMo & Niek
 
 	This file is part of pilight.
 
@@ -30,22 +30,24 @@
 #include "../../core/gc.h"
 #include "generic_label.h"
 
-static void createMessage(int id, char *label, char *color) {
+static void createMessage(int id, char *label, char *color, char *blink) {
 	generic_label->message = json_mkobject();
 	json_append_member(generic_label->message, "id", json_mknumber(id, 0));
 	json_append_member(generic_label->message, "label", json_mkstring(label));
 	json_append_member(generic_label->message, "color", json_mkstring(color));
+	if(blink != NULL) {
+		json_append_member(generic_label->message, "blink", json_mkstring(blink));
+	}
 }
 
 static int createCode(JsonNode *code) {
-	int id = -1, free_label = 0;
-	char *label = NULL;
-	char *color = "black";
+	char *label = NULL, *color = "black", *blink = NULL;
 	double itmp = 0;
+	int id = -1, free_label = 0;
 
-	if(json_find_number(code, "id", &itmp) == 0)
+	if(json_find_number(code, "id", &itmp) == 0) {
 		id = (int)round(itmp);
-
+	}
 	json_find_string(code, "label", &label);
 	if(json_find_number(code, "label", &itmp) == 0) {
 		if((label = MALLOC(BUFFER_SIZE)) == NULL) {
@@ -56,25 +58,25 @@ static int createCode(JsonNode *code) {
 		snprintf(label, BUFFER_SIZE, "%d", (int)itmp);
 	}
 	json_find_string(code, "color", &color);
+	json_find_string(code, "blink", &blink);
 
 	if(id == -1 || label == NULL) {
 		logprintf(LOG_ERR, "generic_label: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
-		createMessage(id, label, color);
+		createMessage(id, label, color, blink);
 	}
 	if(free_label) {
 		FREE(label);
 	}
-
 	return EXIT_SUCCESS;
-
 }
 
 static void printHelp(void) {
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 	printf("\t -l --label=label\t\tset this label\n");
 	printf("\t -c --color=color\t\tset label color\n");
+	printf("\t -b --blink=on|off\t\tset blinking state of this label\n");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -98,7 +100,7 @@ void genericLabelInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "generic_label";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
