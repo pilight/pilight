@@ -502,8 +502,9 @@ static void test_str_replace(CuTest *tc) {
 
 	memtrack();
 
-	char str[255], *p = str;
+	char *str = MALLOC(255), *p = str;
 	int n = 0;
+	CuAssertPtrNotNull(tc, str);
 
 	strcpy(str, "HelloWorld");
 	n = str_replace("o", "a", &p);
@@ -525,6 +526,7 @@ static void test_str_replace(CuTest *tc) {
 	CuAssertIntEquals(tc, 12, n);
 	CuAssertStrEquals(tc, "My raspberry", str);
 
+	FREE(str);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
