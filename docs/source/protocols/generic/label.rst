@@ -29,6 +29,7 @@ Label
    -l --label=label         show a specific label
    -c --color=color         give the label a specific color
    -b --blink=on|off        enable or disable blinking of the label
+   -g --background=color    give the label a specific background color
 
 
 .. rubric:: Config
@@ -45,7 +46,8 @@ Label
          }],
          "label": "test1234",
          "color": "red",
-         "blink": "off"
+         "blink": "off",
+		 "bgcolor": "white"
        }
      },
      "gui": {
@@ -71,14 +73,16 @@ Label
 
    Please notice that the label color is not validated in any way. The color information is just forwarded to the GUIs as is. So it could be that some GUIs do not support certain color naming. Using hex colors is therefore the safest, e.g. #000000.
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.4.
 
 +------------------+----------------------+
 | **Option**       | **Value**            |
 +------------------+----------------------+
 | blink            | on / off             |
 +------------------+----------------------+
+| bgcolor          | *any value*          |
++------------------+----------------------+
 
 .. note::
 
-   The blink option is optional, but must be configured if blinking of the label is desired.
+   The blink- and bgcolor options are optional, but must be configured if blinking and/or setting the background color of the label are desired.

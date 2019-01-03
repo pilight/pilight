@@ -218,6 +218,9 @@ function createLabelElement(sTabId, sDevId, aValues) {
 			if(aValues['blink'] == 'on') {
 				$('#'+sDevId+' div.marquee .text').css('animation-name', 'blink');
 			}
+			if(aValues['bgcolor']) {
+				$('#'+sDevId+' div.marquee').css('background-color', aValues['bgcolor']);
+			}
 			// var mar = $('#'+sDevId+' div.marquee .text');
 			// var left = -(mar.width()+3);
 			// var ori = left;
@@ -1142,6 +1145,8 @@ function parseValues(data) {
 						} else {
 							$('#'+dvalues+' div.marquee .text').css('animation-name', 'none');
 						}
+					} else if(vindex == 'bgcolor') {
+						$('#'+dvalues+' div.marquee').css('background-color', vvalues);						
 					}
 				}
 			});

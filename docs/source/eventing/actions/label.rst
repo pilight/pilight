@@ -9,7 +9,8 @@ Label
 
 .. rubric:: Description
 
-Changes the text and color of a generic label device.
+Changes the text and color of a generic label device. 
+Optionally also set the background color and blinking.
 
 .. rubric:: Options
 
@@ -38,13 +39,20 @@ Changes the text and color of a generic label device.
    - HOUR
    - DAY
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.4.
 
 +----------+------------------+---------------------+---------------------------------------------------+
 | **Name** | **Required**     | **Multiple Values** | **Description**                                   |
 +----------+------------------+---------------------+---------------------------------------------------+
 | BLINK    | |no|             | |no|                | Blinking label text ``on`` or ``off``             |
 +----------+------------------+---------------------+---------------------------------------------------+
+| BGCOLOR  | |no|             | |no|                | New background color for the label                |
++----------+------------------+---------------------+---------------------------------------------------+
+
+.. note:: ``BLINK`` and ``BGCOLOR``
+
+If one or both of these options are omitted, the current blink state and / or background color are preserved.
+
 
 .. rubric:: Examples
 
@@ -66,8 +74,9 @@ Changes the text and color of a generic label device.
    IF 1 == 1 THEN label DEVICE tempLabel TO 'Bell rang' AFTER '30 SECOND'
    IF 1 == 1 THEN label DEVICE tempLabel TO None FOR '10 MINUTE' AFTER '30 SECOND'
 
-.. versionadded:: nigtly
+.. versionadded:: 8.1.4.
 
 .. code-block:: console
 
-   IF 1 == 1 THEN label DEVICE tempLabel TO Door was opened BLINK on FOR 1 MINUTE
+   IF 1 == 1 THEN label DEVICE tempLabel TO 'Door was opened' BLINK on FOR 1 MINUTE
+   IF 1 == 1 THEN label DEVICE tempLabel TO 'Door was closed' COLOR white BGCOLOR green BLINK off

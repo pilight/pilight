@@ -144,6 +144,7 @@ li.label .text {
 	position: relative;
 	right: 0px;
 	color: black;
+	background-color: transparent;
 	margin: 2px 5px 0px 5px;
 	animation-name: none;
 	animation-duration: .75s;
@@ -152,6 +153,7 @@ li.label .text {
 }
 
 li.label .marquee {
+	background-color: transparent;
 	right: 15px;
 	position: relative;
 	float: right;
