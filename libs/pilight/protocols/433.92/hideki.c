@@ -34,6 +34,8 @@
 #include "../../core/gc.h"
 #include "hideki.h"
 
+#define HIDEKI_MANCHESTER_ENCODING
+
 // TODO: need to check/adjust these constants for HIDEKI
 #define PULSE_MULTIPLIER	13
 #define MIN_PULSE_LENGTH	220
@@ -43,6 +45,11 @@
 #define MIN_RAW_LENGTH		76	// SOENS, NC7104-675, GT-WT-01
 #define MED_RAW_LENGTH		86	// TFA
 #define MAX_RAW_LENGTH		88	// DOSTMAN 32.3200
+//#define PULSE_HIDEKI_WEATHER_LOWER 	750
+//#define PULSE_HIDEKI_WEATHER_UPPER	1250
+#define PULSE_NINJA_WEATHER_SHORT		412
+#define PULSE_NINJA_WEATHER_LOWER	309	// SHORT*0,75
+#define PULSE_NINJA_WEATHER_UPPER		515	// SHORT * 1,25
 
 #define HIDEKI_MAX_BYTES_PER_ROW 14
 
@@ -119,6 +126,19 @@ static int validate(void) {
 		if(hideki->raw[hideki->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   hideki->raw[hideki->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 #if 0
+#ifdef HIDEKI_MANCHESTER_ENCODING
+		uint8_t header = 0;
+		for(x=0; x<8; x++) {
+			if(hideki->raw[i] > PULSE_HIDEKI_WEATHER_LOWER &&
+					hideki->raw[i] < PULSE_HIDEKI_WEATHER_UPPER) {
+				set_bit(&header, x);
+				i++;
+			} else {
+				 // leave value unchanged to 0
+			}
+			i++;
+		}
+#else
 			// extract first byte of raw data...
 			uint8_t header = 0;
 			for(x=0; x<16; x+=2) {
@@ -132,7 +152,8 @@ static int validate(void) {
 			logprintf(LOG_DEBUG, "HIDEKI validate(): header=0x%X", header);
 			if (header == 0x9F)
 #endif
-			return 0;
+#endif
+				return 0;
 		}
 	}
 	return -1;
@@ -141,7 +162,7 @@ static int validate(void) {
 static void parseCode(void) {
 	uint8_t binary[RAW_LENGTH/2];
 	int id = 0;
-	int i, x;
+	int i = 0, x;
 	double humi_offset = 0.0, temp_offset = 0.0, wind_dir_offset = 0.0, wind_factor = 1.0, rain_factor = 1.0;
 	uint8_t packet[HIDEKI_MAX_BYTES_PER_ROW];
 	int sensortype = HIDEKI_WIND; // default for 14 valid bytes
@@ -149,14 +170,29 @@ static void parseCode(void) {
     int temp, rain_units;
     double temperature, humidity, wind_strength, wind_direction, rain;
 
+#ifdef HIDEKI_MANCHESTER_ENCODING
+	// Decode Biphase Mark Coded Differential Manchester (BMCDM) pulse stream into binary
+	memset(&binary[0], sizeof(binary));
+	for(x=0; x<=(MAX_RAW_LENGTH/2); x++) {
+		if(hideki->raw[i] > PULSE_HIDEKI_WEATHER_LOWER &&
+				hideki->raw[i] < PULSE_HIDEKI_WEATHER_UPPER) {
+			set_bit(binary, x);
+			i++;
+		} else {
+			 // leave value unchanged to 0
+		}
+		i++;
+	}
+#else
     memset(&binary[0], sizeof(binary));
-	for(x=0; x<tfa->rawlen-2; x+=2) {
+	for(x=0; x<hideki->rawlen-2; x+=2) {
 		if(hideki->raw[x] > AVG_PULSE_LENGTH*PULSE_MULTIPLIER) {
 			set_bit(binary, i++);
 		} else {
 			i++; // leave value unchanged to 0
 		}
 	}
+#endif
 
 	// Transform incoming data:
 	//  * reverse MSB/LSB
