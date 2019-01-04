@@ -59,6 +59,7 @@ static void parseCode(char **message) {
 	int msg[MESSAGE_LENGTH], channel = 0;
 	double humidity = 0.0, temperature = 0.0;
 
+	snprintf(*message, 255, "");
 	if(tfa2017->rawlen>MAX_RAW_LENGTH) {
 		logprintf(LOG_ERR, "tfa2017: parsecode - invalid parameter passed %d", tfa2017->rawlen);
 		return;
