@@ -16,8 +16,6 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-// adapted for TFA 30.3125, 30.3120.90, 30.3120.30 and 30.3121 by DonBernos
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -62,12 +60,12 @@ static void parseCode(void) {
 	int msg[MESSAGE_LENGTH], channel = 0;
 	double humidity = 0.0, temperature = 0.0;
 
-	if(tfa2017->rawlen>MAX_RAW_LENGTH) {
+	if(tfa2017->rawlen > MAX_RAW_LENGTH) {
 		logprintf(LOG_ERR, "tfa2017: parsecode - invalid parameter passed %d", tfa2017->rawlen);
 		return;
 	}
 	for(x=0;x<tfa2017->rawlen;x++) {
-		if(tfa2017->raw[x]>AVG_PULSE) {
+		if(tfa2017->raw[x] > AVG_PULSE) {
 			binary[i++] = 0;
 			if(short_pulse>0) {
 				prev = short_pulse;
@@ -76,12 +74,12 @@ static void parseCode(void) {
 			long_pulse++;
 		} else {
 			short_pulse++;
-			if (short_pulse%2==0) {
+			if(short_pulse%2 == 0) {
 				binary[i++] = 1;
 			}
 			long_pulse = 0;
 		}
-		if (long_pulse==2 && (prev==20 || (x>7 && prev==x-1))) {
+		if(long_pulse == 2 && (prev == 20 || (x > 7 && prev == x-1))) {
 			if (s==0 || i > start[s-1]+MESSAGE_LENGTH) {
 				start[s++] = i;
 				prev = 0;
@@ -90,12 +88,12 @@ static void parseCode(void) {
 	}
 	// The protocol sends the message three times in a row.
 	// If we find two identical ones, we consider it valid.
-	if (s<2) {
+	if(s < 2) {
 		return;
 	}
-	if (i > start[1]+MESSAGE_LENGTH && memcmp(&binary[start[0]], &binary[start[1]], MESSAGE_LENGTH) == 0) {
+	if(i > start[1]+MESSAGE_LENGTH && memcmp(&binary[start[0]], &binary[start[1]], MESSAGE_LENGTH) == 0) {
 		m=start[0];
-	} else if (s>2 && i > start[2]+MESSAGE_LENGTH &&
+	} else if(s > 2 && i > start[2]+MESSAGE_LENGTH &&
 				(memcmp(&binary[start[0]], &binary[start[2]], MESSAGE_LENGTH) == 0 ||
 					memcmp(&binary[start[1]], &binary[start[2]], MESSAGE_LENGTH) == 0)) {
 		m=start[2];
@@ -106,22 +104,22 @@ static void parseCode(void) {
 	// decode manchester
 	prev = 1;
 	for(x=0;x<MESSAGE_LENGTH;x++) {
-		if (binary[x+m] == 0) {
+		if(binary[x+m] == 0) {
 			prev = !prev;
 		}
 		msg[x] = prev;
 	}
 	// According to http://www.osengr.org/WxShield/Downloads/Weather-Sensor-RF-Protocols.pdf
-	// the first byte is a fixed id, the second is a rolling code which changes on
+	// the first byte is a fixed id (0x45), the second is a rolling code which changes on
 	// battery replacement (both are not used here).
 	// Of the next four bits the first is unused, the next three encode the channel.
-	channel=binToDecRev(msg, 17, 19)+1;
+	channel = binToDecRev(msg, 17, 19)+1;
 	// The next twelve bits encode the temperature T
 	// in tenth of degree Fahrenheit with an offset of 40.
 	// The following is a simplification of F=T/10-40 and C=(F-32)*5/9.
-	temperature=(double)binToDecRev(msg, 20, 31)/18.-40.;
+	temperature = (double)binToDecRev(msg, 20, 31)/18.-40.;
 	// The next byte has the relative humidity in percent.
-	humidity=(double)binToDecRev(msg, 32, 39);
+	humidity = (double)binToDecRev(msg, 32, 39);
 	// The last byte contains a checksum which is not used here.
 
 	struct settings_t *tmp = settings;
@@ -133,7 +131,7 @@ static void parseCode(void) {
 		}
 		tmp = tmp->next;
 	}
-	if (humidity<0. || humidity>100.) {
+	if(humidity < 0 || humidity > 100) {
 		return;
 	}
 
