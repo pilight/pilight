@@ -34,22 +34,14 @@
 #include "../../core/gc.h"
 #include "hideki.h"
 
-#define HIDEKI_MANCHESTER_ENCODING
-
-// TODO: need to check/adjust these constants for HIDEKI
 #define PULSE_MULTIPLIER	13
 #define MIN_PULSE_LENGTH	220
-#define MAX_PULSE_LENGTH	280	// FREETEC NC7104-675, Globaltronics GT-WT-01
-#define AVG_PULSE_LENGTH	235
-#define RAW_LENGTH			88
-#define MIN_RAW_LENGTH		76	// SOENS, NC7104-675, GT-WT-01
-#define MED_RAW_LENGTH		86	// TFA
-#define MAX_RAW_LENGTH		88	// DOSTMAN 32.3200
-//#define PULSE_HIDEKI_WEATHER_LOWER 	750
-//#define PULSE_HIDEKI_WEATHER_UPPER	1250
-#define PULSE_NINJA_WEATHER_SHORT		412
-#define PULSE_NINJA_WEATHER_LOWER	309	// SHORT*0,75
-#define PULSE_NINJA_WEATHER_UPPER		515	// SHORT * 1,25
+#define MAX_PULSE_LENGTH	280
+
+#define MIN_RAW_LENGTH		130
+#define MAX_RAW_LENGTH		180
+#define PULSE_HIDEKI_WEATHER_LOWER		300	// experimentally detected
+#define PULSE_HIDEKI_WEATHER_UPPER		700	// experimentally detected
 
 #define HIDEKI_MAX_BYTES_PER_ROW 14
 
@@ -108,26 +100,25 @@ static int byteParity(uint8_t inByte)
 }
 
 static void set_bit(uint8_t *array, int position) {
-	uint8_t mask = 1 << (position % 8);
+	uint8_t mask = 1 << (7 - (position % 8));
 	array[position / 8] |= mask;
 }
 
 #if 0
 static void reset_bit(uint8_t *array, int position) {
-	uint8_t mask = (1 << (position % 8)) ^ 0xff;
+	uint8_t mask = 1 << (7 - (position % 8));
 	array[position / 8] &= mask;
 }
 #endif
 
 static int validate(void) {
 	int x = 0, i = 0;
-	logprintf(LOG_DEBUG, "HIDEKI validate(): rawlen=%d", hideki->rawlen);
-	if(hideki->rawlen == MIN_RAW_LENGTH || hideki->rawlen == MED_RAW_LENGTH || hideki->rawlen == MAX_RAW_LENGTH) {
-		if(hideki->raw[hideki->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
-		   hideki->raw[hideki->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
-#if 0
-#ifdef HIDEKI_MANCHESTER_ENCODING
-		uint8_t header = 0;
+	uint8_t header = 0;
+
+	if ((hideki->rawlen < MIN_RAW_LENGTH) || (hideki->rawlen > MAX_RAW_LENGTH))
+	  return -1;
+
+#if 1
 		for(x=0; x<8; x++) {
 			if(hideki->raw[i] > PULSE_HIDEKI_WEATHER_LOWER &&
 					hideki->raw[i] < PULSE_HIDEKI_WEATHER_UPPER) {
@@ -138,29 +129,16 @@ static int validate(void) {
 			}
 			i++;
 		}
-#else
-			// extract first byte of raw data...
-			uint8_t header = 0;
-			for(x=0; x<16; x+=2) {
-				if(hideki->raw[x] > AVG_PULSE_LENGTH*PULSE_MULTIPLIER) {
-					set_bit(&header, i++);
-				} else {
-					i++; // leave value unchanged to 0
-				}
-			}
-			header = reverse8(header) ^ 0xFF;
-			logprintf(LOG_DEBUG, "HIDEKI validate(): header=0x%X", header);
-			if (header == 0x9F)
+	logprintf(LOG_DEBUG, "HIDEKI validate(): rawlen=%d, header byte: %02X", hideki->rawlen, header);
+		
+	if (header != 0x06) // tested with TS04 only
+        	return -1;
 #endif
-#endif
-				return 0;
-		}
-	}
-	return -1;
+	return 0;
 }
 
 static void parseCode(void) {
-	uint8_t binary[RAW_LENGTH/2];
+	uint8_t binary[MAX_RAW_LENGTH/2];
 	int id = 0;
 	int i = 0, x;
 	double humi_offset = 0.0, temp_offset = 0.0, wind_dir_offset = 0.0, wind_factor = 1.0, rain_factor = 1.0;
@@ -170,9 +148,8 @@ static void parseCode(void) {
     int temp, rain_units;
     double temperature, humidity, wind_strength, wind_direction, rain;
 
-#ifdef HIDEKI_MANCHESTER_ENCODING
 	// Decode Biphase Mark Coded Differential Manchester (BMCDM) pulse stream into binary
-	memset(&binary[0], sizeof(binary));
+	memset(&binary[0], 0, sizeof(binary));
 	for(x=0; x<=(MAX_RAW_LENGTH/2); x++) {
 		if(hideki->raw[i] > PULSE_HIDEKI_WEATHER_LOWER &&
 				hideki->raw[i] < PULSE_HIDEKI_WEATHER_UPPER) {
@@ -183,23 +160,36 @@ static void parseCode(void) {
 		}
 		i++;
 	}
-#else
-    memset(&binary[0], sizeof(binary));
-	for(x=0; x<hideki->rawlen-2; x+=2) {
-		if(hideki->raw[x] > AVG_PULSE_LENGTH*PULSE_MULTIPLIER) {
-			set_bit(binary, i++);
-		} else {
-			i++; // leave value unchanged to 0
-		}
-	}
-#endif
+
+	logprintf(LOG_DEBUG, "HIDEKI parseCode(): raw: %04d %04d %04d %04d  %04d %04d %04d %04d",
+			hideki->raw[0], hideki->raw[1], hideki->raw[2], hideki->raw[3], 
+			hideki->raw[4], hideki->raw[5], hideki->raw[6], hideki->raw[7]);
+	logprintf(LOG_DEBUG, "HIDEKI parseCode(): raw: %04d %04d %04d %04d  %04d %04d %04d %04d",
+			hideki->raw[8], hideki->raw[9], hideki->raw[10], hideki->raw[11], 
+			hideki->raw[12], hideki->raw[13], hideki->raw[14], hideki->raw[15]);
+	logprintf(LOG_DEBUG, "HIDEKI parseCode(): raw: %04d %04d %04d %04d  %04d %04d %04d %04d",
+			hideki->raw[16], hideki->raw[17], hideki->raw[18], hideki->raw[19], 
+			hideki->raw[20], hideki->raw[21], hideki->raw[22], hideki->raw[23]);
+	logprintf(LOG_DEBUG, "HIDEKI parseCode(): raw: %04d %04d %04d %04d  %04d %04d %04d %04d",
+			hideki->raw[24], hideki->raw[25], hideki->raw[26], hideki->raw[27], 
+			hideki->raw[28], hideki->raw[29], hideki->raw[30], hideki->raw[31]);
+	logprintf(LOG_DEBUG, "HIDEKI parseCode(): raw: %04d %04d %04d %04d  %04d %04d %04d %04d",
+			hideki->raw[32], hideki->raw[33], hideki->raw[34], hideki->raw[35], 
+			hideki->raw[36], hideki->raw[37], hideki->raw[38], hideki->raw[39]);
+	logprintf(LOG_DEBUG, "HIDEKI parseCode(): raw: %04d %04d %04d %04d  %04d %04d %04d %04d",
+			hideki->raw[40], hideki->raw[41], hideki->raw[42], hideki->raw[43], 
+			hideki->raw[44], hideki->raw[45], hideki->raw[46], hideki->raw[47]);
+	logprintf(LOG_DEBUG, "HIDEKI parseCode(): bin: %02X %02X %02X %02X %02X %02X %02X %02X",
+			binary[0], binary[1], binary[2], binary[3], binary[4], binary[5], binary[6], binary[7]);
+	logprintf(LOG_DEBUG, "HIDEKI parseCode(): bin: %02X %02X %02X %02X %02X %02X %02X %02X",
+			binary[8], binary[9], binary[10], binary[11], binary[12], binary[13], binary[14], binary[15]);
 
 	// Transform incoming data:
 	//  * reverse MSB/LSB
 	//  * invert all bits
 	//  * Remove (and check) parity bit
-	for (int i = 0; i < HIDEKI_MAX_BYTES_PER_ROW; i++) {
-		unsigned int offset = i/8;
+	for (i = 0; i < HIDEKI_MAX_BYTES_PER_ROW; i++) {
+	    unsigned int offset = i/8;
 	    packet[i] = (binary[i+offset] << (i%8)) | (binary[i+offset+1] >> (8 - i%8)); // skip/remove parity bit
 	    packet[i] = reverse8(packet[i]); // reverse LSB first to LSB last
 	    packet[i] ^= 0xFF; // invert bits
@@ -219,20 +209,24 @@ static void parseCode(void) {
 	    		sensortype = HIDEKI_TEMP;
 	            break;
 	        }
-			logprintf(LOG_DEBUG, "HIDEKI parseCode(): unsupported sensor type");
+			logprintf(LOG_DEBUG, "HIDEKI parseCode(): unsupported sensor type (%d/%d/%d)", 
+			i, parity, byteParity(packet[i]));
 	        return; // no success
 	    }
 	}
 
 	logprintf(LOG_DEBUG, "HIDEKI parseCode(): %02X %02X %02X %02X %02X %02X %02X %02X",
 			packet[0], packet[1], packet[2], packet[3], packet[4], packet[5], packet[6], packet[7]);
+	logprintf(LOG_DEBUG, "HIDEKI parseCode(): %02X %02X %02X %02X %02X %02X %02X %02X",
+			packet[8], packet[9], packet[10], packet[11], packet[12], packet[13], packet[14], packet[15]);
 
-	// TODO: move this check into the validate() function
+#if 0
     if (packet[0] != 0x9f) // NOTE: other valid ids might exist
         return;
+#endif
 
     // decode the sensor values
-    channel = (packet[1] >> 5) & 0x0F;
+     channel = (packet[1] >> 5) & 0x0F;
      if (channel >= 5) channel -= 1;
      rc = packet[1] & 0x0F; // rolling code
      temp = (packet[5] & 0x0F) * 100 + ((packet[4] & 0xF0) >> 4) * 10 + (packet[4] & 0x0F);
@@ -241,6 +235,10 @@ static void parseCode(void) {
      }
      battery_ok = (packet[5]>>6) & 0x01;
      id = packet[3]; // probably some ID
+
+logprintf(LOG_DEBUG, "HIDEKI parseCode(): channel %02X, ID:  %02X, RC: %02X, temp: %02X, batt: %02X, sensortyp: %02x, hum: %02X",
+			channel, id, rc, temp, battery_ok, sensortype, ((packet[6] & 0xF0) >> 4) * 10 + (packet[6] & 0x0F));
+   return;
 
      // read some settings
  	 struct settings_t *tmp = settings;
