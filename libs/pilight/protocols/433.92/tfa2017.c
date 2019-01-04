@@ -133,11 +133,14 @@ static void parseCode(void) {
 		}
 		tmp = tmp->next;
 	}
+	if (humidity<0. || humidity>100.) {
+		return;
+	}
 
 	tfa2017->message = json_mkobject();
 	json_append_member(tfa2017->message, "id", json_mknumber(channel, 0));
-	json_append_member(tfa2017->message, "temperature", json_mknumber(temperature, 1));
-	json_append_member(tfa2017->message, "humidity", json_mknumber(humidity, 1));
+	json_append_member(tfa2017->message, "temperature", json_mknumber(temperature, 2));
+	json_append_member(tfa2017->message, "humidity", json_mknumber(humidity, 2));
 }
 
 static int checkValues(struct JsonNode *jvalues) {
@@ -208,7 +211,7 @@ __attribute__((weak))
 void tfa2017Init(void) {
 	protocol_register(&tfa2017);
 	protocol_set_id(tfa2017, "tfa2017");
-	protocol_device_add(tfa2017, "tfa2017", "TFA 30.X Temp Hum Sensor Protocol 2017");
+	protocol_device_add(tfa2017, "tfa2017", "TFA 30.X Temp Hum Sensor Revision 08/2017");
 	tfa2017->devtype = WEATHER;
 	tfa2017->hwtype = RF433;
 	tfa2017->minrawlen = MIN_RAW_LENGTH;
@@ -227,7 +230,6 @@ void tfa2017Init(void) {
 	options_add(&tfa2017->options, "0", "temperature-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
 	options_add(&tfa2017->options, "0", "show-humidity", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&tfa2017->options, "0", "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-
 
 	tfa2017->parseCode=&parseCode;
 	tfa2017->checkValues=&checkValues;
