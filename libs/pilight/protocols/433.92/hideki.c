@@ -17,7 +17,7 @@
 */
 
 /*
- *  this code is based on tfa protocol (see tfa.[ch]) and adjusted according to RTL_433 project code for HIDEKI
+ *  this implementation is based on RTL_433 project code for HIDEKI
  * */
 
 #include <stdio.h>
@@ -34,16 +34,17 @@
 #include "../../core/gc.h"
 #include "hideki.h"
 
-#define PULSE_MULTIPLIER	13
-#define MIN_PULSE_LENGTH	220
-#define MAX_PULSE_LENGTH	280
+#define MIN_PULSE_LENGTH			220
+#define MAX_PULSE_LENGTH			280
 
-#define MIN_RAW_LENGTH		130
+#define MIN_RAW_LENGTH			130
 #define MAX_RAW_LENGTH		180
 #define PULSE_HIDEKI_WEATHER_LOWER		300	// experimentally detected
 #define PULSE_HIDEKI_WEATHER_UPPER		700	// experimentally detected
 
 #define HIDEKI_MAX_BYTES_PER_ROW 14
+
+//#define HIDEKI_DEBUG
 
 /*
  * The received bits are inverted.
@@ -72,7 +73,7 @@
 enum sensortypes { HIDEKI_UNKNOWN, HIDEKI_TEMP, HIDEKI_TS04, HIDEKI_WIND, HIDEKI_RAIN };
 
 typedef struct settings_t {
-	double id;
+	double rc; // double: this type seems necessary because of the data types expected by JSON
 	double channel;
 	double temp;
 	double humi;
@@ -118,10 +119,8 @@ static int validate(void) {
 	if ((hideki->rawlen < MIN_RAW_LENGTH) || (hideki->rawlen > MAX_RAW_LENGTH))
 	  return -1;
 
-#if 1
-		for(x=0; x<8; x++) {
-			if(hideki->raw[i] > PULSE_HIDEKI_WEATHER_LOWER &&
-					hideki->raw[i] < PULSE_HIDEKI_WEATHER_UPPER) {
+	for(x=0; x<8; x++) {
+		if(hideki->raw[i] > PULSE_HIDEKI_WEATHER_LOWER && 	hideki->raw[i] < PULSE_HIDEKI_WEATHER_UPPER) {
 				set_bit(&header, x);
 				i++;
 			} else {
@@ -129,11 +128,13 @@ static int validate(void) {
 			}
 			i++;
 		}
+#ifdef HIDEKI_DEBUG
 	logprintf(LOG_DEBUG, "HIDEKI validate(): rawlen=%d, header byte: %02X", hideki->rawlen, header);
-		
+#endif
+
 	if (header != 0x06) // tested with TS04 only
         	return -1;
-#endif
+
 	return 0;
 }
 
@@ -151,8 +152,7 @@ static void parseCode(void) {
 	// Decode Biphase Mark Coded Differential Manchester (BMCDM) pulse stream into binary
 	memset(&binary[0], 0, sizeof(binary));
 	for(x=0; x<=(MAX_RAW_LENGTH/2); x++) {
-		if(hideki->raw[i] > PULSE_HIDEKI_WEATHER_LOWER &&
-				hideki->raw[i] < PULSE_HIDEKI_WEATHER_UPPER) {
+		if(hideki->raw[i] > PULSE_HIDEKI_WEATHER_LOWER && hideki->raw[i] < PULSE_HIDEKI_WEATHER_UPPER) {
 			set_bit(binary, x);
 			i++;
 		} else {
@@ -160,7 +160,7 @@ static void parseCode(void) {
 		}
 		i++;
 	}
-
+#ifdef HIDEKI_DEBUG
 	logprintf(LOG_DEBUG, "HIDEKI parseCode(): raw: %04d %04d %04d %04d  %04d %04d %04d %04d",
 			hideki->raw[0], hideki->raw[1], hideki->raw[2], hideki->raw[3], 
 			hideki->raw[4], hideki->raw[5], hideki->raw[6], hideki->raw[7]);
@@ -183,6 +183,7 @@ static void parseCode(void) {
 			binary[0], binary[1], binary[2], binary[3], binary[4], binary[5], binary[6], binary[7]);
 	logprintf(LOG_DEBUG, "HIDEKI parseCode(): bin: %02X %02X %02X %02X %02X %02X %02X %02X",
 			binary[8], binary[9], binary[10], binary[11], binary[12], binary[13], binary[14], binary[15]);
+#endif
 
 	// Transform incoming data:
 	//  * reverse MSB/LSB
@@ -209,16 +210,19 @@ static void parseCode(void) {
 	    		sensortype = HIDEKI_TEMP;
 	            break;
 	        }
-			logprintf(LOG_DEBUG, "HIDEKI parseCode(): unsupported sensor type (%d/%d/%d)", 
-			i, parity, byteParity(packet[i]));
-	        return; // no success
+#ifdef HIDEKI_DEBUG
+			logprintf(LOG_DEBUG, "HIDEKI parseCode(): unsupported sensor type (%d/%d/%d)", i, parity, byteParity(packet[i]));
+#endif
+			return; // no success
 	    }
 	}
 
+#ifdef HIDEKI_DEBUG
 	logprintf(LOG_DEBUG, "HIDEKI parseCode(): %02X %02X %02X %02X %02X %02X %02X %02X",
 			packet[0], packet[1], packet[2], packet[3], packet[4], packet[5], packet[6], packet[7]);
 	logprintf(LOG_DEBUG, "HIDEKI parseCode(): %02X %02X %02X %02X %02X %02X %02X %02X",
 			packet[8], packet[9], packet[10], packet[11], packet[12], packet[13], packet[14], packet[15]);
+#endif
 
 #if 0
     if (packet[0] != 0x9f) // NOTE: other valid ids might exist
@@ -236,14 +240,15 @@ static void parseCode(void) {
      battery_ok = (packet[5]>>6) & 0x01;
      id = packet[3]; // probably some ID
 
-logprintf(LOG_DEBUG, "HIDEKI parseCode(): channel %02X, ID:  %02X, RC: %02X, temp: %02X, batt: %02X, sensortyp: %02x, hum: %02X",
+#ifdef HIDEKI_DEBUG
+     logprintf(LOG_DEBUG, "HIDEKI parseCode(): channel %02X, ID:  %02X, RC: %02X, temp: %02X, batt: %02X, sensortyp: %02x, hum: %02X",
 			channel, id, rc, temp, battery_ok, sensortype, ((packet[6] & 0xF0) >> 4) * 10 + (packet[6] & 0x0F));
-   return;
+#endif
 
      // read some settings
  	 struct settings_t *tmp = settings;
  	 while(tmp) {
- 		if(fabs(tmp->channel-channel) < EPSILON) {
+ 		if (fabs(tmp->channel - (double)channel) < EPSILON)  {
  			humi_offset = tmp->humi;
  			temp_offset = tmp->temp;
  			wind_dir_offset = tmp->wind_dir;
@@ -264,7 +269,9 @@ logprintf(LOG_DEBUG, "HIDEKI parseCode(): channel %02X, ID:  %02X, RC: %02X, tem
 
           json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
           json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
-          json_append_member(hideki->message, "id", json_mknumber(id, 0));
+#if 0
+          json_append_member(hideki->message, "id", json_mknumber(id, 0)); // ID value changes: maybe this device has no unique ID
+#endif
           json_append_member(hideki->message, "rc", json_mknumber(rc, 0));
 
       } else  if (sensortype == HIDEKI_WIND) {
@@ -320,11 +327,15 @@ logprintf(LOG_DEBUG, "HIDEKI parseCode(): channel %02X, ID:  %02X, RC: %02X, tem
 static int checkValues(struct JsonNode *jvalues) {
 	struct JsonNode *jid = NULL;
 
+#ifdef HIDEKI_DEBUG
+	logprintf(LOG_DEBUG, "HIDEKI checkValues() called");
+#endif
+
 	if((jid = json_find_member(jvalues, "id"))) {
 		struct settings_t *snode = NULL;
 		struct JsonNode *jchild = NULL;
 		struct JsonNode *jchild1 = NULL;
-		double channel = -1, id = -1;
+		double channel = -1.0, rc = -1.0;
 		int match = 0;
 
 		jchild = json_first_child(jid);
@@ -334,8 +345,8 @@ static int checkValues(struct JsonNode *jvalues) {
 				if(strcmp(jchild1->key, "channel") == 0) {
 					channel = jchild1->number_;
 				}
-				if(strcmp(jchild1->key, "id") == 0) {
-					id = jchild1->number_;
+				if(strcmp(jchild1->key, "rc") == 0) {
+					rc =  jchild1->number_;
 				}
 				jchild1 = jchild1->next;
 			}
@@ -344,8 +355,11 @@ static int checkValues(struct JsonNode *jvalues) {
 
 		struct settings_t *tmp = settings;
 		while(tmp) {
-			if(fabs(tmp->id-id) < EPSILON && fabs(tmp->channel-channel) < EPSILON) {
+			if ( /*  fabs(tmp->rc - rc) < EPSILON) &&  */ fabs(tmp->channel - channel) < EPSILON)  {
 				match = 1;
+#ifdef HIDEKI_DEBUG
+				logprintf(LOG_DEBUG, "HIDEKI checkValues(): match found");
+#endif
 				break;
 			}
 			tmp = tmp->next;
@@ -356,7 +370,7 @@ static int checkValues(struct JsonNode *jvalues) {
 				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
-			snode->id = id;
+			snode->rc = rc;  // rolling code might be misused as key, iff its value is fix for a device
 			snode->channel = channel;
 			snode->temp = 0;
 			snode->humi = 0;
@@ -372,6 +386,9 @@ static int checkValues(struct JsonNode *jvalues) {
 
 			snode->next = settings;
 			settings = snode;
+#ifdef HIDEKI_DEBUG
+			logprintf(LOG_DEBUG, "HIDEKI checkValues(): new setting appended");
+#endif
 		}
 	}
 	return 0;
@@ -413,10 +430,12 @@ void hidekiInit(void) {
 	options_add(&hideki->options, "d", "wind_direction", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 	options_add(&hideki->options, "r", "rain", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 	options_add(&hideki->options, "b", "battery", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[01]$");
-	options_add(&hideki->options, "o", "rc", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "[0-9]"); // rolling code
+	options_add(&hideki->options, "o", "rc", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "[0-9]"); // rolling code, might be used as ID, if constant
 	// device IDs
-	options_add(&hideki->options, "c", "channel", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
+#if 0
 	options_add(&hideki->options, "i", "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
+#endif
+	options_add(&hideki->options, "c", "channel", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
 	// device settings:
 	options_add(&hideki->options, "0", "temperature-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
 	options_add(&hideki->options, "0", "humidity-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
@@ -424,8 +443,8 @@ void hidekiInit(void) {
 	options_add(&hideki->options, "0", "wind-factor", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "^[0-9]{1,5}$");
 	options_add(&hideki->options, "0", "rain-factor", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "^[0-9]{1,5}$");
 	// GUI  settings:
-	options_add(&hideki->options, "0", "temperature-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
-	options_add(&hideki->options, "0", "humidity-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
+	options_add(&hideki->options, "0", "temperature-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&hideki->options, "0", "humidity-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
 	options_add(&hideki->options, "0", "wind-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
 	options_add(&hideki->options, "0", "wind_direction-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
 	options_add(&hideki->options, "0", "rain-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
@@ -446,7 +465,7 @@ void hidekiInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "hideki";
-	module->version = "0.1";
+	module->version = "0.2";
 	module->reqversion = "1.0";
 	module->reqcommit = "85";
 }
