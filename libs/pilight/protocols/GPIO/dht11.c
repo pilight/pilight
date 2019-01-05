@@ -269,7 +269,7 @@ static int checkValues(struct JsonNode *code) {
 					logprintf(LOG_ERR, "no gpio-platform configured");
 					return NULL;
 				}
-				if(wiringXSetup(platform, _logprintf) < 0) {
+				if(wiringXSetup(platform, logprintf1) < 0) {
 					FREE(platform);
 					return NULL;
 				}
