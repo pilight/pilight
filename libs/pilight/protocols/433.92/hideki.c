@@ -39,7 +39,7 @@
 
 #define MIN_RAW_LENGTH			130
 #define MAX_RAW_LENGTH		180
-#define PULSE_HIDEKI_WEATHER_LOWER		300	// experimentally detected
+#define PULSE_HIDEKI_WEATHER_LOWER		100	// experimentally detected
 #define PULSE_HIDEKI_WEATHER_UPPER		700	// experimentally detected
 
 #define HIDEKI_MAX_BYTES_PER_ROW 14
