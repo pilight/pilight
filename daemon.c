@@ -1675,13 +1675,15 @@ int start_pilight(int argc, char **argv) {
 		printf("%s", help);
 #if defined(__arm__) || defined(__mips__)
 		printf("\n\tThe following GPIO platforms are supported:\n");
-		char *tmp = NULL;
-		int z = 0;
-		wiringXSetup("", _logprintf);
+		char **out = NULL;
+		int z = 0, i = wiringXSupportedPlatforms(&out);
+
 		printf("\t- none\n");
-//		while((tmp = platform_iterate_name(z++)) != NULL) {
-//			printf("\t- %s\n", tmp);
-//		}
+		for(z=0;z<i;z++) {
+			printf("\t- %s\n", out[z]);
+			free(out[z]);
+		}
+		free(out);
 		printf("\n");
 #endif
 		goto clear;
