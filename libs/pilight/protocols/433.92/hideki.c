@@ -293,10 +293,14 @@ static void parseCode(void) {
  				}
  			} else if (my_settings->sensortype !=  sensortype) {
  				/* calibration is finished and detected sensor type does not match */
- 				logprintf(LOG_NOTICE, "HIDEKI parseCode(): wrong sensor type found: %d (expected: $d) -> ignoring data",
+ 				logprintf(LOG_NOTICE, "HIDEKI parseCode(): wrong sensor type found: %d (expected: %d) -> ignoring data",
  							sensortype, my_settings->sensortype, sensortype);
  				return;	// ignore the data
  			}
+  	 } else {
+			/* no valid settings/configuration found -> the received data do not belong to a configured device from config.json
+			 * -> usually we could return here, but in that case the tool "pilight_receive" might be unable to receive other data
+			 * than locally configured... */
   	 }
 
      if (sensortype == HIDEKI_TS04) {
