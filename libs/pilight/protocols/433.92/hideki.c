@@ -117,13 +117,6 @@ static void set_bit(uint8_t *array, int position) {
 	array[position / 8] |= mask;
 }
 
-#if 0
-static void reset_bit(uint8_t *array, int position) {
-	uint8_t mask = 1 << (7 - (position % 8));
-	array[position / 8] &= mask;
-}
-#endif
-
 static struct settings_t *get_settings(double channel) {
 	struct settings_t *tmp = settings;
 
@@ -246,11 +239,6 @@ static void parseCode(void) {
 			packet[0], packet[1], packet[2], packet[3], packet[4], packet[5], packet[6], packet[7]);
 	logprintf(LOG_DEBUG, "HIDEKI parseCode(): %02X %02X %02X %02X %02X %02X %02X %02X",
 			packet[8], packet[9], packet[10], packet[11], packet[12], packet[13], packet[14], packet[15]);
-#endif
-
-#if 0
-    if (packet[0] != 0x9f) // NOTE: other valid ids might exist
-        return;
 #endif
 
     // decode the sensor values
@@ -395,20 +383,6 @@ static int checkValues(struct JsonNode *jvalues) {
 			}
 			jchild = jchild->next;
 		}
-
-#if 0
-		struct settings_t *tmp = settings;
-		while(tmp) {
-			if ( /*  fabs(tmp->rc - rc) < EPSILON) &&  */ fabs(tmp->channel - channel) < EPSILON)  {
-				match = 1;
-#ifdef HIDEKI_DEBUG
-				logprintf(LOG_DEBUG, "HIDEKI checkValues(): match found");
-#endif
-				break;
-			}
-			tmp = tmp->next;
-		}
-#endif
 
 		if (get_settings(channel) == NULL) {
 			if ((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
