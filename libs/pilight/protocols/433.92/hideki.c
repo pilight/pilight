@@ -73,6 +73,18 @@
 enum sensortypes { HIDEKI_UNKNOWN, HIDEKI_TEMP, HIDEKI_TS04, HIDEKI_WIND, HIDEKI_RAIN };
 
 typedef struct settings_t {
+	/* This driver implements different sensor types, that are dynamically detected in parseCode() function.
+	 * Unfortunately, the detected sensor type sometimes is wrong. Unfortunately, the expected sensor type
+	 * as defined in the user configuration ("protocol" name from config.jaon) is not accessible in function
+	 * checkValues(). Hence a heuristics tries to get the right sensor type and stores them in this settings
+	 * structure:
+	 * In the first received packets, the system stores the sensor type as soon as the same type was detected
+	 * in (CALIBRATION_COUNT+1) subsequent data packets. From this time on, all decoded packets with
+	 * wrong sensor type are ignored */
+#define CALIBRATION_COUNT  3
+	uint8_t calibration;
+	uint8_t sensortype;
+
 	double rc; // double: this type seems necessary because of the data types expected by JSON
 	double channel;
 	double temp;
@@ -111,6 +123,18 @@ static void reset_bit(uint8_t *array, int position) {
 	array[position / 8] &= mask;
 }
 #endif
+
+static struct settings_t *get_settings(double channel) {
+	struct settings_t *tmp = settings;
+
+	while(tmp) {
+		if ( /*  fabs(tmp->rc - rc) < EPSILON) &&  */ fabs(tmp->channel - channel) < EPSILON)  {
+			return tmp;
+		}
+		tmp = tmp->next;
+	}
+	return NULL;
+}
 
 static int validate(void) {
 	int x = 0, i = 0;
@@ -246,18 +270,34 @@ static void parseCode(void) {
 #endif
 
      // read some settings
- 	 struct settings_t *tmp = settings;
- 	 while(tmp) {
- 		if (fabs(tmp->channel - (double)channel) < EPSILON)  {
- 			humi_offset = tmp->humi;
- 			temp_offset = tmp->temp;
- 			wind_dir_offset = tmp->wind_dir;
- 			wind_factor = tmp->wind_factor;
- 			rain_factor = tmp->rain;
- 			break;
- 		}
- 		tmp = tmp->next;
- 	 }
+ 	 struct settings_t *my_settings = get_settings((double)channel);
+ 	 if (my_settings) {
+ 			humi_offset = my_settings->humi;
+ 			temp_offset = my_settings->temp;
+ 			wind_dir_offset = my_settings->wind_dir;
+ 			wind_factor = my_settings->wind_factor;
+ 			rain_factor = my_settings->rain;
+
+ 			if  (my_settings->calibration > 0) {
+ 				/* still in calibration phase to memorize correct sensor type */
+#ifdef HIDEKI_DEBUG
+ 				logprintf(LOG_DEBUG, "HIDEKI parseCode(): calibration: %d, type: %d -> %d",
+ 							my_settings->calibration, my_settings->sensortype, sensortype);
+#endif
+ 				my_settings->calibration--;
+ 				if (my_settings->sensortype == HIDEKI_UNKNOWN) {
+ 					my_settings->sensortype = sensortype;
+ 				} else if (my_settings->sensortype !=  sensortype) {
+ 					my_settings->sensortype = sensortype;
+ 					my_settings->calibration = CALIBRATION_COUNT;
+ 				}
+ 			} else if (my_settings->sensortype !=  sensortype) {
+ 				/* calibration is finished and detected sensor type does not match */
+ 				logprintf(LOG_NOTICE, "HIDEKI parseCode(): wrong sensor type found: %d (expected: $d) -> ignoring data",
+ 							sensortype, my_settings->sensortype, sensortype);
+ 				return;	// ignore the data
+ 			}
+  	 }
 
      if (sensortype == HIDEKI_TS04) {
     	  temperature = (double)temp/10 + temp_offset;
@@ -336,7 +376,6 @@ static int checkValues(struct JsonNode *jvalues) {
 		struct JsonNode *jchild = NULL;
 		struct JsonNode *jchild1 = NULL;
 		double channel = -1.0, rc = -1.0;
-		int match = 0;
 
 		jchild = json_first_child(jid);
 		while(jchild) {
@@ -353,6 +392,7 @@ static int checkValues(struct JsonNode *jvalues) {
 			jchild = jchild->next;
 		}
 
+#if 0
 		struct settings_t *tmp = settings;
 		while(tmp) {
 			if ( /*  fabs(tmp->rc - rc) < EPSILON) &&  */ fabs(tmp->channel - channel) < EPSILON)  {
@@ -364,13 +404,16 @@ static int checkValues(struct JsonNode *jvalues) {
 			}
 			tmp = tmp->next;
 		}
+#endif
 
-		if(match == 0) {
-			if((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
+		if (get_settings(channel) == NULL) {
+			if ((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
 				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			snode->rc = rc;  // rolling code might be misused as key, iff its value is fix for a device
+			snode->calibration = CALIBRATION_COUNT;
+			snode->sensortype = HIDEKI_UNKNOWN;
 			snode->channel = channel;
 			snode->temp = 0;
 			snode->humi = 0;
