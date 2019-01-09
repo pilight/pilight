@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 - 2016 CurlyMo
+	Copyright (C) 2013 - 2019 CurlyMo & Niek
 
   This Source Code Form is subject to the terms of the Mozilla Public
   License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -148,7 +148,7 @@ static int plua_config_device_label_get_label(lua_State *L) {
 
 static int plua_config_device_label_get_color(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
-	char *slabel = NULL;
+	char *scolor = NULL;
 
 	if(dev == NULL) {
 		luaL_error(L, "internal error: device object not passed");
@@ -158,8 +158,8 @@ static int plua_config_device_label_get_color(lua_State *L) {
 		luaL_error(L, "config getColor requires 0 arguments, %d given", lua_gettop(L));
 	}
 
-	if(devices_select_string_setting(ORIGIN_ACTION, dev->name, "color", &slabel) == 0) {
-		lua_pushstring(L, slabel);
+	if(devices_select_string_setting(ORIGIN_ACTION, dev->name, "color", &scolor) == 0) {
+		lua_pushstring(L, scolor);
 
 		assert(lua_gettop(L) == 1);
 		return 1;
@@ -174,7 +174,7 @@ static int plua_config_device_label_get_color(lua_State *L) {
 
 static int plua_config_device_label_get_bgcolor(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
-	char *slabel = NULL;
+	char *sbgcolor = NULL;
 
 	if(dev == NULL) {
 		luaL_error(L, "internal error: device object not passed");
@@ -184,8 +184,8 @@ static int plua_config_device_label_get_bgcolor(lua_State *L) {
 		luaL_error(L, "config getBgcolor requires 0 arguments, %d given", lua_gettop(L));
 	}
 
-	if(devices_select_string_setting(ORIGIN_ACTION, dev->name, "bgcolor", &slabel) == 0) {
-		lua_pushstring(L, slabel);
+	if(devices_select_string_setting(ORIGIN_ACTION, dev->name, "bgcolor", &sbgcolor) == 0) {
+		lua_pushstring(L, sbgcolor);
 
 		assert(lua_gettop(L) == 1);
 		return 1;
@@ -200,7 +200,7 @@ static int plua_config_device_label_get_bgcolor(lua_State *L) {
 
 static int plua_config_device_label_get_blink(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
-	char *slabel = NULL;
+	char *sblink = NULL;
 
 	if(dev == NULL) {
 		luaL_error(L, "internal error: device object not passed");
@@ -210,8 +210,8 @@ static int plua_config_device_label_get_blink(lua_State *L) {
 		luaL_error(L, "config getBlink requires 0 arguments, %d given", lua_gettop(L));
 	}
 
-	if(devices_select_string_setting(ORIGIN_ACTION, dev->name, "blink", &slabel) == 0) {
-		lua_pushstring(L, slabel);
+	if(devices_select_string_setting(ORIGIN_ACTION, dev->name, "blink", &sblink) == 0) {
+		lua_pushstring(L, sblink);
 
 		assert(lua_gettop(L) == 1);
 		return 1;
@@ -326,7 +326,7 @@ static int plua_config_device_label_set_bgcolor(lua_State *L) {
 	}
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "config setColor requires 1 arguments, %d given", lua_gettop(L));
+		luaL_error(L, "config setBgcolor requires 1 arguments, %d given", lua_gettop(L));
 	}
 
 	char buf[128] = { '\0' }, *p = buf;
@@ -372,7 +372,7 @@ static int plua_config_device_label_set_blink(lua_State *L) {
 	}
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "config setColor requires 1 arguments, %d given", lua_gettop(L));
+		luaL_error(L, "config setBlink requires 1 arguments, %d given", lua_gettop(L));
 	}
 
 	char buf[128] = { '\0' }, *p = buf;

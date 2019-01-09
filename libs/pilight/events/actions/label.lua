@@ -17,53 +17,38 @@ local units = {
 };
 
 function M.check(parameters)
-	local nr1 = 0;
-	local nr2 = 0;
-	local nr3 = 0;
-	local nr4 = 0;
-	local nr5 = 0;
-	local nr6 = 0;
-	local nr7 = 0;
-
 	if parameters['DEVICE'] == nil then
 		error("label action is missing a \"DEVICE\" statement");
 	end
 
-	if parameters['TO'] == nil then
-		error("label action is missing a \"TO ...\" statement");
+	if parameters['TO'] == nil and parameters['COLOR'] == nil and parameters['BGCOLOR'] == nil and parameters['BLINK'] == nil then
+		error("label action needs at least one of \"TO\", \"COLOR\", \"BGCOLOR\" or \"BLINK\"");
 	end
 
-	if #parameters['TO']['value'] ~= 1 or parameters['TO']['value'][2] ~= nil then
-		error("label action \"TO\" only takes one argument");
+	if parameters['TO'] ~= nil then
+		if #parameters['TO']['value'] ~= 1 or parameters['TO']['value'][2] ~= nil then
+			error("label action \"TO\" only takes one argument");
+		end
 	end
-	
-	nr1 = parameters['DEVICE']['order'];
-	nr2 = parameters['TO']['order'];
 
 	if parameters['COLOR'] ~= nil then
 		if #parameters['COLOR']['value'] ~= 1 or parameters['COLOR']['value'][2] ~= nil then
 			error("label action \"COLOR\" only takes one argument");
 		end
-		nr5 = parameters['COLOR']['order'];
 	end
 
 	if parameters['BGCOLOR'] ~= nil then
 		if #parameters['BGCOLOR']['value'] ~= 1 or parameters['BGCOLOR']['value'][2] ~= nil then
 			error("label action \"BGCOLOR\" only takes one argument");
 		end
-		nr6 = parameters['BGCOLOR']['order'];
 	end
 
 	if parameters['BLINK'] ~= nil then
 		if #parameters['BLINK']['value'] ~= 1 or parameters['BLINK']['value'][2] ~= nil then
 			error("label action \"BLINK\" only takes one argument");
 		end
-		if parameters['BLINK']['value'][1] ~= "on" and parameters['BLINK']['value'][1] ~= "off" then
-			error("label action \"BLINK\" must be \"on\" or \"off\", \"" .. parameters['BLINK']['value'][1] .. "\" given" );		
-		end
-		nr7   = parameters['BLINK']['order'];
 	end
-	
+
 	if parameters['FOR'] ~= nil then
 		if #parameters['FOR']['value'] ~= 1 or parameters['FOR']['value'][2] ~= nil or parameters['FOR']['value'][1] == nil then
 			error("label action \"FOR\" only takes one argument");
@@ -78,24 +63,6 @@ function M.check(parameters)
 			if tonumber(array[1]) <= 0 then
 				error("label action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 			end
-		end
-		nr3 = parameters['FOR']['order'];
-
-		if nr3 < nr2 then
-			error("label actions are formatted as \"label DEVICE ... TO ... FOR ...\"");
-			return -1;
-		end
-		if nr5 > 0 and nr3 < nr5 then
-			error("label actions are formatted as \"label DEVICE ... TO ... COLOR ... FOR ...\"");
-			return -1;
-		end
-		if nr6 > 0 and nr3 < nr6 then
-			error("label actions are formatted as \"label DEVICE ... TO ... BGCOLOR ... FOR ...\"");
-			return -1;
-		end
-		if nr7 > 0 and nr3 < nr7 then
-			error("label actions are formatted as \"label DEVICE ... TO ... BLINK ... FOR ...\"");
-			return -1;
 		end
 	end
 
@@ -114,36 +81,6 @@ function M.check(parameters)
 				error("label action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 			end
 		end
-		nr4 = parameters['AFTER']['order'];
-
-		if nr4 < nr2 then
-			error("label actions are formatted as \"label DEVICE ... TO ... AFTER ...\"");
-		end
-		if nr5 > 0 and nr4 < nr5 then
-			error("label actions are formatted as \"label DEVICE ... TO ... COLOR ... AFTER ...\"");
-		end
-		if nr6 > 0 and nr4 < nr6 then
-			error("label actions are formatted as \"label DEVICE ... TO ... BGCOLOR ... AFTER ...\"");
-		end
-		if nr7 > 0 and nr4 < nr7 then
-			error("label actions are formatted as \"label DEVICE ... TO ... BLINK ... AFTER ...\"");
-		end
-	end
-
-	if nr1 ~= 1 or nr2 ~= 2 then
-		error("label actions are formatted as \"label DEVICE ... TO ...\"");
-	end
-
-	if nr5 > 0 and (nr5 < 3 or nr5 > 5) then
-		error("label actions are formatted as \"label DEVICE ... TO ... COLOR ...\"");
-	end
-
-	if nr6> 0 and (nr6 < 3 or nr6 > 5) then
-		error("label actions are formatted as \"label DEVICE ... TO ... BGCOLOR ...\"");
-	end
-
-	if nr7 > 0 and (nr7 < 3 or nr7 > 5) then
-		error("label actions are formatted as \"label DEVICE ... TO ... BLINK ...\"");
 	end
 
 	local nrdev = #parameters['DEVICE']['value'];
@@ -162,10 +99,10 @@ function M.check(parameters)
 			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be colored \"" .. parameters['COLOR']['value'][1] .. "\"");
 		end
 		if dev.getBgcolor == nil then
-			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't have background color \"" .. parameters['BGCOLOR']['value'][1] .. "\"");
+			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't set background color \"" .. parameters['BGCOLOR']['value'][1] .. "\"");
 		end
 		if dev.getBlink == nil then
-			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't have blinking \"" .. parameters['BLINK']['value'][1] .. "\"");
+			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't set blinking \"" .. parameters['BLINK']['value'][1] .. "\"");
 		end
 	end
 
@@ -178,22 +115,21 @@ function M.timer_for(timer)
 	local config = pilight.config();
 	local devobj = config.getDevice(devname);
 
-	if devobj.setColor(data['old_color']) == false then
-		error("device \"" .. devname .. "\" could not be set to state \"" .. data['new_color'] .. "\"")
-	end
-
 	if devobj.setLabel(data['old_label']) == false then
-		error("device \"" .. devname .. "\" could not be set to state \"" .. data['new_label'] .. "\"")
+		error("device \"" .. devname .. "\" could not set to label \"" .. data['new_label'] .. "\"");
 	end
 
-	if devobj.setLabel(data['old_bgcolor']) == false then
-		error("device \"" .. devname .. "\" could not be set to state \"" .. data['new_bgcolor'] .. "\"")
+	if devobj.setColor(data['old_color']) == false then
+		error("device \"" .. devname .. "\" could not be set to color \"" .. data['new_color'] .. "\"");
 	end
 
-	if devobj.setLabel(data['old_blink']) == false then
-		error("device \"" .. devname .. "\" could not be set to state \"" .. data['new_blink'] .. "\"")
+	if devobj.setBgcolor(data['old_bgcolor']) == false then
+		error("device \"" .. devname .. "\" could not be set to background color \"" .. data['new_bgcolor'] .. "\"");
 	end
 
+	if devobj.setBlink(data['old_blink']) == false then
+		error("device \"" .. devname .. "\" could not be set to blink \"" .. data['new_blink'] .. "\"");
+	end
 
 	devobj.send();
 end
@@ -227,33 +163,31 @@ function M.thread(thread)
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		error("skipping overridden action label for device " .. devname);
-		return;
 	end
 
 	if data['new_color'] ~= nil then
 		if devobj.setColor(data['new_color']) == false then
-			error("device \"" .. devname .. "\" could not be set to state \"" .. data['new_color'] .. "\"")
+			error("device \"" .. devname .. "\" could not be set to color \"" .. data['new_color'] .. "\"");
 		end
 	end
 
 	if data['new_label'] ~= nil then
 		if devobj.setLabel(data['new_label']) == false then
-			error("device \"" .. devname .. "\" could not be set to state \"" .. data['new_label'] .. "\"")
+			error("device \"" .. devname .. "\" could not be set to label \"" .. data['new_label'] .. "\"");
 		end
 	end
 
 	if data['new_bgcolor'] ~= nil then
 		if devobj.setBgcolor(data['new_bgcolor']) == false then
-			error("device \"" .. devname .. "\" could not be set to state \"" .. data['new_bgcolor'] .. "\"")
+			error("device \"" .. devname .. "\" could not be set to background color \"" .. data['new_bgcolor'] .. "\"");
 		end
 	end
 
 	if data['new_blink'] ~= nil then
 		if devobj.setBlink(data['new_blink']) == false then
-			error("device \"" .. devname .. "\" could not be set to state \"" .. data['new_blink'] .. "\"")
+			error("device \"" .. devname .. "\" could not be set to blink \"" .. data['new_blink'] .. "\"");
 		end
 	end
-
 
 	devobj.send();
 
@@ -275,28 +209,28 @@ function M.timer_after(timer)
 
 	if data['new_color'] ~= nil then
 		if devobj.setColor(data['new_color']) == false then
-			error("device \"" .. devname .. "\" could not be set to state \"" .. data['new_color'] .. "\"")
+			error("device \"" .. devname .. "\" could not be set to color \"" .. data['new_color'] .. "\"");
 		end
 	end
 
 	if data['new_label'] ~= nil then
 		if devobj.setLabel(data['new_label']) == false then
-			error("device \"" .. devname .. "\" could not be set to state \"" .. data['new_label'] .. "\"")
+			error("device \"" .. devname .. "\" could not be set to label \"" .. data['new_label'] .. "\"");
 		end
 	end
 
 	if data['new_bgcolor'] ~= nil then
 		if devobj.setBgcolor(data['new_bgcolor']) == false then
-			error("device \"" .. devname .. "\" could not be set to state \"" .. data['new_bgcolor'] .. "\"")
+			error("device \"" .. devname .. "\" could not be set to background color \"" .. data['new_bgcolor'] .. "\"");
 		end
 	end
 
 	if data['new_blink'] ~= nil then
 		if devobj.setBlink(data['new_blink']) == false then
-			error("device \"" .. devname .. "\" could not be set to state \"" .. data['new_blink'] .. "\"")
+			error("device \"" .. devname .. "\" could not be set to blink \"" .. data['new_blink'] .. "\"");
 		end
 	end
-	
+
 	devobj.send();
 
 	if data['time_for'] > 0 and data['type_for'] ~= nil then
@@ -364,16 +298,28 @@ function M.run(parameters)
 			if devobj.getColor ~= nil then
 				old_color = devobj.getColor();
 			end
+		else
+			if new_color ~= nil then
+				error("the \"color\" option is not configured for device \"" .. devname .. "\"");
+			end
 		end
 		if devobj.hasSetting("bgcolor") == true then
 			if devobj.getBgcolor ~= nil then
 				old_bgcolor = devobj.getBgcolor();
+			end
+		else
+			if new_bgcolor ~= nil then
+				error("the \"bgcolor\" option is not configured for device \"" .. devname .. "\"");
 			end
 		end
 
 		if devobj.hasSetting("blink") == true then
 			if devobj.getBlink ~= nil then
 				old_blink = devobj.getBlink();
+			end
+		else
+			if new_blink ~= nil then
+				error("the \"blink\" option is not configured for device \"" .. devname .. "\"");
 			end
 		end
 
@@ -443,7 +389,7 @@ end
 function M.info()
 	return {
 		name = "label",
-		version = "5.0",
+		version = "6.0",
 		reqversion = "8.1.3",
 		reqcommit = "0"
 	}

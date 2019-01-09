@@ -28,8 +28,13 @@ Label
    -i --id=id               control a device with this id
    -l --label=label         show a specific label
    -c --color=color         give the label a specific color
+   
+ .. versionadded:: nightly
+ 
+ .. code-block:: console
+ 
    -b --blink=on|off        enable or disable blinking of the label
-   -g --background=color    give the label a specific background color
+   -g --bgcolor=color       give the label a specific background color
 
 
 .. rubric:: Config
@@ -46,8 +51,6 @@ Label
          }],
          "label": "test1234",
          "color": "red",
-         "blink": "off",
-		 "bgcolor": "white"
        }
      },
      "gui": {
@@ -58,6 +61,25 @@ Label
        }
      }
    }
+
+.. versionchanged:: nightly
+
+.. code-block:: json
+   :linenos:
+
+   {
+     "devices": {
+       "label": {
+         "protocol": [ "generic_label" ],
+         "id": [{
+           "id": 100
+         }],
+         "label": "test1234",
+         "color": "red",
+         "bgcolor": "white",
+         "blink": "off"
+       }
+     },
 
 +------------------+----------------------+
 | **Option**       | **Value**            |
@@ -73,16 +95,18 @@ Label
 
    Please notice that the label color is not validated in any way. The color information is just forwarded to the GUIs as is. So it could be that some GUIs do not support certain color naming. Using hex colors is therefore the safest, e.g. #000000.
 
-.. versionadded:: 8.1.4.
+.. versionadded:: nightly
 
 +------------------+----------------------+
 | **Option**       | **Value**            |
 +------------------+----------------------+
-| blink            | on / off             |
+| bgcolor          | *any color*          |
 +------------------+----------------------+
-| bgcolor          | *any value*          |
+| blink            | on / off             |
 +------------------+----------------------+
 
 .. note::
 
-   The blink- and bgcolor options are optional, but must be configured if blinking and/or setting the background color of the label are desired.
+   Color, bgcolor and blink are all optional, but must be configured if custom setting of color, background color or blinking are desired.
+   By default color will be black (#000000)), bgcolor transparent and blink off.
+   Just like for the color option, using hex colors for the background color is the safest.

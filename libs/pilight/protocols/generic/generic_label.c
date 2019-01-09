@@ -1,19 +1,10 @@
 /*
 	Copyright (C) 2015 - 2019 CurlyMo & Niek
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+-- This Source Code Form is subject to the terms of the Mozilla Public
+-- License, v. 2.0. If a copy of the MPL was not distributed with this
+-- file, You can obtain one at http://mozilla.org/MPL/2.0/.
+--
 */
 
 #include <stdio.h>
@@ -33,17 +24,42 @@
 static void createMessage(int id, char *label, char *color, char *blink, char *bgcolor) {
 	generic_label->message = json_mkobject();
 	json_append_member(generic_label->message, "id", json_mknumber(id, 0));
-	json_append_member(generic_label->message, "label", json_mkstring(label));
-	json_append_member(generic_label->message, "color", json_mkstring(color));
+	if(label != NULL) {
+		json_append_member(generic_label->message, "label", json_mkstring(label));
+	}
+	if(color != NULL) {
+		json_append_member(generic_label->message, "color", json_mkstring(color));
+	}
 	if(blink != NULL) {
 		json_append_member(generic_label->message, "blink", json_mkstring(blink));
 	}
 	if(bgcolor != NULL) {
 		json_append_member(generic_label->message, "bgcolor", json_mkstring(bgcolor));
-	}}
+	}
+}
+
+static int checkValues(JsonNode *code) {
+	char *blink = NULL, *color = NULL;
+	
+	json_find_string(code, "blink", &blink);
+	if(blink != NULL && strlen(blink) > 0 && strcmp(blink, "on") != 0 && strcmp(blink, "off") != 0) {
+		logprintf(LOG_ERR, "generic_label: invalid value \"%s\" for argument \"blink\"", blink);
+		return 1;
+	}
+
+	json_find_string(code, "color", &color);
+	if(color == NULL) {
+		if((color = MALLOC(8)) == NULL) {
+			fprintf(stderr, "out of memory\n");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(color, "#000000");
+	}
+	return 0;
+}
 
 static int createCode(JsonNode *code) {
-	char *label = NULL, *color = "black", *bgcolor = NULL, *blink = NULL;
+	char *label = NULL, *color = NULL, *bgcolor = NULL, *blink = NULL;
 	double itmp = 0;
 	int id = -1, free_label = 0;
 
@@ -63,7 +79,7 @@ static int createCode(JsonNode *code) {
 	json_find_string(code, "blink", &blink);
 	json_find_string(code, "bgcolor", &bgcolor);
 
-	if(id == -1 || label == NULL) {
+	if(id == -1 || (label == NULL && color == NULL && bgcolor == NULL && blink == NULL)) {
 		logprintf(LOG_ERR, "generic_label: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
@@ -87,20 +103,20 @@ static void printHelp(void) {
 __attribute__((weak))
 #endif
 void genericLabelInit(void) {
-
 	protocol_register(&generic_label);
 	protocol_set_id(generic_label, "generic_label");
 	protocol_device_add(generic_label, "generic_label", "Generic Label");
 	generic_label->devtype = LABEL;
 
 	options_add(&generic_label->options, "i", "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,})$");
-	options_add(&generic_label->options, "l", "label", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING | JSON_NUMBER, NULL, NULL);
-	options_add(&generic_label->options, "c", "color", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&generic_label->options, "b", "blink", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_STRING, NULL, "^{on, off}$");
+	options_add(&generic_label->options, "l", "label", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_STRING | JSON_NUMBER, NULL, NULL);
+	options_add(&generic_label->options, "c", "color", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_STRING, NULL, NULL);
+	options_add(&generic_label->options, "b", "blink", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_STRING, NULL, NULL);
 	options_add(&generic_label->options, "g", "bgcolor", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_STRING, NULL, NULL);
 
 	generic_label->printHelp=&printHelp;
 	generic_label->createCode=&createCode;
+	generic_label->checkValues=&checkValues;
 }
 
 #if defined(MODULE) && !defined(_WIN32)

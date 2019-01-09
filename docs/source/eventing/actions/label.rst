@@ -9,8 +9,11 @@ Label
 
 .. rubric:: Description
 
-Changes the text and color of a generic label device. 
-Optionally also set the background color and blinking.
+Changes the text and color of a generic label device.
+
+.. versionadded:: nightly 
+
+Optionally change the background color and blinking.
 
 .. rubric:: Options
 
@@ -39,20 +42,33 @@ Optionally also set the background color and blinking.
    - HOUR
    - DAY
 
-.. versionadded:: 8.1.4.
+.. versionchanged:: nightly
 
 +----------+------------------+---------------------+---------------------------------------------------+
 | **Name** | **Required**     | **Multiple Values** | **Description**                                   |
 +----------+------------------+---------------------+---------------------------------------------------+
-| BLINK    | |no|             | |no|                | Blinking label text ``on`` or ``off``             |
+| DEVICE   | |yes|            | |yes|               | Device(s) to change                               |
 +----------+------------------+---------------------+---------------------------------------------------+
-| BGCOLOR  | |no|             | |no|                | New background color for the label                |
+| TO       | |no|             | |no|                | New text. See note.                               |
++----------+------------------+---------------------+---------------------------------------------------+
+| COLOR    | |no|             | |no|                | New color. See note.                              |
++----------+------------------+---------------------+---------------------------------------------------+
+| BGCOLOR  | |no|             | |no|                | New background color. See note.                   |
++----------+------------------+---------------------+---------------------------------------------------+
+| BLINK    | |no|             | |no|                | Blinking label text ``on`` or ``off``. See note   |
++----------+------------------+---------------------+---------------------------------------------------+
+| **Name** | **Required**     | **Multiple Values** | **Description**                                   |
++----------+------------------+---------------------+---------------------------------------------------+
+| FOR      | |no|             | |no|                | | Determine how long this new label lasts         |
+|          |                  |                     | | before we change back to the previous label     |
++----------+------------------+---------------------+---------------------------------------------------+
+| AFTER    | |no|             | |no|                | After how long do we want the new label to be set |
 +----------+------------------+---------------------+---------------------------------------------------+
 
-.. note:: ``BLINK`` and ``BGCOLOR``
+.. note:: for ``TO``, ``COLOR``, ``BGCOLOR`` and ``BLINK``
 
-If one or both of these options are omitted, the current blink state and / or background color are preserved.
-
+   At least one of these options must be given.
+   If one or more of these options are omitted, their current value(s) will be preserved.
 
 .. rubric:: Examples
 
@@ -74,9 +90,10 @@ If one or both of these options are omitted, the current blink state and / or ba
    IF 1 == 1 THEN label DEVICE tempLabel TO 'Bell rang' AFTER '30 SECOND'
    IF 1 == 1 THEN label DEVICE tempLabel TO None FOR '10 MINUTE' AFTER '30 SECOND'
 
-.. versionadded:: 8.1.4.
+.. versionadded:: nightly
 
 .. code-block:: console
 
    IF 1 == 1 THEN label DEVICE tempLabel TO 'Door was opened' BLINK on FOR 1 MINUTE
    IF 1 == 1 THEN label DEVICE tempLabel TO 'Door was closed' COLOR white BGCOLOR green BLINK off
+   IF 1 == 1 THEN label DEVICE tempLabel BLINK on
