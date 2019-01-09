@@ -157,7 +157,9 @@ static int validate(void) {
 
 static void parseCode(void) {
 	uint8_t binary[MAX_RAW_LENGTH/2];
+#ifdef HIDEKI_DEBUG
 	int id = 0;
+#endif
 	int i = 0, x;
 	double humi_offset = 0.0, temp_offset = 0.0, wind_dir_offset = 0.0, wind_factor = 1.0, rain_factor = 1.0;
 	uint8_t packet[HIDEKI_MAX_BYTES_PER_ROW];
@@ -250,7 +252,9 @@ static void parseCode(void) {
          temp = -temp;
      }
      battery_ok = (packet[5]>>6) & 0x01;
+#ifdef HIDEKI_DEBUG
      id = packet[3]; // probably some ID
+#endif
 
 #ifdef HIDEKI_DEBUG
      logprintf(LOG_DEBUG, "HIDEKI parseCode(): channel %02X, ID:  %02X, RC: %02X, temp: %02X, batt: %02X, sensortyp: %02x, hum: %02X",
@@ -301,9 +305,6 @@ static void parseCode(void) {
 
           json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
           json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
-#if 0
-          json_append_member(hideki->message, "id", json_mknumber(id, 0)); // ID value changes: maybe this device has no unique ID
-#endif
           json_append_member(hideki->message, "rc", json_mknumber(rc, 0));
 
       } else  if (sensortype == HIDEKI_WIND) {
@@ -326,7 +327,6 @@ static void parseCode(void) {
 
           json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
           json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
-          json_append_member(hideki->message, "id", json_mknumber(id, 0));
           json_append_member(hideki->message, "rc", json_mknumber(rc, 0));
 
       } else if (sensortype == HIDEKI_TEMP) {
@@ -337,7 +337,6 @@ static void parseCode(void) {
 
          json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
          json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
-         json_append_member(hideki->message, "id", json_mknumber(id, 0));
          json_append_member(hideki->message, "rc", json_mknumber(rc, 0));
 
      } else if (sensortype == HIDEKI_RAIN) {
@@ -351,7 +350,6 @@ static void parseCode(void) {
 
          json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
          json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
-         json_append_member(hideki->message, "id", json_mknumber(id, 0));
          json_append_member(hideki->message, "rc", json_mknumber(rc, 0));
      }
 }
