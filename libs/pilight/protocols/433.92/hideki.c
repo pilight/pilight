@@ -300,8 +300,8 @@ static void parseCode(void) {
           humidity = ((packet[6] & 0xF0) >> 4) * 10 + (packet[6] & 0x0F) + humi_offset;
 
           hideki->message = json_mkobject();
-          json_append_member(hideki->message, "temperature", json_mknumber(temperature, 2));
-          json_append_member(hideki->message, "humidity", json_mknumber(humidity, 2));
+          json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
+          json_append_member(hideki->message, "humidity", json_mknumber(humidity, 0));
 
           json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
           json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
@@ -321,9 +321,9 @@ static void parseCode(void) {
         	  wind_direction -= 360.0;
 #endif
           hideki->message = json_mkobject();
-          json_append_member(hideki->message, "temperature", json_mknumber(temperature, 2));
-          json_append_member(hideki->message, "wind strength", json_mknumber(wind_strength, 2));
-          json_append_member(hideki->message, "wind direction", json_mknumber(wind_direction, 2));
+          json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
+          json_append_member(hideki->message, "wind strength", json_mknumber(wind_strength, 1));
+          json_append_member(hideki->message, "wind direction", json_mknumber(wind_direction, 1));
 
           json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
           json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
@@ -333,7 +333,7 @@ static void parseCode(void) {
     	 temperature = (double)temp/10 + temp_offset;
 
          hideki->message = json_mkobject();
-         json_append_member(hideki->message, "temperature", json_mknumber(temperature, 2));
+         json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
 
          json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
          json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
@@ -346,7 +346,7 @@ static void parseCode(void) {
          battery_ok = (packet[2]>>6) & 0x01;
 
          hideki->message = json_mkobject();
-         json_append_member(hideki->message, "rain", json_mknumber(rain, 2));
+         json_append_member(hideki->message, "rain", json_mknumber(rain, 1));
 
          json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
          json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
