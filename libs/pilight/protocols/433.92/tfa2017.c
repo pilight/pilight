@@ -49,7 +49,7 @@ static void parseCode(char **message) {
 	int msg[MESSAGE_LENGTH], channel = 0;
 	double humidity = 0.0, temperature = 0.0;
 
-	snprintf(*message, 255, "");
+	memset(*message, 0, 255);
 	if(tfa2017->rawlen > MAX_RAW_LENGTH) {
 		logprintf(LOG_ERR, "tfa2017: parsecode - invalid parameter passed %d", tfa2017->rawlen);
 		return;
@@ -69,9 +69,9 @@ static void parseCode(char **message) {
 			}
 			long_pulse = 0;
 		}
-		if(long_pulse == 2 && (prev == 20 || (x > 7 && prev == x-1))) {
+		if(long_pulse == 4 && (prev == 20 || (x > 7 && prev == x-1))) {
 			if(s == 0 || i > start[s-1]+MESSAGE_LENGTH) {
-				start[s++] = i;
+				start[s++] = i-2;
 				prev = 0;
 			}
 		}
