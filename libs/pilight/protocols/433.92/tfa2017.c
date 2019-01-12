@@ -79,9 +79,9 @@ static void parseCode(void) {
 			}
 			long_pulse = 0;
 		}
-		if(long_pulse == 2 && (prev == 20 || (x > 7 && prev == x-1))) {
+		if(long_pulse == 4 && (prev == 20 || (x > 7 && prev == x-1))) {
 			if (s==0 || i > start[s-1]+MESSAGE_LENGTH) {
-				start[s++] = i;
+				start[s++] = i-2;
 				prev = 0;
 			}
 		}
