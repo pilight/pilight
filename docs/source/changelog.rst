@@ -1,6 +1,12 @@
 Changelog
 =========
 
+.. versionadded:: nightly
+
+.. rubric:: New functionality
+
+- Mqtt support
+
 .. versionadded:: 8.1.4
 
 .. rubric:: Improvements

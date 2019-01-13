@@ -19,3 +19,10 @@ Actions
    label
    pushbullet
    sendmail
+
+.. versionadded:: nightly
+
+.. toctree::
+   :maxdepth: 1
+
+   mqtt_publish
