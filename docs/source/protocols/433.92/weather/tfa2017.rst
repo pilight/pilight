@@ -1,0 +1,133 @@
+TFA 2017
+========
+
+.. |yes| image:: ../../../images/yes.png
+.. |no| image:: ../../../images/no.png
+
+.. role:: underline
+   :class: underline
+
++------------------+-------------+
+| **Feature**      | **Support** |
++------------------+-------------+
+| Sending          | |no|        |
++------------------+-------------+
+| Receiving        | |yes|       |
++------------------+-------------+
+| Config           | |yes|       |
++------------------+-------------+
+
+.. rubric:: Supported Brands
+
++------------------------------------+----------------+
+| **Brand**                          | **Protocol**   |
++------------------------------------+----------------+
+| Dostmann TFA 30.3208.02 (09/2017)  | tfa2017        |
++------------------------------------+----------------+
+
+
+.. rubric:: Sender Arguments
+
+*None*
+
+.. rubric:: Config
+
+.. code-block:: json
+   :linenos:
+
+   {
+     "devices": {
+       "weather": {
+         "protocol": [ "tfa2017" ],
+         "id": [{
+           "id": 2
+         }],
+         "temperature": 18.90,
+         "humidity": 41.00
+        }
+     },
+     "gui": {
+       "weather": {
+         "name": "Weather Station",
+         "group": [ "Outside" ],
+         "media": [ "all" ]
+       }
+     }
+   }
+
++------------------+-----------------+
+| **Option**       | **Value**       |
++------------------+-----------------+
+| id               | 1 - 8           |
++------------------+-----------------+
+| temperature      | -39.9 - 59.9    |
++------------------+-----------------+
+| humidity         | 0 - 99          |
++------------------+-----------------+
+
+.. rubric:: Optional Settings
+
+:underline:`Device Settings`
+
++--------------------+-------------+------------+---------------------------+
+| **Setting**        | **Default** | **Format** | **Description**           |
++--------------------+-------------+------------+---------------------------+
+| temperature-offset | 0           | number     | Correct temperature value |
++--------------------+-------------+------------+---------------------------+
+| humidity-offset    | 0           | number     | Correct humidity value    |
++--------------------+-------------+------------+---------------------------+
+
+:underline:`GUI Settings`
+
++----------------------+-------------+------------+-----------------------------------------------------------+
+| **Setting**          | **Default** | **Format** | **Description**                                           |
++----------------------+-------------+------------+-----------------------------------------------------------+
+| temperature-decimals | 2           | number     | How many decimals the GUIs should display for temperature |
++----------------------+-------------+------------+-----------------------------------------------------------+
+| humidity-decimals    | 2           | number     | How many decimals the GUIs should display for humidity    |
++----------------------+-------------+------------+-----------------------------------------------------------+
+| show-temperature     | 1           | 1 or 0     | Don't display the temperature value                       |
++----------------------+-------------+------------+-----------------------------------------------------------+
+| show-humidity        | 1           | 1 or 0     | Don't display the humidity value                          |
++----------------------+-------------+------------+-----------------------------------------------------------+
+
+.. rubric:: Protocol
+
+The protocol is similar to the F007TH as described in `this document <http://www.osengr.org/WxShield/Downloads/Weather-Sensor-RF-Protocols.pdf>`_ starting at page 13. The protocol seems to be used in the TFA Dostmann sensors from revision 09/2017 (thus the name) and also in an identical sensor distributed by wetterladen.de.
+
+The protocol sends a message of 48 bits length in Manchester encoding. The clock is about 500, so everything below 750 is considered a short pulse. The message is always sent three consecutive times. The most reliable way to find at least the second and the third message is to look for sequence of 20 short pulses and the skip the next two long pulses and then start decoding the machester encoding until you have 48 bits.
+The current implementation does not use the checksum to validate the message but simply checks whether there are two identical messages in the pulse train which are then considered valid.
+The structure of an example message can be seen below:
+
+.. code-block:: console
+
+   01000101 10011110 0 001 010001000110 00110101 10001110
+
+- fixed id: 0 till 7
+- rolling code: 8 till 15
+- unknown: 16
+- Channel: 17 till 19
+- Temperature: 20 till 31
+- Humidity: 32 till 39
+- checksum: 40 till 47
+
+.. code-block:: console
+
+   Channel: 001 | Temp: 010001000110 | Hum: 00110101
+
+- The fixed id seems always to be 0x45.
+- The rolling code changes on every battery change.
+- Bit 16 may encode the battery status but this is not known.
+- There is an `implementation of a checksum algorithm <https://github.com/adilosa/weathermon/blob/master/weathermon.c>`_ used in F007TH available but it is possibly different from the one used here and thus not used in this implementation.
+- The ``Channel`` is defined as a binary number (zero based), in the output it is 1 based.
+- The ``Temperature`` is defined as a binary number and represents the temperature in Fahrenheit, with an offset of 40°F. Assuming that the Temp binary value is T, the formula to calculate the temperature value in °C is
+
+.. code-block:: console
+
+  (DEC(T)/10 - 40 - 32) * (5/9)
+
+The ``Humidity`` is defined as a binary number in percent. So the values above correspond to the following output:
+
+.. code-block:: console
+
+   Channel: 2 | Temp: 20.8°C | Hum: 53%
