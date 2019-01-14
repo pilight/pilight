@@ -19,3 +19,8 @@ if(${IR} MATCHES "OFF")
     list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/IRgpio.h")
     list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/IRgpio.c")
 endif()
+
+if(${HARDWARE_RASPYRFM} MATCHES "OFF")
+	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/raspyrfm.h")
+	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/raspyrfm.c")
+endif()

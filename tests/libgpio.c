@@ -25,6 +25,7 @@
 
 static int state[255] = { 0 };
 static uv_os_fd_t fd[255] = { -1 };
+static int (* ioctl_callback)(int fd, unsigned long req, void *cmd) = NULL;
 
 #ifdef _WIN32
 __declspec(dllexport)
@@ -90,6 +91,18 @@ int pinMode(int gpio, int mode) {
 	}
 
 	return 0;
+}
+
+void wiringXIOCTLCallback(int (*callback)(int fd, unsigned long req, void *cmd)) {
+	ioctl_callback = callback;
+}
+
+int ioctl(int fd, unsigned long req, void *cmd) {
+	if(ioctl_callback != NULL) {
+		return ioctl_callback(fd, req, cmd);
+	} else {
+		return -1;
+	}
 }
 
 int wiringXGC(void) {

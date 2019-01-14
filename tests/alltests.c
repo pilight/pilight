@@ -26,7 +26,7 @@
 #include "alltests.h"
 #include "gplv3.h"
 
-#define NRSUITS 128
+#define NRSUITS 129
 
 static int dolist = 0;
 
@@ -81,6 +81,7 @@ CuSuite *suite_protocols_gpio_ds18x20(void);
 CuSuite *suite_protocols_gpio_switch(void);
 CuSuite *suite_protocols_relay(void);
 CuSuite *suite_hardware_433gpio(void);
+CuSuite *suite_hardware_raspyrfm(void);
 CuSuite *suite_event_operators(void);
 CuSuite *suite_event_functions(void);
 CuSuite *suite_event_actions_switch(void);
@@ -234,6 +235,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_protocols_gpio_ds18x20();
 	suites[nr++] = suite_protocols_gpio_switch();
 	suites[nr++] = suite_hardware_433gpio(); // Ported
+	suites[nr++] = suite_hardware_raspyrfm();
 #endif
 	suites[nr++] = suite_event_operators(); // Ported
 	suites[nr++] = suite_event_functions(); // Ported
