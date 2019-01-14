@@ -14,3 +14,8 @@ if(${HARDWARE_433_NANO} MATCHES "OFF")
 	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/433nano.h")
 	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/433nano.c")
 endif()
+
+if(${HARDWARE_RASPYRFM} MATCHES "OFF")
+	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/raspyrfm.h")
+	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/raspyrfm.c")
+endif()

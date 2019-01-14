@@ -83,3 +83,8 @@ You must now specify which GPIO platform pilight is running on. Refer to the set
 
 The comport value needs to correspond to a valid COM device on your platform. On Windows this value is generally formatted as COM1, on Linux as /dev/ttyUSB0, and on FreeBSD /dev/cuau0.
 
+433.92Mhz / 868Mhz
+------------------
+
+.. include:: ../hardware/_raspyrfm.rst
+
