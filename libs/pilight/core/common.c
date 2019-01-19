@@ -795,11 +795,10 @@ int str_replace(char *search, char *replace, char **str) {
 			match = 1;
 			int rpos = (x + (slen - rlen));
 			if(rpos < 0) {
-				slen -= rpos;
 				rpos = 0;
 			}
 			nlen = len - (slen - rlen);
-			if(len < nlen) {
+			if(slen < rlen) {
 				if(((*str) = REALLOC((*str), (size_t)nlen+1)) == NULL) { /*LCOV_EXCL_LINE*/
 					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
