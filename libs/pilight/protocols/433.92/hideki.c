@@ -85,6 +85,8 @@ typedef struct settings_t {
 	uint8_t calibration;
 	uint8_t sensortype;
 
+	uint8_t ignore_temp;
+
 	double rc; // double: this type seems necessary because of the data types expected by JSON
 	double channel;
 	double temp;
@@ -167,6 +169,7 @@ static void parseCode(void) {
     uint8_t channel, rc, battery_ok;
     int temp, rain_units;
     double temperature, humidity, wind_strength, wind_direction, rain;
+    uint8_t ignore_temperature = 0;
 
 	// Decode Biphase Mark Coded Differential Manchester (BMCDM) pulse stream into binary
 	memset(&binary[0], 0, sizeof(binary));
@@ -269,6 +272,8 @@ static void parseCode(void) {
  			wind_dir_offset = my_settings->wind_dir;
  			wind_factor = my_settings->wind_factor;
  			rain_factor = my_settings->rain;
+ 			if ((battery_ok == 0) && (my_settings->ignore_temp))
+ 				ignore_temperature = 1; // workaround for case that battery=0: temperature value might be invalid in that case
 
  			if  (my_settings->calibration > 0) {
  				/* still in calibration phase to memorize correct sensor type */
@@ -300,7 +305,8 @@ static void parseCode(void) {
           humidity = ((packet[6] & 0xF0) >> 4) * 10 + (packet[6] & 0x0F) + humi_offset;
 
           hideki->message = json_mkobject();
-          json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
+          if (ignore_temperature == 0)
+         	  json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
           json_append_member(hideki->message, "humidity", json_mknumber(humidity, 0));
 
           json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
@@ -321,7 +327,8 @@ static void parseCode(void) {
         	  wind_direction -= 360.0;
 #endif
           hideki->message = json_mkobject();
-          json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
+          if (ignore_temperature == 0)
+        	  json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
           json_append_member(hideki->message, "wind strength", json_mknumber(wind_strength, 1));
           json_append_member(hideki->message, "wind direction", json_mknumber(wind_direction, 1));
 
@@ -333,7 +340,8 @@ static void parseCode(void) {
     	 temperature = (double)temp/10 + temp_offset;
 
          hideki->message = json_mkobject();
-         json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
+         if (ignore_temperature == 0)
+        	  json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
 
          json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
          json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
@@ -365,7 +373,7 @@ static int checkValues(struct JsonNode *jvalues) {
 		struct settings_t *snode = NULL;
 		struct JsonNode *jchild = NULL;
 		struct JsonNode *jchild1 = NULL;
-		double channel = -1.0, rc = -1.0;
+		double channel = -1.0, rc = -1.0, tmp = -1.0;
 
 		jchild = json_first_child(jid);
 		while(jchild) {
@@ -394,14 +402,17 @@ static int checkValues(struct JsonNode *jvalues) {
 			snode->temp = 0;
 			snode->humi = 0;
 			snode->wind_dir = 0;
-			snode->wind_factor = 1.0;;
+			snode->wind_factor = 1.0;
 			snode->rain = 1.0;
+			snode->ignore_temp = 0;
 
 			json_find_number(jvalues, "temperature-offset", &snode->temp);
 			json_find_number(jvalues, "humidity-offset", &snode->humi);
 			json_find_number(jvalues, "wind-direction-offset", &snode->wind_dir);
 			json_find_number(jvalues, "wind-factor", &snode->wind_factor);
 			json_find_number(jvalues, "rain-factor", &snode->rain);
+			if (json_find_number(jvalues, "ignore-temperature-on-battery-low", &tmp) == 0)
+				snode->ignore_temp = (uint8_t)round(tmp);
 
 			snode->next = settings;
 			settings = snode;
@@ -461,6 +472,9 @@ void hidekiInit(void) {
 	options_add(&hideki->options, "0", "wind-direction-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
 	options_add(&hideki->options, "0", "wind-factor", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "^[0-9]{1,5}$");
 	options_add(&hideki->options, "0", "rain-factor", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "^[0-9]{1,5}$");
+	/* tests have shown that the transmitted temperature value might be damages in case if battery=0.
+	 * As workaround, the temperature will not be output in case of battery=0: This behavior can be activated by this setting */
+	options_add(&hideki->options, "0", "ignore-temperature-on-battery-low", OPTION_NO_VALUE, DEVICES_SETTING, JSON_NUMBER, NULL, NULL);
 	// GUI  settings:
 	options_add(&hideki->options, "0", "temperature-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
 	options_add(&hideki->options, "0", "humidity-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
