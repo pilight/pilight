@@ -20,4 +20,5 @@ Weather Stations
    tcm
    teknihall
    tfa
+   tfa2017
    ventus_wsxxx
