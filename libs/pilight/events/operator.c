@@ -69,7 +69,7 @@ void event_operator_init(void) {
 		}
 	}
 
-	if(ret == 0) {
+	if(ret == 0 || operator_root != (void *)OPERATOR_ROOT) {
 		FREE(operator_root);
 	}
 

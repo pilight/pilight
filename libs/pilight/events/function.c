@@ -68,7 +68,7 @@ void event_function_init(void) {
 			}
 		}
 	}
-	if(ret == 0) {
+	if(ret == 0 || functions_root != (void *)FUNCTION_ROOT) {
 		FREE(functions_root);
 	}
 	closedir(d);

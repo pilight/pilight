@@ -81,7 +81,7 @@ void event_action_init(void) {
 			}
 		}
 	}
-	if(ret == 0) {
+	if(ret == 0 || actions_root != (void *)ACTION_ROOT) {
 		FREE(actions_root);
 	}
 	closedir(d);
