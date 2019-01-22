@@ -67,7 +67,7 @@ void event_action_init(void) {
 		OUT_OF_MEMORY
 	}
 
-	config_setting_get_string("actions-root", 0, &actions_root);
+	int ret = config_setting_get_string("actions-root", 0, &actions_root);
 
 	if((d = opendir(actions_root))) {
 		while((file = readdir(d)) != NULL) {
@@ -83,12 +83,11 @@ void event_action_init(void) {
 			}
 		}
 	}
-	closedir(d);
-	FREE(f);
-
-	if(actions_root != (void *)ACTION_ROOT) {
+	if(ret == 0 || actions_root != (void *)ACTION_ROOT) {
 		FREE(actions_root);
 	}
+	closedir(d);
+	FREE(f);
 }
 
 unsigned long event_action_set_execution_id(char *name) {

@@ -52,7 +52,7 @@ void event_function_init(void) {
 		OUT_OF_MEMORY
 	}
 
-	config_setting_get_string("functions-root", 0, &functions_root);
+	int ret = config_setting_get_string("functions-root", 0, &functions_root);
 
 	if((d = opendir(functions_root))) {
 		while((file = readdir(d)) != NULL) {
@@ -68,12 +68,11 @@ void event_function_init(void) {
 			}
 		}
 	}
-	closedir(d);
-	FREE(f);
-
-	if(functions_root != (void *)FUNCTION_ROOT) {
+	if(ret == 0 || functions_root != (void *)FUNCTION_ROOT) {
 		FREE(functions_root);
 	}
+	closedir(d);
+	FREE(f);
 }
 
 static int plua_function_module_run(struct lua_State *L, char *file, struct event_function_args_t *args, struct varcont_t *v) {

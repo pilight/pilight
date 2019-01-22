@@ -52,7 +52,7 @@ void event_operator_init(void) {
 		OUT_OF_MEMORY
 	}
 
-	config_setting_get_string("operators-root", 0, &operator_root);
+	int ret = config_setting_get_string("operators-root", 0, &operator_root);
 
 	if((d = opendir(operator_root))) {
 		while((file = readdir(d)) != NULL) {
@@ -68,12 +68,11 @@ void event_operator_init(void) {
 			}
 		}
 	}
-	closedir(d);
-	FREE(f);
-
-	if(operator_root != (void *)OPERATOR_ROOT) {
+	if(ret == 0 || operator_root != (void *)OPERATOR_ROOT) {
 		FREE(operator_root);
 	}
+	closedir(d);
+	FREE(f);
 }
 
 static int plua_operator_precedence_run(struct lua_State *L, char *file, int *ret) {
