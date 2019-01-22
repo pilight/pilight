@@ -48,7 +48,7 @@ static void stop(uv_timer_t *req) {
 	uv_stop(uv_default_loop());
 }
 
-static void *received(int reason, void *param) {
+static void *received(int reason, void *param, void *userdata) {
 	struct reason_code_received_t *data = param;
 	switch(step++) {
 		case 0: {
@@ -531,7 +531,7 @@ static void test_protocols_gpio_switch(CuTest *tc) {
 	json_delete(jsettings);
 
 	eventpool_trigger(REASON_DEVICE_ADDED, done, json_decode(add));
-	eventpool_callback(REASON_CODE_RECEIVED, received);
+	eventpool_callback(REASON_CODE_RECEIVED, received, NULL);
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);

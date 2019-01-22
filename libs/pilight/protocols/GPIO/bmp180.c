@@ -198,7 +198,7 @@ static void restart(uv_work_t *req) {
 	return;
 }
 
-static void *addDevice(int reason, void *param) {
+static void *addDevice(int reason, void *param, void *userdata) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jid = NULL;
@@ -388,7 +388,7 @@ void bmp180Init(void) {
 #if !defined(__FreeBSD__) && !defined(_WIN32) && !defined(__sun)
 	bmp180->gc = &gc;
 
-	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
+	eventpool_callback(REASON_DEVICE_ADDED, addDevice, NULL);
 #endif
 }
 

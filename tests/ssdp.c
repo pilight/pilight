@@ -153,7 +153,7 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 	}
 }
 
-static void *ssdp_found(int reason, void *param) {
+static void *ssdp_found(int reason, void *param, void *userdata) {
 	struct reason_ssdp_received_t *data = param;
 	if(strlen(data->ip) > 0 && data->port > 0 && strlen(data->name) > 0) {
 		if(strcmp(data->ip, "123.123.123.123") == 0 && data->port == 1234 && strcmp(data->name, "Test") == 0) {
@@ -203,7 +203,7 @@ static void test_ssdp_client(CuTest *tc) {
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);	
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
-	eventpool_callback(REASON_SSDP_RECEIVED, ssdp_found);	
+	eventpool_callback(REASON_SSDP_RECEIVED, ssdp_found, NULL);	
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -273,7 +273,7 @@ static void test_ssdp_server(CuTest *tc) {
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);	
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
-	eventpool_callback(REASON_SSDP_RECEIVED, ssdp_found);
+	eventpool_callback(REASON_SSDP_RECEIVED, ssdp_found, NULL);
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);

@@ -709,7 +709,7 @@ static void test_event_actions_switch_check_arguments(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
-static void *control_device(int reason, void *param) {
+static void *control_device(int reason, void *param, void *userdata) {
 	struct reason_control_device_t *data = param;
 
 	struct timeval tv;
@@ -914,7 +914,7 @@ static void test_event_actions_switch_run(CuTest *tc) {
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
-	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
+	eventpool_callback(REASON_CONTROL_DEVICE, control_device, NULL);
 
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
@@ -982,7 +982,7 @@ static void test_event_actions_switch_run_delayed(CuTest *tc) {
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 750, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
-	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
+	eventpool_callback(REASON_CONTROL_DEVICE, control_device, NULL);
 
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
@@ -1050,7 +1050,7 @@ static void test_event_actions_switch_run_delayed1(CuTest *tc) {
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 750, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
-	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
+	eventpool_callback(REASON_CONTROL_DEVICE, control_device, NULL);
 
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
@@ -1128,7 +1128,7 @@ static void test_event_actions_switch_run_overlapped(CuTest *tc) {
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1500, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
-	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
+	eventpool_callback(REASON_CONTROL_DEVICE, control_device, NULL);
 
 	struct event_action_args_t *args = initialize_vars(3);
 	CuAssertIntEquals(tc, 0, event_action_check_arguments("switch", args));
@@ -1214,7 +1214,7 @@ static void test_event_actions_switch_run_override(CuTest *tc) {
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 500, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
-	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
+	eventpool_callback(REASON_CONTROL_DEVICE, control_device, NULL);
 
 	struct timeval tv;
 	gettimeofday(&tv, NULL);

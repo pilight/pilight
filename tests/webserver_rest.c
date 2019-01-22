@@ -110,7 +110,7 @@ static void on_read(int fd, char *buf, ssize_t len, char **buf1, ssize_t *len1) 
 	return;
 }
 
-static void *socket_connected(int reason, void *param) {
+static void *socket_connected(int reason, void *param, void *userdata) {
 	struct reason_socket_connected_t *data = param;
 
 	char *out = "{\"action\": \"identify\", \"options\": {\"core\": 0, \"receiver\": 1, \"config\": 0, \"forward\": 0}}";
@@ -168,7 +168,7 @@ static void test_webserver(CuTest *tc) {
 	webserver_start();
 
 	if(run == CORE) {
-		eventpool_callback(REASON_SOCKET_CONNECTED, socket_connected);
+		eventpool_callback(REASON_SOCKET_CONNECTED, socket_connected, NULL);
 		socket_connect("127.0.0.1", 10080, on_read);
 	} else if(run == REGISTRY) {
 		http_get_content(tests[testnr].url, callback, NULL);

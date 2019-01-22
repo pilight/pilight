@@ -161,7 +161,7 @@ static struct data_t *data = NULL;
 	// return (void *)NULL;
 // }
 
-static void *addDevice(int reason, void *param) {
+static void *addDevice(int reason, void *param, void *userdata) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jid = NULL;
@@ -269,7 +269,7 @@ static int checkValues(struct JsonNode *code) {
 					logprintf(LOG_ERR, "no gpio-platform configured");
 					return NULL;
 				}
-				if(wiringXSetup(platform, logprintf1) < 0) {
+				if(wiringXSetup(platform, _logprintf) < 0) {
 					FREE(platform);
 					return NULL;
 				}
@@ -318,7 +318,7 @@ void dht11Init(void) {
 	dht11->gc=&gc;
 	dht11->checkValues=&checkValues;
 
-	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
+	eventpool_callback(REASON_DEVICE_ADDED, addDevice, NULL);
 #endif
 }
 

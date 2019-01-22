@@ -73,7 +73,7 @@ int main_gc(void) {
 	return EXIT_SUCCESS;
 }
 
-void *receivePulseTrain(int reason, void *param) {
+void *receivePulseTrain(int reason, void *param, void *userdata) {
 	doSkip ^= 1;
 	if(doSkip == 1) {
 		return NULL;
@@ -437,7 +437,7 @@ int main(int argc, char **argv) {
 	}
 	FREE(fconfig);	
 
-	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain);
+	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain, NULL);
 
 	struct JsonNode *jrespond = NULL;
 	struct JsonNode *jchilds = NULL;

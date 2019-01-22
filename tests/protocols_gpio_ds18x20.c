@@ -42,7 +42,7 @@ static void *done(void *param) {
 	return NULL;
 }
 
-static void *received(int reason, void *param) {
+static void *received(int reason, void *param, void *userdata) {
 	struct reason_code_received_t *data = param;
 
 	switch(run) {
@@ -96,7 +96,7 @@ static void test_protocols_gpio_ds18s20(CuTest *tc) {
 	eventpool_init(EVENTPOOL_NO_THREADS);
 
 	eventpool_trigger(REASON_DEVICE_ADDED, done, json_decode(add));
-	eventpool_callback(REASON_CODE_RECEIVED, received);
+	eventpool_callback(REASON_CODE_RECEIVED, received, NULL);
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -145,7 +145,7 @@ static void test_protocols_gpio_ds18b20(CuTest *tc) {
 	eventpool_init(EVENTPOOL_NO_THREADS);
 
 	eventpool_trigger(REASON_DEVICE_ADDED, done, json_decode(add));
-	eventpool_callback(REASON_CODE_RECEIVED, received);
+	eventpool_callback(REASON_CODE_RECEIVED, received, NULL);
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);

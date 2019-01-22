@@ -177,7 +177,7 @@ static void *reason_broadcast_core_free(void *param) {
 	return NULL;
 }
 
-static void *broadcast(int reason, void *param) {	
+static void *broadcast(int reason, void *param, void *userdata) {	
 	char /**threadid = NULL, */ *protocol = NULL, *origin = NULL;
 	char *message = NULL, *uuid = NULL, *settings = NULL, *conf = NULL;
 	char internal[1025];
@@ -407,7 +407,7 @@ static void receive_parse_code(int *raw, int rawlen, int plslen, int hwtype) {
 	return;
 }
 
-static void *receivePulseTrain(int reason, void *param) {
+static void *receivePulseTrain(int reason, void *param, void *userdata) {
 	struct reason_received_pulsetrain_t *data = param;
 	struct hardware_t *hw = NULL;
 	int plslen = 0;
@@ -424,7 +424,7 @@ static void *receivePulseTrain(int reason, void *param) {
 	return (void *)NULL;
 }
 
-static void *code_sent_success(int reason, void *param) {
+static void *code_sent_success(int reason, void *param, void *userdata) {
 	struct reason_code_sent_success_t *data = param;
 
 	logprintf(LOG_DEBUG, "successfully sent code %s from %s", data->message, data->uuid);
@@ -432,7 +432,7 @@ static void *code_sent_success(int reason, void *param) {
 	return NULL;
 }
 
-static void *code_sent_fail(int reason, void *param) {
+static void *code_sent_fail(int reason, void *param, void *userdata) {
 	struct reason_code_sent_fail_t *data = param;
 
 	logprintf(LOG_DEBUG, "failed to sent code %s from %s", data->message, data->uuid);
@@ -450,7 +450,7 @@ static void *code_sent_fail(int reason, void *param) {
 	// char settings[1025];
 	// char uuid[UUID_LENGTH+1];
 
-void *send_code(int reason, void *param) {
+void *send_code(int reason, void *param, void *userdata) {
 	struct reason_send_code_t *data = param;
 
 	struct reason_code_sent_t *data1 = NULL;
@@ -781,7 +781,7 @@ static int control_device(char *dev, char *state, struct JsonNode *values, enum 
 	return -1;
 }
 
-static void *control_device1(int reason, void *param) {
+static void *control_device1(int reason, void *param, void *userdata) {
 	struct reason_control_device_t *data = param;
 
 	control_device(data->dev, data->state, json_first_child(data->values), ORIGIN_ACTION);
@@ -851,7 +851,7 @@ static void client_remove(int id) {
 	}
 }
 
-static void *socket_client_disconnected(int reason, void *param) {
+static void *socket_client_disconnected(int reason, void *param, void *userdata) {
 	struct reason_socket_disconnected_t *data = param;
 
 	if(data->fd > -1) {
@@ -1138,7 +1138,7 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 }
 
 /* Parse the incoming buffer from the client */
-static void *socket_parse_data(int reason, void *param) {
+static void *socket_parse_data(int reason, void *param, void *userdata) {
 	struct reason_socket_received_t *data = param;
 
 	struct sockaddr_in address;
@@ -1679,9 +1679,9 @@ int start_pilight(int argc, char **argv) {
 		int z = 0;
 		wiringXSetup("", _logprintf);
 		printf("\t- none\n");
-		while((tmp = platform_iterate_name(z++)) != NULL) {
-			printf("\t- %s\n", tmp);
-		}
+		// while((tmp = platform_iterate_name(z++)) != NULL) {
+			// printf("\t- %s\n", tmp);
+		// }
 		printf("\n");
 #endif
 		goto clear;
@@ -1772,15 +1772,15 @@ int start_pilight(int argc, char **argv) {
 
 	// registerVersion();
 
-	eventpool_callback(REASON_SEND_CODE, send_code);
-	eventpool_callback(REASON_SOCKET_RECEIVED, socket_parse_data);
-	eventpool_callback(REASON_SOCKET_DISCONNECTED, socket_client_disconnected);
-	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain);
-	eventpool_callback(REASON_CODE_RECEIVED, broadcast);	
-	eventpool_callback(REASON_CODE_SENT, broadcast);
-	eventpool_callback(REASON_CODE_SEND_SUCCESS, code_sent_success);
-	eventpool_callback(REASON_CODE_SEND_FAIL, code_sent_fail);
-	eventpool_callback(REASON_CONTROL_DEVICE, control_device1);
+	eventpool_callback(REASON_SEND_CODE, send_code, NULL);
+	eventpool_callback(REASON_SOCKET_RECEIVED, socket_parse_data, NULL);
+	eventpool_callback(REASON_SOCKET_DISCONNECTED, socket_client_disconnected, NULL);
+	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain, NULL);
+	eventpool_callback(REASON_CODE_RECEIVED, broadcast, NULL);
+	eventpool_callback(REASON_CODE_SENT, broadcast, NULL);
+	eventpool_callback(REASON_CODE_SEND_SUCCESS, code_sent_success, NULL);
+	eventpool_callback(REASON_CODE_SEND_FAIL, code_sent_fail, NULL);
+	eventpool_callback(REASON_CONTROL_DEVICE, control_device1, NULL);
 
 #ifdef WEBSERVER
 	{

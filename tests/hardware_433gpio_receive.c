@@ -136,7 +136,7 @@ static void thread(void *arg) {
 	json_delete(jsettings);
 }
 
-static void *receivePulseTrain(int reason, void *param) {
+static void *receivePulseTrain(int reason, void *param, void *userdata) {
 	struct reason_received_pulsetrain_t *data = param;
 	int i = 0, x = 0, validate = 1;
 
@@ -203,7 +203,7 @@ static void test_hardware_433gpio_receive(CuTest *tc) {
 	eventpool_init(EVENTPOOL_NO_THREADS);
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("hardware_433gpio.json", CONFIG_SETTINGS));
-	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain);
+	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain, NULL);
 	uv_thread_create(&pth[0], thread, NULL);
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);

@@ -126,7 +126,7 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static void *addDevice(int reason, void *param) {
+static void *addDevice(int reason, void *param, void *userdata) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jid = NULL;
@@ -262,7 +262,7 @@ void pingInit(void) {
 	pping->gc=&gc;
 	pping->checkValues=&checkValues;
 
-	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
+	eventpool_callback(REASON_DEVICE_ADDED, addDevice, NULL);
 }
 
 #if defined(MODULE) && !defined(_WIN32)

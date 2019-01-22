@@ -235,7 +235,7 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static void *adaptDevice(int reason, void *param) {
+static void *adaptDevice(int reason, void *param, void *userdata) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jtime = NULL;
 
@@ -260,7 +260,7 @@ static void *adaptDevice(int reason, void *param) {
 	return NULL;
 }
 
-static void *addDevice(int reason, void *param) {
+static void *addDevice(int reason, void *param, void *userdata) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jid = NULL;
@@ -395,8 +395,8 @@ void sunRiseSetInit(void) {
 	sunriseset->gc=&gc;
 	sunriseset->checkValues=&checkValues;
 
-	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
-	eventpool_callback(REASON_DEVICE_ADAPT, adaptDevice);
+	eventpool_callback(REASON_DEVICE_ADDED, addDevice, NULL);
+	eventpool_callback(REASON_DEVICE_ADAPT, adaptDevice, NULL);
 }
 
 #if defined(MODULE) && !defined(_WIN32)

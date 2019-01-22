@@ -99,7 +99,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 	return;
 }
 
-static void *gpio433Send(int reason, void *param) {
+static void *gpio433Send(int reason, void *param, void *userdata) {
 	struct reason_send_code_t *data1 = param;
 	int *code = data1->pulses;
 	int rawlen = data1->rawlen;
@@ -197,7 +197,7 @@ static unsigned short int gpio433HwInit(void) {
 		uv_poll_start(poll_req, pollpri, poll_cb);
 	}
 
-	eventpool_callback(REASON_SEND_CODE, gpio433Send);
+	eventpool_callback(REASON_SEND_CODE, gpio433Send, NULL);
 
 	return EXIT_SUCCESS;
 #else

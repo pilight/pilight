@@ -281,7 +281,7 @@ void _logprintf(int prio, char *file, int line, const char *str, ...) {
 	}
 }
 
-void *logprocess(int reason, void *param) {
+void *logprocess(int reason, void *param, void *userdata) {
 	struct reason_log_t *data = param;
 
 	logwrite(data->buffer);
@@ -294,7 +294,7 @@ void log_init(void) {
 	stop = 0;
 
 	loginitlock();
-	eventpool_callback(REASON_LOG, logprocess);
+	eventpool_callback(REASON_LOG, logprocess, NULL);
 	uv_mutex_lock(&logqueue_lock);
 	while(logqueue) {
 		struct logqueue_t *tmp = logqueue;

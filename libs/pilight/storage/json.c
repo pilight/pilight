@@ -33,7 +33,7 @@ static struct JsonNode *jconfig = NULL;
 static char *configfile = NULL;
 static unsigned short has_config = 0;
 
-static void *_values_update(int reason, void *param) {
+static void *_values_update(int reason, void *param, void *userdata) {
 	struct reason_config_update_t *data = param;
 
 	struct JsonNode *jcdevices = json_find_member(jconfig, "devices");
@@ -295,7 +295,7 @@ void jsonInit(void) {
 	json->sync=&_sync;
 	json->gc=&_gc;
 
-	eventpool_callback(REASON_CONFIG_UPDATE, _values_update);
+	eventpool_callback(REASON_CONFIG_UPDATE, _values_update, NULL);
 
 	json->devices_select=&_devices_select;
 	json->rules_select=&_rules_select;

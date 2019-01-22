@@ -17,6 +17,6 @@ void event_cache_device(struct rules_t *obj, char *device);
 int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short validate);
 int events_gc(void);
 void event_init(void);
-void *events_loop(int, void *);
+void *events_loop(int, void *, void *);
 
 #endif

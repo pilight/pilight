@@ -439,7 +439,7 @@ static unsigned short int nano433HwDeinit(void) {
 	return 0;
 }
 
-static void *nano433Send(int reason, void *param) {
+static void *nano433Send(int reason, void *param, void *userdata) {
 	struct reason_send_code_t *data = param;
 	int *code = data->pulses;
 	int rawlen = data->rawlen;
@@ -547,7 +547,7 @@ static unsigned short int nano433HwInit(void) {
 	uv_fs_open(uv_default_loop(), open_req, com, O_RDWR, 0, open_cb);
 #endif
 
-	eventpool_callback(REASON_SEND_CODE, nano433Send);
+	eventpool_callback(REASON_SEND_CODE, nano433Send, NULL);
 
 	return EXIT_SUCCESS;
 }

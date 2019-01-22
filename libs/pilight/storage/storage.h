@@ -124,7 +124,7 @@ void storage_register(struct storage_t **, const char *);
 
 struct JsonNode *config_print(int, const char *);
 struct JsonNode *values_print(const char *);
-void *config_values_update(int, void *);
+void *config_values_update(int, void *, void *);
 
 void devices_import(struct JsonNode *);
 int devices_select(enum origin_t, char *, struct JsonNode **);

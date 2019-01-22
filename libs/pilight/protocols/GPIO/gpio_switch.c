@@ -100,7 +100,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 }
 
 #if defined(__arm__) || defined(__mips__) || defined(PILIGHT_UNITTEST)
-static void *addDevice(int reason, void *param) {
+static void *addDevice(int reason, void *param, void *userdata) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jid = NULL;
@@ -277,7 +277,7 @@ void gpioSwitchInit(void) {
 	gpio_switch->gc = &gc;
 
 	#if defined(__arm__) || defined(__mips__) || defined(PILIGHT_UNITTEST)
-		eventpool_callback(REASON_DEVICE_ADDED, addDevice);
+		eventpool_callback(REASON_DEVICE_ADDED, addDevice, NULL);
 	#endif
 #endif
 }

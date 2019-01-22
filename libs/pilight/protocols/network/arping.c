@@ -63,7 +63,7 @@ static void *reason_code_received_free(void *param) {
 	return NULL;
 }
 
-static void *arp_event(int reason, void *param) {
+static void *arp_event(int reason, void *param, void *userdata) {
 	struct reason_arp_device_t *data1 = param;
 
 	struct data_t *tmp = data;
@@ -94,7 +94,7 @@ static void *arp_event(int reason, void *param) {
 	return NULL;
 }
 
-static void *addDevice(int reason, void *param) {
+static void *addDevice(int reason, void *param, void *userdata) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jid = NULL;
@@ -199,11 +199,11 @@ void arpingInit(void) {
 
 	arping->gc=&gc;
 
-	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
+	eventpool_callback(REASON_DEVICE_ADDED, addDevice, NULL);
 
-	eventpool_callback(REASON_ARP_FOUND_DEVICE, arp_event);
-	eventpool_callback(REASON_ARP_CHANGED_DEVICE, arp_event);
-	eventpool_callback(REASON_ARP_LOST_DEVICE, arp_event);
+	eventpool_callback(REASON_ARP_FOUND_DEVICE, arp_event, NULL);
+	eventpool_callback(REASON_ARP_CHANGED_DEVICE, arp_event, NULL);
+	eventpool_callback(REASON_ARP_LOST_DEVICE, arp_event, NULL);
 }
 
 #if defined(MODULE) && !defined(_WIN32)

@@ -83,7 +83,7 @@ static int main_gc(void) {
 	// return NULL;
 // }
 
-static void *receivePulseTrain(int reason, void *param) {
+static void *receivePulseTrain(int reason, void *param, void *userdata) {
 	struct reason_received_pulsetrain_t *data = param;
 	struct hardware_t *hw = NULL;
 	int i = 0;
@@ -284,7 +284,7 @@ int main(int argc, char **argv) {
 	}
 	FREE(fconfig);	
 
-	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain);
+	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain, NULL);
 
 	struct JsonNode *jrespond = NULL;
 	struct JsonNode *jchilds = NULL;

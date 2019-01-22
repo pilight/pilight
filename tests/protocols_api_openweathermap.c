@@ -54,7 +54,7 @@ static void *done(void *param) {
 	return NULL;
 }
 
-static void *received(int reason, void *param) {
+static void *received(int reason, void *param, void *userdata) {
 	struct reason_code_received_t *data = param;
 
 	struct timeval tv;
@@ -287,7 +287,7 @@ static void test_protocols_api_openweathermap(CuTest *tc) {
 	if(strlen(add) > 0) {
 		eventpool_trigger(REASON_DEVICE_ADDED, done, json_decode(add));
 	}
-	eventpool_callback(REASON_CODE_RECEIVED, received);
+	eventpool_callback(REASON_CODE_RECEIVED, received, NULL);
 
 	struct sockaddr_in addr;
 	int r = uv_ip4_addr("127.0.0.1", 10080, &addr);

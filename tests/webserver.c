@@ -381,7 +381,7 @@ static void *reason_broadcast_core_free(void *param) {
 	return NULL;
 }
 
-static void *listener(int reason, void *param) {
+static void *listener(int reason, void *param, void *userdata) {
 	if(run == WEBSOCKET1) {
 		char *respons = "{\"foo\":\"bar\"}";
 		struct reason_socket_received_t *data = param;
@@ -433,7 +433,7 @@ static void test_webserver(CuTest *tc) {
 		eventpool_init(EVENTPOOL_NO_THREADS);
 	} else if(run == WEBSOCKET1 || run == WEBSOCKET2) {
 		eventpool_init(EVENTPOOL_THREADED);
-		eventpool_callback(REASON_SOCKET_RECEIVED, listener);
+		eventpool_callback(REASON_SOCKET_RECEIVED, listener, NULL);
 	}
 	webserver_start();
 

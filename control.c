@@ -309,7 +309,7 @@ close:
 	kill(getpid(), SIGINT);
 }
 
-static void *socket_disconnected(int reason, void *param) {
+static void *socket_disconnected(int reason, void *param, void *userdata) {
 	struct reason_socket_disconnected_t *data = param;
 
 	socket_close(data->fd);
@@ -318,7 +318,7 @@ static void *socket_disconnected(int reason, void *param) {
 	return NULL;
 }
 
-static void *socket_connected(int reason, void *param) {
+static void *socket_connected(int reason, void *param, void *userdata) {
 	struct reason_socket_connected_t *data = param;
 
 	connected = 1;
@@ -362,7 +362,7 @@ static int select_server(int server) {
 	return -1;
 }
 
-static void *ssdp_found(int reason, void *param) {
+static void *ssdp_found(int reason, void *param, void *userdata) {
 	struct reason_ssdp_received_t *data = param;
 	struct ssdp_list_t *node = NULL;
 	int match = 0;
@@ -602,9 +602,9 @@ int main(int argc, char **argv) {
 	FREE(fconfig);
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
-	eventpool_callback(REASON_SSDP_RECEIVED, ssdp_found);
-	eventpool_callback(REASON_SOCKET_CONNECTED, socket_connected);
-	eventpool_callback(REASON_SOCKET_DISCONNECTED, socket_disconnected);
+	eventpool_callback(REASON_SSDP_RECEIVED, ssdp_found, NULL);
+	eventpool_callback(REASON_SOCKET_CONNECTED, socket_connected, NULL);
+	eventpool_callback(REASON_SOCKET_DISCONNECTED, socket_disconnected, NULL);
 	
 	if(server != NULL && port > 0) {
 		connect_to_server(server, port);

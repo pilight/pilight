@@ -126,7 +126,7 @@ void read_cb(int fd, char *buffer, ssize_t len, char **buffer1, ssize_t *len1) {
 	return;
 }
 
-static void *socket_disconnected(int reason, void *param) {
+static void *socket_disconnected(int reason, void *param, void *userdata) {
 	struct reason_socket_disconnected_t *data = param;
 
 	CuAssertTrue(gtc, (data->fd > 0));
@@ -174,7 +174,7 @@ static void resend(uv_timer_t *timer_req) {
 	FREE(timer_req->data);
 }
 
-static void *socket_connected(int reason, void *param) {
+static void *socket_connected(int reason, void *param, void *userdata) {
 	struct reason_socket_connected_t *data = param;
 
 	dosend(data->fd);
@@ -306,9 +306,9 @@ static void test_socket_client(CuTest *tc) {
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 500, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
-	// eventpool_callback(REASON_SOCKET_RECEIVED, socket_received);
-	eventpool_callback(REASON_SOCKET_DISCONNECTED, socket_disconnected);
-	eventpool_callback(REASON_SOCKET_CONNECTED, socket_connected);
+	// eventpool_callback(REASON_SOCKET_RECEIVED, socket_received, NULL);
+	eventpool_callback(REASON_SOCKET_DISCONNECTED, socket_disconnected, NULL);
+	eventpool_callback(REASON_SOCKET_CONNECTED, socket_connected, NULL);
 
 	server_fd = socket_start(15001, read_cb);
 
@@ -354,9 +354,9 @@ static void test_socket_reject_client(CuTest *tc) {
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 500, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
-	// eventpool_callback(REASON_SOCKET_RECEIVED, socket_received);
-	eventpool_callback(REASON_SOCKET_DISCONNECTED, socket_disconnected);
-	eventpool_callback(REASON_SOCKET_CONNECTED, socket_connected);
+	// eventpool_callback(REASON_SOCKET_RECEIVED, socket_received, NULL);
+	eventpool_callback(REASON_SOCKET_DISCONNECTED, socket_disconnected, NULL);
+	eventpool_callback(REASON_SOCKET_CONNECTED, socket_connected, NULL);
 
 	server_fd = socket_start(15001, read_cb);
 
@@ -402,9 +402,9 @@ static void test_socket_server(CuTest *tc) {
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 500, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
-	// eventpool_callback(REASON_SOCKET_RECEIVED, socket_received);
-	eventpool_callback(REASON_SOCKET_DISCONNECTED, socket_disconnected);
-	eventpool_callback(REASON_SOCKET_CONNECTED, socket_connected);
+	// eventpool_callback(REASON_SOCKET_RECEIVED, socket_received, NULL);
+	eventpool_callback(REASON_SOCKET_DISCONNECTED, socket_disconnected, NULL);
+	eventpool_callback(REASON_SOCKET_CONNECTED, socket_connected, NULL);
 	
 	server_fd = socket_start(15001, read_cb);
 	client_fd = socket_connect("127.0.0.1", 15001, read_cb);
@@ -447,9 +447,9 @@ static void test_socket_large_content(CuTest *tc) {
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 500, 0);
 
 	eventpool_init(EVENTPOOL_THREADED);
-	// eventpool_callback(REASON_SOCKET_RECEIVED, socket_received);
-	eventpool_callback(REASON_SOCKET_DISCONNECTED, socket_disconnected);
-	eventpool_callback(REASON_SOCKET_CONNECTED, socket_connected);
+	// eventpool_callback(REASON_SOCKET_RECEIVED, socket_received, NULL);
+	eventpool_callback(REASON_SOCKET_DISCONNECTED, socket_disconnected, NULL);
+	eventpool_callback(REASON_SOCKET_CONNECTED, socket_connected, NULL);
 
 	server_fd = socket_start(15001, read_cb);
 	client_fd = socket_connect("127.0.0.1", 15001, read_cb);

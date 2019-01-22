@@ -42,7 +42,7 @@
 
 #include "json.h"
 
-static void *storage_import_thread(int, void *);
+static void *storage_import_thread(int, void *, void *);
 
 static void *reason_config_update_free(void *param) {
 	struct reason_config_update_t *data = param;
@@ -70,7 +70,7 @@ static struct JsonNode *jgui_cache = NULL;
 static struct JsonNode *jhardware_cache = NULL;
 // static struct JsonNode *jregistry_cache = NULL;
 
-static void *devices_update_cache(int reason, void *param) {
+static void *devices_update_cache(int reason, void *param, void *userdata) {
 	struct reason_config_update_t *data = param;
 	struct reason_config_updated_t *data1 = MALLOC(sizeof(struct reason_config_updated_t));
 
@@ -142,7 +142,7 @@ static void *devices_update_cache(int reason, void *param) {
 	return NULL;
 }
 
-void *config_values_update(int reason, void *param) {
+void *config_values_update(int reason, void *param, void *userdata) {
 	char *protoname = NULL, *origin = NULL, *message = NULL, *uuid = NULL/*, *settings = NULL*/;
 
 	switch(reason) {
@@ -472,11 +472,11 @@ void storage_register(struct storage_t **s, const char *id) {
 void storage_init(void) {
 	config_init();
 
-	eventpool_callback(REASON_CONFIG_UPDATE, devices_update_cache);
-	eventpool_callback(REASON_CODE_RECEIVED, config_values_update);
-	eventpool_callback(REASON_CODE_SENT, config_values_update);
+	eventpool_callback(REASON_CONFIG_UPDATE, devices_update_cache, NULL);
+	eventpool_callback(REASON_CODE_RECEIVED, config_values_update, NULL);
+	eventpool_callback(REASON_CODE_SENT, config_values_update, NULL);
 
-	eventpool_callback(REASON_ADHOC_CONFIG_RECEIVED, storage_import_thread);
+	eventpool_callback(REASON_ADHOC_CONFIG_RECEIVED, storage_import_thread, NULL);
 	jsonInit();
 }
 
@@ -2248,7 +2248,7 @@ int storage_read(char *file, unsigned long objects) {
 	return 0;
 }
 
-static void *storage_import_thread(int reason, void *param) {
+static void *storage_import_thread(int reason, void *param, void *userdata) {
 	struct JsonNode *jconfig = param;
 
 	storage_import(jconfig);

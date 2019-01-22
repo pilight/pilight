@@ -1057,7 +1057,7 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 	}
 }
 
-static void *control_device(int reason, void *param) {
+static void *control_device(int reason, void *param, void *userdata) {
 	int a = get_tests[testnr].nrreceives[1], i = 0;
 	int len = sizeof(receives)/sizeof(receives[0]);
 	struct reason_control_device_t *data = param;
@@ -1153,7 +1153,7 @@ static void test_events(CuTest *tc) {
 
 		if(get_tests[testnr].valid == 0) {
 			eventpool_init(EVENTPOOL_NO_THREADS);
-			eventpool_callback(REASON_CONTROL_DEVICE, control_device);
+			eventpool_callback(REASON_CONTROL_DEVICE, control_device, NULL);
 			event_init();
 
 			if(get_tests[testnr].type == 0) {

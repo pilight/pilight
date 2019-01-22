@@ -177,7 +177,7 @@ static void start(void) {
 	uv_pipe_connect(connect_req, pipe_req, socket_path, connect_cb);
 }
 
-static void *addDevice(int reason, void *param) {
+static void *addDevice(int reason, void *param, void *userdata) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jchild = NULL;
@@ -258,7 +258,7 @@ void lircInit(void) {
 #else
 	strcpy(socket_path, "/dev/lircd");
 #endif
-	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
+	eventpool_callback(REASON_DEVICE_ADDED, addDevice, NULL);
 #endif
 }
 

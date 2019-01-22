@@ -252,7 +252,7 @@ static void *timer_cb(uv_timer_t *timer_req) {
 	return NULL;
 }
 
-static void *addDevice(int reason, void *param) {
+static void *addDevice(int reason, void *param, void *userdata) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jid = NULL;
@@ -413,7 +413,7 @@ void xbmcInit(void) {
 	xbmc->gc=&gc;
 	xbmc->checkValues=&checkValues;
 
-	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
+	eventpool_callback(REASON_DEVICE_ADDED, addDevice, NULL);
 }
 
 #if defined(MODULE) && !defined(_WIN32)

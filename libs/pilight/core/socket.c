@@ -425,7 +425,7 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	uv_custom_read(poll_req);
 }
 
-static void *socket_send_thread(int reason, void *param) {
+static void *socket_send_thread(int reason, void *param, void *userdata) {
 	struct reason_socket_send_t *data = param;
 
 	if(strcmp(data->type, "socket") == 0) {
@@ -573,7 +573,7 @@ int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char
 
 	client_add(poll_req, sockfd, custom_poll_data);
 
-	eventpool_callback(REASON_SOCKET_SEND, socket_send_thread);
+	eventpool_callback(REASON_SOCKET_SEND, socket_send_thread, NULL);
 
 	return sockfd;
 

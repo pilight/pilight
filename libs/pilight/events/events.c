@@ -1980,7 +1980,7 @@ static void events_iterate(uv_work_t *req) {
 	return;
 }
 
-void *events_loop(int reason, void *param) {
+void *events_loop(int reason, void *param, void *userdata) {
 	struct rules_t *tmp_rules = NULL;
 	struct rule_list_t *list = NULL;
 	struct reason_config_update_t *data1 = NULL;
@@ -2087,8 +2087,8 @@ void *events_loop(int reason, void *param) {
 }
 
 void event_init(void) {
-	eventpool_callback(REASON_CONFIG_UPDATED, events_loop);
-	eventpool_callback(REASON_CODE_RECEIVED, events_loop);
+	eventpool_callback(REASON_CONFIG_UPDATED, events_loop, NULL);
+	eventpool_callback(REASON_CODE_RECEIVED, events_loop, NULL);
 
 	event_operator_init();
 	event_action_init();

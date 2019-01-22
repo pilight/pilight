@@ -125,7 +125,7 @@ static void stop(uv_timer_t *req) {
 	uv_stop(uv_default_loop());
 }
 
-static void *received(int reason, void *param) {
+static void *received(int reason, void *param, void *userdata) {
 	struct reason_code_received_t *data = param;
 	char msg[128], *p = msg;
 
@@ -473,7 +473,7 @@ static void test_protocols_network_arping(CuTest *tc) {
 
 	eventpool_trigger(REASON_DEVICE_ADDED, done, json_decode(add1));
 	eventpool_trigger(REASON_DEVICE_ADDED, done, json_decode(add2));
-	eventpool_callback(REASON_CODE_RECEIVED, received);
+	eventpool_callback(REASON_CODE_RECEIVED, received, NULL);
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);

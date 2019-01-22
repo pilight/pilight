@@ -371,7 +371,7 @@ static void *reason_config_update_free(void *param) {
 	return NULL;
 }
 
-static void *control_device(int reason, void *param) {
+static void *control_device(int reason, void *param, void *userdata) {
 	struct reason_control_device_t *data1 = param;
 
 	steps++;
@@ -469,7 +469,7 @@ static void test_event_actions_toggle_run(CuTest *tc) {
 	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
-	eventpool_callback(REASON_CONTROL_DEVICE, control_device);
+	eventpool_callback(REASON_CONTROL_DEVICE, control_device, NULL);
 
 	struct event_action_args_t *args = initialize_vars();
 	CuAssertIntEquals(tc, 0, event_action_check_arguments("toggle", args));

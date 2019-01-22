@@ -43,7 +43,7 @@ static void *stop(void *param) {
 	return NULL;
 }
 
-static void *received(int reason, void *param) {
+static void *received(int reason, void *param, void *userdata) {
 	struct reason_code_received_t *data = param;
 
 	CuAssertStrEquals(gtc, "{\"ip\":\"127.0.0.1\",\"state\":\"connected\"}", data->message);
@@ -91,7 +91,7 @@ static void test_protocols_network_ping(CuTest *tc) {
 	eventpool_init(EVENTPOOL_NO_THREADS);
 
 	eventpool_trigger(REASON_DEVICE_ADDED, done, json_decode(add));
-	eventpool_callback(REASON_CODE_RECEIVED, received);
+	eventpool_callback(REASON_CODE_RECEIVED, received, NULL);
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
