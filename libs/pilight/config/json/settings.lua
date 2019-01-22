@@ -27,8 +27,8 @@ function M.read(f)
 	local config = pilight.config();
 	local data = config.getData();
 	local port = -1;
-	local http_port = pilight.defaults.WEBSERVER_HTTP_PORT;
-	local https_port = pilight.defaults.WEBSERVER_HTTPS_PORT;
+	local http_port = pilight.default.WEBSERVER_HTTP_PORT;
+	local https_port = pilight.default.WEBSERVER_HTTPS_PORT;
 	local jobject = json.parse(content);
 	local settings = jobject['settings'];
 
@@ -357,7 +357,7 @@ function M.read(f)
 					end
 				end
 			end
-			if v1 ~= v and s == pilight.defaults[v1:upper():gsub('-', '_')] then
+			if v1 ~= v and s == pilight.default[v1:upper():gsub('-', '_')] then
 				error('config setting "' .. v .. '" value is already the default gpio of "' .. v1 ..'"');
 			end
 		end
