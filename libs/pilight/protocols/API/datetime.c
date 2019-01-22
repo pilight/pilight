@@ -190,7 +190,7 @@ static void *reason_code_received_free(void *param) {
 	return NULL;
 }
 
-static void *adaptDevice(int reason, void *param) {
+static void *adaptDevice(int reason, void *param, void *userdata) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jtime = NULL;
 

@@ -191,7 +191,7 @@ static int serial_interface_attribs(int fd, speed_t speed, tcflag_t parity) {
 }
 #endif
 
-static void *nano433Send(int reason, void *param) {
+static void *nano433Send(int reason, void *param, void *userdata) {
 	struct reason_send_code_t *data1 = param;
 	int *code = data1->pulses;
 	int rawlen = data1->rawlen;
@@ -462,7 +462,7 @@ static unsigned short int nano433HwInit(void) {
 	pthread_create(&pth, NULL, &syncFW, (void *)NULL);
 	pthread_detach(pth);
 
-	eventpool_callback(REASON_SEND_CODE, nano433Send);
+	eventpool_callback(REASON_SEND_CODE, nano433Send, NULL);
 
 	return EXIT_SUCCESS;
 }

@@ -121,7 +121,7 @@ void *receiveOOK(void *param) {
 	return NULL;
 }
 
-static void *receivePulseTrain(int reason, void *param) {
+static void *receivePulseTrain(int reason, void *param, void *userdata) {
 	struct reason_received_pulsetrain_t *data = param;
 	int i = 0;
 
@@ -346,7 +346,7 @@ int main(int argc, char **argv) {
 	}
 
 #ifndef PILIGHT_DEVELOPMENT
-	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain);
+	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain, NULL);
 #endif
 
 	/* Start threads library that keeps track of all threads used */

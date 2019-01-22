@@ -419,7 +419,7 @@ size_t websocket_write(uv_poll_t *req, int opcode, const char *data, unsigned lo
 	return data_len;
 }
 
-static void *webserver_send(int reason, void *param) {
+static void *webserver_send(int reason, void *param, void *userdata) {
 	struct reason_socket_send_t *data = param;
 	struct connection_t c;
 	memset(&c, 0, sizeof(struct connection_t));
@@ -1178,7 +1178,7 @@ static void webserver_process(uv_async_t *handle) {
 #endif
 }
 
-static void *broadcast(int reason, void *param) {
+static void *broadcast(int reason, void *param, void *userdata) {
 	if(loop == 0) {
 		return NULL;
 	}
@@ -2060,14 +2060,13 @@ int webserver_start(void) {
 	config_setting_get_number("webserver-cache", 0, &cache);
 	config_setting_get_string("webserver-authentication", 0, &authentication_username);
 	config_setting_get_string("webserver-authentication", 1, &authentication_password);
-
 #endif
 
-	eventpool_callback(REASON_CONFIG_UPDATE, broadcast);
-	eventpool_callback(REASON_BROADCAST_CORE, broadcast);
+	eventpool_callback(REASON_CONFIG_UPDATE, broadcast, NULL);
+	eventpool_callback(REASON_BROADCAST_CORE, broadcast, NULL);
 	// eventpool_callback(REASON_ADHOC_CONNECTED, adhoc_mode);
 	// eventpool_callback(REASON_ADHOC_DISCONNECTED, webserver_restart);
-	eventpool_callback(REASON_SOCKET_SEND, webserver_send);
+	eventpool_callback(REASON_SOCKET_SEND, webserver_send, NULL);
 
 #ifdef WEBSERVER_HTTPS
 	if(https_port > 0 /*&& webserver_enabled == 1*/) {

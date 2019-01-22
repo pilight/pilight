@@ -1183,7 +1183,7 @@ static int control_device(struct devices_t *dev, char *state, struct JsonNode *v
 	return -1;
 }
 
-static void *control_device1(int reason, void *param) {
+static void *control_device1(int reason, void *param, void *userdata) {
 	struct reason_control_device_t *data = param;
 	struct devices_t *dev = NULL;
 
@@ -1832,7 +1832,7 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 	return -1;
 }
 
-static void *socket_parse_data1(int reason, void *param) {
+static void *socket_parse_data1(int reason, void *param, void *userdata) {
 	struct reason_socket_received_t *data = param;
 
 	struct sockaddr_in address;
@@ -2176,7 +2176,7 @@ void *receivePulseTrain(void *param) {
 // }
 #endif
 
-static void *receivePulseTrain1(int reason, void *param) {
+static void *receivePulseTrain1(int reason, void *param, void *userdata) {
 	struct reason_received_pulsetrain_t *data = param;
 	int plslen = 0;
 
@@ -2993,9 +2993,9 @@ int start_pilight(int argc, char **argv) {
 	pilight.receive = &receive_parse_api;
 
 	/* Rewrite */
-	eventpool_callback(REASON_CONTROL_DEVICE, control_device1);
-	eventpool_callback(REASON_SOCKET_RECEIVED, socket_parse_data1);
-	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain1);
+	eventpool_callback(REASON_CONTROL_DEVICE, control_device1, NULL);
+	eventpool_callback(REASON_SOCKET_RECEIVED, socket_parse_data1, NULL);
+	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain1, NULL);
 
 	if(config_read(CONFIG_ALL) != 0) {
 		logprintf(LOG_ERR, "failed to read config");

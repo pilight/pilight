@@ -110,14 +110,14 @@ typedef struct threadpool_data_t {
 	char name[255];
 	uv_sem_t *ref;
 	void *userdata;
-	void *(*func)(int, void *);
+	void *(*func)(int, void *, void *);
 	void *(*done)(void *);
 } threadpool_data_t;
 
 typedef struct threadpool_tasks_t {
 	unsigned long id;
 	char *name;
-	void *(*func)(int, void *);
+	void *(*func)(int, void *, void *);
 	void *(*done)(void *);
 	uv_sem_t *ref;
 	int priority;
@@ -134,8 +134,9 @@ typedef struct threadpool_tasks_t {
 } threadpool_tasks_t;
 
 typedef struct eventpool_listener_t {
-	void *(*func)(int, void *);
+	void *(*func)(int, void *, void *);
 	void *userdata;
+	void *data;
 	int reason;
 	struct eventpool_listener_t *next;
 } eventpool_listener_t;
@@ -179,7 +180,7 @@ struct uv_custom_poll_t {
   struct iobuf_t send_iobuf;
 } uv_custom_poll_t;
  
-void eventpool_callback(int, void *(*)(int, void *));
+void eventpool_callback(int, void *(*)(int, void *, void *), void *);
 void eventpool_trigger(int, void *(*)(void *), void *);
 void eventpool_init(enum eventpool_threads_t);
 int eventpool_gc(void);

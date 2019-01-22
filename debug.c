@@ -99,7 +99,7 @@ int main_gc(void) {
 	return EXIT_SUCCESS;
 }
 
-static void *receivePulseTrain(int reason, void *param) {
+static void *receivePulseTrain(int reason, void *param, void *userdata) {
 	doSkip ^= 1;
 	if(doSkip == 1) {
 		return NULL;
@@ -521,7 +521,7 @@ int main(int argc, char **argv) {
 	}
 
 #ifndef PILIGHT_DEVELOPMENT
-	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain);
+	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain, NULL);
 #endif
 
 	/* Start threads library that keeps track of all threads used */
