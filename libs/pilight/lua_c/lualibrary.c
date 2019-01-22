@@ -121,7 +121,7 @@ void plua_register_library(struct lua_State *L) {
 	/*
 	 * Defaults
 	 */
-	lua_pushstring(L, "defaults");
+	lua_pushstring(L, "default");
 	lua_newtable(L);
 	int len = sizeof(pilight_defaults)/sizeof(pilight_defaults[0]);
 	for(i=0;i<len;i++) {
