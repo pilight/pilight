@@ -42,6 +42,7 @@ typedef struct plua_module_t {
 	char *bytecode;
 	int size;
 	int type;
+	// struct plua_metatable_t *table;
 
 	struct plua_module_t *next;
 } plua_module_t;
@@ -71,16 +72,9 @@ int plua_pcall(struct lua_State *L, char *file, int args, int ret);
 int plua_get_method(struct lua_State *L, char *file, char *method);
 void plua_gc_unreg(lua_State *L, void *ptr);
 void plua_gc_reg(lua_State *L, void *ptr, void (*callback)(void *ptr));
-void plua_metatable_parse_set(lua_State *L, void *data);
-int plua_metatable_set(lua_State *L);
-int plua_metatable_get(lua_State *L);
 void plua_metatable_free(struct plua_metatable_t *table);
-int plua_metatable_gc(lua_State *L);
-int plua_metatable_call(lua_State *L);
-int plua_metatable_pairs(lua_State *L);
-int plua_metatable_ipairs(lua_State *L);
 int plua_metatable_get_keys(lua_State *L);
-int plua_metatable_next(lua_State *L);
+void plua_metatable_parse_set(lua_State *L, void *table);
 void plua_metatable_push(lua_State *L, struct plua_metatable_t *table);
 void plua_stack_dump(lua_State *L);
 void plua_module_load(char *, int);
