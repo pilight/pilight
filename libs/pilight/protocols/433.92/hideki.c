@@ -34,15 +34,17 @@
 #include "../../core/gc.h"
 #include "hideki.h"
 
-#define MIN_PULSE_LENGTH			220
-#define MAX_PULSE_LENGTH			280
+#define MIN_PULSE_LENGTH 220
+#define MAX_PULSE_LENGTH 280
 
-#define MIN_RAW_LENGTH			130
-#define MAX_RAW_LENGTH		180
-#define PULSE_HIDEKI_WEATHER_LOWER		100	// experimentally detected
-#define PULSE_HIDEKI_WEATHER_UPPER		700	// experimentally detected
+#define MIN_RAW_LENGTH 130
+#define MAX_RAW_LENGTH 180
+#define PULSE_HIDEKI_WEATHER_LOWER 100	// experimentally detected
+#define PULSE_HIDEKI_WEATHER_UPPER 700	// experimentally detected
 
 #define HIDEKI_MAX_BYTES_PER_ROW 14
+
+#define CALIBRATION_COUNT 3
 
 //#define HIDEKI_DEBUG
 
@@ -75,16 +77,14 @@ enum sensortypes { HIDEKI_UNKNOWN, HIDEKI_TEMP, HIDEKI_TS04, HIDEKI_WIND, HIDEKI
 typedef struct settings_t {
 	/* This driver implements different sensor types, that are dynamically detected in parseCode() function.
 	 * Unfortunately, the detected sensor type sometimes is wrong. Unfortunately, the expected sensor type
-	 * as defined in the user configuration ("protocol" name from config.jaon) is not accessible in function
+	 * as defined in the user configuration ("protocol" name from config.json) is not accessible in function
 	 * checkValues(). Hence a heuristics tries to get the right sensor type and stores them in this settings
 	 * structure:
 	 * In the first received packets, the system stores the sensor type as soon as the same type was detected
 	 * in (CALIBRATION_COUNT+1) subsequent data packets. From this time on, all decoded packets with
 	 * wrong sensor type are ignored */
-#define CALIBRATION_COUNT  3
 	uint8_t calibration;
 	uint8_t sensortype;
-
 	uint8_t ignore_temp;
 
 	double rc; // double: this type seems necessary because of the data types expected by JSON
@@ -99,19 +99,17 @@ typedef struct settings_t {
 
 static struct settings_t *settings = NULL;
 
-static uint8_t reverse8(uint8_t x)
-{
-    x = (x & 0xF0) >> 4 | (x & 0x0F) << 4;
-    x = (x & 0xCC) >> 2 | (x & 0x33) << 2;
-    x = (x & 0xAA) >> 1 | (x & 0x55) << 1;
-    return x;
+static uint8_t reverse8(uint8_t x) {
+	x = (x & 0xF0) >> 4 | (x & 0x0F) << 4;
+	x = (x & 0xCC) >> 2 | (x & 0x33) << 2;
+	x = (x & 0xAA) >> 1 | (x & 0x55) << 1;
+	return x;
 }
 
-static int byteParity(uint8_t inByte)
-{
-    inByte ^= inByte >> 4;
-    inByte &= 0xf;
-    return (0x6996 >> inByte) & 1;
+static int byteParity(uint8_t inByte) {
+	inByte ^= inByte >> 4;
+	inByte &= 0xf;
+	return (0x6996 >> inByte) & 1;
 }
 
 static void set_bit(uint8_t *array, int position) {
@@ -123,7 +121,7 @@ static struct settings_t *get_settings(double channel) {
 	struct settings_t *tmp = settings;
 
 	while(tmp) {
-		if ( /*  fabs(tmp->rc - rc) < EPSILON) &&  */ fabs(tmp->channel - channel) < EPSILON)  {
+		if( /*  fabs(tmp->rc - rc) < EPSILON) &&  */ fabs(tmp->channel - channel) < EPSILON)  {
 			return tmp;
 		}
 		tmp = tmp->next;
@@ -135,15 +133,13 @@ static int validate(void) {
 	int x = 0, i = 0;
 	uint8_t header = 0;
 
-	if ((hideki->rawlen < MIN_RAW_LENGTH) || (hideki->rawlen > MAX_RAW_LENGTH))
+	if((hideki->rawlen < MIN_RAW_LENGTH) || (hideki->rawlen > MAX_RAW_LENGTH))
 	  return -1;
 
 	for(x=0; x<8; x++) {
-		if(hideki->raw[i] > PULSE_HIDEKI_WEATHER_LOWER && 	hideki->raw[i] < PULSE_HIDEKI_WEATHER_UPPER) {
+		if(hideki->raw[i] > PULSE_HIDEKI_WEATHER_LOWER && hideki->raw[i] < PULSE_HIDEKI_WEATHER_UPPER) {
 				set_bit(&header, x);
 				i++;
-			} else {
-				 // leave value unchanged to 0
 			}
 			i++;
 		}
@@ -151,7 +147,7 @@ static int validate(void) {
 	logprintf(LOG_DEBUG, "HIDEKI validate(): rawlen=%d, header byte: %02X", hideki->rawlen, header);
 #endif
 
-	if (header != 0x06) // tested with TS04 only
+	if(header != 0x06)	// tested with TS04 only
         	return -1;
 
 	return 0;
@@ -166,10 +162,10 @@ static void parseCode(void) {
 	double humi_offset = 0.0, temp_offset = 0.0, wind_dir_offset = 0.0, wind_factor = 1.0, rain_factor = 1.0;
 	uint8_t packet[HIDEKI_MAX_BYTES_PER_ROW];
 	int sensortype = HIDEKI_WIND; // default for 14 valid bytes
-    uint8_t channel, rc, battery_ok;
-    int temp, rain_units;
-    double temperature, humidity, wind_strength, wind_direction, rain;
-    uint8_t ignore_temperature = 0;
+	uint8_t channel, rc, battery_ok;
+	int temp, rain_units;
+	double temperature, humidity, wind_strength, wind_direction, rain;
+	uint8_t ignore_temperature = 0;
 
 	// Decode Biphase Mark Coded Differential Manchester (BMCDM) pulse stream into binary
 	memset(&binary[0], 0, sizeof(binary));
@@ -177,8 +173,6 @@ static void parseCode(void) {
 		if(hideki->raw[i] > PULSE_HIDEKI_WEATHER_LOWER && hideki->raw[i] < PULSE_HIDEKI_WEATHER_UPPER) {
 			set_bit(binary, x);
 			i++;
-		} else {
-			 // leave value unchanged to 0
 		}
 		i++;
 	}
@@ -211,24 +205,24 @@ static void parseCode(void) {
 	//  * reverse MSB/LSB
 	//  * invert all bits
 	//  * Remove (and check) parity bit
-	for (i = 0; i < HIDEKI_MAX_BYTES_PER_ROW; i++) {
+	for(i = 0; i < HIDEKI_MAX_BYTES_PER_ROW; i++) {
 	    unsigned int offset = i/8;
 	    packet[i] = (binary[i+offset] << (i%8)) | (binary[i+offset+1] >> (8 - i%8)); // skip/remove parity bit
 	    packet[i] = reverse8(packet[i]); // reverse LSB first to LSB last
 	    packet[i] ^= 0xFF; // invert bits
 	    // check parity
 	    uint8_t parity = ((binary[i+offset+1] >> (7 - i%8)) ^ 0xFF) & 0x01;
-	    if (parity != byteParity(packet[i]))
+	    if(parity != byteParity(packet[i]))
 	    {
-	    	if (i == 10) {
+	    	if(i == 10) {
 	    		sensortype = HIDEKI_TS04;
 	            break;
 	         }
-	    	if (i == 9) {
+	    	if(i == 9) {
 	    		sensortype = HIDEKI_RAIN;
 	            break;
 	        }
-	    	if (i == 8) {
+	    	if(i == 8) {
 	    		sensortype = HIDEKI_TEMP;
 	            break;
 	        }
@@ -245,120 +239,118 @@ static void parseCode(void) {
 	logprintf(LOG_DEBUG, "HIDEKI parseCode(): %02X %02X %02X %02X %02X %02X %02X %02X",
 			packet[8], packet[9], packet[10], packet[11], packet[12], packet[13], packet[14], packet[15]);
 #endif
+	// decode the sensor values
+	channel = (packet[1] >> 5) & 0x0F;
+	if(channel >= 5) channel -= 1;
+	rc = packet[1] & 0x0F;	// rolling code
+	temp = (packet[5] & 0x0F) * 100 + ((packet[4] & 0xF0) >> 4) * 10 + (packet[4] & 0x0F);
+	if(((packet[5]>>7) & 0x01) == 0) {
+		temp = -temp;
+	}
 
-    // decode the sensor values
-     channel = (packet[1] >> 5) & 0x0F;
-     if (channel >= 5) channel -= 1;
-     rc = packet[1] & 0x0F; // rolling code
-     temp = (packet[5] & 0x0F) * 100 + ((packet[4] & 0xF0) >> 4) * 10 + (packet[4] & 0x0F);
-     if (((packet[5]>>7) & 0x01) == 0) {
-         temp = -temp;
-     }
-     battery_ok = (packet[5]>>6) & 0x01;
+	battery_ok = (packet[5]>>6) & 0x01;
 #ifdef HIDEKI_DEBUG
-     id = packet[3]; // probably some ID
+	id = packet[3]; // probably some ID
 #endif
 
 #ifdef HIDEKI_DEBUG
-     logprintf(LOG_DEBUG, "HIDEKI parseCode(): channel %02X, ID:  %02X, RC: %02X, temp: %02X, batt: %02X, sensortyp: %02x, hum: %02X",
-			channel, id, rc, temp, battery_ok, sensortype, ((packet[6] & 0xF0) >> 4) * 10 + (packet[6] & 0x0F));
+	logprintf(LOG_DEBUG, "HIDEKI parseCode(): channel %02X, ID:  %02X, RC: %02X, temp: %02X, batt: %02X, sensortyp: %02x, hum: %02X",
+		  channel, id, rc, temp, battery_ok, sensortype, ((packet[6] & 0xF0) >> 4) * 10 + (packet[6] & 0x0F));
 #endif
 
-     // read some settings
- 	 struct settings_t *my_settings = get_settings((double)channel);
- 	 if (my_settings) {
- 			humi_offset = my_settings->humi;
- 			temp_offset = my_settings->temp;
- 			wind_dir_offset = my_settings->wind_dir;
- 			wind_factor = my_settings->wind_factor;
- 			rain_factor = my_settings->rain;
- 			if ((battery_ok == 0) && (my_settings->ignore_temp))
- 				ignore_temperature = 1; // workaround for case that battery=0: temperature value might be invalid in that case
-
- 			if  (my_settings->calibration > 0) {
- 				/* still in calibration phase to memorize correct sensor type */
+	// read some settings
+	struct settings_t *my_settings = get_settings((double)channel);
+	if(my_settings) {
+		humi_offset = my_settings->humi;
+ 		temp_offset = my_settings->temp;
+ 		wind_dir_offset = my_settings->wind_dir;
+ 		wind_factor = my_settings->wind_factor;
+ 		rain_factor = my_settings->rain;
+ 		
+		if((battery_ok == 0) && (my_settings->ignore_temp))
+			ignore_temperature = 1; // workaround for case that battery=0: temperature value might be invalid in that case
+ 		
+		if(my_settings->calibration > 0) {
+			/* still in calibration phase to memorize correct sensor type */
 #ifdef HIDEKI_DEBUG
- 				logprintf(LOG_DEBUG, "HIDEKI parseCode(): calibration: %d, type: %d -> %d",
- 							my_settings->calibration, my_settings->sensortype, sensortype);
+			logprintf(LOG_DEBUG, "HIDEKI parseCode(): calibration: %d, type: %d -> %d",
+				  my_settings->calibration, my_settings->sensortype, sensortype);
 #endif
- 				my_settings->calibration--;
- 				if (my_settings->sensortype == HIDEKI_UNKNOWN) {
- 					my_settings->sensortype = sensortype;
- 				} else if (my_settings->sensortype !=  sensortype) {
- 					my_settings->sensortype = sensortype;
- 					my_settings->calibration = CALIBRATION_COUNT;
- 				}
- 			} else if (my_settings->sensortype !=  sensortype) {
- 				/* calibration is finished and detected sensor type does not match */
- 				logprintf(LOG_NOTICE, "HIDEKI parseCode(): wrong sensor type found: %d (expected: %d) -> ignoring data",
- 							sensortype, my_settings->sensortype, sensortype);
- 				return;	// ignore the data
+			my_settings->calibration--;
+			if(my_settings->sensortype == HIDEKI_UNKNOWN) {
+				my_settings->sensortype = sensortype;
+			} else if(my_settings->sensortype != sensortype) {
+ 				my_settings->sensortype = sensortype;
+ 				my_settings->calibration = CALIBRATION_COUNT;
  			}
-  	 } else {
-			/* no valid settings/configuration found -> the received data do not belong to a configured device from config.json
-			 * -> usually we could return here, but in that case the tool "pilight_receive" might be unable to receive other data
-			 * than locally configured... */
-  	 }
+ 		} else if(my_settings->sensortype != sensortype) {
+			/* calibration is finished and detected sensor type does not match */
+ 			logprintf(LOG_NOTICE, "HIDEKI parseCode(): wrong sensor type found: %d (expected: %d) -> ignoring data",
+				  sensortype, my_settings->sensortype, sensortype);
+			return;	// ignore the data
+ 		}
+	} else {
+		/* no valid settings/configuration found -> the received data do not belong to a configured device from config.json
+		 * -> usually we could return here, but in that case the tool "pilight_receive" might be unable to receive other data
+		 * than locally configured... */
+  	}
+	
+	if(sensortype == HIDEKI_TS04) {
+		temperature = (double)temp/10 + temp_offset;
+		humidity = ((packet[6] & 0xF0) >> 4) * 10 + (packet[6] & 0x0F) + humi_offset;
 
-     if (sensortype == HIDEKI_TS04) {
-    	  temperature = (double)temp/10 + temp_offset;
-          humidity = ((packet[6] & 0xF0) >> 4) * 10 + (packet[6] & 0x0F) + humi_offset;
+		hideki->message = json_mkobject();
+		if(ignore_temperature == 0)
+			json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
+		json_append_member(hideki->message, "humidity", json_mknumber(humidity, 0));
 
-          hideki->message = json_mkobject();
-          if (ignore_temperature == 0)
-         	  json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
-          json_append_member(hideki->message, "humidity", json_mknumber(humidity, 0));
-
-          json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
-          json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
-          json_append_member(hideki->message, "rc", json_mknumber(rc, 0));
-
-      } else  if (sensortype == HIDEKI_WIND) {
-          const uint8_t wd[] = { 0, 15, 13, 14, 9, 10, 12, 11, 1, 2, 4, 3, 8, 7, 5, 6 };
-    	  temperature = (double)temp/10 + temp_offset;
-    	  wind_strength = (double)(packet[9] & 0x0F) * 100 + ((packet[8] & 0xF0) >> 4) * 10 + (packet[8] & 0x0F); // unit still unclear
-    	  wind_strength *= wind_factor; // user defined adjustment
-    	  // wind strength in km/h = wind_strength*0.160934f
-          wind_direction = (double)(wd[((packet[11] & 0xF0) >> 4)] * 225);
-          wind_direction /= 10;
-          wind_direction += wind_dir_offset; // user defined adjustment
+		json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
+		json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
+		json_append_member(hideki->message, "rc", json_mknumber(rc, 0));
+      } else if(sensortype == HIDEKI_WIND) {
+		const uint8_t wd[] = { 0, 15, 13, 14, 9, 10, 12, 11, 1, 2, 4, 3, 8, 7, 5, 6 };
+		temperature = (double)temp/10 + temp_offset;
+		wind_strength = (double)(packet[9] & 0x0F) * 100 + ((packet[8] & 0xF0) >> 4) * 10 + (packet[8] & 0x0F); // unit still unclear
+		wind_strength *= wind_factor; // user defined adjustment
+		// wind strength in km/h = wind_strength*0.160934
+		wind_direction = (double)(wd[((packet[11] & 0xF0) >> 4)] * 225);
+		wind_direction /= 10;
+		wind_direction += wind_dir_offset; // user defined adjustment
 #if 0
-          if (wind_direction > 360.0)
-        	  wind_direction -= 360.0;
+		if(wind_direction > 360.0)
+			wind_direction -= 360.0;
 #endif
-          hideki->message = json_mkobject();
-          if (ignore_temperature == 0)
-        	  json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
-          json_append_member(hideki->message, "wind strength", json_mknumber(wind_strength, 1));
-          json_append_member(hideki->message, "wind direction", json_mknumber(wind_direction, 1));
+		hideki->message = json_mkobject();
+		if(ignore_temperature == 0)
+			json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
+		json_append_member(hideki->message, "wind strength", json_mknumber(wind_strength, 1));
+		json_append_member(hideki->message, "wind direction", json_mknumber(wind_direction, 1));
 
-          json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
-          json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
-          json_append_member(hideki->message, "rc", json_mknumber(rc, 0));
+		json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
+		json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
+		json_append_member(hideki->message, "rc", json_mknumber(rc, 0));
+      } else if(sensortype == HIDEKI_TEMP) {
+		temperature = (double)temp/10 + temp_offset;
 
-      } else if (sensortype == HIDEKI_TEMP) {
-    	 temperature = (double)temp/10 + temp_offset;
+         	hideki->message = json_mkobject();
+		if(ignore_temperature == 0)
+			json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
 
-         hideki->message = json_mkobject();
-         if (ignore_temperature == 0)
-        	  json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
+		json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));      
+		json_append_member(hideki->message, "channel", json_mknumber(channel, 0));     
+		json_append_member(hideki->message, "rc", json_mknumber(rc, 0));
+     } else if(sensortype == HIDEKI_RAIN) {
+		rain_units = (packet[5] << 8) + packet[4];
+		rain = (double)rain_units * 0.7; // in mm
+		rain *= rain_factor;	// user defined adjustment
+		battery_ok = (packet[2]>>6) & 0x01;
 
-         json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
-         json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
-         json_append_member(hideki->message, "rc", json_mknumber(rc, 0));
+		hideki->message = json_mkobject();
+		json_append_member(hideki->message, "rain", json_mknumber(rain, 1));
 
-     } else if (sensortype == HIDEKI_RAIN) {
-         rain_units = (packet[5] << 8) + packet[4];
-         rain = (double)rain_units * 0.7; // in mm
-         rain *= rain_factor;	// user defined adjustment
-         battery_ok = (packet[2]>>6) & 0x01;
-
-         hideki->message = json_mkobject();
-         json_append_member(hideki->message, "rain", json_mknumber(rain, 1));
-
-         json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
-         json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
-         json_append_member(hideki->message, "rc", json_mknumber(rc, 0));
+		json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
+		json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
+		json_append_member(hideki->message, "rc", json_mknumber(rc, 0));
      }
 }
 
@@ -390,8 +382,8 @@ static int checkValues(struct JsonNode *jvalues) {
 			jchild = jchild->next;
 		}
 
-		if (get_settings(channel) == NULL) {
-			if ((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
+		if(get_settings(channel) == NULL) {
+			if((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
 				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
@@ -411,7 +403,7 @@ static int checkValues(struct JsonNode *jvalues) {
 			json_find_number(jvalues, "wind-direction-offset", &snode->wind_dir);
 			json_find_number(jvalues, "wind-factor", &snode->wind_factor);
 			json_find_number(jvalues, "rain-factor", &snode->rain);
-			if (json_find_number(jvalues, "ignore-temperature-on-battery-low", &tmp) == 0)
+			if(json_find_number(jvalues, "ignore-temperature-on-battery-low", &tmp) == 0)
 				snode->ignore_temp = (uint8_t)round(tmp);
 
 			snode->next = settings;
