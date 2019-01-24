@@ -327,17 +327,17 @@ static void parseCode(void) {
 		json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
 		json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
 		json_append_member(hideki->message, "rc", json_mknumber(rc, 0));
-      } else if(sensortype == HIDEKI_TEMP) {
+	} else if(sensortype == HIDEKI_TEMP) {
 		temperature = (double)temp/10 + temp_offset;
 
-         	hideki->message = json_mkobject();
+		hideki->message = json_mkobject();
 		if(ignore_temperature == 0) {
 			json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
 		}
 		json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));      
 		json_append_member(hideki->message, "channel", json_mknumber(channel, 0));     
 		json_append_member(hideki->message, "rc", json_mknumber(rc, 0));
-     } else if(sensortype == HIDEKI_RAIN) {
+	} else if(sensortype == HIDEKI_RAIN) {
 		rain_units = (packet[5] << 8) + packet[4];
 		rain = (double)rain_units * 0.7; // in mm
 		rain *= rain_factor;	// user defined adjustment
@@ -349,7 +349,7 @@ static void parseCode(void) {
 		json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
 		json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
 		json_append_member(hideki->message, "rc", json_mknumber(rc, 0));
-     }
+	}
 }
 
 static int checkValues(struct JsonNode *jvalues) {
