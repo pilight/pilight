@@ -147,11 +147,10 @@ static int validate(void) {
 }
 
 static void parseCode(void) {
-	uint8_t binary[MAX_RAW_LENGTH/2];
 	double temperature = 0.0, humidity = 0.0, wind_strength = 0.0, wind_direction = 0.0, rain = 0.0;
 	double humi_offset = 0.0, temp_offset = 0.0, wind_dir_offset = 0.0, wind_factor = 1.0, rain_factor = 1.0;
 	int i = 0, x = 0;
-	int temp = 0 rain_units = 0;
+	int temp = 0, rain_units = 0;
 	int sensortype = HIDEKI_WIND; // default for 14 valid bytes
 	uint8_t packet[HIDEKI_MAX_BYTES_PER_ROW];
 	uint8_t channel = 0, rc = 0, battery_ok = 0;
