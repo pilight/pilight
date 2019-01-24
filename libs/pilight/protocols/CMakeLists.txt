@@ -1,6 +1,7 @@
 project(pilight_protocols)
 
 add_subdirectory(433.92)
+add_subdirectory(868)
 add_subdirectory(API)
 add_subdirectory(GPIO)
 add_subdirectory(generic)
@@ -13,6 +14,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 
 	set(${PROJECT_NAME}_files 
 		${pilight_protocols_433.92_files}
+		${pilight_protocols_868_files}
 		${pilight_protocols_api_files}
 		${pilight_protocols_generic_files}
 		${pilight_protocols_network_files}
@@ -24,6 +26,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 else()
 	set(${PROJECT_NAME}_files 
 		${pilight_protocols_433.92_files}
+		${pilight_protocols_868_files}
 		${pilight_protocols_api_files}
 		${pilight_protocols_generic_files}
 		${pilight_protocols_network_files}

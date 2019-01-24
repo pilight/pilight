@@ -1,0 +1,79 @@
+.. |yes| image:: ../../../images/yes.png
+.. |no| image:: ../../../images/no.png
+
+.. role:: underline
+   :class: underline
+
++------------------+-------------+
+| **Feature**      | **Support** |
++------------------+-------------+
+| Sending          | |yes|       |
++------------------+-------------+
+| Receiving        | |yes|       |
++------------------+-------------+
+| Config           | |yes|       |
++------------------+-------------+
+
+.. rubric:: Sender Arguments
+
+.. code-block:: console
+   :linenos:
+
+   -t --on                  send an on signal
+   -f --off                 send an off signal
+   -c --housecode=housecode control a device with this unit code
+   -a --address=address     control a device with this id
+
+.. rubric:: Config
+
+.. code-block:: json
+   :linenos:
+
+   {
+     "devices": {
+       "switch": {
+         "protocol": [ "fs20" ],
+         "id": [{
+           "housecode": 13453,
+           "address": 0
+         }],
+         "state": "off"
+       }
+     }
+   }
+
++------------------+-----------------+
+| **Option**       | **Value**       |
++------------------+-----------------+
+| housecode        | 0 - 65535       |
++------------------+-----------------+
+| address          | 0 - 255         |
++------------------+-----------------+
+| state            | on / off        |
++------------------+-----------------+
+
+.. rubric:: Notes
+
+If you want your switch to learn new codes, you can use the following command:
+
+.. code-block:: console
+
+   pilight-send -p fs20 -c 13422 -a 1 -t
+
+.. rubric:: Protocol
+
+This protocol sends 118 pulses like this
+
+.. code-block:: console
+
+   403 403 403 403 403 403 403 403 403 403 403 403 403 403 372 434 372 403 372 403 372 403 372 403 558 589 558 589 372 403 558 589 558 589 372 403 558 589 372 403 558 589 558 589 372 403 558 589 558 589 372 403 372 403 372 403 558 620 372 403 558 620 372 403 372 403 372 403 372 403 372 403 372 403 372 403 372 403 372 403 372 403 372 403 372 403 558 589 372 403 372 403 558 589 558 589 558 589 372 403 372 403 558 589 558 589 372 403 372 403 372 403 372 403 372 403 372 8897
+
+There are two different pulselengths: 400 µS and 600 µS.
+Two consecutive short pulses mean a 0 bit, Twp consecutive long pulses mean a 1 bit.
+Message format:
+- Header 12 bits 0, 1 bit 1
+- 8 bits housecode high + 1 bit parity
+- 8 bits housecode low + 1 bit parity
+- 8 bits address + 1 bit parity
+- 8 bits checksum + 1 bit parity
+- EOT: short pulse + sync pulse (9300 µS)
