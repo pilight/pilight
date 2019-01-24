@@ -112,7 +112,7 @@ static struct settings_t *get_settings(double channel) {
 	struct settings_t *tmp = settings;
 
 	while(tmp) {
-		if( /*  fabs(tmp->rc - rc) < EPSILON) &&  */ fabs(tmp->channel - channel) < EPSILON)  {
+		if(fabs(tmp->channel - channel) < EPSILON)  {
 			return tmp;
 		}
 		tmp = tmp->next;
@@ -124,22 +124,24 @@ static int validate(void) {
 	int x = 0, i = 0;
 	uint8_t header = 0;
 
-	if((hideki->rawlen < MIN_RAW_LENGTH) || (hideki->rawlen > MAX_RAW_LENGTH))
-	  return -1;
+	if((hideki->rawlen < MIN_RAW_LENGTH) || (hideki->rawlen > MAX_RAW_LENGTH)) {
+		return -1;
+	}
 
 	for(x=0; x<8; x++) {
 		if(hideki->raw[i] > PULSE_HIDEKI_WEATHER_LOWER && hideki->raw[i] < PULSE_HIDEKI_WEATHER_UPPER) {
-				set_bit(&header, x);
-				i++;
-			}
+			set_bit(&header, x);
 			i++;
 		}
+		i++;
+	}
 #ifdef HIDEKI_DEBUG
 	logprintf(LOG_DEBUG, "HIDEKI validate(): rawlen=%d, header byte: %02X", hideki->rawlen, header);
 #endif
 
-	if(header != 0x06)	// tested with TS04 only
+	if(header != 0x06) {	// tested with TS04 only
         	return -1;
+	}
 
 	return 0;
 }
@@ -197,31 +199,30 @@ static void parseCode(void) {
 	//  * invert all bits
 	//  * Remove (and check) parity bit
 	for(i = 0; i < HIDEKI_MAX_BYTES_PER_ROW; i++) {
-	    unsigned int offset = i/8;
-	    packet[i] = (binary[i+offset] << (i%8)) | (binary[i+offset+1] >> (8 - i%8)); // skip/remove parity bit
-	    packet[i] = reverse8(packet[i]); // reverse LSB first to LSB last
-	    packet[i] ^= 0xFF; // invert bits
-	    // check parity
-	    uint8_t parity = ((binary[i+offset+1] >> (7 - i%8)) ^ 0xFF) & 0x01;
-	    if(parity != byteParity(packet[i]))
-	    {
-	    	if(i == 10) {
-	    		sensortype = HIDEKI_TS04;
-	            break;
-	         }
-	    	if(i == 9) {
-	    		sensortype = HIDEKI_RAIN;
-	            break;
-	        }
-	    	if(i == 8) {
-	    		sensortype = HIDEKI_TEMP;
-	            break;
-	        }
+		unsigned int offset = i/8;
+		packet[i] = (binary[i+offset] << (i%8)) | (binary[i+offset+1] >> (8 - i%8)); // skip/remove parity bit
+		packet[i] = reverse8(packet[i]); // reverse LSB first to LSB last
+		packet[i] ^= 0xFF; // invert bits
+		// check parity
+		uint8_t parity = ((binary[i+offset+1] >> (7 - i%8)) ^ 0xFF) & 0x01;
+		if(parity != byteParity(packet[i])) {			
+			if(i == 10) {
+				sensortype = HIDEKI_TS04;
+				break;
+			}
+			if(i == 9) {
+				sensortype = HIDEKI_RAIN;
+				break;
+			}
+			if(i == 8) {
+				sensortype = HIDEKI_TEMP;
+				break;
+			}
 #ifdef HIDEKI_DEBUG
 			logprintf(LOG_DEBUG, "HIDEKI parseCode(): unsupported sensor type (%d/%d/%d)", i, parity, byteParity(packet[i]));
 #endif
 			return; // no success
-	    }
+		}
 	}
 
 #ifdef HIDEKI_DEBUG
@@ -258,8 +259,9 @@ static void parseCode(void) {
  		wind_factor = my_settings->wind_factor;
  		rain_factor = my_settings->rain;
  		
-		if((battery_ok == 0) && (my_settings->ignore_temp))
+		if((battery_ok == 0) && (my_settings->ignore_temp)) {
 			ignore_temperature = 1; // workaround for case that battery=0: temperature value might be invalid in that case
+		}
  		
 		if(my_settings->calibration > 0) {
 			/* still in calibration phase to memorize correct sensor type */
@@ -291,8 +293,9 @@ static void parseCode(void) {
 		humidity = ((packet[6] & 0xF0) >> 4) * 10 + (packet[6] & 0x0F) + humi_offset;
 
 		hideki->message = json_mkobject();
-		if(ignore_temperature == 0)
+		if(ignore_temperature == 0) {
 			json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
+		}
 		json_append_member(hideki->message, "humidity", json_mknumber(humidity, 0));
 
 		json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
@@ -308,12 +311,14 @@ static void parseCode(void) {
 		wind_direction /= 10;
 		wind_direction += wind_dir_offset; // user defined adjustment
 #if 0
-		if(wind_direction > 360.0)
+		if(wind_direction > 360.0) {
 			wind_direction -= 360.0;
+		}
 #endif
 		hideki->message = json_mkobject();
-		if(ignore_temperature == 0)
+		if(ignore_temperature == 0) {
 			json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
+		}
 		json_append_member(hideki->message, "wind strength", json_mknumber(wind_strength, 1));
 		json_append_member(hideki->message, "wind direction", json_mknumber(wind_direction, 1));
 
@@ -324,9 +329,9 @@ static void parseCode(void) {
 		temperature = (double)temp/10 + temp_offset;
 
          	hideki->message = json_mkobject();
-		if(ignore_temperature == 0)
+		if(ignore_temperature == 0) {
 			json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
-
+		}
 		json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));      
 		json_append_member(hideki->message, "channel", json_mknumber(channel, 0));     
 		json_append_member(hideki->message, "rc", json_mknumber(rc, 0));
@@ -394,9 +399,9 @@ static int checkValues(struct JsonNode *jvalues) {
 			json_find_number(jvalues, "wind-direction-offset", &snode->wind_dir);
 			json_find_number(jvalues, "wind-factor", &snode->wind_factor);
 			json_find_number(jvalues, "rain-factor", &snode->rain);
-			if(json_find_number(jvalues, "ignore-temperature-on-battery-low", &tmp) == 0)
+			if(json_find_number(jvalues, "ignore-temperature-on-battery-low", &tmp) == 0) {
 				snode->ignore_temp = (uint8_t)round(tmp);
-
+			}
 			snode->next = settings;
 			settings = snode;
 #ifdef HIDEKI_DEBUG
