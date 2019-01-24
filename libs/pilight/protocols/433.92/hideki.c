@@ -140,7 +140,7 @@ static int validate(void) {
 #endif
 
 	if(header != 0x06) {	// tested with TS04 only
-        	return -1;
+		return -1;
 	}
 
 	return 0;
@@ -148,17 +148,18 @@ static int validate(void) {
 
 static void parseCode(void) {
 	uint8_t binary[MAX_RAW_LENGTH/2];
+	double temperature = 0.0, humidity = 0.0, wind_strength = 0.0, wind_direction = 0.0, rain = 0.0;
+	double humi_offset = 0.0, temp_offset = 0.0, wind_dir_offset = 0.0, wind_factor = 1.0, rain_factor = 1.0;
+	int i = 0, x = 0;
+	int temp = 0 rain_units = 0;
+	int sensortype = HIDEKI_WIND; // default for 14 valid bytes
+	uint8_t packet[HIDEKI_MAX_BYTES_PER_ROW];
+	uint8_t channel = 0, rc = 0, battery_ok = 0;
+	uint8_t ignore_temperature = 0;
+	uint8_t binary[MAX_RAW_LENGTH/2];
 #ifdef HIDEKI_DEBUG
 	int id = 0;
 #endif
-	int i = 0, x;
-	double humi_offset = 0.0, temp_offset = 0.0, wind_dir_offset = 0.0, wind_factor = 1.0, rain_factor = 1.0;
-	uint8_t packet[HIDEKI_MAX_BYTES_PER_ROW];
-	int sensortype = HIDEKI_WIND; // default for 14 valid bytes
-	uint8_t channel, rc, battery_ok;
-	int temp, rain_units;
-	double temperature, humidity, wind_strength, wind_direction, rain;
-	uint8_t ignore_temperature = 0;
 
 	// Decode Biphase Mark Coded Differential Manchester (BMCDM) pulse stream into binary
 	memset(&binary[0], 0, sizeof(binary));
@@ -233,7 +234,9 @@ static void parseCode(void) {
 #endif
 	// decode the sensor values
 	channel = (packet[1] >> 5) & 0x0F;
-	if(channel >= 5) channel -= 1;
+	if(channel >= 5) {
+		channel -= 1;
+	}
 	rc = packet[1] & 0x0F;	// rolling code
 	temp = (packet[5] & 0x0F) * 100 + ((packet[4] & 0xF0) >> 4) * 10 + (packet[4] & 0x0F);
 	if(((packet[5]>>7) & 0x01) == 0) {
@@ -281,7 +284,7 @@ static void parseCode(void) {
  			logprintf(LOG_NOTICE, "HIDEKI parseCode(): wrong sensor type found: %d (expected: %d) -> ignoring data",
 				  sensortype, my_settings->sensortype, sensortype);
 			return;	// ignore the data
- 		}
+		}
 	} else {
 		/* no valid settings/configuration found -> the received data do not belong to a configured device from config.json
 		 * -> usually we could return here, but in that case the tool "pilight_receive" might be unable to receive other data
@@ -301,7 +304,7 @@ static void parseCode(void) {
 		json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
 		json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
 		json_append_member(hideki->message, "rc", json_mknumber(rc, 0));
-      } else if(sensortype == HIDEKI_WIND) {
+	} else if(sensortype == HIDEKI_WIND) {
 		const uint8_t wd[] = { 0, 15, 13, 14, 9, 10, 12, 11, 1, 2, 4, 3, 8, 7, 5, 6 };
 		temperature = (double)temp/10 + temp_offset;
 		wind_strength = (double)(packet[9] & 0x0F) * 100 + ((packet[8] & 0xF0) >> 4) * 10 + (packet[8] & 0x0F); // unit still unclear
