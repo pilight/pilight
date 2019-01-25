@@ -108,11 +108,12 @@ static void set_bit(uint8_t *array, int position) {
 	array[position / 8] |= mask;
 }
 
-static struct settings_t *get_settings(double channel) {
+static struct settings_t *get_settings(uint8_t channel) {
 	struct settings_t *tmp = settings;
 
 	while(tmp) {
-		if(fabs(tmp->channel - channel) < EPSILON)  {
+		uint8_t tmp_channel = (uint8_t)tmp->channel;
+		if(tmp_channel == channel) {
 			return tmp;
 		}
 		tmp = tmp->next;
@@ -253,18 +254,18 @@ static void parseCode(void) {
 #endif
 
 	// read some settings
-	struct settings_t *my_settings = get_settings((double)channel);
+	struct settings_t *my_settings = get_settings(channel);
 	if(my_settings) {
 		humi_offset = my_settings->humi;
- 		temp_offset = my_settings->temp;
- 		wind_dir_offset = my_settings->wind_dir;
- 		wind_factor = my_settings->wind_factor;
- 		rain_factor = my_settings->rain;
- 		
+		temp_offset = my_settings->temp;
+		wind_dir_offset = my_settings->wind_dir;
+		wind_factor = my_settings->wind_factor;
+		rain_factor = my_settings->rain;
+
 		if((battery_ok == 0) && (my_settings->ignore_temp)) {
 			ignore_temperature = 1; // workaround for case that battery=0: temperature value might be invalid in that case
 		}
- 		
+
 		if(my_settings->calibration > 0) {
 			/* still in calibration phase to memorize correct sensor type */
 #ifdef HIDEKI_DEBUG
@@ -275,12 +276,12 @@ static void parseCode(void) {
 			if(my_settings->sensortype == HIDEKI_UNKNOWN) {
 				my_settings->sensortype = sensortype;
 			} else if(my_settings->sensortype != sensortype) {
- 				my_settings->sensortype = sensortype;
- 				my_settings->calibration = CALIBRATION_COUNT;
- 			}
- 		} else if(my_settings->sensortype != sensortype) {
+				my_settings->sensortype = sensortype;
+				my_settings->calibration = CALIBRATION_COUNT;
+			}
+		} else if(my_settings->sensortype != sensortype) {
 			/* calibration is finished and detected sensor type does not match */
- 			logprintf(LOG_NOTICE, "HIDEKI parseCode(): wrong sensor type found: %d (expected: %d) -> ignoring data",
+			logprintf(LOG_DEBUG, "HIDEKI parseCode(): wrong sensor type found: %d (expected: %d) -> ignoring data",
 				  sensortype, my_settings->sensortype, sensortype);
 			return;	// ignore the data
 		}
@@ -288,7 +289,7 @@ static void parseCode(void) {
 		/* no valid settings/configuration found -> the received data do not belong to a configured device from config.json
 		 * -> usually we could return here, but in that case the tool "pilight_receive" might be unable to receive other data
 		 * than locally configured... */
-  	}
+	}
 	
 	if(sensortype == HIDEKI_TS04) {
 		temperature = (double)temp/10 + temp_offset;
@@ -380,7 +381,16 @@ static int checkValues(struct JsonNode *jvalues) {
 			jchild = jchild->next;
 		}
 
-		if(get_settings(channel) == NULL) {
+		if(channel < 0.0) {
+			logprintf(LOG_WARNING, "HIDEKI checkValues(): no channel found in given configuration as child of id");
+			return -1;
+		}
+		if(channel > 255.0) {
+			logprintf(LOG_ERR, "HIDEKI checkValues(): invalid channel value found in configuration (max: 255, got: %.0lf)", channel);
+			return -1;
+		}
+
+		if(get_settings((uint8_t)channel) == NULL) {
 			if((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
 				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
