@@ -9,5 +9,5 @@ if [[ ${PLATFORM} == "Unix" ]]; then
         -DCMAKE_BUILD_TYPE=Debug ..
     make
 
-    sudo LD_PRELOAD=libgpio.so ./pilight-unittest && exit 0
+    sudo ./pilight-unittest && exit 0
 fi
