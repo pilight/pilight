@@ -1156,6 +1156,11 @@ void plua_module_load(char *file, int type) {
 		FREE(info.function);
 	}
 #endif
+	lua_pop(L, -1);
+
+	for(i=0;i<NRLUASTATES;i++) {
+		assert(lua_gettop(lua_state[i].L) == 0);
+	}
 }
 
 struct plua_module_t *plua_get_modules(void) {
@@ -1314,7 +1319,7 @@ void plua_init(void) {
 	init = 1;
 
 	int i = 0;
-	for(i=0;i<NRLUASTATES;i++) {
+	for(i=0;i<NRLUASTATES+1;i++) {
 		memset(&lua_state[i], 0, sizeof(struct lua_state_t));
 		uv_mutex_init(&lua_state[i].lock);
 		uv_mutex_init(&lua_state[i].gc.lock);
