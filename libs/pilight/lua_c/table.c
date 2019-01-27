@@ -66,7 +66,7 @@ int plua_metatable_get(struct plua_metatable_t *table, char *key, struct varcont
 						val->type_ = LUA_TSTRING;
 					} break;
 					case LUA_TBOOLEAN: {
-						val->bool_ = table->table[x].val.number_;
+						val->bool_ = (int)table->table[x].val.number_;
 						val->type_ = LUA_TBOOLEAN;
 					} break;
 					case LUA_TTABLE: {
@@ -129,7 +129,7 @@ int plua_metatable_get_boolean(struct plua_metatable_t *table, char *a, int *b) 
 	}
 
 	if(plua_metatable_get(table, tmp, &val) == LUA_TBOOLEAN) {
-		*b = (int)val.number_;
+		*b = val.bool_;
 		FREE(tmp);
 		return 0;
 	}
