@@ -47,6 +47,18 @@ typedef struct lua_timer_t {
 	char *callback;
 } lua_timer_t;
 
+typedef struct lua_event_t {
+	struct plua_metatable_t *table;
+	struct plua_module_t *module;
+
+	lua_State *L;
+	struct {
+		int active;
+		struct eventpool_listener_t *node;
+	} reasons[REASON_END+10000];
+	char *callback;
+} lua_event_t;
+
 static void timer_callback(uv_timer_t *req);
 static void thread_callback(uv_work_t *req);
 static int plua_async_timer_start(lua_State *L);
@@ -216,6 +228,9 @@ static int plua_async_thread_set_callback(lua_State *L) {
 		case ACTION: {
 			sprintf(p, "action.%s", thread->module->name);
 		} break;
+		case STORAGE: {
+			sprintf(p, "storage.%s", thread->module->name);
+		} break;
 	}
 
 	lua_getglobal(L, name);
@@ -228,6 +243,10 @@ static int plua_async_thread_set_callback(lua_State *L) {
 	if(lua_type(L, -1) != LUA_TFUNCTION) {
 		luaL_error(L, "%s: thead callback %s does not exist", thread->module->file, func);
 		return 0;
+	}
+
+	if(thread->callback != NULL) {
+		FREE(thread->callback);
 	}
 
 	if((thread->callback = STRDUP((char *)func)) == NULL) {
@@ -303,16 +322,25 @@ static void thread_callback(uv_work_t *req) {
 		case ACTION: {
 			sprintf(p, "action.%s", state->module->name);
 		} break;
+		case STORAGE: {
+			sprintf(p, "storage.%s", state->module->name);
+		} break;
 	}
 
 	lua_getglobal(state->L, name);
 	if(lua_type(state->L, -1) == LUA_TNIL) {
+		/*
+		 * FIXME shouldn't state be freed?
+		 */
 		luaL_error(state->L, "cannot find %s lua module", name);
 		return;
 	}
 
 	lua_getfield(state->L, -1, thread->callback);
 	if(lua_type(state->L, -1) != LUA_TFUNCTION) {
+		/*
+		 * FIXME shouldn't state be freed?
+		 */
 		luaL_error(state->L, "%s: thread callback %s does not exist", state->module->file, thread->callback);
 		return;
 	}
@@ -322,6 +350,7 @@ static void thread_callback(uv_work_t *req) {
 	if(lua_pcall(state->L, 1, 0, 0) == LUA_ERRRUN) {
 		if(lua_type(state->L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
+			plua_clear_state(state);
 			return;
 		}
 		if(lua_type(state->L, -1) == LUA_TSTRING) {
@@ -562,6 +591,9 @@ static int plua_async_timer_set_callback(lua_State *L) {
 		case ACTION: {
 			sprintf(p, "action.%s", timer->module->name);
 		} break;
+		case STORAGE: {
+			sprintf(p, "storage.%s", timer->module->name);
+		} break;
 	}
 
 	lua_getglobal(L, name);
@@ -574,6 +606,10 @@ static int plua_async_timer_set_callback(lua_State *L) {
 	if(lua_type(L, -1) != LUA_TFUNCTION) {
 		luaL_error(L, "%s: timer callback %s does not exist", timer->module->file, func);
 		return 0;
+	}
+
+	if(timer->callback != NULL) {
+		FREE(timer->callback);
 	}
 
 	if((timer->callback = STRDUP((char *)func)) == NULL) {
@@ -753,15 +789,24 @@ static void timer_callback(uv_timer_t *req) {
 		case ACTION: {
 			sprintf(p, "action.%s", state->module->name);
 		} break;
+		case STORAGE: {
+			sprintf(p, "storage.%s", state->module->name);
+		} break;
 	}
 
 	lua_getglobal(state->L, name);
 	if(lua_type(state->L, -1) == LUA_TNIL) {
+		/*
+		 * FIXME shouldn't state be freed?
+		 */
 		luaL_error(state->L, "cannot find %s lua module", name);
 		return;
 	}
 
 	lua_getfield(state->L, -1, timer->callback);
+		/*
+		 * FIXME shouldn't state be freed?
+		 */
 	if(lua_type(state->L, -1) != LUA_TFUNCTION) {
 		luaL_error(state->L, "%s: timer callback %s does not exist", state->module->file, timer->callback);
 		return;
@@ -772,6 +817,7 @@ static void timer_callback(uv_timer_t *req) {
 	if(lua_pcall(state->L, 1, 0, 0) == LUA_ERRRUN) {
 		if(lua_type(state->L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
+			plua_clear_state(state);
 			return;
 		}
 		if(lua_type(state->L, -1) == LUA_TSTRING) {
@@ -823,6 +869,425 @@ int plua_async_timer(struct lua_State *L) {
 	plua_gc_reg(NULL, lua_timer, plua_async_timer_gc);
 
 	plua_async_timer_object(L, lua_timer);
+
+	lua_assert(lua_gettop(L) == 1);
+
+	return 1;
+}
+
+static void *plua_async_event_free(void *param) {
+	struct plua_metatable_t *data = param;
+
+	plua_metatable_free(data);
+
+	return NULL;
+}
+
+static void plua_async_event_object(lua_State *L, struct lua_event_t *event);
+
+static void plua_async_event_gc(void *ptr) {
+	struct lua_event_t *data = ptr;
+
+	plua_metatable_free(data->table);
+	if(data->callback != NULL) {
+		FREE(data->callback);
+	}
+	FREE(data);
+}
+
+static void plua_async_event_gc1(void *ptr) {
+	struct lua_event_t *data = ptr;
+
+	if(data->callback == NULL) {
+		plua_gc_unreg(NULL, data);
+		plua_metatable_free(data->table);
+		FREE(data);
+	}
+}
+
+static int plua_async_event_user_gc(struct lua_State *L) {
+	// struct lua_event_t *data = ptr;
+
+	// plua_metatable_free(data->table);
+	// FREE(data);
+	return 0;
+}
+
+void *plua_async_event_callback(int reason, void *param, void *userdata) {
+	struct lua_event_t *event = userdata;
+	char name[255], *p = name;
+	memset(name, '\0', 255);
+
+	if(event->callback == NULL){
+		return NULL;
+	}
+
+	/*
+	 * Only create a new state once the timer is triggered
+	 */
+	struct lua_state_t *state = plua_get_free_state();
+	state->module = event->module;
+
+	logprintf(LOG_DEBUG, "lua async on state #%d", state->idx);
+
+	switch(state->module->type) {
+		case UNITTEST: {
+			sprintf(p, "unittest.%s", state->module->name);
+		} break;
+		case FUNCTION: {
+			sprintf(p, "function.%s", state->module->name);
+		} break;
+		case OPERATOR: {
+			sprintf(p, "operator.%s", state->module->name);
+		} break;
+		case ACTION: {
+			sprintf(p, "action.%s", state->module->name);
+		} break;
+		case STORAGE: {
+			sprintf(p, "storage.%s", state->module->name);
+		} break;
+	}
+
+	lua_getglobal(state->L, name);
+	if(lua_type(state->L, -1) == LUA_TNIL) {
+		/*
+		 * FIXME shouldn't state be freed?
+		 */
+		luaL_error(state->L, "cannot find %s lua module", name);
+		return NULL;
+	}
+
+	lua_getfield(state->L, -1, event->callback);
+	if(lua_type(state->L, -1) != LUA_TFUNCTION) {
+		/*
+		 * FIXME shouldn't state be freed?
+		 */
+		luaL_error(state->L, "%s: async callback %s does not exist", state->module->file, event->callback);
+		return NULL;
+	}
+
+	plua_async_event_object(state->L, event);
+	lua_pushnumber(state->L, reason);
+	plua_metatable_push(state->L, param);
+
+
+	if(lua_pcall(state->L, 3, 0, 0) == LUA_ERRRUN) {
+		if(lua_type(state->L, -1) == LUA_TNIL) {
+			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
+			plua_clear_state(state);
+			return NULL;
+		}
+		if(lua_type(state->L, -1) == LUA_TSTRING) {
+			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
+			lua_pop(state->L, -1);
+			plua_clear_state(state);
+			return NULL;
+		}
+	}
+
+	lua_remove(state->L, 1);
+	plua_clear_state(state);
+	return NULL;
+}
+
+static int plua_async_event_register(struct lua_State *L) {
+	struct lua_event_t *event = (void *)lua_topointer(L, lua_upvalueindex(1));
+	int reason = -1;
+
+	if(lua_gettop(L) != 1) {
+		luaL_error(L, "event.register requires 1 arguments, %d given", lua_gettop(L));
+	}
+
+	if(event == NULL) {
+		luaL_error(L, "internal error: event object not passed");
+	}
+
+	{
+		char buf[128] = { '\0' }, *p = buf;
+		char *error = "number expected, got %s";
+
+		sprintf(p, error, lua_typename(L, lua_type(L, -1)));
+
+		luaL_argcheck(L,
+			(lua_type(L, -1) == LUA_TNUMBER),
+			1, buf);
+
+		if(lua_type(L, -1) == LUA_TNUMBER) {
+			reason = lua_tonumber(L, -1);
+			lua_remove(L, -1);
+		}
+	}
+
+	if((reason < 0) ||
+		 ((reason >= REASON_END) && (reason < 10000)) ||
+		 ((reason >= REASON_END+10000))) {
+		luaL_error(L, "event reason %d is not a valid reason", reason);
+	}
+
+	event->reasons[reason].active = 1;
+
+	if(event->callback != NULL) {
+		event->reasons[reason].node = eventpool_callback(reason, plua_async_event_callback, event);
+	}
+
+	lua_pushboolean(L, 1);
+
+	return 1;
+}
+
+static int plua_async_event_unregister(struct lua_State *L) {
+	struct lua_event_t *event = (void *)lua_topointer(L, lua_upvalueindex(1));
+	int reason = -1;
+
+	if(lua_gettop(L) != 1) {
+		luaL_error(L, "event.unregister requires 1 arguments, %d given", lua_gettop(L));
+	}
+
+	if(event == NULL) {
+		luaL_error(L, "internal error: event object not passed");
+	}
+
+	{
+		char buf[128] = { '\0' }, *p = buf;
+		char *error = "number expected, got %s";
+
+		sprintf(p, error, lua_typename(L, lua_type(L, -1)));
+
+		luaL_argcheck(L,
+			(lua_type(L, -1) == LUA_TNUMBER),
+			1, buf);
+
+		if(lua_type(L, -1) == LUA_TNUMBER) {
+			reason = lua_tonumber(L, -1);
+			lua_remove(L, -1);
+		}
+	}
+
+	if((reason < 0) ||
+		 ((reason >= REASON_END) && (reason < 10000)) ||
+		 ((reason >= REASON_END+10000))) {
+		luaL_error(L, "event reason %d is not a valid reason", reason);
+	}
+
+	event->reasons[reason].active = 0;
+
+	if(event->reasons[reason].node != NULL) {
+		eventpool_callback_remove(event->reasons[reason].node);
+	}
+	event->reasons[reason].node = NULL;
+
+	lua_pushboolean(L, 1);
+
+	return 1;
+}
+
+static int plua_async_event_trigger(struct lua_State *L) {
+	struct lua_event_t *event = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	struct plua_metatable_t *cpy = NULL;
+	struct plua_metatable_t *table = NULL;
+	int i = 0, is_table = 0;
+
+	if(lua_gettop(L) != 1) {
+		luaL_error(L, "event.trigger requires 1 argument, %d given", lua_gettop(L));
+	}
+
+	{
+		char buf[128] = { '\0' }, *p = buf;
+		char *error = "userdata expected, got %s";
+
+		sprintf(p, error, lua_typename(L, lua_type(L, -1)));
+
+		luaL_argcheck(L,
+			(lua_type(L, -1) == LUA_TLIGHTUSERDATA || lua_type(L, -1) == LUA_TTABLE),
+			1, buf);
+
+		if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
+			cpy = (void *)lua_topointer(L, -1);
+			lua_remove(L, -1);
+		} else if(lua_type(L, -1) == LUA_TTABLE) {
+			lua_pushnil(L);
+			is_table = 1;
+			if((cpy = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+			}
+			memset(cpy, 0, sizeof(struct plua_metatable_t));
+
+			while(lua_next(L, -2) != 0) {
+				plua_metatable_parse_set(L, cpy);
+				lua_pop(L, 1);
+			}
+		}
+	}
+
+	for(i=0;i<REASON_END+10000;i++) {
+		if(event->reasons[i].active == 1) {
+			if((table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+			}
+			memset(table, 0, sizeof(struct plua_metatable_t));
+
+			plua_metatable_clone(&cpy, &table);
+			eventpool_trigger(i, plua_async_event_free, table);
+		}
+	}
+	if(is_table == 1) {
+		plua_metatable_free(cpy);
+	}
+
+	lua_pushboolean(L, 1);
+
+	return 1;
+}
+
+static int plua_async_event_set_callback(lua_State *L) {
+	struct lua_event_t *event = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	if(lua_gettop(L) != 1) {
+		luaL_error(L, "event.setCallback requires 1 argument, %d given", lua_gettop(L));
+		return 0;
+	}
+
+	if(event == NULL) {
+		luaL_error(L, "internal error: timer object not passed");
+		return 0;
+	}
+
+	if(event->module == NULL) {
+		luaL_error(L, "internal error: lua state not properly initialized");
+		return 0;
+	}
+
+	const char *func = NULL;
+	char buf[128] = { '\0' }, *p = buf, name[255] = { '\0' };
+	char *error = "string expected, got %s";
+
+	sprintf(p, error, lua_typename(L, lua_type(L, -1)));
+
+	luaL_argcheck(L,
+		(lua_type(L, -1) == LUA_TSTRING) || (lua_type(L, -1) == LUA_TNIL),
+		1, buf);
+
+	if(lua_type(L, -1) == LUA_TSTRING) {
+		func = lua_tostring(L, -1);
+		lua_remove(L, -1);
+	} else if(lua_type(L, -1) == LUA_TNIL) {
+		lua_remove(L, -1);
+		if(event->callback != NULL) {
+			FREE(event->callback);
+		}
+		plua_ret_true(L);
+
+		return 1;
+	}
+
+	p = name;
+	switch(event->module->type) {
+		case UNITTEST: {
+			sprintf(p, "unittest.%s", event->module->name);
+		} break;
+		case FUNCTION: {
+			sprintf(p, "function.%s", event->module->name);
+		} break;
+		case OPERATOR: {
+			sprintf(p, "operator.%s", event->module->name);
+		} break;
+		case ACTION: {
+			sprintf(p, "action.%s", event->module->name);
+		} break;
+		case STORAGE: {
+			sprintf(p, "storage.%s", event->module->name);
+		} break;
+	}
+
+	lua_getglobal(L, name);
+	if(lua_type(L, -1) == LUA_TNIL) {
+		luaL_error(L, "cannot find %s lua module", event->module->name);
+		return 0;
+	}
+
+	lua_getfield(L, -1, func);
+	if(lua_type(L, -1) != LUA_TFUNCTION) {
+		luaL_error(L, "%s: event callback %s does not exist", event->module->file, func);
+		return 0;
+	}
+
+	if(event->callback != NULL) {
+		FREE(event->callback);
+	}
+
+	if((event->callback = STRDUP((char *)func)) == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	plua_ret_true(L);
+
+	return 1;
+}
+
+static void plua_async_event_object(lua_State *L, struct lua_event_t *event) {
+	lua_newtable(L);
+
+	lua_pushstring(L, "trigger");
+	lua_pushlightuserdata(L, event);
+	lua_pushcclosure(L, plua_async_event_trigger, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "register");
+	lua_pushlightuserdata(L, event);
+	lua_pushcclosure(L, plua_async_event_register, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "unregister");
+	lua_pushlightuserdata(L, event);
+	lua_pushcclosure(L, plua_async_event_unregister, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "setCallback");
+	lua_pushlightuserdata(L, event);
+	lua_pushcclosure(L, plua_async_event_set_callback, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "gc");
+	lua_pushlightuserdata(L, event);
+	lua_pushcclosure(L, plua_async_event_user_gc, 1);
+	lua_settable(L, -3);
+}
+
+int plua_async_event(struct lua_State *L) {
+	int i = 0;
+	if(lua_gettop(L) != 0) {
+		luaL_error(L, "event requires 0 arguments, %d given", lua_gettop(L));
+		return 0;
+	}
+
+	struct lua_state_t *state = plua_get_current_state(L);
+	if(state == NULL) {
+		return 0;
+	}
+
+	struct lua_event_t *lua_event = MALLOC(sizeof(struct lua_event_t));
+	if(lua_event == NULL) {
+		OUT_OF_MEMORY
+	}
+	memset(lua_event, '\0', sizeof(struct lua_event_t));
+
+	if((lua_event->table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	memset(lua_event->table, 0, sizeof(struct plua_metatable_t));
+	for(i=0;i<REASON_END+10000;i++) {
+		lua_event->reasons[i].active = 0;
+		lua_event->reasons[i].node = NULL;
+	}
+
+	lua_event->module = state->module;
+	lua_event->L = L;
+
+	plua_gc_reg(NULL, lua_event, plua_async_event_gc);
+	plua_gc_reg(L, lua_event, plua_async_event_gc1);
+
+	plua_async_event_object(L, lua_event);
 
 	lua_assert(lua_gettop(L) == 1);
 

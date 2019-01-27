@@ -35,6 +35,7 @@ static int i = 0;
 static int x = 0;
 static int y = 0;
 static void *foo = NULL;
+static struct eventpool_listener_t *node[2] = { NULL };
 
 static void close_cb(uv_handle_t *handle) {
 	FREE(handle);
@@ -93,6 +94,10 @@ static void *listener3(int reason, void *param, void *userdata) {
 #else
 	__sync_add_and_fetch(&check, 1);
 #endif
+
+	eventpool_callback_remove(node[0]);
+	eventpool_callback_remove(node[1]);
+	eventpool_trigger(2, NULL, NULL);
 
 	return NULL;
 }
@@ -160,8 +165,8 @@ static void test_callback(CuTest *tc) {
 	eventpool_init(threads);
 	eventpool_callback(1, listener1, foo);
 
-	eventpool_callback(2, listener1, NULL);
-	eventpool_callback(2, listener2, NULL);
+	node[0] = eventpool_callback(2, listener1, NULL);
+	node[1] = eventpool_callback(2, listener2, NULL);
 
 	eventpool_callback(3, listener3, NULL);
 

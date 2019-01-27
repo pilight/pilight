@@ -13,10 +13,12 @@
 
 extern int plua_async_thread(struct lua_State *L);
 extern int plua_async_timer(struct lua_State *L);
+extern int plua_async_event(struct lua_State *L);
 
 static const luaL_Reg pilight_async_lib[] = {
 	{"thread", plua_async_thread},
 	{"timer", plua_async_timer},
+	{"event", plua_async_event},
 	{NULL, NULL}
 };
 

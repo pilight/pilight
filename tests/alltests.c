@@ -61,6 +61,7 @@ CuSuite *suite_lua_c_metatable(void);
 CuSuite *suite_lua_common(void);
 CuSuite *suite_lua_async_thread(void);
 CuSuite *suite_lua_async_timer(void);
+CuSuite *suite_lua_async_event(void);
 CuSuite *suite_lua_network_mail(void);
 CuSuite *suite_lua_network_http(void);
 CuSuite *suite_lua_io(void);
@@ -206,6 +207,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_lua_common(); // Ported
 	suites[nr++] = suite_lua_async_thread(); // Ported
 	suites[nr++] = suite_lua_async_timer(); // Ported
+	suites[nr++] = suite_lua_async_event(); // Ported
 	suites[nr++] = suite_lua_network_mail(); // Ported
 	suites[nr++] = suite_lua_network_http();
 	suites[nr++] = suite_lua_io();
