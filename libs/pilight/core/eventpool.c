@@ -125,7 +125,9 @@ static void fib(uv_work_t *req) {
 	struct threadpool_data_t *data = req->data;
 	struct eventqueue_data_t *ndata = data->userdata;
 
-	data->func(data->reason, ndata->data, ndata->userdata);
+	if(data->func != NULL) {
+		data->func(data->reason, ndata->data, ndata->userdata);
+	}
 
 	int x = 0;
 	if(data->ref != NULL) {
@@ -143,7 +145,40 @@ static void fib(uv_work_t *req) {
 	// FREE(req->data);
 }
 
-void eventpool_callback(int reason, void *(*func)(int, void *, void *), void *userdata) {
+void eventpool_callback_remove(struct eventpool_listener_t *node) {
+	if(lockinit == 1) {
+		uv_mutex_lock(&listeners_lock);
+	}
+
+	struct eventpool_listener_t *currP, *prevP;
+	int reason = node->reason;
+
+	prevP = NULL;
+
+	for(currP = eventpool_listeners; currP != NULL; prevP = currP, currP = currP->next) {
+		if(currP == node) {
+			if(prevP == NULL) {
+				eventpool_listeners = currP->next;
+			} else {
+				prevP->next = currP->next;
+			}
+
+#ifdef _WIN32
+			InterlockedDecrement(&nrlisteners[reason]);
+#else
+			__sync_add_and_fetch(&nrlisteners[reason], -1);
+#endif
+
+			FREE(currP);
+			break;
+		}
+	}
+	if(lockinit == 1) {
+		uv_mutex_unlock(&listeners_lock);
+	}
+}
+
+void *eventpool_callback(int reason, void *(*func)(int, void *, void *), void *userdata) {
 	if(lockinit == 1) {
 		uv_mutex_lock(&listeners_lock);
 	}
@@ -168,6 +203,8 @@ void eventpool_callback(int reason, void *(*func)(int, void *, void *), void *us
 	if(lockinit == 1) {
 		uv_mutex_unlock(&listeners_lock);
 	}
+
+	return node;
 }
 
 void eventpool_trigger(int reason, void *(*done)(void *), void *data) {
