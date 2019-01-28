@@ -10,6 +10,7 @@
 #define _LUA_CONFIG_DEVICE_RELAY_H_
 
 #include "../../lua.h"
+#include "../device.h"
 
 int plua_config_device_relay(lua_State *L, struct plua_device_t *dev);
 

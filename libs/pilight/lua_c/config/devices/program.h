@@ -10,6 +10,7 @@
 #define _LUA_CONFIG_DEVICE_PROGRAM_H_
 
 #include "../../lua.h"
+#include "../device.h"
 
 int plua_config_device_program(lua_State *L, struct plua_device_t *dev);
 

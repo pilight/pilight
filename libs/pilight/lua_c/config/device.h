@@ -11,6 +11,11 @@
 
 #include "../lua.h"
 
+typedef struct plua_device_t {
+	char *name;
+	void *data;
+} plua_device_t;
+
 int plua_config_device(lua_State *L);
 
 #endif
