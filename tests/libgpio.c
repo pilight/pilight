@@ -71,20 +71,22 @@ int wiringXSelectableFd(int gpio) {
 int pinMode(int gpio, int mode) {
 	struct sockaddr_un address;
 
-	if((fd[gpio] = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-		logprintf(LOG_ERR, "socket");
-		return -1;
-	}
+	if(fd[gpio] == -1) {
+		if((fd[gpio] = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+			logprintf(LOG_ERR, "socket");
+			return -1;
+		}
 
-	/* start with a clean address structure */
-	memset(&address, 0, sizeof(struct sockaddr_un));
+		/* start with a clean address structure */
+		memset(&address, 0, sizeof(struct sockaddr_un));
 
-	address.sun_family = AF_UNIX;
-	snprintf(address.sun_path, 128, "/dev/gpio%d", gpio);
+		address.sun_family = AF_UNIX;
+		snprintf(address.sun_path, 128, "/dev/gpio%d", gpio);
 
-	if(connect(fd[gpio], (struct sockaddr *)&address, sizeof(struct sockaddr_un)) != 0) {
-		logprintf(LOG_ERR, "connect");
-		return -1;
+		if(connect(fd[gpio], (struct sockaddr *)&address, sizeof(struct sockaddr_un)) != 0) {
+			logprintf(LOG_ERR, "connect");
+			return -1;
+		}
 	}
 
 	return 0;
@@ -109,5 +111,9 @@ int wiringXISR(int gpio, int mode) {
 	if(gpio == 2) {
 		return -1;
 	}
-	return pinMode(gpio, mode);
+	if(fd[gpio] == -1) {
+		return pinMode(gpio, mode);
+	} else {
+		return 0;
+	}
 }

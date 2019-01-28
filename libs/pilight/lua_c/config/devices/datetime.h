@@ -10,6 +10,7 @@
 #define _LUA_CONFIG_DEVICE_DATETIME_H_
 
 #include "../../lua.h"
+#include "../device.h"
 
 int plua_config_device_datetime(lua_State *L, struct plua_device_t *dve);
 

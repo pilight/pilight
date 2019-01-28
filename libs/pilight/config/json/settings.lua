@@ -317,13 +317,17 @@ function M.read(f)
 		error('config setting "' .. v .. '" must be set in combination with the smtp-host, smtp-port, smtp-user, smtp-password and smtp-sender settings');
 	end
 
+	local wx = nil;
 	v = 'gpio-platform';
 	if settings[v] ~= nil then
 		s = settings[v];
 		if type(v) ~= 'string' then
 		end
-		if s ~= "none" and wiringX.setup(s) ~= true then
-			error('config setting "' .. v .. '" must contain a supported gpio platform');
+		if s ~= "none" then
+			wx = wiringX.setup(s);
+			if type(wx) ~= 'table' then
+				error('config setting "' .. v .. '" must contain a supported gpio platform');
+			end
 		end
 	end
 
@@ -340,7 +344,7 @@ function M.read(f)
 			if type(s) ~= 'number' or s < 0 then
 				error('config setting "' .. v .. '" must contain a number larger than 0');
 			end
-			if wiringX.hasGPIO(s) == false then
+			if wx.hasGPIO(s) == false then
 				error('config setting "' .. v .. '" must contain a valid GPIO number');
 			end
 		end

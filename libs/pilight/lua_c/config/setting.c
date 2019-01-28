@@ -32,8 +32,6 @@
 #include "../../core/log.h"
 #include "../../config/settings.h"
 #include "../config.h"
-#include "device.h"
-#include "../../protocols/protocol.h"
 
 int plua_config_setting(lua_State *L) {
 	char buf[128] = { '\0' }, *p = buf;

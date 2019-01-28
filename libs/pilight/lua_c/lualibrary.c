@@ -188,7 +188,24 @@ void plua_register_library(struct lua_State *L) {
 
 	lua_setglobal(L, "pilight");
 
+	/*
+	 * Defaults
+	 */
 	lua_newtable(L);
+
+	len = sizeof(wiringx_globals)/sizeof(wiringx_globals[0]);
+	for(i=0;i<len;i++) {
+		lua_pushstring(L, wiringx_globals[i].name);
+		if(wiringx_globals[i].type == LUA_TNUMBER) {
+			lua_pushnumber(L, wiringx_globals[i].value.number_);
+		} else if(wiringx_globals[i].type == LUA_TSTRING) {
+			lua_pushstring(L, wiringx_globals[i].value.string_);
+		} else if(wiringx_globals[i].type == LUA_TBOOLEAN) {
+			lua_pushboolean(L, wiringx_globals[i].value.number_);
+		}
+		lua_settable(L, -3);
+	}
+
 	i = 0;
 	while(wiringx_lib[i].name != NULL) {
 		lua_pushstring(L, wiringx_lib[i].name);

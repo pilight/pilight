@@ -12,11 +12,6 @@
 #include "lua.h"
 #include "../datatypes/stack.h"
 
-typedef struct plua_device_t {
-	char *name;
-	void *data;
-} plua_device_t;
-
 extern int plua_config(struct lua_State *L);
 
 #endif

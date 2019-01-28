@@ -61,7 +61,7 @@ CuSuite *suite_config(void) {
 
 	SUITE_ADD_TEST(suite, test_config_read);
 	SUITE_ADD_TEST(suite, test_config_settings);
-	// SUITE_ADD_TEST(suite, test_config_registry);
+	SUITE_ADD_TEST(suite, test_config_registry);
 
 	return suite;
 }

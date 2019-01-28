@@ -87,7 +87,7 @@ static int plua_config_device_get_name(lua_State *L) {
 	}
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "config getType requires 0 arguments, %d given", lua_gettop(L));
+		luaL_error(L, "config getName requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	lua_pushstring(L, dev->name);
@@ -159,7 +159,6 @@ static int plua_config_device_has_setting(lua_State *L) {
 
 	return 1;
 }
-
 
 static int plua_config_device_get_id(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
