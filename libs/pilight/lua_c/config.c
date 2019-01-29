@@ -28,7 +28,7 @@
 #include "../core/log.h"
 #include "../config/config.h"
 #include "config/setting.h"
-#include "config/setting.h"
+#include "config/hardware.h"
 #include "config/device.h"
 #include "async.h"
 
@@ -119,6 +119,11 @@ static void plua_config_object(lua_State *L, void *foo) {
 	lua_pushstring(L, "getSetting");
 	// lua_pushlightuserdata(L, timer);
 	lua_pushcclosure(L, plua_config_setting, 0);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "getHardware");
+	// lua_pushlightuserdata(L, timer);
+	lua_pushcclosure(L, plua_config_hardware, 0);
 	lua_settable(L, -3);
 
 	// lua_pushstring(L, "setRepeat");

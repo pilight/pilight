@@ -80,7 +80,7 @@ CuSuite *suite_protocols_i2c(void);
 CuSuite *suite_protocols_gpio_ds18x20(void);
 CuSuite *suite_protocols_gpio_switch(void);
 CuSuite *suite_protocols_relay(void);
-CuSuite *suite_hardware_433gpio(void);
+CuSuite *suite_lua_hardware(void);
 CuSuite *suite_event_operators(void);
 CuSuite *suite_event_functions(void);
 CuSuite *suite_event_actions_switch(void);
@@ -233,7 +233,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_protocols_i2c();
 	suites[nr++] = suite_protocols_gpio_ds18x20();
 	suites[nr++] = suite_protocols_gpio_switch();
-	suites[nr++] = suite_hardware_433gpio(); // Ported
+	suites[nr++] = suite_lua_hardware(); // Ported
 #endif
 	suites[nr++] = suite_event_operators(); // Ported
 	suites[nr++] = suite_event_functions(); // Ported

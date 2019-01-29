@@ -671,6 +671,7 @@ struct lua_state_t *plua_get_free_state(void) {
 			return &lua_state[i];
 		}
 	}
+	logprintf(LOG_ERR, "no free lua states available");
 	return NULL;
 }
 
@@ -911,6 +912,9 @@ static int plua_module_init(struct lua_State *L, char *file, struct plua_module_
 		case STORAGE: {
 			type = STRDUP("storage");
 		} break;
+		case HARDWARE: {
+			type = STRDUP("hardware");
+		} break;
 	}
 	if(type == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -1082,6 +1086,9 @@ void plua_module_load(char *file, int type) {
 			break;
 			case STORAGE:
 				sprintf(p, "storage.%s", module->name);
+			break;
+			case HARDWARE:
+				sprintf(p, "hardware.%s", module->name);
 			break;
 		}
 
@@ -1380,6 +1387,9 @@ int plua_module_exists(char *module, int type) {
 		break;
 		case STORAGE:
 			sprintf(p, "storage.%s", module);
+		break;
+		case HARDWARE:
+			sprintf(p, "hardware.%s", module);
 		break;
 	}
 

@@ -23,6 +23,7 @@
 #define ACTION 		3
 #define PROTOCOL 	4
 #define STORAGE		5
+#define HARDWARE	6
 
 typedef struct plua_metatable_t {
 	struct {

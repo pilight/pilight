@@ -283,8 +283,9 @@ int plua_wiringx_digital_write(struct lua_State *L) {
 			}
 			if(error == 1) {
 				lua_pushnumber(L, 0);	
+			} else {
+				lua_pushnumber(L, table->nrvar);
 			}
-			lua_pushnumber(L, table->nrvar);
 		} else {
 			if(digitalWrite(gpio, mode) == -1) {
 				lua_pushnumber(L, 0);
@@ -441,6 +442,9 @@ static void plua_wiringx_poll_timer(uv_timer_t *req) {
 		} break;
 		case STORAGE: {
 			sprintf(p, "storage.%s", data->parent->module->name);
+		} break;
+		case HARDWARE: {
+			sprintf(p, "hardware.%s", data->parent->module->name);
 		} break;
 	}
 
@@ -615,6 +619,9 @@ static int plua_wiringx_isr(struct lua_State *L) {
 				} break;
 				case STORAGE: {
 					sprintf(p, "storage.%s", wiringx->module->name);
+				} break;
+				case HARDWARE: {
+					sprintf(p, "hardware.%s", wiringx->module->name);
 				} break;
 			}
 

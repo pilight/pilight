@@ -231,6 +231,9 @@ static int plua_async_thread_set_callback(lua_State *L) {
 		case STORAGE: {
 			sprintf(p, "storage.%s", thread->module->name);
 		} break;
+		case HARDWARE: {
+			sprintf(p, "hardware.%s", thread->module->name);
+		} break;
 	}
 
 	lua_getglobal(L, name);
@@ -324,6 +327,9 @@ static void thread_callback(uv_work_t *req) {
 		} break;
 		case STORAGE: {
 			sprintf(p, "storage.%s", state->module->name);
+		} break;
+		case HARDWARE: {
+			sprintf(p, "hardware.%s", state->module->name);
 		} break;
 	}
 
@@ -594,6 +600,9 @@ static int plua_async_timer_set_callback(lua_State *L) {
 		case STORAGE: {
 			sprintf(p, "storage.%s", timer->module->name);
 		} break;
+		case HARDWARE: {
+			sprintf(p, "hardware.%s", timer->module->name);
+		} break;
 	}
 
 	lua_getglobal(L, name);
@@ -792,6 +801,9 @@ static void timer_callback(uv_timer_t *req) {
 		case STORAGE: {
 			sprintf(p, "storage.%s", state->module->name);
 		} break;
+		case HARDWARE: {
+			sprintf(p, "hardware.%s", state->module->name);
+		} break;
 	}
 
 	lua_getglobal(state->L, name);
@@ -945,6 +957,9 @@ void *plua_async_event_callback(int reason, void *param, void *userdata) {
 		} break;
 		case STORAGE: {
 			sprintf(p, "storage.%s", state->module->name);
+		} break;
+		case HARDWARE: {
+			sprintf(p, "hardware.%s", state->module->name);
 		} break;
 	}
 
@@ -1142,6 +1157,7 @@ static int plua_async_event_trigger(struct lua_State *L) {
 
 static int plua_async_event_set_callback(lua_State *L) {
 	struct lua_event_t *event = (void *)lua_topointer(L, lua_upvalueindex(1));
+	int had_callback = 0;
 
 	if(lua_gettop(L) != 1) {
 		luaL_error(L, "event.setCallback requires 1 argument, %d given", lua_gettop(L));
@@ -1198,6 +1214,9 @@ static int plua_async_event_set_callback(lua_State *L) {
 		case STORAGE: {
 			sprintf(p, "storage.%s", event->module->name);
 		} break;
+		case HARDWARE: {
+			sprintf(p, "hardware.%s", event->module->name);
+		} break;
 	}
 
 	lua_getglobal(L, name);
@@ -1213,11 +1232,21 @@ static int plua_async_event_set_callback(lua_State *L) {
 	}
 
 	if(event->callback != NULL) {
+		had_callback = 1;
 		FREE(event->callback);
 	}
 
 	if((event->callback = STRDUP((char *)func)) == NULL) {
 		OUT_OF_MEMORY
+	}
+
+	if(had_callback == 0) {
+		int i = 0;
+		for(i=0;i<REASON_END+10000;i++) {
+			if(event->reasons[i].active == 1) {
+				event->reasons[i].node = eventpool_callback(i, plua_async_event_callback, event);
+			}
+		}
 	}
 
 	plua_ret_true(L);
@@ -1270,7 +1299,8 @@ int plua_async_event(struct lua_State *L) {
 	if(lua_event == NULL) {
 		OUT_OF_MEMORY
 	}
-	memset(lua_event, '\0', sizeof(struct lua_event_t));
+	memset(lua_event, 0, sizeof(struct lua_event_t));
+	lua_event->callback = NULL;
 
 	if((lua_event->table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -1284,6 +1314,9 @@ int plua_async_event(struct lua_State *L) {
 	lua_event->module = state->module;
 	lua_event->L = L;
 
+	/*
+	 * FIXME
+	 */
 	plua_gc_reg(NULL, lua_event, plua_async_event_gc);
 	plua_gc_reg(L, lua_event, plua_async_event_gc1);
 

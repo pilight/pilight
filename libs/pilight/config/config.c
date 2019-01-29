@@ -224,6 +224,13 @@ int config_read(char *str, unsigned short objects) {
 		}
 	}
 
+	if((objects & CONFIG_HARDWARE) == CONFIG_HARDWARE) {
+		if(config_callback_read("hardware", string) != 1) {
+			FREE(string);
+			return -1;
+		}
+	}
+
 	if((objects & CONFIG_REGISTRY) == CONFIG_REGISTRY) {
 		if(config_callback_read("registry", string) != 1) {
 			FREE(string);

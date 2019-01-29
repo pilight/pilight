@@ -20,8 +20,14 @@
 
 void test_config_settings(CuTest *tc);
 void test_config_registry(CuTest *tc);
+void test_config_hardware(CuTest *tc);
 
 void test_config_read(CuTest *tc) {
+	if(suiteFailed()) return;
+
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
 	memtrack();
 	char *file = STRDUP(__FILE__);
 	if(file == NULL) {
@@ -62,6 +68,7 @@ CuSuite *suite_config(void) {
 	SUITE_ADD_TEST(suite, test_config_read);
 	SUITE_ADD_TEST(suite, test_config_settings);
 	SUITE_ADD_TEST(suite, test_config_registry);
+	SUITE_ADD_TEST(suite, test_config_hardware);
 
 	return suite;
 }

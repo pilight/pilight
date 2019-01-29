@@ -24,6 +24,7 @@
 #include "../libs/libuv/uv.h"
 
 static int state[255] = { 0 };
+static int init = 0;
 static uv_os_fd_t fd[255] = { -1 };
 
 #ifdef _WIN32
@@ -39,6 +40,7 @@ int wiringXSetup(char *name, void (*func)(int, char *, int, const char *, ...)) 
 		state[i] = 0;
 	}
 	if(name == NULL || strcmp(name, "gpio-stub") == 0) {
+		init = 1;
 		return 0;
 	}
 	return -1;
@@ -52,7 +54,11 @@ int wiringXValidGPIO(int gpio) {
 }
 
 int digitalWrite(int gpio, int mode) {
-	return ((send(fd[gpio], "a", 1, 0) == 1) ? 0 : -1);
+	int ret = -1;
+	if(fd[gpio] > 0) {
+		ret = ((send(fd[gpio], "a", 1, 0) == 1) ? 0 : -1);
+	}
+	return ret;
 }
 
 char *wiringXPlatform(void) {
@@ -93,6 +99,7 @@ int pinMode(int gpio, int mode) {
 }
 
 int wiringXGC(void) {
+	init = 0;
 	int *(*real)(void) = dlsym(RTLD_NEXT, "wiringXGC");
 	if(NULL == real) {
 		fprintf(stderr, "dlsym");
@@ -102,6 +109,7 @@ int wiringXGC(void) {
 	for(i=0;i<255;i++) {
 		if(fd[i] > 0) {
 			close(fd[i]);
+			fd[i] = -1;
 		}
 	}
   return 0;
