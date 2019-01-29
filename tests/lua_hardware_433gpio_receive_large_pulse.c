@@ -30,6 +30,7 @@ static CuTest *gtc = NULL;
 static uv_pipe_t *pipe_req0 = NULL;
 static uv_pipe_t *pipe_req1 = NULL;
 static uv_poll_t *poll_req = NULL;
+static struct eventpool_listener_t *node = NULL;
 
 static int round = 0;
 static int check = 0;
@@ -151,6 +152,8 @@ static void *listener(int reason, void *param, void *userdata) {
 			}
 		}
 		if(check == 1 || round > 5) {
+			wiringXGC();
+			eventpool_callback_remove(node);
 			uv_poll_stop(poll_req);
 			uv_stop(uv_default_loop());
 		}
@@ -253,7 +256,7 @@ void test_lua_hardware_433gpio_receive_large_pulse(CuTest *tc) {
 	FREE(file);
 
 	eventpool_init(EVENTPOOL_THREADED);
-	eventpool_callback(10006, listener, NULL);
+	node = eventpool_callback(10006, listener, NULL);
 
 	CuAssertIntEquals(tc, 0, config_read("lua_hardware_433gpio.json", CONFIG_SETTINGS));
 

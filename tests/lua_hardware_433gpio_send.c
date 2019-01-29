@@ -191,7 +191,6 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 		timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
 		duration = (int)((int)timestamp.second-(int)timestamp.first);
-
 		if(duration > 0) {
 			data.rbuffer[data.rptr++] = duration;
 			if(data.rptr > MAXPULSESTREAMLENGTH-1) {
@@ -203,7 +202,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 					int i = 0;
 					check = 1;
 					for(i=0;i<data.rptr;i++) {
-						if(!((int)(data.rbuffer[i]*0.75) <= pulses[i] && (int)(data.rbuffer[i]*1.25) >= pulses[i])) {
+						if(!((int)(data.rbuffer[i]*0.6) <= pulses[i] && (int)(data.rbuffer[i]*1.4) >= pulses[i])) {
 							check = 0;
 						}
 					}
