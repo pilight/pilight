@@ -191,6 +191,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 		timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
 		duration = (int)((int)timestamp.second-(int)timestamp.first);
+
 		if(duration > 0) {
 			data.rbuffer[data.rptr++] = duration;
 			if(data.rptr > MAXPULSESTREAMLENGTH-1) {
@@ -214,7 +215,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 						uv_timer_stop(timer_req);
 						return;
 					}
-					memset(&timestamp, 0, sizeof(struct timestamp_t));
+					// memset(&timestamp, 0, sizeof(struct timestamp_t));
 				}
 				round++;
 			}
