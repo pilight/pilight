@@ -17,6 +17,7 @@
 #include "../libs/pilight/lua_c/lua.h"
 #include "../libs/pilight/config/config.h"
 #include "../libs/pilight/config/settings.h"
+#include "alltests.h"
 
 void test_config_settings(CuTest *tc);
 void test_config_registry(CuTest *tc);

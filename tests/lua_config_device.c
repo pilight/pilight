@@ -24,6 +24,7 @@
 #include "../libs/pilight/protocols/433.92/arctech_dimmer.h"
 #include "../libs/pilight/protocols/433.92/arctech_screen.h"
 #include "../libs/pilight/protocols/generic/generic_label.h"
+#include "alltests.h"
 
 static struct {
 	union {
