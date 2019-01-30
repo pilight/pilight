@@ -281,7 +281,6 @@ void test_lua_hardware_433gpio_send(CuTest *tc) {
 	test_set_plua_path(tc, __FILE__, "lua_hardware_433gpio_send.c");
 
 	plua_overwrite_print();
-	plua_pause_coverage(1);
 
 	file = STRDUP(__FILE__);
 	CuAssertPtrNotNull(tc, file);
@@ -382,8 +381,6 @@ void test_lua_hardware_433gpio_send(CuTest *tc) {
 	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
-
-	plua_pause_coverage(0);
 
 	storage_gc();
 	plua_gc();

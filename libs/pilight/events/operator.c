@@ -49,7 +49,7 @@ void event_operator_init(void) {
 	char *operator_root = OPERATOR_ROOT;
 
 	if(f == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	int ret = config_setting_get_string("operators-root", 0, &operator_root);
@@ -208,7 +208,7 @@ static int plua_operator_module_run(struct lua_State *L, char *file, struct varc
 	} else if(lua_isstring(L, -1) == 1) {
 		int l = strlen(lua_tostring(L, -1));
 		if((v->string_ = REALLOC(v->string_, l+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(v->string_, lua_tostring(L, -1));
 		v->type_ = JSON_STRING;

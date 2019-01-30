@@ -62,7 +62,7 @@ void event_action_init(void) {
 	char *actions_root = ACTION_ROOT;
 
 	if(f == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	int ret = config_setting_get_string("actions-root", 0, &actions_root);
@@ -148,13 +148,13 @@ struct event_action_args_t *event_action_add_argument(struct event_action_args_t
 	cpy = node;
 	if(node == NULL) {
 		if((node = MALLOC(sizeof(struct event_action_args_t))) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		memset(node, 0, sizeof(struct event_action_args_t));
 
 		cpy = node;
 		if((node->key = STRDUP(key)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		node->var = NULL;
 		if(head != NULL) {
@@ -172,10 +172,10 @@ struct event_action_args_t *event_action_add_argument(struct event_action_args_t
 
 	if(var != NULL) {
 		if((cpy->var = REALLOC(cpy->var, sizeof(struct varcont_t *)*(cpy->nrvalues+1))) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		if((cpy->var[cpy->nrvalues] = MALLOC(sizeof(struct varcont_t))) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		switch(var->type_) {
 			case JSON_NUMBER: {
@@ -333,7 +333,7 @@ static int event_action_prepare_call(char *module, char *func, struct event_acti
 	memset(name, '\0', 255);
 
 	if(lower == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	strtolower(&lower);
@@ -421,11 +421,11 @@ static int event_action_parameters_run(struct lua_State *L, char *file, int *nr,
 	}
 
 	if(((*ret) = MALLOC((*nr)*sizeof(char *))) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	for(i=1;i<=*nr;i++) {
 		if(((*ret)[i-1] = STRDUP((char *)lua_tostring(L, -1))) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		lua_remove(L, -1);
 	}
@@ -453,7 +453,7 @@ int event_action_get_parameters(char *module, int *nr, char ***ret) {
 	memset(name, '\0', 255);
 
 	if(lower == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	strtolower(&lower);

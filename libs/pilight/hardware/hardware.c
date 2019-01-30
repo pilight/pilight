@@ -67,7 +67,7 @@ void hardware_init(void) {
 	char *hardware_root = HARDWARE_ROOT;
 
 	if(f == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	int ret = config_setting_get_string("hardware-root", 0, &hardware_root);

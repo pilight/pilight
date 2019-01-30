@@ -1177,13 +1177,14 @@ static void test_events(CuTest *tc) {
 				uv_run(uv_default_loop(), UV_RUN_ONCE);
 			}
 		}
-		event_operator_gc();
-		event_action_gc();
-		event_function_gc();
+		// event_operator_gc();
+		// event_action_gc();
+		// event_function_gc();
 		protocol_gc();
 		storage_gc();
 		eventpool_gc();
 		plua_gc();
+		events_gc();
 
 		int len = sizeof(receives)/sizeof(receives[0]), i = 0, x = 0;
 

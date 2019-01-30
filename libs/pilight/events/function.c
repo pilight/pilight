@@ -49,7 +49,7 @@ void event_function_init(void) {
 	char *functions_root = FUNCTION_ROOT;
 
 	if(f == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	int ret = config_setting_get_string("functions-root", 0, &functions_root);
@@ -143,7 +143,7 @@ static int plua_function_module_run(struct lua_State *L, char *file, struct even
 	} else if(lua_isstring(L, -1) == 1) {
 		int l = strlen(lua_tostring(L, -1));
 		if((v->string_ = REALLOC(v->string_, l+1)) == NULL) {
-			OUT_OF_MEMORY
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(v->string_, lua_tostring(L, -1));
 		v->type_ = JSON_STRING;
@@ -165,7 +165,7 @@ int event_function_exists(char *module) {
 struct event_function_args_t *event_function_add_argument(struct varcont_t *var, struct event_function_args_t *head) {
 	struct event_function_args_t *node = MALLOC(sizeof(struct event_function_args_t));
 	if(node == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(node, 0, sizeof(struct event_function_args_t));
 	switch(var->type_) {
@@ -177,7 +177,7 @@ struct event_function_args_t *event_function_add_argument(struct varcont_t *var,
 		case JSON_STRING: {
 			node->var.type_ = JSON_STRING;
 			if((node->var.string_ = STRDUP(var->string_)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 		} break;
 		case JSON_BOOL: {

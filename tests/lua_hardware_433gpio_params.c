@@ -95,7 +95,6 @@ void run(CuTest *tc, const char *func, char *config) {
 	test_set_plua_path(tc, __FILE__, "lua_hardware_433gpio_params.c");
 
 	plua_overwrite_print();
-	plua_pause_coverage(1);
 
 	file = STRDUP(__FILE__);
 	CuAssertPtrNotNull(tc, file);
@@ -123,8 +122,6 @@ void run(CuTest *tc, const char *func, char *config) {
 	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
-
-	plua_pause_coverage(0);
 
 	storage_gc();
 	plua_gc();
