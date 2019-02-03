@@ -9,6 +9,9 @@
 
 /*
  *  this implementation is based on RTL_433 project code for HIDEKI
+ *
+ *  tests have shown that the transmitter "TFA 30.3126" also uses this protocol
+ *
  * */
 
 #include <stdio.h>
@@ -207,7 +210,7 @@ static void parseCode(void) {
 		// check parity
 		uint8_t parity = ((binary[i+offset+1] >> (7 - i%8)) ^ 0xFF) & 0x01;
 		if(parity != byteParity(packet[i])) {			
-			if(i == 10) {
+			if((i == 10) || (i==11)) {
 				sensortype = HIDEKI_TS04;
 				break;
 			}
