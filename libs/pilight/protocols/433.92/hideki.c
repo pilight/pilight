@@ -209,8 +209,8 @@ static void parseCode(void) {
 		packet[i] ^= 0xFF; // invert bits
 		// check parity
 		uint8_t parity = ((binary[i+offset+1] >> (7 - i%8)) ^ 0xFF) & 0x01;
-		if(parity != byteParity(packet[i])) {			
-			if((i == 10) || (i==11)) {
+		if(parity != byteParity(packet[i])) {
+			if((i == 10) || (i == 11)) {
 				sensortype = HIDEKI_TS04;
 				break;
 			}
