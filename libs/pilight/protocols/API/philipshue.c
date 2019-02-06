@@ -1,0 +1,949 @@
+/*
+ *
+ *  This Source Code Form is subject to the terms of the Mozilla Public
+ *  License, v. 2.0. If a copy of the MPL was not distributed with this
+ *  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <dirent.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <math.h>
+#include <sys/stat.h>
+#ifndef _WIN32
+	#ifdef __mips__
+		#define __USE_UNIX98
+	#endif
+#endif
+#include <pthread.h>
+
+#ifdef _WIN32
+	#define WIN32_LEAN_AND_MEAN
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#define MSG_NOSIGNAL 0
+#else
+	#include <sys/socket.h>
+	#include <sys/time.h>
+	#include <netinet/in.h>
+	#include <netinet/tcp.h>
+	#include <netdb.h>
+	#include <arpa/inet.h>
+#endif
+
+//#include "../../core/threads.h"
+#include "../../core/pilight.h"
+#include "../../core/common.h"
+#include "../../core/dso.h"
+#include "../../core/log.h"
+#include "../../core/socket.h"
+#include "../../core/network.h"
+#include "../../hardware/zigbee.h"
+#include "../protocol.h"
+#include "../../core/binary.h"
+#include "../../core/json.h"
+#include "../API/philipshue.h"
+
+#define INTERVAL 	60
+#define HTTP_GET	0
+#define HTTP_POST	1
+#define HTTP_PUT	2
+#define HTTP_DELETE	3
+
+typedef struct settings_http_t {
+	uv_tcp_t *socket_http;
+	char *bridgeip;
+	char *username;
+	char *page;
+	int method;
+	int code;
+	int size;
+	char *post;
+	char *content;
+	char *body;    // has not malloc but pointer to content
+	char *type;
+	void (*callback)(char *data, char *bridgeip, char *username, char *url, char *type, int ret, int size);
+} settings_http_t;
+
+typedef struct settings_t {
+	char *bridgeip;
+	char *username;
+	int lightid;
+//	protocol_threads_t *thread;
+	uv_timer_t *timer_req;
+	struct settings_t *next;
+} settings_t;
+
+
+static struct settings_t *settings = NULL;
+
+static void free_http_settings(settings_http_t *settings_http) {
+	if (settings_http == NULL)
+		return;
+
+	char *bridgeip = settings_http->bridgeip;
+	char *username = settings_http->username;
+	char *page = settings_http->page;
+	char *post = settings_http->post;
+	char *content = settings_http->content;
+	char *type = settings_http->type;
+	if (bridgeip)
+		FREE(bridgeip);
+	if (username)
+		FREE(username);
+	if (page)
+		FREE(page);
+	if (post)
+		FREE(post);
+	if (content)
+		FREE(content);
+	if (type)
+		FREE(type);
+	if (settings_http)
+		FREE(settings_http);
+}
+
+static void read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
+	settings_http_t *settings_http = client->data;
+	char *bridgeip = settings_http->bridgeip;
+	char *username = settings_http->username;
+	char *page = settings_http->page;
+	int code = settings_http->code;
+	int size = settings_http->size;
+
+	char *nl = NULL;
+	char tp[200];
+	int has_code = 0, has_type = 0;
+	char *content = settings_http->content;
+	char *body = settings_http->body;
+	char *type = settings_http->type;
+
+	if (nread > 0) {
+
+		if((settings_http->content = REALLOC(settings_http->content, (size_t)(size + nread + 1))) == NULL) {
+			fprintf(stderr, "out of memory\n");
+			exit(EXIT_FAILURE);
+		}
+		content = settings_http->content;
+
+		memset(&content[size], '\0', (size_t)(nread + 1));
+		strncpy(&content[size], buf->base, (size_t)(nread));
+		size += nread;
+
+		char **array = NULL;
+		char *p = buf->base;
+		/* Let's first normalize the HEADER terminator */
+		str_replace("\r\n", "\n\r", &p);
+		unsigned int n = explode(buf->base, "\n\r", &array), q = 0;
+		int z = 0;
+		for (q = 0; q < n; q++) {
+			if(has_code == 0 && sscanf(array[q], "HTTP/1.%d%*[ ]%d%*s%*[ \n\r]", &z, &code)) {
+				if (settings_http->code == 0) {
+					settings_http->code = code;
+				}
+				has_code = 1;
+			}
+			// ;%*[ A-Za-z0-9\\/=+- \n\r]
+			if(has_type == 0 && sscanf(array[q], "Content-%*[tT]ype:%*[ ]%[A-Za-z\\/+-]", tp)) {
+				if (type == NULL) {
+					type = strdup(tp);
+					settings_http->type = type;
+				}
+				has_type = 1;
+			}
+		}
+		array_free(&array, n);
+
+		if(content != NULL) {
+			/* Remove the header */
+			if((nl = strstr(content, "\r\n\r\n"))) {
+				settings_http->body = nl;
+				settings_http->body += 4;
+			}
+			/* Remove the footer */
+			if((nl = strstr(content, "0\r\n\r\n"))) {
+				size -= 5;
+				content[size] = '\0';
+			}
+		}
+		settings_http->size = size;
+	}
+
+	if(nread < 0) {
+		if(nread != UV_EOF) {
+			logprintf(LOG_ERR, "[philipshue] read_cb: %s\n", uv_strerror(nread));
+			printf("[philipshue] read_cb: %s\n", uv_strerror(nread));
+		}
+		if (settings_http->callback != NULL) {
+			settings_http->callback(body, bridgeip, username, page, type, code, size);
+		}
+		uv_read_stop((uv_stream_t *)client);
+	}
+	free(buf->base);
+}
+
+static void alloc_cb(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
+	buf->base = malloc(suggested_size);
+	buf->len = suggested_size;
+	memset(buf->base, '\0', buf->len);
+}
+
+static void free_write_req(uv_write_t *req, int status) {
+	if (status < 0) {
+		logprintf(LOG_ERR, "[philipshue] free_write_req write error %s\n", uv_strerror(status));
+		return;
+	}
+	FREE(req);
+}
+
+static void on_connect(uv_connect_t *conn_req, int status) {
+	settings_http_t *settings_http = conn_req->data;
+	uv_tcp_t *socket_http = settings_http->socket_http;
+	char *page = settings_http->page;
+	int method = settings_http->method;
+	char *post = settings_http->post;
+
+	size_t bufsize = BUFFER_SIZE;
+	char *header = MALLOC(bufsize);
+	size_t len = 0;
+
+	if (status < 0) {
+		logprintf(LOG_ERR, "[philipshue] on_connect New connection error: %s\n", uv_strerror(status));
+		logprintf(LOG_ERR, "[philipshue] host = %s\n", settings_http->bridgeip);
+		return;
+	}
+
+	if(header == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
+	memset(header, '\0', bufsize);
+
+	if(method == HTTP_POST) {
+		len = (size_t)snprintf(&header[0], bufsize, "POST %s HTTP/1.0\r\nContent-Length: %d\r\n\r\n%s", page, (int)strlen(post), post);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				fprintf(stderr, "out of memory\n");
+				exit(EXIT_FAILURE);
+			}
+		}
+	} else if(method == HTTP_PUT) {
+		len = (size_t)snprintf(&header[0], bufsize, "PUT %s HTTP/1.0\r\nContent-Length: %d\r\n\r\n%s", page, (int)strlen(post), post);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				fprintf(stderr, "out of memory\n");
+				exit(EXIT_FAILURE);
+			}
+		}
+	} else if(method == HTTP_GET) {
+		len = (size_t)snprintf(&header[0], bufsize, "GET %s HTTP/1.0\r\n\r\n", page);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				fprintf(stderr, "out of memory\n");
+				exit(EXIT_FAILURE);
+			}
+		}
+	} else if(method == HTTP_DELETE) {
+		len = (size_t)snprintf(&header[0], bufsize, "DELETE %s HTTP/1.0\r\n\r\n", page);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				fprintf(stderr, "out of memory\n");
+				exit(EXIT_FAILURE);
+			}
+		}
+	}
+
+	char sbuf[bufsize];
+	strcpy(sbuf, header);
+	uv_buf_t buf = uv_buf_init(sbuf, len);
+	uv_write_t *req = (uv_write_t *) MALLOC(sizeof(uv_write_t));
+	if (req == NULL) {
+		OUT_OF_MEMORY
+	}
+	req->data = settings_http;
+	int r = uv_write(req, (uv_stream_t *) socket_http, &buf, 1, free_write_req);
+	if (r) {
+		logprintf(LOG_ERR, "[philipshue] on_connectwrite error %s\n", uv_strerror(r));
+		printf("philipshue on_connect write error %s\n", uv_strerror(r));
+	} else {
+//		req->handle->data = req->data;
+		socket_http->data = settings_http;
+		uv_read_start((uv_stream_t *)socket_http /*req->handle*/, alloc_cb, read_cb);
+	}
+	FREE(header);
+}
+
+/*****************************************************************************************************
+ *
+ * hue_request adds very simple HTTP GET/POST/PUT/DELETE to connect to Philips Hue Bridge Rest API
+ *
+ * host   = bridge IP Address
+ * page   = the request (for example "/api/lights" )
+ * method = HTTP_GET|HTTP_POST|HTTP_PUT|HTTP_DELETE
+ * cb     = callback when finished
+ * type   = should always return "application/json" otherwise something went wrong
+ * code   = return code (should alway have 200)
+ * size   = returned content size
+ * post   = post data used in POST and PUT requests
+ *
+ *****************************************************************************************************/
+
+static void hue_request(char *host,
+		char *username,
+		char *page,
+		int method,
+		char *post,
+		void (*cb)(char *data, char *bridgeip, char *username, char *url, char *tp, int ret, int size)) {
+	struct sockaddr_in serv_addr;
+
+	memset(&serv_addr, '\0', sizeof(struct sockaddr_in));
+
+	settings_http_t *settings_http = MALLOC(sizeof(settings_http_t));
+	if (settings_http == NULL) {
+		OUT_OF_MEMORY
+	}
+	settings_http->bridgeip = NULL;
+	if (host != NULL) {
+		settings_http->bridgeip = strdup(host);
+	}
+	settings_http->username = NULL;
+	if (username != NULL) {
+		settings_http->username = strdup(username);
+	}
+	settings_http->page = NULL;
+	if (page != NULL) {
+		settings_http->page = strdup(page);
+	}
+	settings_http->method = method;
+	settings_http->post = NULL;
+	if (post != NULL) {
+		settings_http->post = strdup(post);
+	}
+	settings_http->code = 0;
+	settings_http->size = 0;
+	settings_http->content = NULL;
+	settings_http->body = NULL;
+	settings_http->type = NULL;
+	settings_http->callback = cb;
+	uv_tcp_t *socket_http = (uv_tcp_t *) MALLOC(sizeof(uv_tcp_t));
+	if (socket_http == NULL) {
+		OUT_OF_MEMORY
+	}
+	settings_http->socket_http = socket_http;
+
+	uv_loop_t *loop = malloc(sizeof(uv_loop_t));
+	uv_loop_init(loop);
+
+	uv_tcp_init(loop, socket_http);
+	uv_connect_t *connect_http = (uv_connect_t *) MALLOC(sizeof(uv_connect_t));
+	if (connect_http == NULL) {
+		OUT_OF_MEMORY
+	}
+	connect_http->data = settings_http;
+	uv_ip4_addr(host, 80, &serv_addr);
+	int r = uv_tcp_connect(connect_http, socket_http, (const struct sockaddr *)&serv_addr, on_connect);
+	if (r) {
+		logprintf(LOG_ERR, "[philipshue] hue_request Connect error %s\n", uv_strerror(r));
+		FREE(settings_http);
+	}
+	uv_run(loop, UV_RUN_DEFAULT);
+
+	uv_close((uv_handle_t*) socket_http, NULL);
+	uv_loop_close(loop);
+	free_http_settings(settings_http);
+	free(loop);
+}
+
+void hue_get(char *host, char *username, char *page, void (*cb)(char *data, char *bridgeip, char *username, char *url, char *tp, int ret, int size)) {
+	hue_request(host, username, page, HTTP_GET, NULL, cb);
+}
+
+void hue_post(char *host, char *username, char *page, char *post, void (*cb)(char *data, char *bridgeip, char *username, char *url, char *tp, int ret, int size)) {
+	hue_request(host, username, page, HTTP_POST, post, cb);
+}
+
+void hue_put(char *host, char *username, char *page, char *post, void (*cb)(char *data, char *bridgeip, char *username, char *url, char *tp, int ret, int size)) {
+	hue_request(host, username, page, HTTP_PUT, post, cb);
+}
+
+void hue_delete(char *host, char *username, char *page, char **type, int *code, int *size, void (*cb)(char *data, char *bridgeip, char *username, char *url, char *tp, int ret, int size)) {
+	hue_request(host, username, page, HTTP_DELETE, NULL, cb);
+}
+
+static void hue_get_parse_result(char *data, char *bridgeip, char *username, char *url, char *typebuf, int ret, int size) {
+	struct JsonNode *jdata = NULL;
+	struct JsonNode *jmain = NULL;
+	struct JsonNode *jstate = NULL;
+	struct JsonNode *jarray = NULL;
+	struct JsonNode *node = NULL;
+	if(ret == 200) {
+		if(strstr(typebuf, "application/json") != NULL) {
+			if(json_validate(data) == true) {
+				if((jdata = json_decode(data)) != NULL) {
+					if(jdata->tag == JSON_OBJECT) {
+						json_foreach(jmain, jdata) {  // loop through lights { "1":{...}, "2":{...}, "3":{...},...}
+							/*
+							 * Example jdata:
+							 *
+							 *	{"1": {
+							 *		 "state": {
+							 *			"on": false,
+							 *			"bri": 253,
+							 *			"hue": 8625,
+							 *			"sat": 252,
+							 *			"effect": "none",
+							 *			"xy": [ 0.5837, 0.3879 ],
+							 *			"ct": 500,
+							 *			"alert": "none",
+							 *			"colormode": "xy",
+							 *			"reachable": true
+							 *		  },
+							 *		  "type": "Extended color light",
+							 *		  "name": "Hue Lamp",
+							 *		  ...
+							 *		  },
+							 *	 "2": {...},
+							 *	 ...
+							 *	}
+							 *
+							 */
+
+							if(isNumeric(jmain->key) != 0) { // this should not happen
+								logprintf(LOG_ERR, "url = %s result key = %s is not a valid number. HTTP response = %s", url, jmain->key, data);
+								continue;
+							}
+
+							JsonNode *code = json_mkobject();
+							json_append_member(code, "lightid", json_mknumber(atof(jmain->key), 0));
+							json_append_member(code, "bridgeip", json_mkstring(bridgeip));
+							json_append_member(code, "username", json_mkstring(username));
+
+							if((jstate = json_find_member(jmain, "state")) != NULL) {  // {"1":{"state":{...},"type":...,"name":...,...},...}
+								int state = 1;
+								if((node = json_find_member(jstate, "on")) != NULL && node->tag == JSON_BOOL) {
+									if(! node->bool_)
+										state = 0; // state=off if on=false
+									json_append_member(code, "on", json_mkstring(node->bool_ ? "true" : "false"));
+								}
+								if((node = json_find_member(jstate, "bri")) != NULL && node->tag == JSON_NUMBER) {
+									json_append_member(code, "bri", json_mknumber(node->number_, 0));
+									json_append_member(code, "dimlevel", json_mknumber(node->number_ / 17, 0)); // dimlevel 15 = bri 255 = bri (17 * 15)
+								}
+								if((node = json_find_member(jstate, "hue")) != NULL && node->tag == JSON_NUMBER) {
+									json_append_member(code, "hue", json_mknumber(node->number_, 0));
+								}
+								if((node = json_find_member(jstate, "sat")) != NULL && node->tag == JSON_NUMBER) {
+									json_append_member(code, "sat", json_mknumber(node->number_, 0));
+								}
+								if((node = json_find_member(jstate, "effect")) != NULL && node->tag == JSON_STRING) {
+									json_append_member(code, "effect", json_mkstring(node->string_));
+								}
+								if((node = json_find_member(jstate, "xy")) != NULL && node->tag == JSON_ARRAY) {
+									jarray = node->children.head; // example array "xy":[0.5471,0.4144]
+									if(jarray->tag == JSON_NUMBER)
+										json_append_member(code, "x", json_mknumber(jarray->number_, 4));
+									jarray = jarray->next;
+									if(jarray->tag == JSON_NUMBER)
+										json_append_member(code, "y", json_mknumber(jarray->number_, 4));
+									json_delete(jarray);
+								}
+								if((node = json_find_member(jstate, "ct")) != NULL && node->tag == JSON_NUMBER) {
+									json_append_member(code, "ct", json_mknumber(node->number_, 0));
+								}
+								if((node = json_find_member(jstate, "alert")) != NULL && node->tag == JSON_STRING) {
+									json_append_member(code, "alert", json_mkstring(node->string_));
+								}
+								if((node = json_find_member(jstate, "colormode")) != NULL && node->tag == JSON_STRING) {
+									json_append_member(code, "colormode", json_mkstring(node->string_));
+								}
+								if((node = json_find_member(jstate, "reachable")) != NULL && node->tag == JSON_BOOL) {
+									if(! node->bool_)
+										state = 0; // state=off is reachable false
+									json_append_member(code, "reachable", json_mkstring(node->bool_ ? "true" : "false"));
+								}
+								if(state) {
+									json_append_member(code, "state", json_mkstring("on"));
+								} else {
+									json_append_member(code, "state", json_mkstring("off"));
+								}
+								/* end state json object */
+							} else {
+								logprintf(LOG_NOTICE, "api philipshue json has no state key");
+							}
+
+							if(((jstate = json_find_member(jmain, "type")) != NULL)  && jstate->tag == JSON_STRING) {
+								json_append_member(code, "type", json_mkstring(jstate->string_));
+							} else {
+								logprintf(LOG_NOTICE, "api philipshue json has no type key");
+							}
+
+							if(((jstate = json_find_member(jmain, "name")) != NULL)  && jstate->tag == JSON_STRING) {
+								json_append_member(code, "name", json_mkstring(jstate->string_));
+							} else {
+								logprintf(LOG_NOTICE, "api philipshue json has no name key");
+							}
+
+//							philipshue->message = json_mkobject();
+//							json_append_member(philipshue->message, "message", code);
+//							json_append_member(philipshue->message, "origin", json_mkstring("receiver"));
+//							json_append_member(philipshue->message, "protocol", json_mkstring(philipshue->id));
+//
+//							if(pilight.broadcast != NULL) {
+//								pilight.broadcast(philipshue->id, philipshue->message, PROTOCOL);
+//							}
+//							json_delete(node);
+//							json_delete(jstate);
+//							json_delete(philipshue->message);
+//							philipshue->message = NULL;
+							char *message = json_stringify(code, NULL);
+							broadcast_message(message, philipshue->id);
+							json_free(message);
+
+							json_delete(node);
+							json_delete(jstate);
+						}
+					}
+					json_delete(jdata);
+				} else {
+					logprintf(LOG_NOTICE, "philipshue - response from api json could not be parsed");
+				}
+			}  else {
+				logprintf(LOG_NOTICE, "philipshue - response was not in a valid json format");
+			}
+		} else {
+			logprintf(LOG_NOTICE, "philipshue - response was not in a valid json format");
+		}
+	} else {
+		logprintf(LOG_NOTICE, "philipshue - could not reach philipshue bridge, HTTP %d", ret);
+	}
+	return;
+}
+
+static void thread_free(uv_work_t *req, int status) {
+	FREE(req);
+}
+
+static void thread(uv_work_t *req) {
+	struct settings_t *setting = req->data; // settings from first light
+	char url[1024];
+	char typebuf[255];
+	char *bridgeip = NULL;
+	char *username = NULL;
+
+	memset(&typebuf, '\0', 255);
+
+	if (setting == NULL || setting->bridgeip == NULL || setting->username == NULL) {
+		return;
+	}
+	bridgeip = setting->bridgeip;
+	username = setting->username;
+	sprintf(url, "/api/%s/lights", username);
+	hue_get(bridgeip, username, url, hue_get_parse_result);
+}
+
+static void *threadtimer(void *param) {
+	uv_timer_t *timer_req = param;
+	struct data_t *settings = timer_req->data;
+
+	uv_work_t *work_req = NULL;
+	if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+	work_req->data = settings;
+	uv_queue_work(uv_default_loop(), work_req, "philipshue", thread, thread_free);
+
+	return NULL;
+}
+
+static void *addDevice(int reason, void *param) {
+	struct JsonNode *json = NULL;
+	struct JsonNode *jid = NULL;
+	struct JsonNode *jchild = NULL;
+	struct JsonNode *jchild1 = NULL;
+	struct JsonNode *jprotocols = NULL;
+	struct settings_t *wnode = MALLOC(sizeof(struct settings_t));
+	if (wnode == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	char *bridgeip = NULL;
+	char *username = NULL;
+	int match = 0;
+	static int firstlight = 0;
+
+	if((json = json_first_child(param /*task->userdata*/)) == NULL) {
+		return NULL;
+	}
+	if((jprotocols = json_find_member(json, "protocol")) != NULL) {
+		jchild = json_first_child(jprotocols);
+		while(jchild) {
+			if(strcmp(philipshue->id, jchild->string_) == 0) {
+				match = 1;
+				break;
+			}
+			jchild = jchild->next;
+		}
+	}
+	if(match == 0) {
+		return NULL;
+	}
+
+	if(wnode == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if((jid = json_find_member(json, "id"))) {
+		jchild = json_first_child(jid);
+		json_find_string(jchild, "bridgeip", &bridgeip);
+		json_find_string(jchild, "username", &username);
+		while(jchild) {
+			jchild1 = json_first_child(jchild);
+			while(jchild1) {
+				if(strcmp(jchild1->key, "lightid") == 0 && jchild1->tag == JSON_NUMBER) {
+					wnode->lightid = (int)jchild1->number_;
+				}
+				jchild1 = jchild1->next;
+			}
+			jchild = jchild->next;
+		}
+	}
+	if(bridgeip != NULL) {
+		if((wnode->bridgeip = MALLOC(strlen(bridgeip)+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(wnode->bridgeip, bridgeip);
+	} else {
+		wnode->bridgeip = NULL;
+		logprintf(LOG_ERR, "philipshue Cannot find Hue Brigde IP");
+		return (void *)NULL;
+	}
+	if(username != NULL) {
+		if((wnode->username = MALLOC(strlen(username)+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(wnode->username, username);
+	} else {
+		wnode->username = NULL;
+		logprintf(LOG_ERR, "philipshue Cannot find Hue Brigde username");
+		return (void *)NULL;
+	}
+
+	wnode->next = settings;
+	settings = wnode;
+
+	if (firstlight == 0) {
+		firstlight = wnode->lightid;
+		uv_timer_t *timer_req = wnode->timer_req;
+		if ((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+			OUT_OF_MEMORY
+		}
+		timer_req->data = wnode;
+		uv_timer_init(uv_default_loop(), timer_req);
+		uv_timer_start(timer_req, (void (*)(uv_timer_t *))threadtimer, 1000, INTERVAL * 1000);
+
+		logprintf(LOG_DEBUG, "[philipshue] uv_timer_start for hue bridge = %s, user = %s", bridgeip, username);
+	}
+	return NULL;
+}
+
+static void addNewUser(char *data, char *bridgeip, char *username, char *url, char *typebuf, int ret, int size) {
+	struct JsonNode *jdata = NULL;
+	struct JsonNode *jmain = NULL;
+	struct JsonNode *jchild = NULL;
+	struct JsonNode *node = NULL;
+	logprintf(LOG_NOTICE, "response from hue bridge = %s", data);
+	if((data != NULL) && (ret == 200) &&
+			(strstr(typebuf, "application/json") != NULL) &&
+			(json_validate(data) == true) &&
+			((jdata = json_decode(data)) != NULL)) {
+		/* show response from rest call success or error */
+		json_foreach(jmain, jdata) {
+			jchild = json_first_child(jmain);
+			if(strcmp(jchild->key, "error") == 0) {
+				if( (node = json_find_member(jchild, "description")) != NULL)
+					logprintf(LOG_NOTICE, "description = %s", node->string_);
+				logprintf(LOG_NOTICE, "----> Press Link button and run again pilight-send -p philipshue --ip=%s --newuser ", bridgeip);
+			}
+			if(strcmp(jchild->key, "success") == 0) {
+				if( (node = json_find_member(jchild, "username")) != NULL)
+					logprintf(LOG_NOTICE, "----> Successfully created and authorized username =  %s <--- Use this username", node->string_);
+			}
+		}
+	}
+}
+
+static void showRestCallResponse(char *data, char *bridgeip, char *username, char *url, char *typebuf, int ret, int size) {
+	struct JsonNode *jdata = NULL;
+	struct JsonNode *jmain = NULL;
+	if((data != NULL) && (ret == 200) &&
+			(strstr(typebuf, "application/json") != NULL) &&
+			(json_validate(data) == true) &&
+			((jdata = json_decode(data)) != NULL)) {
+		/* show response from rest call success or error*/
+		json_foreach(jmain, jdata) {
+			logprintf(LOG_DEBUG, "philipshue - response %s", json_stringify(jmain, NULL));
+		}
+
+	} else {
+		logprintf(LOG_ERR, "philipshue - Invalid Hue Bridge response code=%d, type=%s, response data=%d", ret, typebuf, data);
+	}
+}
+
+static void showResources(char *data, char *bridgeip, char *username, char *url, char *typebuf, int ret, int size) {
+	struct JsonNode *jdata = NULL;
+	struct JsonNode *jmain = NULL;
+	if((data != NULL) && (ret == 200) &&
+			(strstr(typebuf, "application/json") != NULL) &&
+			(json_validate(data) == true) &&
+			((jdata = json_decode(data)) != NULL)) {
+		/* show result from rest call */
+		if (size <= 2) {
+			logprintf(LOG_NOTICE, "philipshue - result empty");
+			printf("philipshue - result empty\n");
+		} else {
+			json_foreach(jmain, jdata) {
+				if(json_find_member(jmain, "error") != NULL) {
+					logprintf(LOG_ERR, "%s", json_stringify(jmain, NULL));
+					printf("%s\n", json_stringify(jmain, NULL));
+				} else {
+					printf("%s = %s\n", jmain->key, json_stringify(jmain, NULL));
+				}
+			}
+		}
+	} else {
+		logprintf(LOG_ERR, "philipshue - Invalid Hue Bridge response code=%d, type=%s, response data=%s", ret, typebuf, data);
+	}
+}
+
+static int createCode(JsonNode *code, char **message) {
+	struct JsonNode *node = NULL;
+	char *bridgeip = NULL;
+	char *username = NULL;
+	char *resource = NULL;
+	char *post = NULL;
+	char url[1024];
+
+	if(json_find_string(code, "bridgeip", &bridgeip) == 0 &&
+			json_find_string(code, "username", &username) == 0 &&
+			json_find_member(code, "newuser") == NULL ){
+
+		if (pilight.process != PROCESS_DAEMON && json_find_string(code, "resource", &resource) == 0) {
+			sprintf(url, "/api/%s/%s", username, resource);
+			logprintf(LOG_NOTICE, "philipshue - get data http://%s%s", bridgeip, url);
+//			data = hue_get(bridgeip, url, &tp, &ret, &size);  // running HTTP GET
+			hue_get(bridgeip, username, url, showResources);  // running HTTP GET
+			return EXIT_SUCCESS;
+		}
+
+		if(pilight.process == PROCESS_DAEMON && json_find_string(code, "resource", &resource) != 0) {
+				logprintf(LOG_DEBUG, "philipshue - Running on Philips Hue Bridge IP = %s", bridgeip);
+
+				JsonNode *postcode = json_mkobject();
+				if((node = json_find_member(code, "on")) != NULL && node->tag == JSON_STRING) { // if on == "true" then bool true else bool false
+					json_append_member(postcode,  "on", json_mkbool((strcmp(node->string_, "true") == 0 )? 1 : 0));
+				}
+				/* Handle situation when using -t or -f or --on=<true|false> together */
+				if((node = json_find_member(code, "on")) != NULL && node->tag == JSON_NUMBER) { // with -t option on == 1
+					postcode = json_mkobject();  // just to be sure that only one on exists
+					json_append_member(postcode,  "on", json_mkbool(1));  // on=true
+				}
+				if((node = json_find_member(code, "off")) != NULL && node->tag == JSON_NUMBER) { // with -f option off == 1
+					postcode = json_mkobject();  // just to be sure that only one on exists
+					json_append_member(postcode,  "on", json_mkbool(0));  // on=false
+				}
+				if((node = json_find_member(code, "bri")) != NULL && node->tag == JSON_NUMBER) {
+					json_append_member(postcode,  "bri", json_mknumber(node->number_, 0));
+				}
+				if((node = json_find_member(code, "hue")) != NULL && node->tag == JSON_NUMBER) {
+					json_append_member(postcode,  "hue", json_mknumber(node->number_, 0));
+				}
+				if((node = json_find_member(code, "sat")) != NULL && node->tag == JSON_NUMBER) {
+					json_append_member(postcode,  "sat", json_mknumber(node->number_, 0));
+				}
+				if((node = json_find_member(code, "effect")) != NULL && node->tag == JSON_STRING) {
+					json_append_member(postcode,  "effect", json_mkstring(node->string_));
+				}
+				JsonNode *jarray = json_mkarray(); // example array "xy":[0.5471,0.4144]
+				if((node = json_find_member(code, "x")) != NULL && node->tag == JSON_NUMBER) {
+					json_append_element(jarray, json_mknumber(node->number_, 4));
+				}
+				if((node = json_find_member(code, "y")) != NULL && node->tag == JSON_NUMBER) {
+					json_append_element(jarray, json_mknumber(node->number_, 4));
+				}
+				if(json_find_member(code, "x") && json_find_member(code, "y")) { // make sure that both x any y are set
+					json_append_member(postcode, "xy", jarray);
+				}
+				if((node = json_find_member(code, "ct")) != NULL && node->tag == JSON_NUMBER) {
+					json_append_member(postcode,  "ct", json_mknumber(node->number_, 0));
+				}
+				if((node = json_find_member(code, "alert")) != NULL && node->tag == JSON_STRING) {
+					json_append_member(postcode,  "alert", json_mkstring(node->string_));
+				}
+				if((node = json_find_member(code, "colormode")) != NULL && node->tag == JSON_STRING) {
+					json_append_member(postcode,  "colormode", json_mkstring(node->string_));
+				}
+				if((node = json_find_member(code, "dimlevel")) != NULL && node->tag == JSON_NUMBER) {
+					json_append_member(postcode,  "bri", json_mknumber(node->number_ * 17, 0)); // dimlevel 15 = bri 255 = bri (17 * 15)
+				}
+				/* now check that lightid or group or scene else exist */
+				if ((node = json_find_member(code, "scene")) != NULL && node->tag == JSON_STRING){
+					postcode = json_mkobject();  // erase all other options before applying scene id
+					json_append_member(postcode, "scene", json_mkstring(node->string_));
+					sprintf(url, "/api/%s/groups/0/action", username);  //apply scene id on all lights = group 0
+				} else if((node = json_find_member(code, "group")) != NULL && node->tag == JSON_NUMBER) {
+					sprintf(url, "/api/%s/groups/%g/action", username, node->number_);
+				} else if((node = json_find_member(code, "lightid")) != NULL && node->tag == JSON_NUMBER) {
+					sprintf(url, "/api/%s/lights/%g/state", username, node->number_);
+				} else {
+					logprintf(LOG_ERR, "Missing option lightid or group or scene, code = %s", json_stringify(code, NULL));
+					return EXIT_FAILURE;
+				}
+				post = json_stringify(postcode, NULL);
+				logprintf(LOG_DEBUG, "philipshue - post data = %s to http://%s%s", post, bridgeip, url);
+
+//				data = hue_put(bridgeip, url, &tp, &ret, &size, post);  // running HTTP PUT
+				hue_put(bridgeip, username, url, post, showRestCallResponse);  // running HTTP PUT
+				return EXIT_SUCCESS;
+			}
+	} else if (pilight.process != PROCESS_DAEMON &&
+			json_find_string(code, "bridgeip", &bridgeip) == 0 &&
+			json_find_member(code, "newuser") != NULL) {
+
+		/* Create and authorize new user for pilight.
+		 * Run pilight-send -p philipshue --ip=<ip> --newuser
+		 * Press Link Button on Bridge.
+		 * The bridge creates a randomly generated username.
+		 * Run the command again, the bridge displays success and displays the username.
+		 */
+		logprintf(LOG_NOTICE, "Create and authorize new user for pilight on Hue Bridge ...");
+		sprintf(url, "/api");
+		JsonNode *postcode = json_mkobject();
+		json_append_member(postcode,  "devicetype", json_mkstring("pilight"));
+		post = json_stringify(postcode, NULL);
+		logprintf(LOG_NOTICE, "philipshue - post data = %s to url http://%s%s", post, bridgeip, url);
+//		data = hue_post(bridgeip, url, &tp, &ret, &size, post);  // running HTTP PUT
+		hue_post(bridgeip, username, url, post, addNewUser);     // running HTTP POST
+		return EXIT_SUCCESS;
+	} else if (pilight.process == PROCESS_DAEMON &&
+				json_find_member(code, "newuser") != NULL) {
+
+		/* doining nothing on daemon when creating new user */
+		logprintf(LOG_NOTICE, "Create and authorize new user for pilight on Hue Bridge.");
+		logprintf(LOG_NOTICE, "Press Link button and run pilight-send -p philipshue --ip=%s --newuser ", bridgeip);
+	} else {
+		logprintf(LOG_ERR, "philipshue: insufficient number of arguments %s",  json_stringify(code, NULL));
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
+}
+
+static void gc(void) {
+	struct settings_t *tmp = NULL;
+	while(settings) {
+		tmp = settings;
+		if(settings->bridgeip) FREE(settings->bridgeip);
+		if(settings->username) FREE(settings->username);
+		settings = settings->next;
+		FREE(tmp);
+	}
+}
+
+static void printHelp(void) {
+	printf("\t -i --bridgeip=<ipaddress>\t\tPhilips Hue Bridge IP Address\n");
+	printf("\t -l --lightid=<lightid>\t\t\tlightid (1,2,3,..)\n");
+	printf("\t -u --username=<username>\t\tusername for bridge api\n");
+	printf("\t -o --on=<true|false>\t\t\tset light state on to true|false\n");
+	printf("\t -b --bri=<0..254>\t\t\tbrightness of a light from 0 to 254, this value is changed by dimlevel\n");
+	printf("\t -h --hue=<0..65535>\t\t\thue color value red=0 / yellow=12750 / green=25500 / blue=46920 / purple=56100 / red=65280\n");
+	printf("\t -s --sat=<0..255>\t\t\tsaturation from 0 to 255\n");
+	printf("\t -e --effect=<none|colorloop>\t\teffect none|colorloop (endless color looping mode until it is stopped by sending none)\n");
+	printf("\t -x --x=<0..0.9999>\t\t\tx value in xy color points\n");
+	printf("\t -y --y=<0..0.9999>\t\t\ty value in xy color points\n");
+	printf("\t -c --ct=<153..500>\t\t\tcolor temperature (warmest color is 500)\n");
+	printf("\t -a --alert=<none|select>\t\talert=select makes the light do a blink in its current color\n");
+	printf("\t -g --group=<0..>\t\t\trunning on group of lights. The group must have been created before (group 0 always includes all lights)\n");
+	printf("\t -z --scene=<scene-id>\t\t\tapply a predefined scene id (use option --resource=scenes to list all scenes on hue bridge)\n");
+	printf("\t -r --resource=<resource>\t\tlist resource lights|groups|config|schedules|scenes|sensors|rules\n");
+	printf("\t -t --on\t\t\t\tturn light or group on\n");
+	printf("\t -f --off\t\t\t\tturn light or group off\n");
+	printf("\t -n --newuser\t\t\t\tcreate and authorize user on Hue Bridge. Press link button on bridge and run pilight-send -p philipshue --bridgeip=<ip> --newuser again.\n");
+}
+
+#if !defined(MODULE) && !defined(_WIN32)
+__attribute__((weak))
+#endif
+void philipshueInit(void) {
+	protocol_register(&philipshue);
+	protocol_set_id(philipshue, "philipshue");
+	protocol_device_add(philipshue, "philipshue", "Philips Hue API");
+	philipshue->devtype = DIMMER;
+	philipshue->hwtype = API;
+
+	/*
+	 *	"on": false,
+	 *	"bri": 253,
+	 *	"hue": 8625,
+	 *	"sat": 252,
+	 *	"effect": "none",
+	 *	"x":  0.5837,     //  "xy": [ 0.5837, 0.3879 ],
+	 *	"y":  0.3879,
+	 *	"ct": 500,
+	 *	"alert": "none",
+	 */
+	options_add(&philipshue->options, 'i', "bridgeip", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
+	options_add(&philipshue->options, 'l', "lightid",  OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
+	options_add(&philipshue->options, 'u', "username", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL /*"^[a-zA-Z0-9]+$"*/);
+	options_add(&philipshue->options, 'o', "on",    OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&philipshue->options, 'b', "bri", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&philipshue->options, 'h', "hue", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
+	options_add(&philipshue->options, 's', "sat", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&philipshue->options, 'e', "effect", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, "none|colorloop");
+	options_add(&philipshue->options, 'x', "x", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&philipshue->options, 'y', "y", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&philipshue->options, 'c', "ct", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&philipshue->options, 'a', "alert", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, "none|select");
+	options_add(&philipshue->options, 'g', "group", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&philipshue->options, 'z', "scene", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&philipshue->options, 'r', "resource", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_STRING, NULL, NULL);
+	options_add(&philipshue->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&philipshue->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&philipshue->options, 'n', "newuser", OPTION_NO_VALUE, DEVICES_OPTIONAL, JSON_STRING, NULL, NULL);
+
+	options_add(&philipshue->options, 'd', "dimlevel", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^([0-9]{1,})$");
+	options_add(&philipshue->options, 0, "dimlevel-minimum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "^([0-9]{1}|[1][0-5])$");
+	options_add(&philipshue->options, 0, "dimlevel-maximum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)15, "^([0-9]{1}|[1][0-5])$");
+
+	philipshue->createCode=&createCode;
+//	philipshue->initDev=&initDev;
+//	philipshue->threadGC=&threadGC;
+	philipshue->gc=&gc;
+	philipshue->printHelp=&printHelp;
+
+	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
+}
+
+#if defined(MODULE) && !defined(_WIN32)
+void compatibility(struct module_t *module) {
+	module->name = "philipshue";
+	module->version = "0.2";
+	module->reqversion = "7.0";
+	module->reqcommit = "84";
+}
+
+void init(void) {
+	philipshueInit();
+}
+#endif

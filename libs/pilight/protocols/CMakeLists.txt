@@ -11,6 +11,9 @@ endif()
 if(${IR} MATCHES "ON")
 	add_subdirectory(IR)
 endif()
+if(${HARDWARE_ZIGBEE} MATCHES "ON")
+	add_subdirectory(zigbee)
+endif()
 add_subdirectory(core)
 
 file(REMOVE_RECURSE "protocol_header.h")
@@ -50,6 +53,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 			${pilight_protocols_network_files}
 			${pilight_protocols_gpio_files}
 			${pilight_protocols_core_files}
+			${pilight_protocols_zigbee_files}
 			${${PROJECT_NAME}_sources}
 			${${PROJECT_NAME}_headers}
 		CACHE INTERNAL "")
@@ -75,6 +79,7 @@ else()
 			${pilight_protocols_network_files}
 			${pilight_protocols_gpio_files}
 			${pilight_protocols_core_files}
+			${pilight_protocols_zigbee_files}
 		)
 	endif()
 

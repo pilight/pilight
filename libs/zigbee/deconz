@@ -1,0 +1,30 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          deconz
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: deConz ZigBee
+# Description:       Start deConz software
+### END INIT INFO
+# Author: <ma-ca>
+
+export DISPLAY=:0.0
+
+case "$1" in
+    start)
+        su pi -c "deCONZ &"
+        ;;
+    stop)
+         su pi -c "killall deCONZ"
+        ;;
+    restart)
+        stop
+	start
+        ;;
+esac
+
+exit 0
+
+
