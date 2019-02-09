@@ -325,8 +325,8 @@ static void parseCode(void) {
 		if(ignore_temperature == 0) {
 			json_append_member(hideki->message, "temperature", json_mknumber(temperature, 1));
 		}
-		json_append_member(hideki->message, "wind strength", json_mknumber(wind_strength, 1));
-		json_append_member(hideki->message, "wind direction", json_mknumber(wind_direction, 1));
+		json_append_member(hideki->message, "wind", json_mknumber(wind_strength, 1));
+		json_append_member(hideki->message, "wind-direction", json_mknumber(wind_direction, 1));
 
 		json_append_member(hideki->message, "battery", json_mknumber(battery_ok, 0));
 		json_append_member(hideki->message, "channel", json_mknumber(channel, 0));
@@ -460,7 +460,7 @@ void hidekiInit(void) {
 	options_add(&hideki->options, "t", "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&hideki->options, "h", "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 	options_add(&hideki->options, "w", "wind", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
-	options_add(&hideki->options, "d", "wind_direction", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
+	options_add(&hideki->options, "d", "wind-direction", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 	options_add(&hideki->options, "r", "rain", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 	options_add(&hideki->options, "b", "battery", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[01]$");
 	options_add(&hideki->options, "o", "rc", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "[0-9]"); // rolling code, might be used as ID, if constant
@@ -482,7 +482,7 @@ void hidekiInit(void) {
 	options_add(&hideki->options, "0", "temperature-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
 	options_add(&hideki->options, "0", "humidity-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
 	options_add(&hideki->options, "0", "wind-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
-	options_add(&hideki->options, "0", "wind_direction-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&hideki->options, "0", "wind-direction-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
 	options_add(&hideki->options, "0", "rain-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
 	options_add(&hideki->options, "0", "show-humidity", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&hideki->options, "0", "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
