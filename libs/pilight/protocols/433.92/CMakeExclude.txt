@@ -257,8 +257,3 @@ if(${PROTOCOL_TCM} MATCHES "OFF")
 	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/tcm.c")
 	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/tcm.h")
 endif()
-
-if(${PROTOCOL_BRE} MATCHES "OFF")
-	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/bresser_3ch.c")
-	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/bresser_3ch.h")
-endif()

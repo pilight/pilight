@@ -1,9 +1,3 @@
-/*
-  Copyright (C) 2019 by saak2820
-  This Source Code Form is subject to the terms of the Mozilla Public
-  License, v. 2.0. If a copy of the MPL was not distributed with this
-  file, You can obtain one at http://mozilla.org/MPL/2.0/.
-*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,23 +12,27 @@
 #include "../../core/gc.h"
 #include "bresser_3ch.h"
 
+
 #define MIN_PULSE_LENGTH    14 //488
 #define MAX_PULSE_LENGTH    57 //1950
-#define AVG_PULSE    		42 //(1950+965)/2
+#define AVG_PULSE    42 //(1950+965)/2
 
-#define RAW_LENGTH        	74
-#define MIN_RAW_LENGTH		130
-#define MAX_RAW_LENGTH      255
-#define MESSAGE_LENGTH      36
-#define SYNC_LENGTH  		3890
+#define RAW_LENGTH        74
+#define MIN_RAW_LENGTH        130
+#define MAX_RAW_LENGTH        255
+#define MESSAGE_LENGTH        36
+#define SYNC_LENGTH  3890
  
-#define SEP_LENGTH   		488
-#define BIT1_LENGTH  		1950
-#define BIT0_LENGTH  		965
-#define RING_BUFFER_SIZE  	256
+#define SEP_LENGTH   488
+#define BIT1_LENGTH  1950
+#define BIT0_LENGTH  965
+#define RING_BUFFER_SIZE  256
 /*
-    bresser sensor protocol     
-    found on httpx://github.com/giulio93/Backeng_433mhz_Arduino    
+    bresser sensor protocol
+    
+    found on httpx://github.com/giulio93/Backeng_433mhz_Arduino
+
+    
 */
 
 typedef struct settings_t {
@@ -48,8 +46,10 @@ typedef struct settings_t {
 static struct settings_t *settings = NULL;
 
 static int validate(void) {
-	if(bre->rawlen >= MIN_RAW_LENGTH && bre->rawlen <= MAX_RAW_LENGTH) {
-		return 0;        
+     
+     if(bre->rawlen >= MIN_RAW_LENGTH && bre->rawlen <= MAX_RAW_LENGTH) {
+        	return 0;
+        
     }
     return -1;
 }
@@ -58,21 +58,34 @@ static void createMessage(int *binary, int id, int channel, double temperature, 
     int i = 0;
     char binaryCh[MESSAGE_LENGTH];
     bre->message = json_mkobject();
+    // if(binary != NULL) {
+           // for(i=0;i<MESSAGE_LENGTH;i++) {
+                // if(binary[i] == 0) {
+                    // binaryCh[i] = '0';
+                // } else {
+                    // binaryCh[i] = '1';
+                // }
+           // }
+           // binaryCh[MESSAGE_LENGTH] = '\0';
+           // json_append_member(bre->message, "binary", json_mkstring(binaryCh));
+       // }
     json_append_member(bre->message, "id", json_mknumber(id, 0));
     json_append_member(bre->message, "channel", json_mknumber(channel +1, 0));
     json_append_member(bre->message, "temperature", json_mknumber(temperature/10, 1));
     json_append_member(bre->message, "humidity", json_mknumber(humidity, 1));
     json_append_member(bre->message, "battery", json_mknumber(battery, 0));
+    
+	
 }
 
 static void parseCode(void) {
-    int msg[MESSAGE_LENGTH];
-    int id = 0, battery = 0, channel = 0;
-	int x = 0, start = 0, c = 0;
+    int i = 0, c=0, s=0, x = 0, binary[MAX_RAW_LENGTH/2], start=0;
+    int id = 0, battery = 0, channel = 0, m=0;
+	int msg[MESSAGE_LENGTH], syncIndex1;
     double temperature = 0.0, humidity = 0.0;
     double humi_offset = 0.0, temp_offset = 0.0;
     
-    if (bre->rawlen > MAX_RAW_LENGTH) {
+    if(bre->rawlen > MAX_RAW_LENGTH){
         logprintf(LOG_ERR, "bre: parsecode - invalid parameter passed %d", bre->rawlen);
         return;
     }
@@ -84,30 +97,33 @@ static void parseCode(void) {
 	#define BIT1_LENGTH  1950
 	#define BIT0_LENGTH  950
 	*/
-    for(x=0;x<bre->rawlen;x++) {		
-        unsigned long t0 = bre->raw[x], t1 = bre->raw[(x+1)%bre->rawlen];			
-        if (t0>(SEP_LENGTH-50) && t0<(SEP_LENGTH+50)) {
-			if (t1>(SYNC_LENGTH-50) && t1<(SYNC_LENGTH+50)) {
-				if (bre->rawlen - x + 1  >= RAW_LENGTH ) {
-					start = x+1;					   
-				} else {
-					return;
-				}
+    for(unsigned int x=0; x<bre->rawlen; x++) {
+		
+        unsigned long t0 = bre->raw[x], t1 = bre->raw[(x+1)%bre->rawlen];
+			
+        if(t0>(SEP_LENGTH-50) && t0<(SEP_LENGTH+50)) {
+			if(t1>(SYNC_LENGTH-50) && t1<(SYNC_LENGTH+50)){
+				  
+					 if (bre->rawlen - x + 1  >= RAW_LENGTH ){
+						start = x+1;					   
+					}else{
+						return;
+					}
 			} 
         }
     }
 	
-	if (start < 1) {
+	if(start < 1) {
 		return;
 	}
 	
-	for(x=start+1;x<(start+RAW_LENGTH-1);x=(x+2)) {
+	for(unsigned x=start+1,c=0;x<(start+RAW_LENGTH-1);x=(x+2),c++) {
 		unsigned long t0 = bre->raw[x], t1 = bre->raw[x+1];
 		if (t0>(SEP_LENGTH-50) && t0<(SEP_LENGTH+50)) {
          if (t1>(BIT1_LENGTH-50) && t1<(BIT1_LENGTH+50)) {
-			 msg[c++] = 1;
+           fprintf(stdout,"1");msg[c] = 1;
          } else if (t1>(BIT0_LENGTH-50) && t1<(BIT0_LENGTH+50)) {
-			 msg[c++] = 0;
+           fprintf(stdout,"0");msg[c] = 0;
          } else {
 			return;
          }
@@ -118,14 +134,14 @@ static void parseCode(void) {
 	}
 	
     //01110000 10100000 01110110 11110011 0010SYNC  
-    //                           1111 <== Celsius/ Fahrenheit Flag
+   //                           1111 <== Celsius/ Fahrenheit Flag
 
     id = binToDecRev(msg, 0, 7);
     battery = msg[8];
     channel = binToDecRev(msg, 10, 11);
     temperature = binToSignedRev(msg, 12, 23);
     //01110000 10100000 01110110 11110011 0010SYNC  
-    //                               0011 0010<== Humidity 
+   //                                0011 0010<== Humidity 
     humidity = binToDecRev(msg, 28, 35);
 
     struct settings_t *tmp = settings;
