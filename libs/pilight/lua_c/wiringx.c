@@ -783,7 +783,7 @@ int plua_wiringx_setup(struct lua_State *L) {
 	}
 
 	if(match == 0) {
-		if(wiringXSetup((char *)platform, _logprintf) == 0) {
+		if(wiringXSetup((char *)platform, logprintf1) == 0) {
 			if((wiringx = REALLOC(wiringx, sizeof(struct lua_wiringx_t *)*(nrinits+1))) == NULL) {
 				OUT_OF_MEMORY
 			}

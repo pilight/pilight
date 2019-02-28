@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+  Copyright (C) CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -45,18 +35,24 @@
 #include "libs/pilight/config/config.h"
 #include "libs/pilight/config/hardware.h"
 #include "libs/pilight/lua_c/lua.h"
+#include "libs/pilight/lua_c/table.h"
 
 #include "libs/pilight/events/events.h"
 
 static unsigned short main_loop = 1;
 static unsigned short inner_loop = 1;
 
-#ifndef PILIGHT_DEVELOPMENT
 static uv_signal_t *signal_req = NULL;
-static int doSkip = 0;
-#endif
 
 static char *lua_root = LUA_ROOT;
+static int raw[MAXPULSESTREAMLENGTH] = {0};
+static int pRaw[MAXPULSESTREAMLENGTH] = {0};
+static int rawLength = 0;
+static int buffer[1024];
+static int footer = 0;
+static int pulselen = 0;
+static int bit = 0;
+static int iter = 0;
 
 static int normalize(int i, int pulselen) {
 	double x;
@@ -78,9 +74,8 @@ int main_gc(void) {
 	options_gc();
 	socket_gc();
 
-#ifndef PILIGHT_DEVELOPMENT
 	eventpool_gc();
-#endif
+	config_write(1, "all");
 	config_gc();
 	protocol_gc();
 	whitelist_free();
@@ -99,206 +94,193 @@ int main_gc(void) {
 	return EXIT_SUCCESS;
 }
 
-static void *receivePulseTrain(int reason, void *param, void *userdata) {
-	doSkip ^= 1;
-	if(doSkip == 1) {
-		return NULL;
-	}
-
-	struct reason_received_pulsetrain_t *data = param;
-
-	int pulselen = 0;
+static void *received_pulsetrain(int reason, void *param, void *userdata) {
 	int pulse = 0;
+	int buffer[1024];
 
 	struct tm tm;
 	time_t now = 0;
 
-#ifdef PILIGHT_DEVELOPMENT
-	struct hardware_t *hw = NULL;
-#endif
-	int i = 0;
+	char *hardware = NULL;
+	double length = 0.0;
 
-	if(data->hardware != NULL && data->pulses != NULL && data->length > 0) {
-#ifndef PILIGHT_REWRITE
-		char *id = NULL;
-		struct conf_hardware_t *tmp_confhw = conf_hardware;
-		while(tmp_confhw) {
-			if(strcmp(tmp_confhw->hardware->id, data->hardware) == 0) {
-				id = tmp_confhw->hardware->id;
-			}
-			tmp_confhw = tmp_confhw->next;
+	{
+		struct plua_metatable_t *table = param;
+		char nr[255], *p = nr;
+		double pulse = 0.0;
+
+		memset(&nr, 0, 255);
+
+		int i = 0;
+		plua_metatable_get_number(table, "length", &length);
+		plua_metatable_get_string(table, "hardware", &hardware);
+
+		printf("\n");
+		for(i=0;i<length;i++) {
+			snprintf(p, 254, "pulses.%d", i+1);
+			plua_metatable_get_number(table, nr, &pulse);
+			buffer[i] = (int)pulse;
+			printf("%d ", (int)pulse);
 		}
-#else
-		if(hardware_select_struct(ORIGIN_MASTER, data->hardware, &hw) == 0) {
-#endif
-			memset(&tm, '\0', sizeof(struct tm));
-			pulse = 0;
-			inner_loop = 1;
+		printf("\n");
+	}
 
-			i = 0;
-			time(&now);
+	int i = 0;
+	if((int)length > 0) {
+		pulselen = buffer[(int)length-1]/PULSE_DIV;
 
-			if(data->length > 0) {
-				pulselen = data->pulses[data->length-1]/PULSE_DIV;
-				if(pulselen > 25) {
-					for(i=3;i<data->length;i++) {
-						if((data->pulses[i]/pulselen) >= 2) {
-							pulse=data->pulses[i];
-							break;
-						}
-					}
-
-					if(normalize(pulse, pulselen) > 0 && data->length > 25) {
-						/* Print everything */
-						printf("--[RESULTS]--\n");
-						printf("\n");
-#ifdef _WIN32
-						memcpy(&tm, localtime(&now), sizeof(struct tm));
-#else
-						localtime_r(&now, &tm);
-#endif
-
-#ifdef _WIN32
-						printf("time:\t\t%s", asctime(&tm));
-#else
-						char buf[128];
-						char *p = buf;
-						memset(&buf, '\0', sizeof(buf));
-	#ifdef __sun
-						asctime_r(&tm, p, sizeof(buf));
-	#else
-						asctime_r(&tm, p);
-	#endif
-						printf("time:\t\t%s", buf);
-#endif
-#ifdef PILIGHT_DEVELOPMENT
-						printf("hardware:\t%s\n", hw->id);
-#else
-						printf("hardware:\t%s\n", id);
-#endif
-						printf("pulse:\t\t%d\n", normalize(pulse, pulselen));
-						printf("rawlen:\t\t%d\n", data->length);
-						printf("pulselen:\t%d\n", pulselen);
-						printf("\n");
-						printf("Raw code:\n");
-						for(i=0;i<data->length;i++) {
-							printf("%d ", data->pulses[i]);
-						}
-						printf("\n");
-					}
+		if(pulselen > 25) {
+			for(i=3;i<(int)length;i++) {
+				if((buffer[i]/pulselen) >= 2) {
+					pulse = buffer[i];
+					break;
 				}
 			}
-#ifdef PILIGHT_DEVELOPMENT
-		}
+
+			if(normalize(pulse, pulselen) > 0 && (int)length > 25) {
+				/* Print everything */
+				printf("--[RESULTS]--\n");
+				printf("\n");
+#ifdef _WIN32
+				memcpy(&tm, localtime(&now), sizeof(struct tm));
+#else
+				localtime_r(&now, &tm);
 #endif
+
+#ifdef _WIN32
+				printf("time:\t\t%s\n", asctime(&tm));
+#else
+				time_t rawtime;
+				struct tm * timeinfo;
+
+				time(&rawtime);
+				timeinfo = localtime(&rawtime);
+				printf("time:\t\t%s", asctime(timeinfo));
+#endif
+				printf("hardware:\t%s\n", hardware);
+				printf("pulse:\t\t%d\n", normalize(pulse, pulselen));
+				printf("rawlen:\t\t%d\n", (int)length);
+				printf("pulselen:\t%d\n", pulselen);
+				printf("\n");
+				printf("Raw code:\n");
+				for(i=0;i<length;i++) {
+					printf("%d ", buffer[i]);
+				}
+				printf("\n");
+			}
+		}
+		iter = 0;
 	}
-	return (void *)NULL;
+	return NULL;
 }
 
-void *receiveOOK(void *param) {
-	int duration = 0;
-	int i = 0;
-	unsigned int y = 0;
-
-	int recording = 1;
+static void *received_ook(int reason, void *param, void *userdata) {
+	int recording = 0;
 	int pulselen = 0;
-	int bit = 0;
-	int raw[MAXPULSESTREAMLENGTH] = {0};
-	int pRaw[MAXPULSESTREAMLENGTH] = {0};
-	int footer = 0;
 	int pulse = 0;
-	int rawLength = 0;
 	int plsdec = 1;
+	int hasnul = 0;
 
 	struct tm tm;
-	time_t now = 0, later = 0;
+	time_t now = 0;
 
-	struct hardware_t *hw = (hardware_t *)param;
+	char *hardware = NULL;
+	double length = 0.0;
 
-	while(main_loop) {
-		memset(&raw, '\0', sizeof(raw));
-		memset(&pRaw, '\0', sizeof(pRaw));
-		memset(&tm, '\0', sizeof(struct tm));
-		recording = 1;
-		bit = 0;
-		footer = 0;
-		pulse = 0;
-		rawLength = 0;
-		inner_loop = 1;
-		pulselen = 0;
+	{
+		struct plua_metatable_t *table = param;
+		char nr[255], *p = nr;
+		double pulse = 0.0;
 
-		duration = 0;
-		i = 0;
-		y = 0;
-		time(&now);
+		memset(&nr, 0, 255);
 
-		while(inner_loop == 1 && hw->receiveOOK != NULL) {
-			duration = hw->receiveOOK();
-			time(&later);
-			if(difftime(later, now) > 1) {
-				inner_loop = 0;
+		int i = 0;
+		plua_metatable_get_number(table, "length", &length);
+		plua_metatable_get_string(table, "hardware", &hardware);
+
+		for(i=0;i<length;i++) {
+			snprintf(p, 254, "pulses.%d", i+1);
+			plua_metatable_get_number(table, nr, &pulse);
+			if(iter > 1024) {
+				iter = 0;
 			}
-			/* If we are recording, keep recording until the next footer has been matched */
-			if(recording == 1) {
-				if(bit < MAXPULSESTREAMLENGTH) {
-					raw[bit++] = duration;
-				} else {
-					bit = 0;
-					recording = 0;
-				}
-			}
+			buffer[iter++] = (int)pulse;
+		}
+	}
 
-			/* First try to catch code that seems to be a footer.
-				 If a real footer has been recognized, start using that as the new footer */
-			if((duration > 5100 && footer == 0) || ((footer-(footer*0.3)<duration) && (footer+(footer*0.3)>duration))) {
-				recording = 1;
-				pulselen = (int)duration/PULSE_DIV;
+	int z = 0, duration = 0, i = 0, y = 0;
+	for(z=0;z<iter;z++) {
+		duration = buffer[z];
 
-				/* Check if we are recording similar codes */
-				for(i=0;i<(bit-1);i++) {
-					if(!(((pRaw[i]-(pRaw[i]*0.3)) < raw[i]) && ((pRaw[i]+(pRaw[i]*0.3)) > raw[i]))) {
-						y=0;
-						recording=0;
-					}
-					pRaw[i]=raw[i];
-				}
-				y++;
-
-				/* Continue if we have 2 matches */
-				if(y>=1) {
-					/* If we are certain we are recording similar codes. Save the raw code length. */
-					if(footer>0) {
-						if(rawLength == 0)
-							rawLength=bit;
-					}
-
-					if(pulselen > 1000) {
-						plsdec = 10;
-					}
-					/* Try to catch the footer, and the low and high values */
-					for(i=0;i<bit;i++) {
-						if((i+1)<bit && i > 2 && footer > 0) {
-							if((raw[i]/(pulselen/plsdec)) >= 2) {
-								pulse=raw[i];
-							}
-						}
-						if(duration > 5100) {
-							footer=raw[i];
-						}
-					}
-
-					/* If we have gathered all data, stop with the loop */
-					if(footer > 0 && pulse > 0 && rawLength > 0) {
-						inner_loop = 0;
-					}
-				}
-				bit=0;
-			}
-
-			fflush(stdout);
+		/* If we are recording, keep recording until the next footer has been matched */
+		if(recording == 1 && bit < MAXPULSESTREAMLENGTH) {
+			raw[bit++] = duration;
+		} else {
+				bit = 0;
+				recording = 0;
+				footer = 0;
+				rawLength = 0;
+				plsdec = 1;
 		}
 
-		if(normalize(pulse, (pulselen/plsdec)) > 0 && rawLength > 25) {
+		/* First try to catch code that seems to be a footer.
+			 If a real footer has been recognized, start using that as the new footer */
+		if((duration > 5100 && footer == 0) || ((footer-(footer*0.3)<duration) && (footer+(footer*0.3)>duration))) {
+			recording = 1;
+			pulselen = (int)duration/PULSE_DIV;
+
+			/* Check if we are recording similar codes */
+			for(i=0;i<(bit-1);i++) {
+				if(!(((pRaw[i]-(pRaw[i]*0.3)) < raw[i]) && ((pRaw[i]+(pRaw[i]*0.3)) > raw[i]))) {
+					y=0;
+					recording=0;
+				}
+				pRaw[i]=raw[i];
+			}
+			y++;
+
+			/* Continue if we have 2 matches */
+			if(y>=1) {
+				/* If we are certain we are recording similar codes. Save the raw code length. */
+				if(footer>0) {
+					if(rawLength == 0)
+						rawLength=bit;
+				}
+
+				if(pulselen > 1000) {
+					plsdec = 10;
+				}
+				/* Try to catch the footer, and the low and high values */
+				for(i=0;i<bit;i++) {
+					if((i+1)<bit && i > 2 && footer > 0) {
+						if((raw[i]/(pulselen/plsdec)) >= 2) {
+							pulse=raw[i];
+						}
+					}
+					if(duration > 5100) {
+						footer=raw[i];
+					}
+				}
+
+				/* If we have gathered all data, stop with the loop */
+				if(footer > 0 && pulse > 0 && rawLength > 0) {
+					inner_loop = 0;
+				}
+			}
+			bit = 0;
+		}
+	}
+
+	for(i=0;i<rawLength;i++) {
+		if((normalize(raw[i], (pulselen/plsdec))*(pulselen/plsdec)) == 0) {
+			hasnul = 1;
+			break;
+		}
+	}
+
+	if(normalize(pulse, (pulselen/plsdec)) > 0 && rawLength > 25) {
+		iter = 0;
+		if(hasnul == 0) {
 			/* Print everything */
 			printf("--[RESULTS]--\n");
 			printf("\n");
@@ -311,13 +293,14 @@ void *receiveOOK(void *param) {
 #ifdef _WIN32
 			printf("time:\t\t%s\n", asctime(&tm));
 #else
-			char buf[128];
-			char *p = buf;
-			memset(&buf, '\0', sizeof(buf));
-			asctime_r(&tm, p);
-			printf("time:\t\t%s", buf);
+			time_t rawtime;
+			struct tm * timeinfo;
+
+			time(&rawtime);
+			timeinfo = localtime(&rawtime);
+			printf("time:\t\t%s", asctime(timeinfo));
 #endif
-			printf("hardware:\t%s\n", hw->id);
+			printf("hardware:\t%s\n", hardware);
 			printf("pulse:\t\t%d\n", normalize(pulse, (pulselen/plsdec)));
 			printf("rawlen:\t\t%d\n", rawLength);
 			printf("pulselen:\t%d\n", pulselen);
@@ -329,13 +312,12 @@ void *receiveOOK(void *param) {
 			printf("\n");
 		}
 	}
-
-	main_loop = 0;
+	memcpy(&buffer[0], &buffer[iter], (iter)*sizeof(int));
+	iter = 0;
 
 	return NULL;
 }
 
-#ifndef PILIGHT_DEVELOPMENT
 static void signal_cb(uv_signal_t *handle, int signum) {
 	uv_stop(uv_default_loop());
 	main_gc();
@@ -365,13 +347,10 @@ static void main_loop1(int onclose) {
 		}
 	}
 }
-#endif
 
 int main(int argc, char **argv) {
-#ifndef PILIGHT_DEVELOPMENT
 	const uv_thread_t pth_cur_id = uv_thread_self();
 	memcpy((void *)&pth_main_id, &pth_cur_id, sizeof(uv_thread_t));
-#endif
 
 	memtrack();
 
@@ -388,14 +367,12 @@ int main(int argc, char **argv) {
 	}
 	strcpy(progname, "pilight-debug");
 
-#ifndef PILIGHT_DEVELOPMENT
 	if((signal_req = MALLOC(sizeof(uv_signal_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_signal_init(uv_default_loop(), signal_req);
 	uv_signal_start(signal_req, signal_cb, SIGINT);
-#endif
 
 #ifndef _WIN32
 	if(geteuid() != 0) {
@@ -511,46 +488,26 @@ int main(int argc, char **argv) {
 		goto clear;
 	}
 
-#ifndef PILIGHT_DEVELOPMENT
-	eventpool_init(EVENTPOOL_THREADED);
-#endif
+	eventpool_init(EVENTPOOL_NO_THREADS);
+	eventpool_callback(REASON_RECEIVED_PULSETRAIN+10000, received_pulsetrain, NULL);
+	eventpool_callback(REASON_RECEIVED_OOK+10000, received_ook, NULL);
+
 	protocol_init();
+	hardware_init();
 	config_init();
 	if(config_read(CONFIG_SETTINGS | CONFIG_HARDWARE) != EXIT_SUCCESS) {
 		goto clear;
 	}
 
-#ifndef PILIGHT_DEVELOPMENT
-	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain, NULL);
-#endif
+	struct plua_metatable_t *table = config_get_metatable();
+	plua_metatable_set_number(table, "registry.hardware.RF433.mingaplen", 5100);
+	plua_metatable_set_number(table, "registry.hardware.RF433.maxgaplen", 34000);
+	plua_metatable_set_number(table, "registry.hardware.RF433.minrawlen", 25);
+	plua_metatable_set_number(table, "registry.hardware.RF433.maxrawlen", MAXPULSESTREAMLENGTH);
 
-	/* Start threads library that keeps track of all threads used */
-	threads_start();
-
-	int has_hardware = 0;
-	struct conf_hardware_t *tmp_confhw = conf_hardware;
-	while(tmp_confhw) {
-		if(tmp_confhw->hardware->init) {
-			if(tmp_confhw->hardware->comtype == COMOOK) {
-				tmp_confhw->hardware->maxrawlen = MAXPULSESTREAMLENGTH;
-				tmp_confhw->hardware->minrawlen = 25;
-				tmp_confhw->hardware->maxgaplen = 34000;
-				tmp_confhw->hardware->mingaplen = 5100;
-			}
-			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
-				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
-				goto clear;
-			} else {
-				has_hardware = 1;
-			}
-		}
-		tmp_confhw = tmp_confhw->next;
-	}
-
-	if(has_hardware == 0) {
+	if(config_hardware_run() == -1) {
 		logprintf(LOG_NOTICE, "there are no hardware modules configured");
 		uv_stop(uv_default_loop());
-		goto clear;
 	}
 
 	printf("Press and hold one of the buttons on your remote or wait until\n");
@@ -559,23 +516,15 @@ int main(int argc, char **argv) {
 	printf("failed leads. It will keep running until you explicitly stop it.\n");
 	printf("This is done by pressing both the [CTRL] and C buttons on your keyboard.\n");
 
-#ifdef PILIGHT_DEVELOPMENT
-	while(main_loop) {
-		sleep(1);
-	}
-#else
-	main_loop1(0);
-#endif
+	options_delete(options);
 
+	main_loop1(0);
+
+	return (EXIT_SUCCESS);
 clear:
 	options_delete(options);
-#ifdef PILIGHT_DEVELOPMENT
-	if(main_loop == 1) {
-		main_gc();
-	}
-#else
 	main_loop1(1);
 	main_gc();
-#endif
+
 	return (EXIT_FAILURE);
 }

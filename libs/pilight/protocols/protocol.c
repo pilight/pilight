@@ -218,7 +218,7 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->maxgaplen = 0;
 	(*proto)->txrpt = 10;
 	(*proto)->rxrpt = 1;
-	(*proto)->hwtype = NONE;
+	(*proto)->hwtype = RFNONE;
 	(*proto)->multipleId = 1;
 	(*proto)->config = 1;
 	(*proto)->masterOnly = 0;

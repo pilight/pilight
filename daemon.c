@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+  Copyright (C) CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -68,7 +58,9 @@
 #include "libs/pilight/core/proc.h"
 #include "libs/pilight/core/ntp.h"
 #include "libs/pilight/config/config.h"
+#include "libs/pilight/config/hardware.h"
 #include "libs/pilight/lua_c/lua.h"
+#include "libs/pilight/lua_c/table.h"
 
 #ifdef EVENTS
 	#include "libs/pilight/events/events.h"
@@ -233,8 +225,7 @@ static void *reason_forward_free(void *param) {
 }
 
 static void *reason_send_code_free(void *param) {
-	struct reason_send_code_t *data = param;
-	FREE(data);
+	plua_metatable_free(param);
 	return NULL;
 }
 
@@ -694,7 +685,6 @@ void *send_code(void *param) {
 			sending = 1;
 
 			struct protocol_t *protocol = sendqueue->protopt;
-			struct hardware_t *hw = NULL;
 
 			struct JsonNode *message = NULL;
 
@@ -721,89 +711,42 @@ void *send_code(void *param) {
 				}
 			}
 
-			struct conf_hardware_t *tmp_confhw = conf_hardware;
-			while(tmp_confhw) {
-				if(protocol->hwtype == tmp_confhw->hardware->hwtype) {
-					hw = tmp_confhw->hardware;
-					break;
+			logprintf(LOG_DEBUG, "**** RAW CODE ****");
+			if(log_level_get() >= LOG_DEBUG) {
+				for(i=0;i<sendqueue->length;i++) {
+					printf("%d ", sendqueue->code[i]);
 				}
-				tmp_confhw = tmp_confhw->next;
+				printf("\n");
 			}
-			if(hw != NULL) {
-#ifdef PILIGHT_DEVELOPMENT
-				if((hw->comtype == COMOOK || hw->comtype == COMPLSTRAIN) && hw->sendOOK != NULL) {
-					if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
-						hw->wait = 1;
-						pthread_mutex_unlock(&hw->lock);
-						pthread_cond_signal(&hw->signal);
-					}
-#else
-				if(hw->comtype == COMOOK || hw->comtype == COMPLSTRAIN) {
-#endif
-					logprintf(LOG_DEBUG, "**** RAW CODE ****");
-					if(log_level_get() >= LOG_DEBUG) {
-						for(i=0;i<sendqueue->length;i++) {
-							printf("%d ", sendqueue->code[i]);
-						}
-						printf("\n");
-					}
-					logprintf(LOG_DEBUG, "**** RAW CODE ****");
+			logprintf(LOG_DEBUG, "**** RAW CODE ****");
 
-					/*
-					 * Rewrite start
-					 */
-					struct reason_send_code_t *data = MALLOC(sizeof(struct reason_send_code_t));
-					if(data == NULL) {
-						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-					}
-					data->origin = ORIGIN_SENDER;
-					memset(&data->message, 0, 255);
-					// snprintf(data->message, 1024, "{\"message\":%s}", message);
-					data->rawlen = sendqueue->length;
-					memcpy(data->pulses, sendqueue->code, data->rawlen*sizeof(int));
-					data->txrpt = protocol->txrpt;
-					strncpy(data->protocol, protocol->id, 255);
-					data->hwtype = hw->hwtype;
-
-					memset(data->uuid, 0, UUID_LENGTH+1);
-					eventpool_trigger(REASON_SEND_CODE, reason_send_code_free, data);
-					/*
-					 * Rewrite end
-					 */
-
-#ifdef PILIGHT_DEVELOPMENT
-					if(hw->sendOOK(sendqueue->code, sendqueue->length, protocol->txrpt) == 0) {
-						logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
-					} else {
-						logprintf(LOG_ERR, "failed to send code");
-					}
-#endif
-					if(strcmp(protocol->id, "raw") == 0) {
-						int plslen = sendqueue->code[sendqueue->length-1]/PULSE_DIV;
-						receive_queue(sendqueue->code, sendqueue->length, plslen, -1);
-					}
-#ifdef PILIGHT_DEVELOPMENT
-					if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
-						hw->wait = 0;
-						pthread_mutex_unlock(&hw->lock);
-						pthread_cond_signal(&hw->signal);
-					}
-#endif
-				} else if(hw->comtype == COMAPI && hw->sendAPI != NULL) {
-					if(message != NULL) {
-						if(hw->sendAPI(message) == 0) {
-							logprintf(LOG_DEBUG, "successfully send %s command", protocol->id);
-						} else {
-							logprintf(LOG_ERR, "failed to send command");
-						}
-					}
-				}
-			} else {
-				if(strcmp(protocol->id, "raw") == 0) {
-					int plslen = sendqueue->code[sendqueue->length-1]/PULSE_DIV;
-					receive_queue(sendqueue->code, sendqueue->length, plslen, -1);
-				}
+			struct plua_metatable_t *table = MALLOC(sizeof(struct plua_metatable_t));
+			if(table == NULL) {
+				OUT_OF_MEMORY
 			}
+
+			char key[255];
+			memset(table, 0, sizeof(struct plua_metatable_t));
+			memset(&key, 0, 255);
+
+			plua_metatable_set_number(table, "rawlen", sendqueue->length);
+			plua_metatable_set_number(table, "txrpt", protocol->txrpt);
+			plua_metatable_set_string(table, "protocol", protocol->id);
+			plua_metatable_set_number(table, "hwtype", protocol->hwtype);
+			plua_metatable_set_string(table, "uuid", "0");
+
+			for(i=0;i<sendqueue->length;i++) {
+				snprintf(key, 255, "pulses.%d", i+1);
+				plua_metatable_set_number(table, key, sendqueue->code[i]);
+			}
+
+			eventpool_trigger(REASON_SEND_CODE+10000, reason_send_code_free, table);
+
+			if(strcmp(protocol->id, "raw") == 0) {
+				int plslen = sendqueue->code[sendqueue->length-1]/PULSE_DIV;
+				receive_queue(sendqueue->code, sendqueue->length, plslen, -1);
+			}
+
 			if(message != NULL) {
 				broadcast_queue(sendqueue->protoname, message, sendqueue->origin);
 				json_delete(message);
@@ -2067,145 +2010,39 @@ static void socket_client_disconnected(int i) {
 	client_remove(socket_get_clients(i));
 }
 
-void *receivePulseTrain(void *param) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+static void *receivePulseTrain1(int reason, void *param, void *userdata) {
+	char *hardware = NULL;
+	double length = 0.0;
 
-	struct rawcode_t r;
-	r.length = 0;
-	int plslen = 0;
-#ifdef _WIN32
-	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
-#else
-	/* Make sure the pilight receiving gets
-	   the highest priority available */
-	struct sched_param sched;
-	memset(&sched, 0, sizeof(sched));
-	sched.sched_priority = 70;
-	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
-#endif
+	int buffer[1024];
+	{
+		struct plua_metatable_t *table = param;
+		char nr[255], *p = nr;
+		double pulse = 0.0;
 
-	struct hardware_t *hw = (hardware_t *)param;
-	pthread_mutex_lock(&hw->lock);
-	hw->running = 1;
+		memset(&nr, 0, 255);
 
-	while(main_loop == 1 && hw->receivePulseTrain != NULL && hw->stop == 0) {
-		if(hw->wait == 0) {
-			pthread_mutex_lock(&hw->lock);
-			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
+		int i = 0;
+		plua_metatable_get_number(table, "length", &length);
+		plua_metatable_get_string(table, "hardware", &hardware);
 
-			hw->receivePulseTrain(&r);
-			plslen = r.pulses[r.length-1]/PULSE_DIV;
-			if(r.length > 0) {
-				receive_queue(r.pulses, r.length, plslen, hw->hwtype);
-			} else if(r.length == -1) {
-				hw->init();
-				sleep(1);
-			}
-
-			pthread_mutex_unlock(&hw->lock);
-		} else {
-			pthread_cond_wait(&hw->signal, &hw->lock);
+		for(i=0;i<length;i++) {
+			snprintf(p, 254, "pulses.%d", i+1);
+			plua_metatable_get_number(table, nr, &pulse);
+			buffer[i] = (int)pulse;
 		}
 	}
-	hw->running = 0;
-	return (void *)NULL;
-}
 
-#ifdef PILIGHT_DEVELOPMENT
-// void *receiveOOK(void *param) {
-	// logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+	int hwtype = config_hardware_get_type(hardware);
 
-	// struct rawcode_t r;
-	// r.length = 0;
-	// int plslen = 0, duration = 0;
-	// struct timeval tp;
-	// struct timespec ts;
+	if(hwtype == -1 && hwtype != RF433 && hwtype != RFNONE && hwtype != RF868) {
+		logprintf(LOG_ERR, "hardware type not supported");
+		return NULL;
+	}
 
-// #ifdef _WIN32
-	// SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
-// #else
-	// /* Make sure the pilight receiving gets
-	   // the highest priority available */
-	// struct sched_param sched;
-	// memset(&sched, 0, sizeof(sched));
-	// sched.sched_priority = 70;
-	// pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
-// #endif
-
-	// struct hardware_t *hw = (hardware_t *)param;
-	// pthread_mutex_lock(&hw->lock);
-	// hw->running = 1;
-
-	// while(main_loop == 1 && hw->receiveOOK != NULL && hw->stop == 0) {
-		// if(hw->wait == 0) {
-			// pthread_mutex_lock(&hw->lock);
-			// logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
-			// duration = hw->receiveOOK();
-			// if(duration > 0) {
-				// r.pulses[r.length++] = duration;
-				// if(r.length > MAXPULSESTREAMLENGTH-1) {
-					// r.length = 0;
-				// }
-				// if(duration > hw->mingaplen) {
-					// if(duration < hw->maxgaplen) {
-						// plslen = duration/PULSE_DIV;
-					// }
-					// /* Let's do a little filtering here as well */
-					// if(r.length >= hw->minrawlen && r.length <= hw->maxrawlen) {
-						// receive_queue(r.pulses, r.length, plslen, hw->hwtype);
-					// }
-					// r.length = 0;
-				// }
-			// /* Hardware failure */
-			// } else if(duration == -1) {
-				// pthread_mutex_unlock(&hw->lock);
-				// gettimeofday(&tp, NULL);
-				// ts.tv_sec = tp.tv_sec;
-				// ts.tv_nsec = tp.tv_usec * 1000;
-				// ts.tv_sec += 1;
-				// pthread_mutex_lock(&hw->lock);
-				// pthread_cond_timedwait(&hw->signal, &hw->lock, &ts);
-			// }
-			// pthread_mutex_unlock(&hw->lock);
-		// } else {
-			// pthread_cond_wait(&hw->signal, &hw->lock);
-		// }
-	// }
-	// hw->running = 0;
-	// return (void *)NULL;
-// }
-#endif
-
-static void *receivePulseTrain1(int reason, void *param, void *userdata) {
-	struct reason_received_pulsetrain_t *data = param;
-	int plslen = 0;
-
-	if(data->hardware != NULL && data->pulses != NULL && data->length > 0) {
-#ifndef PILIGHT_REWRITE
-		int hwtype = 0;
-		struct conf_hardware_t *tmp_confhw = conf_hardware;
-		while(tmp_confhw) {
-			if(strcmp(tmp_confhw->hardware->id, data->hardware) == 0) {
-				hwtype = tmp_confhw->hardware->hwtype;
-			}
-			tmp_confhw = tmp_confhw->next;
-		}
-#endif
-#ifdef PILIGHT_REWRITE
-		struct hardware_t *hw = NULL;
-		if(hardware_select_struct(ORIGIN_MASTER, data->hardware, &hw) == 0) {
-#endif
-			plslen = data->pulses[data->length-1]/PULSE_DIV;
-			if(data->length > 0) {
-#ifdef PILIGHT_REWRITE
-				receive_parse_code(data->pulses, data->length, plslen, hw->hwtype);
-#else
-				receive_queue(data->pulses, data->length, plslen, hwtype);
-#endif
-			}
-#ifdef PILIGHT_REWRITE
-		}
-#endif
+	int plslen = buffer[(int)length-1]/PULSE_DIV;
+	if(length > 0) {
+		receive_queue(buffer, length, plslen, hwtype);
 	}
 
 	return (void *)NULL;
@@ -2683,7 +2520,7 @@ static void signal_cb(uv_signal_t *handle, int signum) {
 
 	if(config_get_file() != NULL) {
 		if(pilight.runmode == STANDALONE) {
-			config_write(1, "all");
+			config_write(CONFIG_USER, "all");
 		}
 	}
 
@@ -2995,9 +2832,17 @@ int start_pilight(int argc, char **argv) {
 	/* Rewrite */
 	eventpool_callback(REASON_CONTROL_DEVICE, control_device1, NULL);
 	eventpool_callback(REASON_SOCKET_RECEIVED, socket_parse_data1, NULL);
-	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain1, NULL);
+	eventpool_callback(REASON_RECEIVED_PULSETRAIN+10000, receivePulseTrain1, NULL);
+	eventpool_callback(REASON_RECEIVED_OOK+10000, receivePulseTrain1, NULL);
 
-	if(config_read(CONFIG_ALL) != 0) {
+	if(config_read(CONFIG_SETTINGS | CONFIG_REGISTRY | CONFIG_DEVICES | CONFIG_RULES | CONFIG_GUI) != EXIT_SUCCESS) {
+		logprintf(LOG_ERR, "failed to read config");
+		goto clear;
+	}
+
+	hardware_init();
+
+	if(config_read(CONFIG_HARDWARE) != EXIT_SUCCESS) {
 		logprintf(LOG_ERR, "failed to read config");
 		goto clear;
 	}
@@ -3124,35 +2969,35 @@ int start_pilight(int argc, char **argv) {
 	}
 #endif
 
-	struct conf_hardware_t *tmp_confhw = conf_hardware;
-	while(tmp_confhw) {
-		if(tmp_confhw->hardware->init) {
-			if(tmp_confhw->hardware->comtype == COMOOK) {
-				struct protocols_t *tmp = protocols;
-				while(tmp) {
-					if(tmp->listener->hwtype == tmp_confhw->hardware->hwtype) {
-						if(tmp->listener->maxrawlen > tmp_confhw->hardware->maxrawlen) {
-							tmp_confhw->hardware->maxrawlen = tmp->listener->maxrawlen;
-						}
-						if(tmp->listener->minrawlen > 0 && tmp->listener->minrawlen < tmp_confhw->hardware->minrawlen) {
-							tmp_confhw->hardware->minrawlen = tmp->listener->minrawlen;
-						}
-						if(tmp->listener->maxgaplen > tmp_confhw->hardware->maxgaplen) {
-							tmp_confhw->hardware->maxgaplen = tmp->listener->maxgaplen;
-						}
-						if(tmp->listener->mingaplen > 0 && tmp->listener->mingaplen < tmp_confhw->hardware->mingaplen) {
-							tmp_confhw->hardware->mingaplen = tmp->listener->mingaplen;
-						}
-						if(tmp->listener->rawlen > 0) {
-							logprintf(LOG_EMERG, "%s: setting \"rawlen\" length is not allowed, use the \"minrawlen\" and \"maxrawlen\" instead", tmp->listener->id);
-							goto clear;
-						}
-					}
-					tmp = tmp->next;
-				}
+	{
+		int mingaplen = 5100, maxgaplen = 10000, minrawlen = 1000, maxrawlen = 0;
+
+		struct protocols_t *tmp = protocols;
+		while(tmp) {
+			if(tmp->listener->maxrawlen > maxrawlen) {
+				maxrawlen = tmp->listener->maxrawlen;
 			}
+			if(tmp->listener->minrawlen > 0 && tmp->listener->minrawlen < minrawlen) {
+				minrawlen = tmp->listener->minrawlen;
+			}
+			if(tmp->listener->maxgaplen > maxgaplen) {
+				maxgaplen = tmp->listener->maxgaplen;
+			}
+			if(tmp->listener->mingaplen > 0 && tmp->listener->mingaplen < mingaplen) {
+				mingaplen = tmp->listener->mingaplen;
+			}
+			if(tmp->listener->rawlen > 0) {
+				logprintf(LOG_EMERG, "%s: setting \"rawlen\" length is not allowed, use the \"minrawlen\" and \"maxrawlen\" instead", tmp->listener->id);
+				goto clear;
+			}
+			tmp = tmp->next;
 		}
-		tmp_confhw = tmp_confhw->next;
+
+		struct plua_metatable_t *table = config_get_metatable();
+		plua_metatable_set_number(table, "registry.hardware.RF433.mingaplen", mingaplen);
+		plua_metatable_set_number(table, "registry.hardware.RF433.maxgaplen", maxgaplen);
+		plua_metatable_set_number(table, "registry.hardware.RF433.minrawlen", minrawlen);
+		plua_metatable_set_number(table, "registry.hardware.RF433.maxrawlen", maxrawlen);
 	}
 
 	config_setting_get_number("port", 0, &port);
@@ -3246,40 +3091,8 @@ int start_pilight(int argc, char **argv) {
 	threads_register("sender", &send_code, (void *)NULL, 0);
 	threads_register("broadcaster", &broadcast, (void *)NULL, 0);
 
-	tmp_confhw = conf_hardware;
-	while(tmp_confhw && main_loop) {
-		if(tmp_confhw->hardware->init) {
-			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
-				if(main_loop == 1) {
-					logprintf(LOG_ERR, "could not initialize %s hardware module", tmp_confhw->hardware->id);
-					goto clear;
-				} else {
-					break;
-				}
-			}
-			if(main_loop == 1) {
-				tmp_confhw->hardware->wait = 0;
-				tmp_confhw->hardware->stop = 0;
-				if(tmp_confhw->hardware->comtype == COMOOK) {
-#ifdef PILIGHT_DEVELOPMENT
-					// threads_register(tmp_confhw->hardware->id, &receiveOOK, (void *)tmp_confhw->hardware, 0);
-#endif
-				} else if(tmp_confhw->hardware->comtype == COMPLSTRAIN) {
-					threads_register(tmp_confhw->hardware->id, &receivePulseTrain, (void *)tmp_confhw->hardware, 0);
-				} else if(tmp_confhw->hardware->comtype == COMAPI) {
-					threads_register(tmp_confhw->hardware->id, tmp_confhw->hardware->receiveAPI, (void *)tmp_confhw->hardware, 0);
-				}
-			} else {
-				break;
-			}
-		}
-		if(main_loop == 0) {
-			break;
-		}
-		tmp_confhw = tmp_confhw->next;
-	}
-	if(main_loop == 0) {
-		goto clear;
+	if(config_hardware_run() == -1) {
+		logprintf(LOG_NOTICE, "there are no hardware modules configured");
 	}
 
 	threads_register("receive parser", &receive_parse_code, (void *)NULL, 0);

@@ -91,8 +91,6 @@ void config_init(void) {
 	closedir(d);
 	FREE(f);
 
-	hardware_init();
-
 	if((table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
 		OUT_OF_MEMORY
 	}
@@ -101,57 +99,6 @@ void config_init(void) {
 
 int config_exists(char *module) {
 	return plua_module_exists(module, STORAGE);
-}
-
-struct lua_state_t *plua_get_module(char *namespace, char *module) {
-	struct lua_state_t *state = NULL;
-	struct lua_State *L = NULL;
-	int match = 0;
-
-	state = plua_get_free_state();
-
-	if(state == NULL) {
-		return NULL;
-	}
-
-	if((L = state->L) == NULL) {
-		plua_clear_state(state);
-		return NULL;
-	}
-
-	char name[255], *p = name;
-	memset(name, '\0', 255);
-
-	sprintf(p, "%s.%s", namespace, module);
-	lua_getglobal(L, name);
-
-	if(lua_isnil(L, -1) != 0) {
-		lua_pop(L, -1);
-		assert(lua_gettop(L) == 0);
-		plua_clear_state(state);
-		return NULL;
-	}
-	if(lua_istable(L, -1) != 0) {
-		struct plua_module_t *tmp = plua_get_modules();
-		while(tmp) {
-			if(strcmp(module, tmp->name) == 0) {
-				state->module = tmp;
-				match = 1;
-				break;
-			}
-			tmp = tmp->next;
-		}
-		if(match == 1) {
-			return state;
-		}
-	}
-
-	lua_pop(L, -1);
-
-	assert(lua_gettop(L) == 0);
-	plua_clear_state(state);
-
-	return NULL;
 }
 
 int config_callback_read(char *module, char *string) {
@@ -261,16 +208,6 @@ int config_parse(struct JsonNode *root, unsigned short objects) {
 		}
 	}
 
-	if(((objects & CONFIG_HARDWARE) == CONFIG_HARDWARE) || ((objects & CONFIG_ALL) == CONFIG_ALL)) {
-		struct JsonNode *jnode = json_find_member(root, "hardware");
-		if(jnode == NULL) {
-			return -1;
-		}
-		if(config_hardware_parse(jnode) != 0) {
-			return -1;
-		}
-	}
-
 #ifdef EVENTS
 	if(((objects & CONFIG_RULES) == CONFIG_RULES) || ((objects & CONFIG_ALL) == CONFIG_ALL)) {
 		struct JsonNode *jnode = json_find_member(root, "rules");
@@ -301,6 +238,13 @@ int config_read(unsigned short objects) {
 		}
 	}
 
+	if(((objects & CONFIG_HARDWARE) == CONFIG_HARDWARE) || ((objects & CONFIG_ALL) == CONFIG_ALL)) {
+		if(config_callback_read("hardware", string) != 1) {
+			FREE(string);
+			return -1;
+		}
+	}
+
 	char *content = NULL;
 	/* Read JSON config file */
 	if(file_get_contents(string, &content) == 0) {
@@ -320,7 +264,7 @@ int config_read(unsigned short objects) {
 		}
 
 		json_delete(root);
-		config_write(1, "all");
+		config_write(CONFIG_USER, "all");
 		FREE(content);
 	}
 
@@ -402,24 +346,23 @@ struct JsonNode *config_print(int level, const char *media) {
 			json_delete(jchild);
 			json_append_member(root, "settings", json_decode(settings));
 			FREE(settings);
+		} else {
+			struct JsonNode *jchild = json_find_member(root, "settings");
+			json_remove_from_parent(jchild);
+			json_append_member(root, "settings", jchild);
 		}
 
-		struct JsonNode *jchild4 = config_hardware_sync(level, media);
-		jchild = json_find_member(root, "hardware");
-		json_remove_from_parent(jchild);
-		check = json_stringify(jchild4, NULL);
-		if(check != NULL) {
-			if(jchild4 != NULL && strcmp(check, "{}") != 0) {
-				json_append_member(root, "hardware", jchild4);
-				json_delete(jchild);
-			} else {
-				json_append_member(root, "hardware", jchild);
-				json_delete(jchild4);
-			}
-			json_free(check);
+		char *hardware = config_callback_write("hardware");
+		if(hardware != NULL) {
+			struct JsonNode *jchild = json_find_member(root, "hardware");
+			json_remove_from_parent(jchild);
+			json_delete(jchild);
+			json_append_member(root, "hardware", json_decode(hardware));
+			FREE(hardware);
 		} else {
+			struct JsonNode *jchild = json_find_member(root, "hardware");
+			json_remove_from_parent(jchild);
 			json_append_member(root, "hardware", jchild);
-			json_delete(jchild4);
 		}
 
 		char *registry = config_callback_write("registry");
@@ -429,12 +372,16 @@ struct JsonNode *config_print(int level, const char *media) {
 			json_delete(jchild);
 			json_append_member(root, "registry", json_decode(registry));
 			FREE(registry);
+		} else {
+			struct JsonNode *jchild = json_find_member(root, "registry");
+			json_remove_from_parent(jchild);
+			json_append_member(root, "registry", jchild);
 		}
 	}
+
 	if(content != NULL) {
 		FREE(content);
 	}
-
 	return root;
 }
 

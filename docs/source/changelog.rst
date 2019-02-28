@@ -1,6 +1,31 @@
 Changelog
 =========
 
+.. versionadded:: nightly
+
+.. rubric:: Changes
+
+- Lua pilight.defaults are renamed to pilight.default
+- Removed 433lirc hardware module
+
+.. rubric:: Improvment
+
+- Add warning when other protocol options besides the id are defined as an array
+- Added Kerui an TFA2017 protocol
+- Allow userdata in eventpool callbacks
+- Added C getters and setters for lua metatable
+- Added pilight event lua c to lua interface
+- Ported hardware module to lua
+- Ported config hardware parsing to lua
+
+.. rubric:: Fixes
+
+- Fixed segfault in duplicate lua metatable key
+- Fixed segfault due to long device strings #413
+- Fixed garbage collection in event module loaders
+- Fixed bug using boolean value in lua metatable
+- Fixed lua stack not fully cleared in certain cases
+
 .. versionadded:: 8.1.4
 
 .. rubric:: Improvements

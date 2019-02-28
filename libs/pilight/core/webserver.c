@@ -916,6 +916,7 @@ static int request_handler(uv_poll_t *req) {
 						internal = CONFIG_INTERNAL;
 					}
 				}
+
 				struct JsonNode *jsend = config_print(internal, media);
 				if(jsend != NULL) {
 					char *output = json_stringify(jsend, NULL);

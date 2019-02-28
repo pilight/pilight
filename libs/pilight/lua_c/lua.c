@@ -146,6 +146,57 @@ static int luaB_ipairs (lua_State *L) {
   return pairsmeta(L, "__ipairs", 1, ipairsaux);
 }
 
+struct lua_state_t *plua_get_module(char *namespace, char *module) {
+	struct lua_state_t *state = NULL;
+	struct lua_State *L = NULL;
+	int match = 0;
+
+	state = plua_get_free_state();
+
+	if(state == NULL) {
+		return NULL;
+	}
+
+	if((L = state->L) == NULL) {
+		plua_clear_state(state);
+		return NULL;
+	}
+
+	char name[255], *p = name;
+	memset(name, '\0', 255);
+
+	sprintf(p, "%s.%s", namespace, module);
+	lua_getglobal(L, name);
+
+	if(lua_isnil(L, -1) != 0) {
+		lua_pop(L, -1);
+		assert(lua_gettop(L) == 0);
+		plua_clear_state(state);
+		return NULL;
+	}
+	if(lua_istable(L, -1) != 0) {
+		struct plua_module_t *tmp = plua_get_modules();
+		while(tmp) {
+			if(strcmp(module, tmp->name) == 0) {
+				state->module = tmp;
+				match = 1;
+				break;
+			}
+			tmp = tmp->next;
+		}
+		if(match == 1) {
+			return state;
+		}
+	}
+
+	lua_pop(L, -1);
+
+	assert(lua_gettop(L) == 0);
+	plua_clear_state(state);
+
+	return NULL;
+}
+
 static int plua_metatable_len(lua_State *L) {
 	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
 
@@ -671,6 +722,7 @@ struct lua_state_t *plua_get_free_state(void) {
 			return &lua_state[i];
 		}
 	}
+	logprintf(LOG_ERR, "no free lua states available");
 	return NULL;
 }
 
@@ -911,6 +963,9 @@ static int plua_module_init(struct lua_State *L, char *file, struct plua_module_
 		case STORAGE: {
 			type = STRDUP("storage");
 		} break;
+		case HARDWARE: {
+			type = STRDUP("hardware");
+		} break;
 	}
 	if(type == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -1012,7 +1067,6 @@ static int plua_module_init(struct lua_State *L, char *file, struct plua_module_
 	 */
 	lua_pop(L, 1);
 	FREE(type);
-
 	return 1;
 }
 
@@ -1083,6 +1137,9 @@ void plua_module_load(char *file, int type) {
 			break;
 			case STORAGE:
 				sprintf(p, "storage.%s", module->name);
+			break;
+			case HARDWARE:
+				sprintf(p, "hardware.%s", module->name);
 			break;
 		}
 
@@ -1340,7 +1397,6 @@ void plua_init(void) {
 	plua_override_global("pairs", luaB_pairs);
 	plua_override_global("ipairs", luaB_ipairs);
 	plua_override_global("next", luaB_next);
-
 	/*
 	 * Initialize global state garbage collector
 	 */
@@ -1382,6 +1438,9 @@ int plua_module_exists(char *module, int type) {
 		break;
 		case STORAGE:
 			sprintf(p, "storage.%s", module);
+		break;
+		case HARDWARE:
+			sprintf(p, "hardware.%s", module);
 		break;
 	}
 
@@ -1484,6 +1543,7 @@ void plua_ret_false(lua_State *L) {
 	lua_pushboolean(L, 0);
 }
 
+//#ifdef PILIGHT_UNITTEST
 void plua_override_global(char *name, int (*func)(lua_State *L)) {
 	int i = 0;
 	for(i=0;i<NRLUASTATES;i++) {
@@ -1497,6 +1557,7 @@ void plua_override_global(char *name, int (*func)(lua_State *L)) {
 		uv_mutex_unlock(&lua_state[i].lock);
 	}
 }
+//#endif
 
 int plua_get_method(struct lua_State *L, char *file, char *method) {
 #if LUA_VERSION_NUM <= 502
@@ -1524,11 +1585,41 @@ int plua_pcall(struct lua_State *L, char *file, int args, int ret) {
 			return -1;
 		}
 	}
-
 	return 0;
 }
 
+void plua_json_to_table(struct lua_State *L, struct JsonNode *jnode) {
+	struct JsonNode *jchild = json_first_child(jnode);
+
+	lua_newtable(L);
+	int i = 0;
+	while(jchild) {
+		if(jnode->tag == JSON_OBJECT) {
+			lua_pushstring(L, jchild->key);
+		} else {
+			lua_pushnumber(L, ++i);
+		}
+		switch(jchild->tag) {
+			case JSON_STRING:
+				lua_pushstring(L, jchild->string_);
+			break;
+			case JSON_NUMBER:
+				lua_pushnumber(L, jchild->number_);
+			break;
+			case JSON_ARRAY:
+			case JSON_OBJECT:
+				plua_json_to_table(L, jchild);
+			break;
+		}
+		lua_settable(L, -3);
+		jchild = jchild->next;
+	}
+}
+
 int plua_gc(void) {
+	if(init == 0) {
+		return -1;
+	}
 	struct plua_module_t *tmp = NULL;
 	while(modules) {
 		tmp = modules;
@@ -1539,24 +1630,34 @@ int plua_gc(void) {
 		modules = modules->next;
 		FREE(tmp);
 	}
-	int i = 0, x = 0;
-	for(i=0;i<NRLUASTATES+1;i++) {
-		if(lua_state[i].L != NULL) {
-			lua_gc(lua_state[i].L, LUA_GCCOLLECT, 0);
-			lua_close(lua_state[i].L);
-			lua_state[i].L = NULL;
-		}
-		for(x=0;x<lua_state[i].gc.nr;x++) {
-			if(lua_state[i].gc.list[x]->free == 0) {
-				lua_state[i].gc.list[x]->callback(lua_state[i].gc.list[x]->ptr);
+	int i = 0, x = 0, _free = 1;
+	while(_free) {
+		_free = 0;
+		for(i=0;i<NRLUASTATES+1;i++) {
+			if(lua_state[i].L != NULL) {
+				if(uv_mutex_trylock(&lua_state[i].lock) == 0) {
+					for(x=0;x<lua_state[i].gc.nr;x++) {
+						if(lua_state[i].gc.list[x]->free == 0) {
+							lua_state[i].gc.list[x]->callback(lua_state[i].gc.list[x]->ptr);
+						}
+						FREE(lua_state[i].gc.list[x]);
+					}
+					if(lua_state[i].gc.size > 0) {
+						FREE(lua_state[i].gc.list);
+					}
+					lua_state[i].gc.nr = 0;
+					lua_state[i].gc.size = 0;
+
+					lua_gc(lua_state[i].L, LUA_GCCOLLECT, 0);
+					lua_close(lua_state[i].L);
+					lua_state[i].L = NULL;
+
+					uv_mutex_unlock(&lua_state[i].lock);
+				} else {
+					_free = 1;
+				}
 			}
-			FREE(lua_state[i].gc.list[x]);
 		}
-		if(lua_state[i].gc.size > 0) {
-			FREE(lua_state[i].gc.list);
-		}
-		lua_state[i].gc.nr = 0;
-		lua_state[i].gc.size = 0;
 	}
 
 	init = 0;
@@ -1642,9 +1743,6 @@ int plua_flush_coverage(void) {
 #endif
 
 void plua_package_path(const char *path) {
-	if(init == 0) {
-		return;
-	}
 	int i = 0;
 	for(i=0;i<NRLUASTATES;i++) {
 		lua_getglobal(lua_state[i].L, "package");

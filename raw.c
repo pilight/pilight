@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+  Copyright (C) CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -44,15 +34,13 @@
 #include "libs/pilight/config/config.h"
 #include "libs/pilight/config/hardware.h"
 #include "libs/pilight/lua_c/lua.h"
+#include "libs/pilight/lua_c/table.h"
 
 #include "libs/pilight/protocols/protocol.h"
 
 #include "libs/pilight/events/events.h"
 
-
-#ifndef PILIGHT_DEVELOPMENT
 static uv_signal_t *signal_req = NULL;
-#endif
 
 static unsigned short main_loop = 1;
 static unsigned short linefeed = 0;
@@ -71,9 +59,8 @@ int main_gc(void) {
 	options_gc();
 	socket_gc();
 
-#ifndef PILIGHT_DEVELOPMENT
 	eventpool_gc();
-#endif
+	config_write(1, "all");
 	config_gc();
 	protocol_gc();
 	whitelist_free();
@@ -96,71 +83,45 @@ int main_gc(void) {
 	return EXIT_SUCCESS;
 }
 
-void *receiveOOK(void *param) {
-	int duration = 0, iLoop = 0;
-	long stream_duration = 0;
+static int iter = 0;
 
-	struct hardware_t *hw = (hardware_t *)param;
-	while(main_loop && hw->receiveOOK) {
-		duration = hw->receiveOOK();
-		stream_duration += duration;
-		iLoop++;
-		if(duration > 0) {
+static void *listener(int reason, void *param, void *userdata) {
+	struct plua_metatable_t *table = param;
+	char nr[255], *p = nr;
+	char *hardware = NULL;
+	double length = 0.0;
+	double pulse = 0.0;
+	int buffer[1024];
+	memset(&buffer, 0, 1024*sizeof(int));
+
+	memset(&nr, 0, 255);
+
+	int i = 0;
+	plua_metatable_get_number(table, "length", &length);
+	plua_metatable_get_string(table, "hardware", &hardware);
+
+	for(i=0;i<length;i++) {
+		snprintf(p, 254, "pulses.%d", i+1);
+		plua_metatable_get_number(table, nr, &pulse);
+		buffer[i] = (int)pulse;
+	}
+	if((int)length > 0) {
+		for(i=0;i<(int)length;i++) {
 			if(linefeed == 1) {
-				if(duration > 5100) {
-					printf(" %d -#: %d -d: %ld\n%s: ",duration, iLoop, stream_duration, hw->id);
-					iLoop = 0;
-				} else {
-					printf(" %d", duration);
+				printf(" %d", buffer[i]);
+				iter++;
+				if(buffer[i] > 5100) {
+					printf(" -# %d\n %s:", iter, hardware);
+					iter = 0;
 				}
 			} else {
-				printf("%s: %d\n", hw->id, duration);
+				printf("%s: %d\n", hardware, buffer[i]);
 			}
 		}
-	};
+	}
 	return NULL;
 }
 
-static void *receivePulseTrain(int reason, void *param, void *userdata) {
-	struct reason_received_pulsetrain_t *data = param;
-	int i = 0;
-
-	if(data->hardware != NULL && data->pulses != NULL && data->length > 0) {
-#ifndef PILIGHT_REWRITE
-		char *id = NULL;
-		struct conf_hardware_t *tmp_confhw = conf_hardware;
-		while(tmp_confhw) {
-			if(strcmp(tmp_confhw->hardware->id, data->hardware) == 0) {
-				id = tmp_confhw->hardware->id;
-			}
-			tmp_confhw = tmp_confhw->next;
-		}
-#endif
-#ifdef PILIGHT_REWRITE
-		struct hardware_t *hw = NULL;
-		if(hardware_select_struct(ORIGIN_MASTER, data->hardware, &hw) == 0) {
-#endif
-			if(data->length > 0) {
-				for(i=0;i<data->length;i++) {
-					if(linefeed == 1) {
-						printf(" %d", data->pulses[i]);
-						if(data->pulses[i] > 5100) {
-							printf(" -# %d\n %s:", i, id);
-						}
-					} else {
-						printf("%s: %d\n", id, data->pulses[i]);
-					}
-				}
-			}
-#ifdef PILIGHT_REWRITE
-		}
-#endif
-	}
-
-	return (void *)NULL;
-}
-
-#ifndef PILIGHT_DEVELOPMENT
 static void signal_cb(uv_signal_t *handle, int signum) {
 	uv_stop(uv_default_loop());
 	main_gc();
@@ -190,13 +151,10 @@ static void main_loop1(int onclose) {
 		}
 	}
 }
-#endif
 
 int main(int argc, char **argv) {
-#ifndef PILIGHT_DEVELOPMENT
 	const uv_thread_t pth_cur_id = uv_thread_self();
 	memcpy((void *)&pth_main_id, &pth_cur_id, sizeof(uv_thread_t));
-#endif
 
 	// memtrack();
 
@@ -217,14 +175,12 @@ int main(int argc, char **argv) {
 	}
 	strcpy(progname, "pilight-raw");
 
-#ifndef PILIGHT_DEVELOPMENT
 	if((signal_req = MALLOC(sizeof(uv_signal_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	uv_signal_init(uv_default_loop(), signal_req);
 	uv_signal_start(signal_req, signal_cb, SIGINT);
-#endif
 
 #ifndef _WIN32
 	if(geteuid() != 0) {
@@ -336,67 +292,44 @@ int main(int argc, char **argv) {
 		goto close;
 	}
 
-#ifndef PILIGHT_DEVELOPMENT
 	eventpool_init(EVENTPOOL_THREADED);
-#endif
+	eventpool_callback(REASON_RECEIVED_PULSETRAIN+10000, listener, NULL);
+	eventpool_callback(REASON_RECEIVED_OOK+10000, listener, NULL);
+
 	protocol_init();
+	hardware_init();
 	config_init();
 	if(config_read(CONFIG_SETTINGS | CONFIG_HARDWARE) != EXIT_SUCCESS) {
 		goto close;
 	}
 
-#ifndef PILIGHT_DEVELOPMENT
-	eventpool_callback(REASON_RECEIVED_PULSETRAIN, receivePulseTrain, NULL);
-#endif
+	struct plua_metatable_t *table = config_get_metatable();
+	plua_metatable_set_number(table, "registry.hardware.RF433.mingaplen", 0);
+	plua_metatable_set_number(table, "registry.hardware.RF433.maxgaplen", 99999);
+	plua_metatable_set_number(table, "registry.hardware.RF433.minrawlen", 0);
+	plua_metatable_set_number(table, "registry.hardware.RF433.maxrawlen", 1024);
 
-	/* Start threads library that keeps track of all threads used */
-	threads_start();
-
-	int has_hardware = 0;
-	struct conf_hardware_t *tmp_confhw = conf_hardware;
-	while(tmp_confhw) {
-		if(tmp_confhw->hardware->init) {
-			if(tmp_confhw->hardware->comtype == COMOOK) {
-				tmp_confhw->hardware->maxrawlen = 1024;
-				tmp_confhw->hardware->minrawlen = 0;
-				tmp_confhw->hardware->maxgaplen = 99999;
-				tmp_confhw->hardware->mingaplen = 0;
-			}
-			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
-				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
-				goto close;
-			} else {
-				has_hardware = 1;
-			}
-		}
-		tmp_confhw = tmp_confhw->next;
-	}
-
-	if(has_hardware == 0) {
+	if(config_hardware_run() == -1) {
 		logprintf(LOG_NOTICE, "there are no hardware modules configured");
 		uv_stop(uv_default_loop());
 	}
 
-#ifdef PILIGHT_DEVELOPMENT
-	while(main_loop) {
-		sleep(1);
-	}
-#else
 	main_loop1(0);
-#endif
+
+	options_delete(options);
+	if(args != NULL) {
+		FREE(args);
+	}
+	return EXIT_SUCCESS;
 
 close:
 	options_delete(options);
 	if(args != NULL) {
 		FREE(args);
 	}
-#ifdef PILIGHT_DEVELOPMENT
-	if(main_loop == 1) {
-		main_gc();
-	}
-#else
+
 	main_loop1(1);
 	main_gc();
-#endif
+
 	return (EXIT_FAILURE);
 }
