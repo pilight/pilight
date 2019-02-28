@@ -43,13 +43,12 @@ static int validate(void) {
 	return -1;
 }
 
-static void parseCode(char **message) {
+static void parseCode(void) {
 	int i = 0, x = 0, short_pulse = 0, prev = 0, long_pulse = 0;
 	int s = 0, start[3], m = 0, binary[MAX_RAW_LENGTH];
 	int msg[MESSAGE_LENGTH], channel = 0;
 	double humidity = 0.0, temperature = 0.0;
 
-	memset(*message, 0, 255);
 	if(tfa2017->rawlen > MAX_RAW_LENGTH) {
 		logprintf(LOG_ERR, "tfa2017: parsecode - invalid parameter passed %d", tfa2017->rawlen);
 		return;
@@ -64,13 +63,13 @@ static void parseCode(char **message) {
 			long_pulse++;
 		} else {
 			short_pulse++;
-			if(short_pulse%2 == 0) {
+			if(short_pulse % 2 == 0) {
 				binary[i++] = 1;
 			}
 			long_pulse = 0;
 		}
-		if(long_pulse == 4 && (prev == 20 || (x > 7 && prev == x-1))) {
-			if(s == 0 || i > start[s-1]+MESSAGE_LENGTH) {
+		if(long_pulse == 4 && (prev == 20 || (x > 7 && prev == (x - 1)))) {
+			if(s == 0 || i > (start[s-1] + MESSAGE_LENGTH)) {
 				start[s++] = i-2;
 				prev = 0;
 			}
@@ -81,12 +80,15 @@ static void parseCode(char **message) {
 	if(s < 2) {
 		return;
 	}
-	if(i > start[1]+MESSAGE_LENGTH && memcmp(&binary[start[0]], &binary[start[1]], MESSAGE_LENGTH) == 0) {
+	if(i > (start[1] + MESSAGE_LENGTH) && memcmp(&binary[start[0]], &binary[start[1]], MESSAGE_LENGTH) == 0) {
 		m=start[0];
-	} else if(s > 2 && i > start[2]+MESSAGE_LENGTH &&
-				(memcmp(&binary[start[0]], &binary[start[2]], MESSAGE_LENGTH) == 0 ||
-					memcmp(&binary[start[1]], &binary[start[2]], MESSAGE_LENGTH) == 0)) {
-		m=start[2];
+	} else if(s > 2 && i > (start[2] + MESSAGE_LENGTH)) {
+		if(memcmp(&binary[start[0]], &binary[start[2]], MESSAGE_LENGTH) == 0 ||
+			 memcmp(&binary[start[1]], &binary[start[2]], MESSAGE_LENGTH) == 0) {
+			m = start[2];
+		} else {
+			return;
+		}
 	} else {
 		return;
 	}
@@ -99,22 +101,30 @@ static void parseCode(char **message) {
 		}
 		msg[x] = prev;
 	}
-	// According to http://www.osengr.org/WxShield/Downloads/Weather-Sensor-RF-Protocols.pdf
-	// the first byte is a fixed id (0x45), the second is a rolling code which changes on
-	// battery replacement (both are not used here).
-	// Of the next four bits the first is unused, the next three encode the channel.
+	/*
+	 * According to http://www.osengr.org/WxShield/Downloads/Weather-Sensor-RF-Protocols.pdf
+	 * the first byte is a fixed id (0x45), the second is a rolling code which changes on
+	 * battery replacement (both are not used here).
+	 * Of the next four bits the first is unused, the next three encode the channel.
+	 */
 	channel = binToDecRev(msg, 17, 19)+1;
-	// The next twelve bits encode the temperature T
-	// in tenth of degree Fahrenheit with an offset of 40.
-	// The following is a simplification of F=T/10-40 and C=(F-32)*5/9.
+	/*
+	 * The next twelve bits encode the temperature T
+	 * in tenth of degree Fahrenheit with an offset of 40.
+	 * The following is a simplification of F=T/10-40 and C=(F-32)*5/9.
+	 */
 	temperature = (double)binToDecRev(msg, 20, 31)/18.-40.;
-	// The next byte has the relative humidity in percent.
+	/*
+	 * The next byte has the relative humidity in percent.
+	 */
 	humidity = (double)binToDecRev(msg, 32, 39);
-	// The last byte contains a checksum which is not used here.
+	/*
+	 * The last byte contains a checksum which is not used here.
+	 */
 
 	struct settings_t *tmp = settings;
 	while(tmp) {
-		if(fabs(tmp->id-channel) < EPSILON){
+		if(fabs(tmp->id-channel) < EPSILON) {
 			temperature += tmp->temp;
 			humidity += tmp->humi;
 			break;
@@ -125,10 +135,10 @@ static void parseCode(char **message) {
 		return;
 	}
 
-	snprintf((*message), 255,
-		"{\"id\":%d,\"temperature\":%.2f,\"humidity\":%.2f}",
-		channel, temperature, humidity
-	);
+	tfa30->message = json_mkobject();
+	json_append_member(tfa30->message, "id", json_mknumber(channel, 0));
+	json_append_member(tfa30->message, "temperature", json_mknumber(temperature, 2));
+	json_append_member(tfa30->message, "humidity", json_mknumber(humidity, 2));
 }
 
 static int checkValues(struct JsonNode *jvalues) {

@@ -37,29 +37,25 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int unitcode, int state, int state2, int state3, int state4, char **message) {
-        int x = 0;
-        x = snprintf((*message), 255, "{\"unitcode\":%d,", unitcode);
+static void createMessage(int unitcode, int state, int state2, int state3, int state4) {
+	int x = 0;
+	daycom->message = json_mkobject();
+	json_append_member(daycom->message, "unitcode", json_mknumber(unitcode, 0));
 
 	if(state4 == 0) {
-	        x += snprintf(&(*message)[x], 255-x, "\"state\":\"opened\"");
+		json_append_member(daycom->message, "state", json_mkstring("opened"));
+	} else if(state == 0) {
+		json_append_member(daycom->message, "state", json_mkstring("closed"));
+	} else if(state2 == 0) {
+		json_append_member(daycom->message, "state", json_mkstring("tamped"));
+	} else if(state3 == 0) {
+		json_append_member(daycom->message, "state", json_mkstring("not used"));
+	} else {
+		json_append_member(daycom->message, "state", json_mkstring("low"));
 	}
-        else if(state == 0) {
-	        x += snprintf(&(*message)[x], 255-x, "\"state\":\"closed\"");
-        }
-        else if(state2 == 0) {
-	        x += snprintf(&(*message)[x], 255-x, "\"state\":\"tamper\"");
-        }
-        else if(state3 == 0) {
-	        x += snprintf(&(*message)[x], 255-x, "\"state\":\"not used\"");
-        }
-	else{
-	        x += snprintf(&(*message)[x], 255-x, "\"battery\":\"low\"");
-	}
-	x += snprintf(&(*message)[x], 255-x, "}");
 }
 
-static void parseCode(char **message) {
+static void parseCode(void) {
 	int binary[RAW_LENGTH/2], x = 0, i = 0;
 
 	for(x=0;x<kerui_D026->rawlen-2;x+=2) {
@@ -72,10 +68,10 @@ static void parseCode(char **message) {
 
 	int unitcode = binToDec(binary, 0, 19);
 	int state = binary[20];
-        int state2 = binary[21];
-        int state3 = binary[22];
-        int state4 = binary[23];
-        createMessage(unitcode, state, state2, state3, state4, message);
+	int state2 = binary[21];
+	int state3 = binary[22];
+	int state4 = binary[23];
+	createMessage(unitcode, state, state2, state3, state4);
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
