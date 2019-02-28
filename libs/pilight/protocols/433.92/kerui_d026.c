@@ -38,20 +38,19 @@ static int validate(void) {
 }
 
 static void createMessage(int unitcode, int state, int state2, int state3, int state4) {
-	int x = 0;
-	daycom->message = json_mkobject();
-	json_append_member(daycom->message, "unitcode", json_mknumber(unitcode, 0));
+	kerui_D026->message = json_mkobject();
+	json_append_member(kerui_D026->message, "unitcode", json_mknumber(unitcode, 0));
 
 	if(state4 == 0) {
-		json_append_member(daycom->message, "state", json_mkstring("opened"));
+		json_append_member(kerui_D026->message, "state", json_mkstring("opened"));
 	} else if(state == 0) {
-		json_append_member(daycom->message, "state", json_mkstring("closed"));
+		json_append_member(kerui_D026->message, "state", json_mkstring("closed"));
 	} else if(state2 == 0) {
-		json_append_member(daycom->message, "state", json_mkstring("tamped"));
+		json_append_member(kerui_D026->message, "state", json_mkstring("tamped"));
 	} else if(state3 == 0) {
-		json_append_member(daycom->message, "state", json_mkstring("not used"));
+		json_append_member(kerui_D026->message, "state", json_mkstring("not used"));
 	} else {
-		json_append_member(daycom->message, "state", json_mkstring("low"));
+		json_append_member(kerui_D026->message, "state", json_mkstring("low"));
 	}
 }
 
