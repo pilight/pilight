@@ -81,7 +81,8 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 	/* Do we need to update the devices file */
 	unsigned short update = 0;
 	/* The new state value */
-	char vstring_[255];
+	int vsize = 255;
+	char *vstring_ = MALLOC(vsize);
 	double vnumber_ = -1;
 	int vdecimals_ = 0;
 	char sstring_[255];
@@ -92,9 +93,13 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 	/* The UUID of this device */
 	char *uuid = NULL;
 
+	if(vstring_ == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
+
 	/* Make sure the character pointers are empty */
 	memset(sstring_, '\0', sizeof(sstring_));
-	memset(vstring_, '\0', sizeof(vstring_));
 
 	/* Check if the found settings matches the send code */
 	unsigned int match = 0, match1 = 0, match2 = 0;
@@ -255,9 +260,15 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 									if(strcmp(sptr->name, opt->name) == 0
 									   && (opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_OPTIONAL)
 									   && opt->argtype == OPTION_HAS_VALUE) {
-										memset(vstring_, '\0', sizeof(vstring_));
 										vnumber_ = -1;
 										if(json_find_string(message, opt->name, &stmp) == 0) {
+											if((strlen(stmp) + 1) > vsize) {
+												vsize = strlen(stmp) + 1;
+												if((vstring_ = REALLOC(vstring_, vsize)) == NULL) {
+													fprintf(stderr, "out of memory\n");
+													exit(EXIT_FAILURE);
+												}
+											}
 											strcpy(vstring_, stmp);
 											valueType = JSON_STRING;
 											is_valid = 1;
@@ -308,11 +319,17 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 								   && (opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_OPTIONAL)
 								   && opt->argtype == OPTION_HAS_VALUE) {
 									int upd_value = 1;
-									memset(vstring_, '\0', sizeof(vstring_));
 									vnumber_ = -1;
 									vdecimals_ = 0;
 									struct JsonNode *jtmp = NULL;
 									if(json_find_string(message, opt->name, &stmp) == 0) {
+										if((strlen(stmp) + 1) > vsize) {
+											vsize = strlen(stmp) + 1;
+											if((vstring_ = REALLOC(vstring_, vsize)) == NULL) {
+												fprintf(stderr, "out of memory\n");
+												exit(EXIT_FAILURE);
+											}
+										}
 										strcpy(vstring_, stmp);
 										valueType = JSON_STRING;
 									} else if((jtmp = json_find_member(message, opt->name)) != NULL &&
@@ -336,8 +353,8 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 											strcpy(sptr->values->string_, vstring_);
 											sptr->values->type = JSON_STRING;
 										} else if(valueType == JSON_NUMBER &&
-												  sptr->values->type == JSON_NUMBER &&
-												  fabs(sptr->values->number_-vnumber_) >= EPSILON) {
+										   sptr->values->type == JSON_NUMBER &&
+										   fabs(sptr->values->number_-vnumber_) >= EPSILON) {
 											sptr->values->number_ = vnumber_;
 											sptr->values->decimals = vdecimals_;
 											sptr->values->type = JSON_NUMBER;
@@ -448,7 +465,7 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 		json_delete(rval);
 		json_delete(rroot);
 	}
-
+	FREE(vstring_);
 	return (update == 1) ? 0 : -1;
 }
 

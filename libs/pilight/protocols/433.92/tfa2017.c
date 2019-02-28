@@ -80,6 +80,7 @@ static void parseCode(void) {
 	if(s < 2) {
 		return;
 	}
+
 	if(i > (start[1] + MESSAGE_LENGTH) && memcmp(&binary[start[0]], &binary[start[1]], MESSAGE_LENGTH) == 0) {
 		m=start[0];
 	} else if(s > 2 && i > (start[2] + MESSAGE_LENGTH)) {
@@ -135,10 +136,10 @@ static void parseCode(void) {
 		return;
 	}
 
-	tfa30->message = json_mkobject();
-	json_append_member(tfa30->message, "id", json_mknumber(channel, 0));
-	json_append_member(tfa30->message, "temperature", json_mknumber(temperature, 2));
-	json_append_member(tfa30->message, "humidity", json_mknumber(humidity, 2));
+	tfa2017->message = json_mkobject();
+	json_append_member(tfa2017->message, "id", json_mknumber(channel, 0));
+	json_append_member(tfa2017->message, "temperature", json_mknumber(temperature, 2));
+	json_append_member(tfa2017->message, "humidity", json_mknumber(humidity, 2));
 }
 
 static int checkValues(struct JsonNode *jvalues) {
@@ -209,7 +210,7 @@ __attribute__((weak))
 void tfa2017Init(void) {
 	protocol_register(&tfa2017);
 	protocol_set_id(tfa2017, "tfa2017");
-	protocol_device_add(tfa2017, "tfa2017", "TFA 30.X Temp Hum Sensor Revision 08/2017");
+	protocol_device_add(tfa2017, "tfa2017", "TFA 30.X Temp Hum Sensor Revision 09/2017");
 	tfa2017->devtype = WEATHER;
 	tfa2017->hwtype = RF433;
 	tfa2017->minrawlen = MIN_RAW_LENGTH;
