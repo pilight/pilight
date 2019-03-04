@@ -17,6 +17,7 @@ Changelog
 - Added pilight event lua c to lua interface
 - Ported hardware module to lua
 - Ported config hardware parsing to lua
+- Allow enforcing the old state in a switch action
 
 .. rubric:: Fixes
 
