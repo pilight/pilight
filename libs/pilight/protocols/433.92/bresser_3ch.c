@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2019 by 2017 - 2019 by CurlyMo, Meloen, zeltom, saak2820
+  Copyright (C) 2019 by 2017 - 2019 by CurlyMo, saak2820
   
   This Source Code Form is subject to the terms of the Mozilla Public
   License, v. 2.0. If a copy of the MPL was not distributed with this
