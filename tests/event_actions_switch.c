@@ -642,7 +642,7 @@ static void test_event_actions_switch_check_arguments(CuTest *tc) {
 		args = event_action_add_argument(args, "FOR", &v);
 		FREE(v.string_);
 
-		CuAssertIntEquals(tc, -1, event_action_check_arguments("switch", args));
+		CuAssertIntEquals(tc, 0, event_action_check_arguments("switch", args));
 	}
 
 	{
@@ -864,6 +864,22 @@ static struct event_action_args_t *initialize_vars(int test) {
 			FREE(v.string_);
 		} break;
 		case 5: {
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("switch"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "DEVICE", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("on"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "TO", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("500 MILLISECOND"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "AFTER", &v);
+			FREE(v.string_);
+		} break;
+		case 7: {
 			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("switch"); v.type_ = JSON_STRING;
 			args = event_action_add_argument(args, "DEVICE", &v);
@@ -1193,7 +1209,7 @@ static void config_update1(void *param) {
 	eventpool_trigger(REASON_CONFIG_UPDATE, NULL, &update1);
 
 	usleep(5000);
-	struct event_action_args_t *args = initialize_vars(5);
+	struct event_action_args_t *args = initialize_vars(7);
 	CuAssertIntEquals(gtc, 0, event_action_run("switch", args));
 }
 
@@ -1332,10 +1348,10 @@ static void test_event_actions_switch_force_prev_state(CuTest *tc) {
 	timestamp.first = timestamp.second;
 	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
-	struct event_action_args_t *args = initialize_vars(5);
+	struct event_action_args_t *args = initialize_vars(7);
 	CuAssertIntEquals(tc, 0, event_action_check_arguments("switch", args));
 
-	args = initialize_vars(5);
+	args = initialize_vars(7);
 	CuAssertIntEquals(tc, 0, event_action_run("switch", args));
 
 	uv_thread_create(&pth, config_update1, NULL);

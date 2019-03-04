@@ -82,13 +82,15 @@ function M.check(parameters)
 		if dev == nil then
 			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" does not exist");
 		end
-		if dev.hasState == nil or dev.setState == nil then
+		if dev.hasState ~= nil and dev.setState ~= nil then
 			if dev.hasState(parameters['TO']['value'][1]) == false then
 				error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['TO']['value'][1] .. "\"");
 			end
 			if parameters['FROM'] ~= nil and dev.hasState(parameters['FROM']['value'][1]) == false then
 				error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['FROM']['value'][1] .. "\"");
 			end
+		else
+			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['TO']['value'][1] .. "\"");
 		end
 	end
 
