@@ -35,6 +35,7 @@ static int steps = 0;
 static int run = 0;
 static int nrsteps = 0;
 static int checktime = 0;
+static char *laststate = NULL;
 static uv_thread_t pth;
 static CuTest *gtc = NULL;
 static unsigned long interval = 0;
@@ -755,6 +756,14 @@ static void *control_device(int reason, void *param, void *userdata) {
 				} break;
 			}
 		} break;
+		case 3: {
+			if(laststate != NULL) {
+				FREE(laststate);
+			}
+			if((laststate = STRDUP(data->state)) == NULL) {
+				OUT_OF_MEMORY
+			}
+		} break;
 	}
 
 	steps++;
@@ -866,8 +875,13 @@ static struct event_action_args_t *initialize_vars(int test) {
 			FREE(v.string_);
 
 			memset(&v, 0, sizeof(struct varcont_t));
+			v.string_ = STRDUP("off"); v.type_ = JSON_STRING;
+			args = event_action_add_argument(args, "FROM", &v);
+			FREE(v.string_);
+
+			memset(&v, 0, sizeof(struct varcont_t));
 			v.string_ = STRDUP("500 MILLISECOND"); v.type_ = JSON_STRING;
-			args = event_action_add_argument(args, "AFTER", &v);
+			args = event_action_add_argument(args, "FOR", &v);
 			FREE(v.string_);
 		} break;
 	}
@@ -1169,6 +1183,20 @@ static void config_update(void *param) {
 	eventpool_trigger(REASON_CONFIG_UPDATE, NULL, &update);
 }
 
+static struct reason_config_update_t update1 = {
+	"update", SWITCH, 1, 1, { "switch" },	1, {
+		{ "state", { .string_ = "on" }, 0, JSON_STRING }
+	}, NULL
+};
+
+static void config_update1(void *param) {
+	eventpool_trigger(REASON_CONFIG_UPDATE, NULL, &update1);
+
+	usleep(5000);
+	struct event_action_args_t *args = initialize_vars(5);
+	CuAssertIntEquals(gtc, 0, event_action_run("switch", args));
+}
+
 /*
  * If a device was updated before the delayed action was executed,
  * the delayed action should be skipped.
@@ -1251,6 +1279,90 @@ static void test_event_actions_switch_run_override(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
+/*
+ * If a device was updated before the delayed action was executed,
+ * the delayed action should be skipped.
+ */
+static void test_event_actions_switch_force_prev_state(CuTest *tc) {
+	if(suiteFailed()) return;
+
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	run = 3;
+	steps = 0;
+	nrsteps = 999;
+	interval = 575000;
+
+	memtrack();
+
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
+
+	gtc = tc;
+
+	genericSwitchInit();
+	genericLabelInit();
+
+	plua_init();
+
+	test_set_plua_path(tc, __FILE__, "event_actions_switch.c");
+
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_switch.json", CONFIG_SETTINGS));
+	event_operator_init();
+	event_action_init();
+	event_function_init();
+	storage_gc();
+
+	event_init();
+	storage_init();
+	CuAssertIntEquals(tc, 0, storage_read("event_actions_switch.json", CONFIG_DEVICES | CONFIG_RULES));
+
+	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	uv_timer_init(uv_default_loop(), timer_req);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);
+
+	eventpool_init(EVENTPOOL_THREADED);
+	eventpool_callback(REASON_CONTROL_DEVICE, control_device, NULL);
+
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	timestamp.first = timestamp.second;
+	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+
+	struct event_action_args_t *args = initialize_vars(5);
+	CuAssertIntEquals(tc, 0, event_action_check_arguments("switch", args));
+
+	args = initialize_vars(5);
+	CuAssertIntEquals(tc, 0, event_action_run("switch", args));
+
+	uv_thread_create(&pth, config_update1, NULL);
+
+	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
+	}
+
+	uv_thread_join(&pth);
+
+	event_operator_gc();
+	event_action_gc();
+	event_function_gc();
+	protocol_gc();
+	eventpool_gc();
+	storage_gc();
+	plua_gc();
+
+	CuAssertStrEquals(tc, "off", laststate);
+	FREE(laststate);
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
 CuSuite *suite_event_actions_switch(void) {
 	CuSuite *suite = CuSuiteNew();
 
@@ -1283,6 +1395,7 @@ CuSuite *suite_event_actions_switch(void) {
 	SUITE_ADD_TEST(suite, test_event_actions_switch_run_delayed1);
 	SUITE_ADD_TEST(suite, test_event_actions_switch_run_overlapped);
 	SUITE_ADD_TEST(suite, test_event_actions_switch_run_override);
+	SUITE_ADD_TEST(suite, test_event_actions_switch_force_prev_state);
 
 	return suite;
 }
