@@ -40,7 +40,9 @@ function M.read(f)
 			if obj == nil then
 				return 0;
 			end
-			obj.validate();
+			if obj.validate() == false then
+				return 0;
+			end
 		end;
 	end;
 

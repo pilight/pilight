@@ -159,13 +159,19 @@ static int plua_config_hardware_validate(lua_State *L) {
 			if(lua_type(L, -1) == LUA_TNIL) {
 				logprintf(LOG_ERR, "%s: syntax error", file);
 				state->module = oldmod;
-				return 0;
+				lua_remove(L, 1);
+				lua_pushboolean(L, 0);
+				assert(lua_gettop(L) == 1);
+				return 1;
 			}
 			if(lua_type(L, -1) == LUA_TSTRING) {
 				logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
 				lua_pop(L, 1);
 				state->module = oldmod;
-				return 0;
+				lua_remove(L, 1);
+				lua_pushboolean(L, 0);
+				assert(lua_gettop(L) == 1);
+				return 1;
 			}
 		}
 		state->module = oldmod;
@@ -176,7 +182,9 @@ static int plua_config_hardware_validate(lua_State *L) {
 
 		return 1;
 	}
-	return 0;
+	lua_pushboolean(L, 0);
+	assert(lua_gettop(L) == 1);
+	return 1;
 }
 
 int plua_config_hardware(lua_State *L) {
