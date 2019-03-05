@@ -1566,6 +1566,9 @@ void plua_json_to_table(struct lua_State *L, struct JsonNode *jnode) {
 }
 
 int plua_gc(void) {
+	if(init == 0) {
+		return -1;
+	}
 	struct plua_module_t *tmp = NULL;
 	while(modules) {
 		tmp = modules;
@@ -1576,24 +1579,34 @@ int plua_gc(void) {
 		modules = modules->next;
 		FREE(tmp);
 	}
-	int i = 0, x = 0;
-	for(i=0;i<NRLUASTATES+1;i++) {
-		if(lua_state[i].L != NULL) {
-			lua_gc(lua_state[i].L, LUA_GCCOLLECT, 0);
-			lua_close(lua_state[i].L);
-			lua_state[i].L = NULL;
-		}
-		for(x=0;x<lua_state[i].gc.nr;x++) {
-			if(lua_state[i].gc.list[x]->free == 0) {
-				lua_state[i].gc.list[x]->callback(lua_state[i].gc.list[x]->ptr);
+	int i = 0, x = 0, free = 1;
+	while(free) {
+		free = 0;
+		for(i=0;i<NRLUASTATES+1;i++) {
+			if(lua_state[i].L != NULL) {
+				if(uv_mutex_trylock(&lua_state[i].lock) == 0) {
+					for(x=0;x<lua_state[i].gc.nr;x++) {
+						if(lua_state[i].gc.list[x]->free == 0) {
+							lua_state[i].gc.list[x]->callback(lua_state[i].gc.list[x]->ptr);
+						}
+						FREE(lua_state[i].gc.list[x]);
+					}
+					if(lua_state[i].gc.size > 0) {
+						FREE(lua_state[i].gc.list);
+					}
+					lua_state[i].gc.nr = 0;
+					lua_state[i].gc.size = 0;
+
+					lua_gc(lua_state[i].L, LUA_GCCOLLECT, 0);
+					lua_close(lua_state[i].L);
+					lua_state[i].L = NULL;
+
+					uv_mutex_unlock(&lua_state[i].lock);
+				} else {
+					free = 1;
+				}
 			}
-			FREE(lua_state[i].gc.list[x]);
 		}
-		if(lua_state[i].gc.size > 0) {
-			FREE(lua_state[i].gc.list);
-		}
-		lua_state[i].gc.nr = 0;
-		lua_state[i].gc.size = 0;
 	}
 
 	init = 0;
