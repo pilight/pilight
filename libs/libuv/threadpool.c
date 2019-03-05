@@ -109,7 +109,7 @@ static void worker(void* arg) {
       getThreadCPUUsage(pthread_self(), &data->cpu_usage);
       fprintf(stderr, "worker %d, executed %s in %.6f sec using %f%% CPU\n",
         data->nr,
-        w->name,
+        ((w->name == NULL) ? "" : w->name),
         ((double)data->timestamp.second.tv_sec + 1.0e-9*data->timestamp.second.tv_nsec) -
         ((double)data->timestamp.first.tv_sec + 1.0e-9*data->timestamp.first.tv_nsec),
         data->cpu_usage.cpu_per
@@ -117,7 +117,9 @@ static void worker(void* arg) {
     }
 #endif
 
-    free(w->name);
+    if(w->name != NULL) {
+      free(w->name);
+    }
     uv_mutex_lock(&w->loop->wq_mutex);
     w->work = NULL;  /* Signal uv_cancel() that the work req is done
                         executing. */
@@ -327,7 +329,11 @@ int uv_queue_work(uv_loop_t* loop,
   req->loop = loop;
   req->work_cb = work_cb;
   req->after_work_cb = after_work_cb;
-  req->work_req.name = strdup(name);
+	if(name != NULL) {
+		req->work_req.name = strdup(name);
+	} else {
+		req->work_req.name = NULL;
+	}
   uv__work_submit(loop, &req->work_req, uv__queue_work, uv__queue_done);
   return 0;
 }
