@@ -10,77 +10,111 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
 
+#include "../libs/pilight/core/log.h"
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
-#include "../libs/pilight/core/binary.h"
-#include "../libs/pilight/lua_c/lua.h"
-#include "../libs/pilight/lua_c/table.h"
+#include "../libs/pilight/core/common.h"
+#include "../libs/pilight/core/eventpool.h"
 #include "../libs/pilight/config/config.h"
-#include "../libs/pilight/config/hardware.h"
+#include "../libs/pilight/lua_c/lua.h"
+#include "../libs/pilight/lua_c/lualibrary.h"
+#include "../libs/pilight/lua_c/table.h"
 
 #include "alltests.h"
 
-#include <wiringx.h>
+static CuTest *gtc = NULL;
+static uv_timer_t *timer_req = NULL;
+
+static void close_cb(uv_handle_t *handle) {
+	FREE(handle);
+}
+
+static void walk_cb(uv_handle_t *handle, void *arg) {
+	if(!uv_is_closing(handle)) {
+		uv_close(handle, close_cb);
+	}
+}
+
+static void stop(uv_work_t *req) {
+	uv_timer_stop(timer_req);
+	uv_stop(uv_default_loop());
+	plua_gc();
+}
 
 void test_config_hardware(CuTest *tc) {
-	if(suiteFailed()) return;
+	char *file = NULL;
 
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
 
+	gtc = tc;
 	memtrack();
-	char *file = STRDUP(__FILE__);
-	if(file == NULL) {
-		OUT_OF_MEMORY
-	}
-	str_replace("config_hardware.c", "", &file);
 
-	struct varcont_t out;
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	plua_init();
 
 	test_set_plua_path(tc, __FILE__, "config_hardware.c");
 
+	file = STRDUP(__FILE__);
+	CuAssertPtrNotNull(tc, file);
+
+	str_replace("config_hardware.c", "", &file);
+
 	config_init();
 
-	char config[1024] = "{\"devices\":{},\"gui\":{},\"rules\":{},\
-		\"settings\":{\"hardware-root\":\"%s../libs/pilight/hardware/\"},\"hardware\":{\
-		\"433gpio\": {\
-			\"sender\": 0,\
-			\"receiver\": 1\
-	}},\"registry\":{}}";
+	char config[1024] =
+		"{\"devices\":{},\"gui\":{},\"rules\":{},\
+		\"settings\":{\
+				\"hardware-root\":\"%s../libs/pilight/hardware/\"\
+		},\
+		\"hardware\":{\"433nano\":{\"comport\":\"/tmp/usb0\"}},\
+		\"registry\":{}}";
 
 	FILE *f = fopen("storage_core.json", "w");
 	fprintf(f, config, file);
 	fclose(f);
 
+	FREE(file);
+
 	CuAssertIntEquals(tc, 0, config_read("storage_core.json", CONFIG_SETTINGS));
+
+	unlink("/tmp/usb0");
+	int fd = open("/tmp/usb0", O_CREAT | O_RDWR, 0777);
+	close(fd);
+
+	timer_req = MALLOC(sizeof(uv_timer_t));
+	CuAssertPtrNotNull(gtc, timer_req);
+	uv_timer_init(uv_default_loop(), timer_req);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 500, 500);
 
 	hardware_init();
 
 	CuAssertIntEquals(tc, 0, config_read("storage_core.json", CONFIG_HARDWARE));
 
-	memset(&out, 0, sizeof(struct varcont_t));
-
 	{
 		struct plua_metatable_t *config = config_get_metatable();
-		double sender = -1, receiver = -1;
+		char *comport = NULL;
 
-		CuAssertIntEquals(tc, 0, plua_metatable_get_number(config, "hardware.433gpio.sender", &sender));
-		CuAssertIntEquals(tc, 0, plua_metatable_get_number(config, "hardware.433gpio.receiver", &receiver));
-		CuAssertIntEquals(tc, 0, sender);
-		CuAssertIntEquals(tc, 1, receiver);
+		CuAssertIntEquals(tc, 0, plua_metatable_get_string(config, "hardware.433nano.comport", &comport));
+		CuAssertStrEquals(tc, "/tmp/usb0", comport);
 	}
 
-	config_write();
-	config_gc();
-	hardware_gc();
-	plua_gc();
-	wiringXGC();
+	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
 
-	FREE(file);
+	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	}
+
+	storage_gc();
+	plua_gc();
+	hardware_gc();
+	eventpool_gc();
 
 	CuAssertIntEquals(tc, 0, xfree());
 }
-

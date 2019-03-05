@@ -72,7 +72,7 @@ static void plua_overwrite_print(void) {
 	}
 }
 
-void run(CuTest *tc, const char *func, char *config) {
+static void run(CuTest *tc, const char *func, char *config, int status) {
 	if(wiringXSetup("test", foo) != -999) {
 		printf("[ %-31.31s (preload libgpio)]\n", func);
 		fflush(stdout);
@@ -113,7 +113,7 @@ void run(CuTest *tc, const char *func, char *config) {
 
 	hardware_init();
 
-	CuAssertIntEquals(tc, 0, config_read("lua_hardware_433gpio.json", CONFIG_HARDWARE));
+	CuAssertIntEquals(tc, status, config_read("lua_hardware_433gpio.json", CONFIG_HARDWARE));
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -141,7 +141,7 @@ void test_lua_hardware_433gpio_param1(CuTest *tc) {
 		\"hardware\":{\"433gpio\":{}},\
 		\"registry\":{}}";
 
-	run(tc, __FUNCTION__, config);
+	run(tc, __FUNCTION__, config, -1);
 }
 
 void test_lua_hardware_433gpio_param2(CuTest *tc) {
@@ -154,7 +154,7 @@ void test_lua_hardware_433gpio_param2(CuTest *tc) {
 		\"hardware\":{\"433gpio\":{\"receiver\":100,\"sender\":0}},\
 		\"registry\":{}}";
 
-	run(tc, __FUNCTION__, config);
+	run(tc, __FUNCTION__, config, -1);
 }
 
 void test_lua_hardware_433gpio_param3(CuTest *tc) {
@@ -167,7 +167,7 @@ void test_lua_hardware_433gpio_param3(CuTest *tc) {
 		\"hardware\":{\"433gpio\":{\"receiver\":0,\"sender\":100}},\
 		\"registry\":{}}";
 
-	run(tc, __FUNCTION__, config);
+	run(tc, __FUNCTION__, config, -1);
 }
 
 void test_lua_hardware_433gpio_param4(CuTest *tc) {
@@ -180,7 +180,7 @@ void test_lua_hardware_433gpio_param4(CuTest *tc) {
 		\"hardware\":{\"433gpio\":{\"receiver\":2,\"sender\":0}},\
 		\"registry\":{}}";
 
-	run(tc, __FUNCTION__, config);
+	run(tc, __FUNCTION__, config, -1);
 }
 
 void test_lua_hardware_433gpio_param5(CuTest *tc) {
@@ -193,5 +193,44 @@ void test_lua_hardware_433gpio_param5(CuTest *tc) {
 		\"hardware\":{\"433gpio\":{\"receiver\":2,\"sender\":2}},\
 		\"registry\":{}}";
 
-	run(tc, __FUNCTION__, config);
+	run(tc, __FUNCTION__, config, -1);
+}
+
+void test_lua_hardware_433gpio_param6(CuTest *tc) {
+	char config[1024] =
+		"{\"devices\":{},\"gui\":{},\"rules\":{},\
+		\"settings\":{\
+				\"hardware-root\":\"%s../libs/pilight/hardware/\",\
+				\"gpio-platform\":\"gpio-stub\"\
+		},\
+		\"hardware\":{\"433gpio\":{\"receiver\":2,\"sender\":2,\"foo\":1}},\
+		\"registry\":{}}";
+
+	run(tc, __FUNCTION__, config, -1);
+}
+
+void test_lua_hardware_433gpio_param7(CuTest *tc) {
+	char config[1024] =
+		"{\"devices\":{},\"gui\":{},\"rules\":{},\
+		\"settings\":{\
+				\"hardware-root\":\"%s../libs/pilight/hardware/\",\
+				\"gpio-platform\":\"gpio-stub\"\
+		},\
+		\"hardware\":{\"433gpio\":{\"sender\":2}},\
+		\"registry\":{}}";
+
+	run(tc, __FUNCTION__, config, -1);
+}
+
+void test_lua_hardware_433gpio_param8(CuTest *tc) {
+	char config[1024] =
+		"{\"devices\":{},\"gui\":{},\"rules\":{},\
+		\"settings\":{\
+				\"hardware-root\":\"%s../libs/pilight/hardware/\",\
+				\"gpio-platform\":\"gpio-stub\"\
+		},\
+		\"hardware\":{\"433gpio\":{\"receiver\":2}},\
+		\"registry\":{}}";
+
+	run(tc, __FUNCTION__, config, -1);
 }
