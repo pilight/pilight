@@ -96,7 +96,7 @@ static void parseCode(void) {
 		return;
 	}
 
-	for(x=start+1;x<(start+RAW_LENGTH-1)x+=2) {
+	for(x=start+1;x<(start+RAW_LENGTH-1);x+=2) {
 		unsigned long t0 = bre->raw[x], t1 = bre->raw[x+1];
 		if(t0>(SEP_LENGTH-50) && t0<(SEP_LENGTH+50)) {
 		 if(t1>(BIT1_LENGTH-50) && t1<(BIT1_LENGTH+50)) {
