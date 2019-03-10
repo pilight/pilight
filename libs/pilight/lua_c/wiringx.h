@@ -27,7 +27,7 @@ static const struct {
 	{ "PINMODE_OUTPUT", { .number_ = PINMODE_OUTPUT }, LUA_TNUMBER },
 	{ "PINMODE_INTERRUPT", { .number_ = PINMODE_INTERRUPT }, LUA_TNUMBER },
 	{ "ISR_MODE_UNKNOWN", { .number_ = ISR_MODE_UNKNOWN }, LUA_TNUMBER },
-	{ "ISR_MODE_RISING", { .number_ = ISR_MODE_RISING }, LUA_TBOOLEAN },
+	{ "ISR_MODE_RISING", { .number_ = ISR_MODE_RISING }, LUA_TNUMBER },
 	{ "ISR_MODE_FALLING", { .number_ = ISR_MODE_FALLING }, LUA_TNUMBER },
 	{ "ISR_MODE_BOTH", { .number_ = ISR_MODE_BOTH }, LUA_TNUMBER },
 	{ "ISR_MODE_NONE", { .number_ = ISR_MODE_NONE }, LUA_TNUMBER },
