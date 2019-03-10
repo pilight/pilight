@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 - 2016 CurlyMo
+  Copyright (C) CurlyMo
 
   This Source Code Form is subject to the terms of the Mozilla Public
   License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -80,6 +80,7 @@ CuSuite *suite_protocols_i2c(void);
 CuSuite *suite_protocols_gpio_ds18x20(void);
 CuSuite *suite_protocols_gpio_switch(void);
 CuSuite *suite_protocols_relay(void);
+CuSuite *suite_lua_hardware_raspyrfm(void);
 CuSuite *suite_lua_hardware(void);
 CuSuite *suite_event_operators(void);
 CuSuite *suite_event_functions(void);
@@ -98,18 +99,18 @@ CuSuite *suites[NRSUITS];
 const uv_thread_t pth_main_id;
 int nr = 0;
 
-// void _logprintf(int prio, char *file, int line, const char *str, ...) {
-	// va_list ap;
-	// char buffer[1024];
+/*void _logprintf(int prio, char *file, int line, const char *str, ...) {
+	va_list ap;
+	char buffer[1024];
 
-	// memset(buffer, 0, 1024);
+	memset(buffer, 0, 1024);
 
-	// va_start(ap, str);
-	// vsnprintf(buffer, 1024, str, ap);
-	// va_end(ap);
+	va_start(ap, str);
+	vsnprintf(buffer, 1024, str, ap);
+	va_end(ap);
 
-	// printf("(%s #%d) %s\n", file, line, buffer);
-// }
+	printf("(%s #%d) %s\n", file, line, buffer);
+}*/
 
 void test_set_plua_path(CuTest *tc, char *a, char *b) {
 	char *file = STRDUP(a);
@@ -233,6 +234,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_protocols_i2c();
 	suites[nr++] = suite_protocols_gpio_ds18x20();
 	suites[nr++] = suite_protocols_gpio_switch();
+	suites[nr++] = suite_lua_hardware_raspyrfm();
 	suites[nr++] = suite_lua_hardware(); // Ported
 #endif
 	suites[nr++] = suite_event_operators(); // Ported
