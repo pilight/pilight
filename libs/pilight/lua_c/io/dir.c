@@ -131,7 +131,7 @@ static void plua_io_dir_object(lua_State *L, struct lua_dir_t *dir) {
 
 int plua_io_dir(struct lua_State *L) {
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "dir requires 0 arguments, %d given", lua_gettop(L));
+		luaL_error(L, "dir requires 1 argument, %d given", lua_gettop(L));
 		return 0;
 	}
 
