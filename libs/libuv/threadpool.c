@@ -117,7 +117,10 @@ static void worker(void* arg) {
     }
 #endif
 
-    // free(w->name);
+    if(w->name != NULL) {
+      free(w->name);
+    }
+
     uv_mutex_lock(&w->loop->wq_mutex);
     w->work = NULL;  /* Signal uv_cancel() that the work req is done
                         executing. */
@@ -331,7 +334,11 @@ int uv_queue_work(uv_loop_t* loop,
   req->loop = loop;
   req->work_cb = work_cb;
   req->after_work_cb = after_work_cb;
-  req->work_req.name = strdup(name);
+  if(name != NULL) {
+    req->work_req.name = strdup(name);
+  } else {
+    req->work_req.name = NULL;
+  }
   uv__work_submit(loop, &req->work_req, uv__queue_work, uv__queue_done);
   return 0;
 }
