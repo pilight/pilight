@@ -80,7 +80,7 @@ static int plua_io_file_exists(struct lua_State *L) {
 	}
 
 	if(file_exists(file->file) == 0) {
-    lua_pushboolean(L, 1);
+		lua_pushboolean(L, 1);
 	} else {
 		lua_pushboolean(L, 0);
 	}
