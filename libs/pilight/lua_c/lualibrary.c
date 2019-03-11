@@ -74,6 +74,7 @@ static const struct {
 	{ "REASON_CODE_SEND_SUCCESS", REASON_CODE_SEND_SUCCESS },
 	{ "REASON_CODE_RECEIVED", REASON_CODE_RECEIVED },
 	{ "REASON_RECEIVED_PULSETRAIN", REASON_RECEIVED_PULSETRAIN },
+	{ "REASON_RECEIVED_OOK", REASON_RECEIVED_OOK },
 	{ "REASON_BROADCAST", REASON_BROADCAST },
 	{ "REASON_BROADCAST_CORE", REASON_BROADCAST_CORE },
 	{ "REASON_FORWARD", REASON_FORWARD },
@@ -103,6 +104,15 @@ static const struct {
 	{ "REASON_ARP_CHANGED_DEVICE", REASON_ARP_CHANGED_DEVICE },
 	{ "REASON_LOG", REASON_LOG },
 	{ "REASON_END", REASON_END },
+};
+
+static const struct {
+	char *name;
+	int number;
+} pilight_hardware[] = {
+	{ "RF433", RF433 },
+	{ "RF868", RF868 },
+	{ "NONE", RFNONE }
 };
 
 static const struct {
@@ -182,6 +192,16 @@ void plua_register_library(struct lua_State *L) {
 	for(i=0;i<len;i++) {
 		lua_pushstring(L, &pilight_reasons[i].name[7]);
 		lua_pushnumber(L, pilight_reasons[i].number+10000);
+		lua_settable(L, -3);
+	}
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "hardware");
+	lua_newtable(L);
+	len = sizeof(pilight_hardware)/sizeof(pilight_hardware[0]);
+	for(i=0;i<len;i++) {
+		lua_pushstring(L, pilight_hardware[i].name);
+		lua_pushnumber(L, pilight_hardware[i].number);
 		lua_settable(L, -3);
 	}
 	lua_settable(L, -3);

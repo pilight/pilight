@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 - 2016 CurlyMo
+  Copyright (C) CurlyMo
 
   This Source Code Form is subject to the terms of the Mozilla Public
   License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -98,18 +98,18 @@ CuSuite *suites[NRSUITS];
 const uv_thread_t pth_main_id;
 int nr = 0;
 
-// void _logprintf(int prio, char *file, int line, const char *str, ...) {
-	// va_list ap;
-	// char buffer[1024];
+/*void _logprintf(int prio, char *file, int line, const char *str, ...) {
+	va_list ap;
+	char buffer[1024];
 
-	// memset(buffer, 0, 1024);
+	memset(buffer, 0, 1024);
 
-	// va_start(ap, str);
-	// vsnprintf(buffer, 1024, str, ap);
-	// va_end(ap);
+	va_start(ap, str);
+	vsnprintf(buffer, 1024, str, ap);
+	va_end(ap);
 
-	// printf("(%s #%d) %s\n", file, line, buffer);
-// }
+	printf("(%s #%d) %s\n", file, line, buffer);
+}*/
 
 void test_set_plua_path(CuTest *tc, char *a, char *b) {
 	char *file = STRDUP(a);

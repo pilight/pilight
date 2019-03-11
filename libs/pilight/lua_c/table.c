@@ -35,6 +35,8 @@ int plua_metatable_get(struct plua_metatable_t *table, char *key, struct varcont
 
 	if(ptr != NULL) {
 		key[pos] = '\0';
+	} else {
+		pos = len;
 	}
 
 	struct varcont_t var;
@@ -47,15 +49,16 @@ int plua_metatable_get(struct plua_metatable_t *table, char *key, struct varcont
 		var.type_ = LUA_TSTRING;
 	}
 
-	val->type_ = -1;
+	// val->type_ = -1;
 
-	int x = 0;
+	int x = 0, match = 0;
 	for(x=0;x<table->nrvar;x++) {
 		if(table->table[x].key.type_ == var.type_) {
 			if(
 					(var.type_ == LUA_TSTRING && strcmp(table->table[x].key.string_, var.string_) == 0) ||
 					(var.type_ == LUA_TNUMBER && table->table[x].key.number_ == var.number_)
 				) {
+				match = 1;
 				switch(table->table[x].val.type_) {
 					case LUA_TNUMBER: {
 						val->number_ = table->table[x].val.number_;
@@ -73,6 +76,9 @@ int plua_metatable_get(struct plua_metatable_t *table, char *key, struct varcont
 						val->void_ = table->table[x].val.void_;
 						val->type_ = LUA_TTABLE;
 					} break;
+					default: {
+						val->type_ = -1;
+					} break;
 				}
 				break;
 			}
@@ -83,10 +89,17 @@ int plua_metatable_get(struct plua_metatable_t *table, char *key, struct varcont
 		key[nlen] = '\0';
 	}
 
-	if(strlen(key) > 0 && val->type_ == LUA_TTABLE) {
-		return plua_metatable_get(val->void_, key, val);
+	if(match == 1) {
+		if(ptr == NULL) {
+			return val->type_;
+		} else if(strlen(key) > 0 && val->type_ == LUA_TTABLE) {
+			return plua_metatable_get(val->void_, key, val);
+		} else {
+			return -1;
+		}
+	} else {
+		return -1;
 	}
-	return val->type_;
 }
 
 int plua_metatable_get_number(struct plua_metatable_t *table, char *a, double *b) {

@@ -262,7 +262,7 @@ void test_lua_hardware_433gpio_receive(CuTest *tc) {
 	FREE(file);
 
 	eventpool_init(EVENTPOOL_THREADED);
-	node = eventpool_callback(10006, listener, NULL);
+	node = eventpool_callback(REASON_RECEIVED_OOK+10000, listener, NULL);
 
 	CuAssertIntEquals(tc, 0, config_read("lua_hardware_433gpio.json", CONFIG_SETTINGS));
 
@@ -294,10 +294,10 @@ void test_lua_hardware_433gpio_receive(CuTest *tc) {
 	CuAssertIntEquals(gtc, 0, r);
 
 	struct plua_metatable_t *table = config_get_metatable();
-	plua_metatable_set_number(table, "registry.hardware.433gpio.mingaplen", 5100);
-	plua_metatable_set_number(table, "registry.hardware.433gpio.maxgaplen", 99999);
-	plua_metatable_set_number(table, "registry.hardware.433gpio.minrawlen", 25);
-	plua_metatable_set_number(table, "registry.hardware.433gpio.maxrawlen", 512);
+	plua_metatable_set_number(table, "registry.hardware.RF433.mingaplen", 5100);
+	plua_metatable_set_number(table, "registry.hardware.RF433.maxgaplen", 99999);
+	plua_metatable_set_number(table, "registry.hardware.RF433.minrawlen", 25);
+	plua_metatable_set_number(table, "registry.hardware.RF433.maxrawlen", 512);
 
 	hardware_init();
 

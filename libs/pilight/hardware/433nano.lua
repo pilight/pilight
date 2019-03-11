@@ -1,9 +1,13 @@
 --
--- Used inside lua_network_http.c
--- - test_lua_network_http
+-- Copyright (C) CurlyMo
+--
+-- This Source Code Form is subject to the terms of the Mozilla Public
+-- License, v. 2.0. If a copy of the MPL was not distributed with this
+-- file, You can obtain one at http://mozilla.org/MPL/2.0/.
 --
 
 local dump = require "dump";
+local lookup = require "lookup";
 
 local M = {}
 
@@ -69,90 +73,130 @@ function M.callback(rw, serial, line)
 	end
 
 	if rw == 'read' then
-		local data = serial.getUserdata();
-		if data['content'] == nil then
-			data['content'] = "";
-		end
+		if #line > 0 or line == '\n' then
+			local data = serial.getUserdata();
 
-		data['content'] = data['content'] .. line;
+			if line == '\n' and data['write'] == 0 then
+				data['write'] = 1;
+			end
 
-		local l = #data['content'];
-		local c = string.sub(data['content'], l, l);
+			if data['write'] == 1 then
+				data['write'] = 2;
+				local config = pilight.config();
+				local data1 = config.getData();
+				local minrawlen = lookup(data1, 'registry', 'hardware', 'RF433', 'minrawlen') or 0;
+				local maxrawlen = lookup(data1, 'registry', 'hardware', 'RF433', 'maxrawlen') or 0;
+				local mingaplen = lookup(data1, 'registry', 'hardware', 'RF433', 'mingaplen') or 0;
+				local maxgaplen = lookup(data1, 'registry', 'hardware', 'RF433', 'maxgaplen') or 0;
+				serial.write("s:" .. minrawlen .. "," .. maxrawlen .. "," .. 5200 .. "," .. maxgaplen .. "@");
+			end
 
-		if c == '@' then
-			content = data['content'];
-			data['content'] = line;
+			if data['content'] == nil then
+				data['content'] = "";
+			end
 
-			local stream = {};
-			local pulses = {};
-			local repeats = 0;
-			for i = 1, l, 1 do
-				c = string.sub(content, i, i);
-				if c == 'c' then
-					if string.sub(content, i+1, i+1) == ':' then
-						i = i + 1;
-						for x = i, l, 1 do
-							c = string.sub(content, x+1, x+1);
-							if c == ';' then
-								i = x + 2;
-								break;
-							end
-							stream[#stream+1] = c;
-						end
-					else
-						return;
+			data['content'] = data['content'] .. line;
+
+			local a = #data['content'];
+			local l = a;
+
+			while true do
+				for i = 1, l, 1 do
+					if string.sub(data['content'], i, i) == '@' then
+						l = i;
+						break;
 					end
 				end
-				if c == 'p' then
-					if string.sub(content, i+1, i+1) == ':' then
-						i = i + 1;
-						for x = i, l, 1 do
-							c = string.sub(content, x+1, x+1);
-							if c == ',' or c == ';' then
-								c = string.sub(content, i+1, x);
-								i = x + 1;
-								pulses[#pulses+1] = tonumber(c);
-								if c == ';' then
-									i = x + 1;
-									break;
+
+				if l == a then
+					break;
+				end
+
+				local c = string.sub(data['content'], l, l);
+				if c == '@' then
+					content = string.sub(data['content'], 1, l)
+
+					data['content'] = string.sub(data['content'], l+1, a);
+					a = #data['content'];
+
+					local stream = {};
+					local pulses = {};
+					for i = 1, l, 1 do
+						c = string.sub(content, i, i);
+						if c == 'c' then
+							if string.sub(content, i+1, i+1) == ':' then
+								i = i + 1;
+								for x = i, l, 1 do
+									c = string.sub(content, x+1, x+1);
+									if c == ';' then
+										i = x + 2;
+										break;
+									end
+									stream[#stream+1] = c;
 								end
+							else
+								serial.read();
+								return;
 							end
 						end
-					else
-						return;
+						if c == 'p' then
+							if string.sub(content, i+1, i+1) == ':' then
+								i = i + 1;
+								for x = i, l, 1 do
+									c = string.sub(content, x+1, x+1);
+									if c == ',' or c == '@' then
+										c = string.sub(content, i+1, x);
+										i = x + 1;
+										pulses[#pulses+1] = tonumber(c);
+										if c == '@' then
+											i = x + 1;
+											break;
+										end
+									end
+								end
+							else
+								serial.read();
+								return;
+							end
+						end
+						if c == 'v' then
+							-- pilight usb nano initialized
+						end
 					end
-				end
-				if c == 'r' then
-					if string.sub(content, i+1, i+1) == ':' then
-						i = i + 1;
-						for x = i, l, 1 do
-							c = string.sub(content, x+1, x+1);
-							if c == '@' then
-								c = string.sub(content, i+1, x);
-								repeats = tonumber(c);
-								break;
-							end
+					l = a;
+
+					if data['length'] == nil then
+						data['length'] = 0;
+					end
+					if data['pulses'] == nil then
+						data['pulses'] = {};
+					end
+
+					if #stream > 0 then
+						local b = 1;
+						for i = 1, #stream, 1 do
+							data['pulses'][b] = pulses[1];
+							b = b + 1;
+							data['pulses'][b] = pulses[stream[i] + 1];
+							b = b + 1;
 						end
-					else
-						return;
+
+						data['length'] = b-1;
+						local tmp = data['content'];
+						data['content'] = nil;
+						data['write'] = nil;
+
+						local event = pilight.async.event();
+						event.register(pilight.reason.RECEIVED_PULSETRAIN);
+						event.trigger(data());
+
+						data['pulses'] = {};
+						data['content'] = tmp;
+						data['write'] = 2;
 					end
 				end
 			end
-
-			data['content'] = nil;
-			data['pulses'] = {};
-
-			for i = 1, #stream, 1 do
-				data['pulses'][i] = pulses[stream[i]+1];
-			end
-
-			data['length'] = #stream;
-
-			local event = pilight.async.event();
-			event.register(pilight.reason.RECEIVED_PULSETRAIN);
-			event.trigger(data());
 		end
-
 		serial.read();
 	elseif rw == 'disconnect' then
 		local timer = pilight.async.timer();
@@ -185,13 +229,13 @@ function M.validate()
 	if file.open("a+") == false then
 		error(port .. " cannot be opened for reading and/or writing");
 	end
+	file.close();
 end
 
 function M.run()
 	local config = pilight.config();
 	local data = config.getData();
 	local obj = nil;
-
 	local port = data['hardware']['433nano']['comport'];
 
 	local serial = pilight.io.serial(port);
@@ -203,6 +247,10 @@ function M.run()
 	end
 	serial.read();
 
+	local data = serial.getUserdata();
+	data['write'] = 0;
+	data['hardware'] = '433nano';
+
 	local event = pilight.async.event();
 	event.register(pilight.reason.SEND_CODE);
 	event.setCallback("send");
@@ -211,7 +259,7 @@ function M.run()
 end
 
 function M.implements()
-	-- return pilight.hardware.RF433
+	return pilight.hardware.RF433;
 end
 
 function M.info()

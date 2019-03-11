@@ -11,7 +11,7 @@
 
 typedef enum hwtype_t {
 	HWINTERNAL = -1,
-	NONE = 0,
+	RFNONE = 0,
 	RF433,
 	RF868,
 	RFIR,

@@ -281,7 +281,7 @@ void test_lua_hardware_433nano_receive(CuTest *tc) {
 	wiringXIOCTLCallback(ioctl_callback);
 
 	eventpool_init(EVENTPOOL_THREADED);
-	node = eventpool_callback(10006, listener, NULL);
+	node = eventpool_callback(REASON_RECEIVED_PULSETRAIN+10000, listener, NULL);
 
 	CuAssertIntEquals(tc, 0, config_read("lua_hardware_433nano.json", CONFIG_SETTINGS));
 

@@ -24,6 +24,7 @@ void test_lua_hardware_433gpio_param7(CuTest *tc);
 void test_lua_hardware_433gpio_param8(CuTest *tc);
 void test_lua_hardware_433gpio_receive(CuTest *tc);
 void test_lua_hardware_433gpio_receive_large_pulse(CuTest *tc);
+void test_lua_hardware_433gpio_receive_raw(CuTest *tc);
 void test_lua_hardware_433gpio_send(CuTest *tc);
 void test_lua_hardware_433nano_param1(CuTest *tc);
 void test_lua_hardware_433nano_param2(CuTest *tc);
