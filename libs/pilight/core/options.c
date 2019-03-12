@@ -280,7 +280,7 @@ int options_parse1(struct options_t **opt, int argc, char **argv, int error_chec
 }
 
 /* Parse all CLI arguments */
-int options_parse(struct options_t *opt, int argc, char **argv) {
+int options_parse(struct options_t *opt, int argc, char **argv, int error_check) {
 	char *str = NULL, *key = NULL, *val = NULL, *name = NULL;
 	int len = 0, x = 0, i = 0, is_long = 0, quote = 0, itmp = 0, tmp = 0;
 
@@ -364,83 +364,97 @@ int options_parse(struct options_t *opt, int argc, char **argv) {
 		}
 
 		if(key == NULL) {
-			logprintf(LOG_ERR, "invalid option -- '%s'", str);
-			if(val != NULL) {
-				FREE(val);
+			if(error_check == 1) {
+				logprintf(LOG_ERR, "invalid option -- '%s'", str);
+				if(val != NULL) {
+					FREE(val);
+				}
+				FREE(str);
+				return -1;
 			}
-			FREE(str);
-			return -1;
 		} else if(is_long == 1 && key != NULL && options_get_name(opt, key, &name) != 0) {
-			logprintf(LOG_ERR, "invalid option -- '--%s'", key);
-			FREE(key);
-			if(val != NULL) {
-				FREE(val);
+			if(error_check == 1) {
+				logprintf(LOG_ERR, "invalid option -- '--%s'", key);
+				FREE(key);
+				if(val != NULL) {
+					FREE(val);
+				}
+				FREE(str);
+				return -1;
 			}
-			FREE(str);
-			return -1;
 		} else if(is_long == 0 && key != NULL && options_get_id(opt, key, &name) != 0) {
-			logprintf(LOG_ERR, "invalid option -- '-%s'", key);
-			FREE(key);
-			if(val != NULL) {
-				FREE(val);
+			if(error_check == 1) {
+				logprintf(LOG_ERR, "invalid option -- '-%s'", key);
+				FREE(key);
+				if(val != NULL) {
+					FREE(val);
+				}
+				FREE(str);
+				return -1;
 			}
-			FREE(str);
-			return -1;
 		} else if(val != NULL && options_get_argtype(opt, key, is_long, &itmp) == 0 && itmp == OPTION_NO_VALUE) {
-			if(is_long == 1) {
-				logprintf(LOG_ERR, "option '--%s' does not take an argument", key);
-			} else {
-				logprintf(LOG_ERR, "option '-%s' does not take an argument", key);
+			if(error_check == 1) {
+				if(is_long == 1) {
+					logprintf(LOG_ERR, "option '--%s' does not take an argument", key);
+				} else {
+					logprintf(LOG_ERR, "option '-%s' does not take an argument", key);
+				}
+				FREE(key);
+				if(val != NULL) {
+					FREE(val);
+				}
+				FREE(str);
+				return -1;
 			}
-			FREE(key);
-			if(val != NULL) {
-				FREE(val);
-			}
-			FREE(str);
-			return -1;
 		} else if(val == NULL && options_get_argtype(opt, key, is_long, &itmp) == 0 && itmp == OPTION_HAS_VALUE) {
-			if(is_long == 1) {
-				logprintf(LOG_ERR, "option '--%s' requires an argument", key);
-			} else {
-				logprintf(LOG_ERR, "option '-%s' requires an argument", key);
+			if(error_check == 1) {
+				if(is_long == 1) {
+					logprintf(LOG_ERR, "option '--%s' requires an argument", key);
+				} else {
+					logprintf(LOG_ERR, "option '-%s' requires an argument", key);
+				}
+				FREE(key);
+				if(val != NULL) {
+					FREE(val);
+				}
+				FREE(str);
+				return -1;
 			}
-			FREE(key);
-			if(val != NULL) {
-				FREE(val);
-			}
-			FREE(str);
-			return -1;
 		}
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 		if(val != NULL) {
-			/* If the argument has a regex mask, check if it passes */
-			if(options_get_mask(opt, key, is_long, &mask) == 0) {
-				reti = regcomp(&regex, mask, REG_EXTENDED);
-				if(reti) {
-					logprintf(LOG_ERR, "could not compile regex");
-					FREE(val);
-					FREE(key);
-					FREE(str);
-					return -1;
-				}
-
-				reti = regexec(&regex, val, 0, NULL, 0);
-				if(reti == REG_NOMATCH || reti != 0) {
-					if(is_long == 1) {
-						logprintf(LOG_ERR, "invalid format -- '--%c'", key);
-					} else {
-						logprintf(LOG_ERR, "invalid format -- '-%s'", key);
+			if(error_check != 2) {
+				/* If the argument has a regex mask, check if it passes */
+				if(options_get_mask(opt, key, is_long, &mask) == 0) {
+					reti = regcomp(&regex, mask, REG_EXTENDED);
+					if(reti) {
+						logprintf(LOG_ERR, "could not compile regex");
+						FREE(val);
+						FREE(key);
+						FREE(str);
+						return -1;
 					}
-					logprintf(LOG_ERR, "requires %s", mask);
 
-					FREE(val);
-					FREE(key);
-					FREE(str);
+					reti = regexec(&regex, val, 0, NULL, 0);
+					if(reti == REG_NOMATCH || reti != 0) {
+						regfree(&regex);
+						if(error_check == 1) {
+							if(is_long == 1) {
+								logprintf(LOG_ERR, "invalid format -- '--%c'", key);
+							} else {
+								logprintf(LOG_ERR, "invalid format -- '-%s'", key);
+							}
+							logprintf(LOG_ERR, "requires %s", mask);
+
+							FREE(val);
+							FREE(key);
+							FREE(str);
+							return -1;
+						}
+					}
 					regfree(&regex);
-					return -1;
 				}
-				regfree(&regex);
 			}
 		}
 #endif

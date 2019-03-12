@@ -121,11 +121,11 @@ int main(int argc, char **argv) {
 	options_add(&options, "U", "uuid", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[a-zA-Z0-9]{4}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{6}");
 	options_add(&options, "Ls", "storage-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 
-	log_shell_disable();
+	log_shell_enable();
 	if(argc == 1) {
 		help = 1;
 	}
-	if(options_parse(options, argc, argv) == -1) {
+	if(options_parse(options, argc, argv, 0) == -1) {
 		// printf("Usage: %s -p protocol [options]\n", progname);
 		// goto close;
 		// help = 1;
@@ -167,7 +167,7 @@ int main(int argc, char **argv) {
 
 	if(options_exists(options, "U") == 0) {
 		options_get_string(options, "U", &uuid);
-	}
+	};
 
 	/* Initialize protocols */
 	protocol_init();
@@ -203,7 +203,7 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	if(options_parse(options, argc, argv) == -1) {
+	if(options_parse(options, argc, argv, 1) == -1) {
 		help = 1;
 	}
 

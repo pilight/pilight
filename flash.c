@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
 		goto close;
 	}
 
-	if(options_parse(options, argc, argv) == -1) {
+	if(options_parse(options, argc, argv, 1) == -1) {
 		help = 1;
 	}
 

@@ -52,7 +52,7 @@ int options_get_id_by_name(struct options_t *opt, char *name, char **out);
 // int options_get_conftype(struct options_t *opt, char *id, int is_long, int *out);
 // int options_get_vartype(struct options_t *opt, char *id, int is_long, int *out);
 int options_parse1(struct options_t **options, int argc, char **argv, int error_check, char **optarg, char **ret);
-int options_parse(struct options_t *options, int argc, char **argv);
+int options_parse(struct options_t *options, int argc, char **argv, int error_check);
 void options_add(struct options_t **options, char *id, const char *name, int argtype, int conftype, int vartype, void *def, const char *mask);
 void options_merge(struct options_t **a, struct options_t **b);
 void options_delete(struct options_t *options);

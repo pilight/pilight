@@ -2580,7 +2580,7 @@ int start_pilight(int argc, char **argv) {
 	options_add(&options, "258", "debuglevel", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-2]{1}");
 	// options_add(&options, 258, "memory-tracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 
-	if(options_parse(options, argc, argv) == -1) {
+	if(options_parse(options, argc, argv, 1) == -1) {
 		show_default = 1;
 	} else if(options_exists(options, "H") == 0) {
 		show_help = 1;

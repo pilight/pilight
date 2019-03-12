@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
 	options_add(&options, "V", "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, "p", "password", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
 
-	if(options_parse(options, argc, argv) == -1) {
+	if(options_parse(options, argc, argv, 1) == -1) {
 		help = 1;
 	}
 
