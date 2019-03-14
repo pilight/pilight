@@ -31,20 +31,6 @@ Disabled
 433.92Mhz
 ---------
 
-.. _433lirc:
-.. rubric:: Lirc Kernel Module
-
-.. code-block:: json
-   :linenos:
-
-   {
-     "hardware": {
-       "433lirc": {
-         "socket": "/dev/lirc0"
-       }
-     }
-   }
-
 .. _433gpio:
 .. rubric:: Direct GPIO Access
 
@@ -62,6 +48,22 @@ Disabled
 
 The default configuration to be used with the pilight PCB. When using custom wiring, refer to http://www.wiringx.org for the pin numbering of the various supported devices. If you want to disable the sender or receiver pin, set it to
 -1.
+
+.. deprecated:: nightly
+
+.. _433lirc:
+.. rubric:: Lirc Kernel Module
+
+.. code-block:: json
+   :linenos:
+
+   {
+     "hardware": {
+       "433lirc": {
+         "socket": "/dev/lirc0"
+       }
+     }
+   }
 
 .. versionchanged:: 8.0
 

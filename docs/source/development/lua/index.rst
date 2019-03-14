@@ -14,6 +14,7 @@ Lua Modules
    datetime/index
    network/index
    io/index
+   log/index
    wiringx/index
 
 States

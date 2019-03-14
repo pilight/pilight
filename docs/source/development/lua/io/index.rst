@@ -11,6 +11,7 @@ Various functions to do io
 .. versionadded:: nightly
 
 - `Serial`_
+- `SPI`_
 
 File
 ----
@@ -240,6 +241,48 @@ Example
      end
      serial.write("foo");
      serial.read();
+   end
+
+   return M;
+
+SPI
+---
+
+Allows interaction with Serial Peripheral Interfaces
+
+API
+^^^
+
+.. c:function:: userdata pilight.io.spi(number channel[, number frequency])
+
+   Creates a new SPI object or return a previously created object for the same channel.
+
+.. c:function:: number rw(table value)
+
+   Sets or gets the value of a certain register. The table required should have the following format:
+
+   .. code-block:: lua
+
+     { adr = adr, val = val }
+
+   - read
+
+     The ``adr`` key should contain the register addres to be read, the ``val`` key is ignored. A number is returned when valid data was read.
+
+   - write
+
+     The ``adr`` key should contain the register addres to be written, the ``val`` should contain the value to be set. No data is returned.
+
+Example
+^^^^^^^
+
+.. code-block:: lua
+
+   function M.run()
+     local spi = pilight.io.spi(0, 2500000);
+     spi.rw({ adr = 0x01, val = 0x02 });
+
+     print(spi.rw({ adr = 0xAB, val = 0x00 }));
    end
 
    return M;
