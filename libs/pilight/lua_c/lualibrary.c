@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 - 2016 CurlyMo
+  Copyright (C) CurlyMo
 
   This Source Code Form is subject to the terms of the Mozilla Public
   License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -39,6 +39,7 @@
 #include "async.h"
 #include "network.h"
 #include "io.h"
+#include "log.h"
 #include "table.h"
 
 #include "wiringx.h"
@@ -122,6 +123,20 @@ static const struct {
 };
 
 static const struct {
+	char *name;
+	int number;
+} pilight_log[] = {
+	{ "LOG_EMERG", LOG_EMERG },
+	{ "LOG_ALERT", LOG_ALERT },
+	{ "LOG_CRIT", LOG_CRIT },
+	{ "LOG_ERR", LOG_ERR },
+	{ "LOG_WARNING", LOG_WARNING },
+	{ "LOG_NOTICE", LOG_NOTICE },
+	{ "LOG_INFO", LOG_INFO },
+	{ "LOG_DEBUG", LOG_DEBUG }
+};
+
+static const struct {
 	const char *name;
 	const luaL_Reg *libs;
 } pilight_two_lib[] = {
@@ -137,6 +152,7 @@ static const struct {
 static const luaL_Reg pilight_one_lib[] = {
 	{ "config", plua_config },
 	{ "table", plua_table },
+	{ "log", plua_log },
 	{NULL, NULL}
 };
 
@@ -213,6 +229,12 @@ void plua_register_library(struct lua_State *L) {
 	lua_settable(L, -3);
 
 	lua_setglobal(L, "pilight");
+
+	len = sizeof(pilight_log)/sizeof(pilight_log[0]);
+	for(i=0;i<len;i++) {
+		lua_pushnumber(L, pilight_log[i].number);
+		lua_setglobal(L, pilight_log[i].name);
+	}
 
 	/*
 	 * Defaults
