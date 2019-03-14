@@ -55,6 +55,7 @@ CuSuite *suite_webserver_rest(void);
 #endif
 CuSuite *suite_socket(void);
 CuSuite *suite_log(void);
+CuSuite *suite_lua_log(void);
 CuSuite *suite_lua_cast(void);
 CuSuite *suite_lua_datetime(void);
 CuSuite *suite_lua_c_metatable(void);
@@ -201,6 +202,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_arp();
 	suites[nr++] = suite_http(); // ipv4 ported / ipv6 not ported
 	suites[nr++] = suite_mail(); // ipv4 ported / ipv6 not ported
+	suites[nr++] = suite_lua_log(); // Ported
 	suites[nr++] = suite_lua_cast(); // Ported
 	suites[nr++] = suite_lua_c_metatable(); // Ported
 	suites[nr++] = suite_lua_datetime(); // Ported
@@ -278,6 +280,7 @@ int RunAllTests(void) {
 int main(int argc, char **argv) {
 	remove("rapport.txt");
 	remove("test.log");
+	assert(open("test.log", O_TRUNC | O_WRONLY | O_APPEND | O_CREAT, 0666) > 0);
 
 	FILE *f = fopen("gplv3.txt", "w");
 	fprintf(f, "%s", gplv3);
