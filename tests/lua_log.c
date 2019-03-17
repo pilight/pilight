@@ -123,7 +123,7 @@ static void test_lua_log(CuTest *tc) {
 	uv_thread_join(&pth);
 
 	char *tmp = NULL, **array = NULL;
-	int n = file_get_contents("test.log", &tmp), x = 0, i =0;
+	int n = file_get_contents("test.log", &tmp), x = 0, i = 0;
 	CuAssertIntEquals(tc, 0, n);
 	x = explode(tmp, "\n", &array);
 	CuAssertIntEquals(tc, 7, x);
