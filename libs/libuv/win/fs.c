@@ -46,6 +46,7 @@
 #define QUEUE_FS_TP_JOB(loop, req)                                          \
   do {                                                                      \
     uv__req_register(loop, req);                                            \
+    req->work_req.name = NULL;                                              \
     uv__work_submit((loop), &(req)->work_req, uv__fs_work, uv__fs_done);    \
   } while (0)
 

@@ -183,6 +183,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
     req->hostname = memcpy(buf + len, hostname, hostname_len);
 
   if (cb) {
+    req->work_req.name = NULL;
     uv__work_submit(loop,
                     &req->work_req,
                     uv__getaddrinfo_work,

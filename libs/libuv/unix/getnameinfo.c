@@ -107,6 +107,7 @@ int uv_getnameinfo(uv_loop_t* loop,
   req->retcode = 0;
 
   if (getnameinfo_cb) {
+    req->work_req.name = NULL;
     uv__work_submit(loop,
                     &req->work_req,
                     uv__getnameinfo_work,

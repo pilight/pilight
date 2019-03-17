@@ -2780,6 +2780,8 @@ int start_pilight(int argc, char **argv) {
 		}
 		FREE(ret);
 		goto clear;
+	} else if(n == 1) {
+		FREE(ret);
 	}
 
 	if((n = isrunning("pilight-debug", &ret)) > 0) {

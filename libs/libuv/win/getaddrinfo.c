@@ -362,6 +362,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
   uv__req_register(loop, req);
 
   if (getaddrinfo_cb) {
+    req->work_req.name = NULL;
     uv__work_submit(loop,
                     &req->work_req,
                     uv__getaddrinfo_work,
