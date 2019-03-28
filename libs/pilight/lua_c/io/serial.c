@@ -29,13 +29,13 @@
 
 #include "../../core/log.h"
 #include "../../config/config.h"
+#include "../table.h"
 #include "../io.h"
 
 typedef struct lua_serial_t {
-	struct plua_metatable_t *table;
-	struct plua_module_t *module;
+	PLUA_INTERFACE_FIELDS
+
 	char *callback;
-	lua_State *L;
 
 	int baudrate;
 	int flowcontrol;
@@ -329,26 +329,7 @@ static void plua_io_serial_callback(char *type, uv_fs_t *req) {
 
 	logprintf(LOG_DEBUG, "lua serial read on state #%d", state->idx);
 
-	switch(state->module->type) {
-		case UNITTEST: {
-			sprintf(p, "unittest.%s", state->module->name);
-		} break;
-		case FUNCTION: {
-			sprintf(p, "function.%s", state->module->name);
-		} break;
-		case OPERATOR: {
-			sprintf(p, "operator.%s", state->module->name);
-		} break;
-		case ACTION: {
-			sprintf(p, "action.%s", state->module->name);
-		} break;
-		case STORAGE: {
-			sprintf(p, "storage.%s", state->module->name);
-		} break;
-		case HARDWARE: {
-			sprintf(p, "hardware.%s", state->module->name);
-		} break;
-	}
+	plua_namespace(state->module, p);
 
 	lua_getglobal(state->L, name);
 	if(lua_type(state->L, -1) == LUA_TNIL) {
@@ -502,26 +483,7 @@ static int plua_io_serial_set_callback(lua_State *L) {
 	}
 
 	p = name;
-	switch(serial->module->type) {
-		case UNITTEST: {
-			sprintf(p, "unittest.%s", serial->module->name);
-		} break;
-		case FUNCTION: {
-			sprintf(p, "function.%s", serial->module->name);
-		} break;
-		case OPERATOR: {
-			sprintf(p, "operator.%s", serial->module->name);
-		} break;
-		case ACTION: {
-			sprintf(p, "action.%s", serial->module->name);
-		} break;
-		case STORAGE: {
-			sprintf(p, "storage.%s", serial->module->name);
-		} break;
-		case HARDWARE: {
-			sprintf(p, "hardware.%s", serial->module->name);
-		} break;
-	}
+	plua_namespace(serial->module, p);
 
 	lua_getglobal(L, name);
 	if(lua_type(L, -1) == LUA_TNIL) {
@@ -698,7 +660,7 @@ static int plua_io_serial_get_data(lua_State *L) {
 		return 0;
 	}
 
-	plua_metatable_push(L, serial->table);
+	plua_metatable__push(L, (struct plua_interface_t *)serial);
 
 	assert(lua_gettop(L) == 1);
 
@@ -783,7 +745,6 @@ static int plua_io_serial_read(lua_State *L) {
 
 static int plua_io_serial_set_data(lua_State *L) {
 	struct lua_serial_t *serial = (void *)lua_topointer(L, lua_upvalueindex(1));
-	struct plua_metatable_t *cpy = NULL;
 
 	if(lua_gettop(L) != 1) {
 		luaL_error(L, "serial.setUserdata requires 1 argument, %d given", lua_gettop(L));
@@ -803,9 +764,14 @@ static int plua_io_serial_set_data(lua_State *L) {
 		1, buf);
 
 	if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
-		cpy = (void *)lua_topointer(L, -1);
-		lua_remove(L, -1);
-		plua_metatable_clone(&cpy, &serial->table);
+		if(serial->table != (void *)lua_topointer(L, -1)) {
+			plua_metatable_free(serial->table);
+		}
+		serial->table = (void *)lua_topointer(L, -1);
+
+		if(serial->table->ref != NULL) {
+			uv_sem_post(serial->table->ref);
+		}
 
 		plua_ret_true(L);
 		return 1;
@@ -940,10 +906,7 @@ int plua_io_serial(struct lua_State *L) {
 			OUT_OF_MEMORY
 		}
 		memset(lua_serial, 0, sizeof(struct lua_serial_t));
-		if((lua_serial->table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
-		memset(lua_serial->table, 0, sizeof(struct plua_metatable_t));
+		plua_metatable_init(&lua_serial->table);
 
 		lua_serial->baudrate = 9600;
 		lua_serial->parity = 'n';

@@ -27,20 +27,19 @@
 
 #include "../core/log.h"
 #include "async.h"
+#include "table.h"
 
 typedef struct lua_thread_t {
-	struct plua_metatable_t *table;
-	struct plua_module_t *module;
+	PLUA_INTERFACE_FIELDS
+
 	char *callback;
-	lua_State *L;
 	uv_work_t *work_req;
 } lua_thread_t;
 
 typedef struct lua_timer_t {
-	struct plua_metatable_t *table;
-	struct plua_module_t *module;
+	PLUA_INTERFACE_FIELDS
+
 	uv_timer_t *timer_req;
-	lua_State *L;
 	int running;
 	int timeout;
 	int repeat;
@@ -48,10 +47,8 @@ typedef struct lua_timer_t {
 } lua_timer_t;
 
 typedef struct lua_event_t {
-	struct plua_metatable_t *table;
-	struct plua_module_t *module;
+	PLUA_INTERFACE_FIELDS
 
-	lua_State *L;
 	struct {
 		int active;
 		struct eventpool_listener_t *node;
@@ -115,10 +112,23 @@ static int plua_async_thread_trigger(lua_State *L) {
 	return 1;
 }
 
+static void plua_async_thread_gc(void *ptr) {
+	struct lua_thread_t *lua_thread = ptr;
+
+	if(lua_thread->table != NULL) {
+		plua_metatable_free(lua_thread->table);
+	}
+	if(lua_thread->work_req != NULL) {
+		FREE(lua_thread->work_req);
+	}
+	if(lua_thread->callback != NULL) {
+		FREE(lua_thread->callback);
+	}
+	FREE(lua_thread);
+}
+
 static int plua_async_thread_set_data(lua_State *L) {
 	struct lua_thread_t *thread = (void *)lua_topointer(L, lua_upvalueindex(1));
-	struct plua_metatable_t *cpy = NULL;
-
 	if(lua_gettop(L) != 1) {
 		luaL_error(L, "thread.setUserdata requires 1 argument, %d given", lua_gettop(L));
 	}
@@ -137,9 +147,14 @@ static int plua_async_thread_set_data(lua_State *L) {
 		1, buf);
 
 	if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
-		cpy = (void *)lua_topointer(L, -1);
-		lua_remove(L, -1);
-		plua_metatable_clone(&cpy, &thread->table);
+		if(thread->table != (void *)lua_topointer(L, -1)) {
+			plua_metatable_free(thread->table);
+		}
+		thread->table = (void *)lua_topointer(L, -1);
+
+		if(thread->table->ref != NULL) {
+			uv_sem_post(thread->table->ref);
+		}
 
 		plua_ret_true(L);
 		return 1;
@@ -174,7 +189,7 @@ static int plua_async_thread_get_data(lua_State *L) {
 		return 0;
 	}
 
-	plua_metatable_push(L, thread->table);
+	plua_metatable__push(L, (struct plua_interface_t *)thread);
 
 	assert(lua_gettop(L) == 1);
 
@@ -215,26 +230,7 @@ static int plua_async_thread_set_callback(lua_State *L) {
 	}
 
 	p = name;
-	switch(thread->module->type) {
-		case UNITTEST: {
-			sprintf(p, "unittest.%s", thread->module->name);
-		} break;
-		case FUNCTION: {
-			sprintf(p, "function.%s", thread->module->name);
-		} break;
-		case OPERATOR: {
-			sprintf(p, "operator.%s", thread->module->name);
-		} break;
-		case ACTION: {
-			sprintf(p, "action.%s", thread->module->name);
-		} break;
-		case STORAGE: {
-			sprintf(p, "storage.%s", thread->module->name);
-		} break;
-		case HARDWARE: {
-			sprintf(p, "hardware.%s", thread->module->name);
-		} break;
-	}
+	plua_namespace(thread->module, p);
 
 	lua_getglobal(L, name);
 	if(lua_type(L, -1) == LUA_TNIL) {
@@ -285,20 +281,6 @@ static void plua_async_thread_object(lua_State *L, struct lua_thread_t *thread) 
 	lua_settable(L, -3);
 }
 
-static void plua_async_thread_gc(void *ptr) {
-	struct lua_thread_t *lua_thread = ptr;
-	if(lua_thread->table != NULL) {
-		plua_metatable_free(lua_thread->table);
-	}
-	if(lua_thread->work_req != NULL) {
-		FREE(lua_thread->work_req);
-	}
-	if(lua_thread->callback != NULL) {
-		FREE(lua_thread->callback);
-	}
-	FREE(lua_thread);
-}
-
 static void thread_callback(uv_work_t *req) {
 	struct lua_thread_t *thread = req->data;
 	char name[255], *p = name;
@@ -312,26 +294,7 @@ static void thread_callback(uv_work_t *req) {
 
 	logprintf(LOG_DEBUG, "lua thread on state #%d", state->idx);
 
-	switch(state->module->type) {
-		case UNITTEST: {
-			sprintf(p, "unittest.%s", state->module->name);
-		} break;
-		case FUNCTION: {
-			sprintf(p, "function.%s", state->module->name);
-		} break;
-		case OPERATOR: {
-			sprintf(p, "operator.%s", state->module->name);
-		} break;
-		case ACTION: {
-			sprintf(p, "action.%s", state->module->name);
-		} break;
-		case STORAGE: {
-			sprintf(p, "storage.%s", state->module->name);
-		} break;
-		case HARDWARE: {
-			sprintf(p, "hardware.%s", state->module->name);
-		} break;
-	}
+	plua_namespace(state->module, p);
 
 	lua_getglobal(state->L, name);
 	if(lua_type(state->L, -1) == LUA_TNIL) {
@@ -394,10 +357,7 @@ int plua_async_thread(struct lua_State *L) {
 	}
 	memset(lua_thread, 0, sizeof(struct lua_thread_t));
 
-	if((lua_thread->table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-	memset(lua_thread->table, 0, sizeof(struct plua_metatable_t));
+	plua_metatable_init(&lua_thread->table);
 
 	lua_thread->module = state->module;
 	lua_thread->work_req = tp_work_req;
@@ -415,6 +375,7 @@ int plua_async_thread(struct lua_State *L) {
 
 void plua_async_timer_gc(void *ptr) {
 	struct lua_timer_t *lua_timer = ptr;
+
 	if(lua_timer != NULL) {
 		if(lua_timer->callback != NULL) {
 			FREE(lua_timer->callback);
@@ -668,7 +629,6 @@ static int plua_async_timer_start(lua_State *L) {
 
 static int plua_async_timer_set_data(lua_State *L) {
 	struct lua_timer_t *timer = (void *)lua_topointer(L, lua_upvalueindex(1));
-	struct plua_metatable_t *cpy = NULL;
 
 	if(lua_gettop(L) != 1) {
 		luaL_error(L, "timer.setUserdata requires 1 argument, %d given", lua_gettop(L));
@@ -688,9 +648,14 @@ static int plua_async_timer_set_data(lua_State *L) {
 		1, buf);
 
 	if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
-		cpy = (void *)lua_topointer(L, -1);
-		lua_remove(L, -1);
-		plua_metatable_clone(&cpy, &timer->table);
+		if(timer->table != (void *)lua_topointer(L, -1)) {
+			plua_metatable_free(timer->table);
+		}
+		timer->table = (void *)lua_topointer(L, -1);
+
+		if(timer->table->ref != NULL) {
+			uv_sem_post(timer->table->ref);
+		}
 
 		plua_ret_true(L);
 
@@ -726,7 +691,7 @@ static int plua_async_timer_get_data(lua_State *L) {
 		return 0;
 	}
 
-	plua_metatable_push(L, timer->table);
+	plua_metatable__push(L, (struct plua_interface_t *)timer);
 
 	assert(lua_gettop(L) == 1);
 
@@ -866,10 +831,7 @@ int plua_async_timer(struct lua_State *L) {
 	}
 	memset(lua_timer, '\0', sizeof(struct lua_timer_t));
 
-	if((lua_timer->table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-	memset(lua_timer->table, 0, sizeof(struct plua_metatable_t));
+	plua_metatable_init(&lua_timer->table);
 
 	lua_timer->module = state->module;
 	lua_timer->timer_req = timer_req;
@@ -984,7 +946,6 @@ void *plua_async_event_callback(int reason, void *param, void *userdata) {
 	plua_async_event_object(state->L, event);
 	lua_pushnumber(state->L, reason);
 	plua_metatable_push(state->L, param);
-
 
 	if(lua_pcall(state->L, 3, 0, 0) == LUA_ERRRUN) {
 		if(lua_type(state->L, -1) == LUA_TNIL) {
@@ -1119,15 +1080,15 @@ static int plua_async_event_trigger(struct lua_State *L) {
 
 		if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
 			cpy = (void *)lua_topointer(L, -1);
+			if(cpy->ref != NULL) {
+				uv_sem_post(cpy->ref);
+			}
 			lua_remove(L, -1);
 		} else if(lua_type(L, -1) == LUA_TTABLE) {
 			lua_pushnil(L);
 			is_table = 1;
-			if((cpy = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-			}
-			memset(cpy, 0, sizeof(struct plua_metatable_t));
 
+			plua_metatable_init(&cpy);
 			while(lua_next(L, -2) != 0) {
 				plua_metatable_parse_set(L, cpy);
 				lua_pop(L, 1);
@@ -1137,13 +1098,14 @@ static int plua_async_event_trigger(struct lua_State *L) {
 
 	for(i=0;i<REASON_END+10000;i++) {
 		if(event->reasons[i].active == 1) {
-			if((table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-			}
-			memset(table, 0, sizeof(struct plua_metatable_t));
+			if(is_table == 1) {
+				plua_metatable_init(&table);
+				plua_metatable_clone(&cpy, &table);
 
-			plua_metatable_clone(&cpy, &table);
-			eventpool_trigger(i, plua_async_event_free, table);
+				eventpool_trigger(i, plua_async_event_free, table);
+			} else {
+				eventpool_trigger(i, plua_async_event_free, cpy);
+			}
 		}
 	}
 	if(is_table == 1) {
@@ -1302,10 +1264,8 @@ int plua_async_event(struct lua_State *L) {
 	memset(lua_event, 0, sizeof(struct lua_event_t));
 	lua_event->callback = NULL;
 
-	if((lua_event->table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-	memset(lua_event->table, 0, sizeof(struct plua_metatable_t));
+	plua_metatable_init(&lua_event->table);
+
 	for(i=0;i<REASON_END+10000;i++) {
 		lua_event->reasons[i].active = 0;
 		lua_event->reasons[i].node = NULL;

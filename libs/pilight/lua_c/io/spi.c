@@ -33,6 +33,7 @@
 
 #include "../../core/log.h"
 #include "../../config/config.h"
+#include "../table.h"
 #include "../io.h"
 
 typedef struct lua_spi_t {
@@ -291,10 +292,7 @@ int plua_io_spi(struct lua_State *L) {
 			}
 			memset(lua_spi, '\0', sizeof(struct lua_spi_t));
 
-			if((lua_spi->table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-			}
-			memset(lua_spi->table, 0, sizeof(struct plua_metatable_t));
+			plua_metatable_init(&lua_spi->table);
 
 			lua_spi->channel = channel;
 			lua_spi->speed = speed;

@@ -28,6 +28,7 @@
 #endif
 
 #include "lua.h"
+#include "table.h"
 #include "../core/log.h"
 
 struct lua_wiringx_t;
@@ -55,10 +56,9 @@ typedef struct lua_wiringx_gpio_t {
 } lua_wiringx_gpio_t;
 
 typedef struct lua_wiringx_t {
-	struct plua_metatable_t *table;
-	struct plua_module_t *module;
+	PLUA_INTERFACE_FIELDS
+
 	struct lua_wiringx_gpio_t **gpio;
-	lua_State *L;
 
 	char *platform;
 	int nrgpio;
@@ -118,7 +118,6 @@ static void plua_wiringx_gc(void *ptr) {
 
 static int plua_wiringx_set_userdata(lua_State *L) {
 	struct lua_wiringx_t *wiringx = (void *)lua_topointer(L, lua_upvalueindex(1));
-	struct plua_metatable_t *cpy = NULL;
 
 	if(lua_gettop(L) != 1) {
 		luaL_error(L, "wiringx.setUserdata requires 1 argument, %d given", lua_gettop(L));
@@ -138,10 +137,14 @@ static int plua_wiringx_set_userdata(lua_State *L) {
 		1, buf);
 
 	if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
-		cpy = (void *)lua_topointer(L, -1);
-		lua_remove(L, -1);
-		plua_metatable_clone(&cpy, &wiringx->table);
+		if(wiringx->table != (void *)lua_topointer(L, -1)) {
+			plua_metatable_free(wiringx->table);
+		}
 
+		wiringx->table = (void *)lua_topointer(L, -1);
+		if(wiringx->table->ref != NULL) {
+			uv_sem_post(wiringx->table->ref);
+		}
 		plua_ret_true(L);
 
 		return 1;
@@ -176,7 +179,7 @@ static int plua_wiringx_get_userdata(lua_State *L) {
 		return 0;
 	}
 
-	plua_metatable_push(L, wiringx->table);
+	plua_metatable__push(L, (struct plua_interface_t *)wiringx);
 
 	assert(lua_gettop(L) == 1);
 
@@ -239,10 +242,7 @@ int plua_wiringx_digital_write(struct lua_State *L) {
 		} else if(lua_type(L, 1) == LUA_TTABLE) {
 			is_table = 1;
 
-			if((table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-			}
-			memset(table, 0, sizeof(struct plua_metatable_t));
+			plua_metatable_init(&table);
 
 			lua_pushnil(L);
 			while(lua_next(L, -2) != 0) {
@@ -427,26 +427,7 @@ static void plua_wiringx_poll_timer(uv_timer_t *req) {
 
 	logprintf(LOG_DEBUG, "lua wiringx on state #%d", state->idx);
 
-	switch(data->parent->module->type) {
-		case UNITTEST: {
-			sprintf(p, "unittest.%s", data->parent->module->name);
-		} break;
-		case FUNCTION: {
-			sprintf(p, "function.%s", data->parent->module->name);
-		} break;
-		case OPERATOR: {
-			sprintf(p, "operator.%s", data->parent->module->name);
-		} break;
-		case ACTION: {
-			sprintf(p, "action.%s", data->parent->module->name);
-		} break;
-		case STORAGE: {
-			sprintf(p, "storage.%s", data->parent->module->name);
-		} break;
-		case HARDWARE: {
-			sprintf(p, "hardware.%s", data->parent->module->name);
-		} break;
-	}
+	plua_namespace(data->parent->module, p);
 
 	lua_getglobal(state->L, name);
 
@@ -604,26 +585,7 @@ static int plua_wiringx_isr(struct lua_State *L) {
 			lua_remove(L, 1);
 
 			p = name;
-			switch(wiringx->module->type) {
-				case UNITTEST: {
-					sprintf(p, "unittest.%s", wiringx->module->name);
-				} break;
-				case FUNCTION: {
-					sprintf(p, "function.%s", wiringx->module->name);
-				} break;
-				case OPERATOR: {
-					sprintf(p, "operator.%s", wiringx->module->name);
-				} break;
-				case ACTION: {
-					sprintf(p, "action.%s", wiringx->module->name);
-				} break;
-				case STORAGE: {
-					sprintf(p, "storage.%s", wiringx->module->name);
-				} break;
-				case HARDWARE: {
-					sprintf(p, "hardware.%s", wiringx->module->name);
-				} break;
-			}
+			plua_namespace(wiringx->module, p);
 
 			lua_getglobal(L, name);
 			if(lua_type(L, -1) == LUA_TNIL) {
@@ -798,11 +760,8 @@ int plua_wiringx_setup(struct lua_State *L) {
 				OUT_OF_MEMORY
 			}
 
-			if((wiringx[i]->table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-			}
+			plua_metatable_init(&wiringx[i]->table);
 
-			memset(wiringx[i]->table, 0, sizeof(struct plua_metatable_t));
 			wiringx[i]->nrgpio = 0;
 
 			wiringx[i]->module = state->module;
