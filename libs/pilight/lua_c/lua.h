@@ -32,6 +32,9 @@ typedef struct plua_metatable_t {
 	} *table;
 	int nrvar;
 	int iter[NRLUASTATES];
+
+	uv_mutex_t lock;
+	uv_sem_t *ref;
 } plua_metatable_t;
 
 typedef struct plua_module_t {
@@ -68,7 +71,17 @@ typedef struct lua_state_t {
 
 } lua_state_t;
 
-void plua_json_to_table(struct lua_State *L, struct JsonNode *jnode);
+#define PLUA_INTERFACE_FIELDS			\
+  /* public */										\
+	lua_State *L;										\
+	struct plua_metatable_t *table;	\
+	struct plua_module_t *module;		\
+
+typedef struct plua_interface_t {
+  PLUA_INTERFACE_FIELDS
+} plua_interface_t;
+
+int plua_json_to_table(struct plua_metatable_t *table, struct JsonNode *jnode);
 int plua_pcall(struct lua_State *L, char *file, int args, int ret);
 int plua_get_method(struct lua_State *L, char *file, char *method);
 void plua_gc_unreg(lua_State *L, void *ptr);
@@ -76,6 +89,7 @@ void plua_gc_reg(lua_State *L, void *ptr, void (*callback)(void *ptr));
 void plua_metatable_free(struct plua_metatable_t *table);
 int plua_metatable_get_keys(lua_State *L);
 void plua_metatable_parse_set(lua_State *L, void *table);
+void plua_metatable__push(lua_State *L, struct plua_interface_t *module);
 void plua_metatable_push(lua_State *L, struct plua_metatable_t *table);
 void plua_stack_dump(lua_State *L);
 void plua_module_load(char *, int);
@@ -93,6 +107,7 @@ void plua_pause_coverage(int status);
 void plua_coverage_output(const char *);
 int plua_flush_coverage(void);
 #endif
+int plua_namespace(struct plua_module_t *module, char *p);
 void plua_package_path(const char *path);
 void plua_override_global(char *name, int (*func)(lua_State *L));
 int plua_gc(void);

@@ -30,6 +30,7 @@
 #include "../core/json.h"
 #include "../core/mem.h"
 #include "../core/common.h"
+#include "table.h"
 
 #ifdef PILIGHT_UNITTEST
 static struct info_t {
@@ -65,6 +66,12 @@ static int init = 0;
 static struct lua_state_t lua_state[NRLUASTATES+1];
 static struct plua_module_t *modules = NULL;
 
+static int plua_metatable_index(lua_State *L, struct plua_metatable_t *node);
+static int plua_metatable_pairs(lua_State *, struct plua_metatable_t *node);
+static int plua_metatable_ipairs(lua_State *L, struct plua_metatable_t *node);
+static int plua_metatable_next(lua_State *L, struct plua_metatable_t *node);
+static int plua_metatable_call(lua_State *L, struct plua_metatable_t *node);
+static int plua_metatable_newindex(lua_State *L, struct plua_metatable_t *node);
 static int plua_metatable__index(lua_State *L);
 static int plua_metatable__gc(lua_State *L);
 static int plua_metatable__pairs(lua_State *L);
@@ -72,6 +79,13 @@ static int plua_metatable__ipairs(lua_State *L);
 static int plua_metatable__next(lua_State *L);
 static int plua_metatable__call(lua_State *L);
 static int plua_metatable__newindex(lua_State *L);
+static int plua_metatable___index(lua_State *L);
+static int plua_metatable___gc(lua_State *L);
+static int plua_metatable___pairs(lua_State *L);
+static int plua_metatable___ipairs(lua_State *L);
+static int plua_metatable___next(lua_State *L);
+static int plua_metatable___call(lua_State *L);
+static int plua_metatable___newindex(lua_State *L);
 
 /* LCOV_EXCL_START */
 void plua_stack_dump(lua_State *L) {
@@ -146,9 +160,41 @@ static int luaB_ipairs (lua_State *L) {
   return pairsmeta(L, "__ipairs", 1, ipairsaux);
 }
 
-static int plua_metatable_len(lua_State *L) {
-	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
+int plua_namespace(struct plua_module_t *module, char *p) {
+	switch(module->type) {
+		case UNITTEST: {
+			sprintf(p, "unittest.%s", module->name);
+			return 0;
+		} break;
+		case FUNCTION: {
+			sprintf(p, "function.%s", module->name);
+			return 0;
+		} break;
+		case OPERATOR: {
+			sprintf(p, "operator.%s", module->name);
+			return 0;
+		} break;
+		case ACTION: {
+			sprintf(p, "action.%s", module->name);
+			return 0;
+		} break;
+		case STORAGE: {
+			sprintf(p, "storage.%s", module->name);
+			return 0;
+		} break;
+		case HARDWARE: {
+			sprintf(p, "hardware.%s", module->name);
+			return 0;
+		} break;
+		case PROTOCOL: {
+			sprintf(p, "protocol.%s", module->name);
+			return 0;
+		} break;
+	}
+	return -1;
+}
 
+static int plua_metatable_len(lua_State *L, struct plua_metatable_t *node) {
 	if(node == NULL) {
 		logprintf(LOG_ERR, "internal error: table object not passed");
 		return 0;
@@ -159,12 +205,73 @@ static int plua_metatable_len(lua_State *L) {
 	return 1;
 }
 
+static int plua_metatable__len(lua_State *L) {
+	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	return plua_metatable_len(L, node);
+}
+
+static int plua_metatable___len(lua_State *L) {
+	struct plua_interface_t *interface = (void *)lua_topointer(L, lua_upvalueindex(1));
+	struct plua_metatable_t *node = interface->table;
+
+	return plua_metatable_len(L, node);
+}
+
+void plua_metatable__push(lua_State *L, struct plua_interface_t *table) {
+	lua_newtable(L);
+
+	lua_pushstring(L, "__len");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable___len, 1);
+	lua_settable(L, -3);
+
+	lua_newtable(L);
+
+	lua_pushstring(L, "__index");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable___index, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "__newindex");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable___newindex, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "__gc");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable___gc, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "__pairs");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable___pairs, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "__ipairs");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable___ipairs, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "__next");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable___next, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "__call");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable___call, 1);
+	lua_settable(L, -3);
+
+	lua_setmetatable(L, -2);
+}
+
 void plua_metatable_push(lua_State *L, struct plua_metatable_t *table) {
 	lua_newtable(L);
 
 	lua_pushstring(L, "__len");
 	lua_pushlightuserdata(L, table);
-	lua_pushcclosure(L, plua_metatable_len, 1);
+	lua_pushcclosure(L, plua_metatable__len, 1);
 	lua_settable(L, -3);
 
 	lua_newtable(L);
@@ -208,27 +315,35 @@ void plua_metatable_push(lua_State *L, struct plua_metatable_t *table) {
 }
 
 void plua_metatable_free(struct plua_metatable_t *table) {
-	int x = 0;
-	for(x=0;x<table->nrvar;x++) {
-		if(table->table[x].val.type_ == LUA_TSTRING) {
-			FREE(table->table[x].val.string_);
-		}
-		if(table->table[x].key.type_ == LUA_TSTRING) {
-			FREE(table->table[x].key.string_);
-		}
-		if(table->table[x].val.type_ == LUA_TTABLE) {
-			plua_metatable_free(table->table[x].val.void_);
-		}
+	int x = 0, y = 0;
+
+
+	if(table->ref != NULL) {
+		y = uv_sem_trywait(table->ref);
 	}
-	if(table->table != NULL) {
-		FREE(table->table);
+	if((table->ref == NULL) || (y == UV__EAGAIN)) {
+		for(x=0;x<table->nrvar;x++) {
+			if(table->table[x].val.type_ == LUA_TSTRING) {
+				FREE(table->table[x].val.string_);
+			}
+			if(table->table[x].key.type_ == LUA_TSTRING) {
+				FREE(table->table[x].key.string_);
+			}
+			if(table->table[x].val.type_ == LUA_TTABLE) {
+				plua_metatable_free(table->table[x].val.void_);
+			}
+		}
+		if(table->table != NULL) {
+			FREE(table->table);
+		}
+		if(table->ref != NULL) {
+			FREE(table->ref);
+		}
+		FREE(table);
 	}
-	FREE(table);
 }
 
-static int plua_metatable__call(lua_State *L) {
-	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
-
+static int plua_metatable_call(lua_State *L, struct plua_metatable_t *node) {
 	if(node == NULL) {
 		logprintf(LOG_ERR, "internal error: table object not passed");
 		return 0;
@@ -239,6 +354,19 @@ static int plua_metatable__call(lua_State *L) {
 	return 1;
 }
 
+static int plua_metatable__call(lua_State *L) {
+	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	return plua_metatable_call(L, node);
+}
+
+static int plua_metatable___call(lua_State *L) {
+	struct plua_interface_t *interface = (void *)lua_topointer(L, lua_upvalueindex(1));
+	struct plua_metatable_t *node = interface->table;
+
+	return plua_metatable_call(L, node);
+}
+
 void plua_metatable_clone(struct plua_metatable_t **src, struct plua_metatable_t **dst) {
 	int i = 0;
 	struct plua_metatable_t *a = *src;
@@ -246,10 +374,12 @@ void plua_metatable_clone(struct plua_metatable_t **src, struct plua_metatable_t
 	if((*dst) != NULL) {
 		plua_metatable_free((*dst));
 	}
-	if(((*dst) = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-	memset((*dst), 0, sizeof(struct plua_metatable_t));
+
+	plua_metatable_init(&(*dst));
+
+	uv_mutex_lock(&(*dst)->lock);
+	uv_mutex_lock(&a->lock);
+
 	if(((*dst)->table = MALLOC(sizeof(*a->table)*(a->nrvar))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
@@ -280,16 +410,20 @@ void plua_metatable_clone(struct plua_metatable_t **src, struct plua_metatable_t
 		}
 	}
 	(*dst)->nrvar = a->nrvar;
+
+	uv_mutex_unlock(&(*dst)->lock);
+	uv_mutex_unlock(&a->lock);
 }
 
-static int plua_metatable__next(lua_State *L) {
+static int plua_metatable_next(lua_State *L, struct plua_metatable_t *node) {
 	struct lua_state_t *state = plua_get_current_state(L);
-	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(node == NULL) {
 		logprintf(LOG_ERR, "internal error: table object not passed");
 		return 0;
 	}
+
+	uv_mutex_lock(&node->lock);
 
 	int iter = node->iter[state->idx]++;
 	if(node->nrvar > iter) {
@@ -315,49 +449,100 @@ static int plua_metatable__next(lua_State *L) {
 				plua_metatable_push(L, (struct plua_metatable_t *)node->table[iter].val.void_);
 			} break;
 		}
+
+		uv_mutex_unlock(&node->lock);
+
 		return 2;
 	}
 
 	lua_pushnil(L);
+
+	uv_mutex_unlock(&node->lock);
   return 1;
 }
 
-static int plua_metatable__pairs(lua_State *L) {
-	struct lua_state_t *state = plua_get_current_state(L);
+static int plua_metatable__next(lua_State *L) {
 	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	return plua_metatable_next(L, node);
+}
+
+static int plua_metatable___next(lua_State *L) {
+	struct plua_interface_t *interface = (void *)lua_topointer(L, lua_upvalueindex(1));
+	struct plua_metatable_t *node = interface->table;
+
+	return plua_metatable_next(L, node);
+}
+
+static int plua_metatable_pairs(lua_State *L, struct plua_metatable_t *node) {
+	struct lua_state_t *state = plua_get_current_state(L);
 
 	if(node == NULL) {
 		logprintf(LOG_ERR, "internal error: table object not passed");
 		return 0;
 	}
+
+	uv_mutex_lock(&node->lock);
+
 	node->iter[state->idx] = 0;
 	lua_pushlightuserdata(L, node);
-  lua_pushcclosure(L, plua_metatable__next, 1);
-  lua_pushvalue(L, 1);
+	lua_pushcclosure(L, plua_metatable__next, 1);
+	lua_pushvalue(L, 1);
 	lua_pushnil(L);
+
+	uv_mutex_unlock(&node->lock);
+
+  return 3;
+}
+
+static int plua_metatable__pairs(lua_State *L) {
+	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	return plua_metatable_pairs(L, node);
+}
+
+static int plua_metatable___pairs(lua_State *L) {
+	struct plua_interface_t *interface = (void *)lua_topointer(L, lua_upvalueindex(1));
+	struct plua_metatable_t *node = interface->table;
+
+	return plua_metatable_pairs(L, node);
+}
+
+static int plua_metatable_ipairs(lua_State *L, struct plua_metatable_t *node) {
+	struct lua_state_t *state = plua_get_current_state(L);
+
+	if(node == NULL) {
+		logprintf(LOG_ERR, "internal error: table object not passed");
+		return 0;
+	}
+
+	uv_mutex_lock(&node->lock);
+
+	node->iter[state->idx] = 0;
+	lua_pushlightuserdata(L, node);
+	lua_pushcclosure(L, plua_metatable__next, 1);
+	lua_pushvalue(L, 1);
+	lua_pushinteger(L, 0);
+
+	uv_mutex_unlock(&node->lock);
 
   return 3;
 }
 
 static int plua_metatable__ipairs(lua_State *L) {
-	struct lua_state_t *state = plua_get_current_state(L);
 	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
 
-	if(node == NULL) {
-		logprintf(LOG_ERR, "internal error: table object not passed");
-		return 0;
-	}
-	node->iter[state->idx] = 0;
-	lua_pushlightuserdata(L, node);
-  lua_pushcclosure(L, plua_metatable__next, 1);
-  lua_pushvalue(L, 1);
-	lua_pushinteger(L, 0);
-
-  return 3;
+	return plua_metatable_ipairs(L, node);
 }
 
-static int plua_metatable__index(lua_State *L) {
-	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
+static int plua_metatable___ipairs(lua_State *L) {
+	struct plua_interface_t *interface = (void *)lua_topointer(L, lua_upvalueindex(1));
+	struct plua_metatable_t *node = interface->table;
+
+	return plua_metatable_ipairs(L, node);
+}
+
+static int plua_metatable_index(lua_State *L, struct plua_metatable_t *node) {
 	char buf[128] = { '\0' }, *p = buf;
 	char *error = "string or number expected, got %s";
 	int x = 0, match = 0;
@@ -372,6 +557,8 @@ static int plua_metatable__index(lua_State *L) {
 	luaL_argcheck(L,
 		((lua_type(L, -1) == LUA_TSTRING) || (lua_type(L, -1) == LUA_TNUMBER)),
 		1, buf);
+
+	uv_mutex_lock(&node->lock);
 
 	for(x=0;x<node->nrvar;x++) {
 		match = 0;
@@ -407,16 +594,36 @@ static int plua_metatable__index(lua_State *L) {
 					lua_pushnil(L);
 				} break;
 			}
+
+			uv_mutex_unlock(&node->lock);
+
 			return 1;
 		}
 	}
+
 	lua_pushnil(L);
+
+	uv_mutex_unlock(&node->lock);
 
 	return 0;
 }
 
+static int plua_metatable__index(lua_State *L) {
+	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	return plua_metatable_index(L, node);
+}
+
+static int plua_metatable___index(lua_State *L) {
+	struct plua_interface_t *interface = (void *)lua_topointer(L, lua_upvalueindex(1));
+	struct plua_metatable_t *node = interface->table;
+
+	return plua_metatable_index(L, node);
+}
+
 void plua_metatable_parse_set(lua_State *L, void *data) {
 	struct plua_metatable_t *node = data;
+
 	char buf[128] = { '\0' }, *p = buf;
 	char *error = "string or number expected, got %s";
 	int match = 0, x = 0;
@@ -433,6 +640,8 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 	luaL_argcheck(L,
 		((lua_type(L, -2) == LUA_TSTRING) || (lua_type(L, -2) == LUA_TNUMBER)),
 		1, buf);
+
+	uv_mutex_lock(&node->lock);
 
 	for(x=0;x<node->nrvar;x++) {
 		switch(lua_type(L, -2)) {
@@ -491,10 +700,9 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 					if(node->table[x].val.type_ == LUA_TTABLE) {
 						plua_metatable_free(node->table[x].val.void_);
 					}
-					if((node->table[x].val.void_ = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-					}
-					memset(node->table[x].val.void_, 0, sizeof(struct plua_metatable_t));
+
+					plua_metatable_init((struct plua_metatable_t **)&node->table[x].val.void_);
+
 					node->table[x].val.type_ = LUA_TTABLE;
 					if((is_metatable = lua_getmetatable(L, -1)) == 1) {
 						lua_remove(L, -1);
@@ -596,10 +804,9 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 				} break;
 				case LUA_TTABLE: {
 					int is_metatable = 0;
-					if((node->table[idx].val.void_ = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-					}
-					memset(node->table[idx].val.void_, 0, sizeof(struct plua_metatable_t));
+
+					plua_metatable_init((struct plua_metatable_t **)&node->table[idx].val.void_);
+
 					node->table[idx].val.type_ = LUA_TTABLE;
 					if((is_metatable = lua_getmetatable(L, -1)) == 1) {
 						lua_remove(L, -1);
@@ -644,12 +851,11 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 			node->nrvar++;
 		}
 	}
+
+	uv_mutex_unlock(&node->lock);
 }
 
-static int plua_metatable__newindex(lua_State *L) {
-
-	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
-
+static int plua_metatable_newindex(lua_State *L, struct plua_metatable_t *node) {
 	if(node == NULL) {
 		logprintf(LOG_ERR, "internal error: table object not passed");
 		return 0;
@@ -660,7 +866,24 @@ static int plua_metatable__newindex(lua_State *L) {
 	return 1;
 }
 
+static int plua_metatable__newindex(lua_State *L) {
+	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	return plua_metatable_newindex(L, node);
+}
+
+static int plua_metatable___newindex(lua_State *L) {
+	struct plua_interface_t *interface = (void *)lua_topointer(L, lua_upvalueindex(1));
+	struct plua_metatable_t *node = interface->table;
+
+	return plua_metatable_newindex(L, node);
+}
+
 static int plua_metatable__gc(lua_State *L){
+	return 1;
+}
+
+static int plua_metatable___gc(lua_State *L){
 	return 1;
 }
 
@@ -1091,7 +1314,6 @@ void plua_module_load(char *file, int type) {
 				sprintf(p, "hardware.%s", module->name);
 			break;
 		}
-
 		module->next = modules;
 		modules = module;
 	} else {
@@ -1369,29 +1591,12 @@ int plua_module_exists(char *module, int type) {
 	char name[255], *p = name;
 	memset(name, '\0', 255);
 
-	switch(type) {
-		case UNITTEST: {
-			sprintf(p, "unittest.%s", module);
-		} break;
-		case OPERATOR: {
-			sprintf(p, "operator.%s", module);
-		} break;
-		case FUNCTION:
-			sprintf(p, "function.%s", module);
-		break;
-		case ACTION:
-			sprintf(p, "action.%s", module);
-		break;
-		case PROTOCOL:
-			sprintf(p, "protocol.%s", module);
-		break;
-		case STORAGE:
-			sprintf(p, "storage.%s", module);
-		break;
-		case HARDWARE:
-			sprintf(p, "hardware.%s", module);
-		break;
-	}
+	struct plua_module_t mod;
+	struct plua_module_t *a = &mod;
+	a->type = type;
+	strcpy(a->name, module);
+
+	plua_namespace(a, p);
 
 	lua_getglobal(L, name);
 	if(lua_type(L, -1) == LUA_TNIL) {
@@ -1537,7 +1742,7 @@ int plua_pcall(struct lua_State *L, char *file, int args, int ret) {
 	return 0;
 }
 
-void plua_json_to_table(struct lua_State *L, struct JsonNode *jnode) {
+static void plua__json_to_table(struct lua_State *L, struct JsonNode *jnode) {
 	struct JsonNode *jchild = json_first_child(jnode);
 
 	lua_newtable(L);
@@ -1557,12 +1762,44 @@ void plua_json_to_table(struct lua_State *L, struct JsonNode *jnode) {
 			break;
 			case JSON_ARRAY:
 			case JSON_OBJECT:
-				plua_json_to_table(L, jchild);
+				plua__json_to_table(L, jchild);
 			break;
 		}
 		lua_settable(L, -3);
 		jchild = jchild->next;
 	}
+}
+
+int plua_json_to_table(struct plua_metatable_t *table, struct JsonNode *jnode) {
+	struct lua_state_t *state = plua_get_free_state();
+	struct lua_State *L = NULL;
+
+	if(state == NULL) {
+		return -1;
+	}
+
+	L = state->L;
+
+	plua__json_to_table(L, jnode);
+
+	if(lua_type(L, -1) == LUA_TTABLE) {
+		lua_pushnil(L);
+		while(lua_next(L, -2) != 0) {
+			plua_metatable_parse_set(L, table);
+			lua_pop(L, 1);
+		}
+		lua_pop(L, 1);
+
+		uv_mutex_unlock(&state->lock);
+
+		return 0;
+	}
+
+	lua_pop(L, 1);
+
+	uv_mutex_unlock(&state->lock);
+
+	return -1;
 }
 
 int plua_gc(void) {

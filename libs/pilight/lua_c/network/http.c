@@ -27,15 +27,14 @@
 
 #include "../../core/log.h"
 #include "../../core/http.h"
+#include "../table.h"
 #include "../network.h"
 
 #define GET 0
 #define POST 1
 
 typedef struct lua_http_t {
-	struct plua_metatable_t *table;
-	struct plua_module_t *module;
-	lua_State *L;
+	PLUA_INTERFACE_FIELDS
 
 	char *url;
 	char *mimetype;
@@ -52,7 +51,6 @@ static void plua_network_http_gc(void *ptr);
 
 static int plua_network_http_set_userdata(lua_State *L) {
 	struct lua_http_t *http = (void *)lua_topointer(L, lua_upvalueindex(1));
-	struct plua_metatable_t *cpy = NULL;
 
 	if(lua_gettop(L) != 1) {
 		luaL_error(L, "http.setUserdata requires 1 argument, %d given", lua_gettop(L));
@@ -72,9 +70,14 @@ static int plua_network_http_set_userdata(lua_State *L) {
 		1, buf);
 
 	if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
-		cpy = (void *)lua_topointer(L, -1);
-		lua_remove(L, -1);
-		plua_metatable_clone(&cpy, &http->table);
+		if(http->table != (void *)lua_topointer(L, -1)) {
+			plua_metatable_free(http->table);
+		}
+		http->table = (void *)lua_topointer(L, -1);
+
+		if(http->table->ref != NULL) {
+			uv_sem_post(http->table->ref);
+		}
 
 		plua_ret_true(L);
 
@@ -110,7 +113,7 @@ static int plua_network_http_get_userdata(lua_State *L) {
 		return 0;
 	}
 
-	plua_metatable_push(L, http->table);
+	plua_metatable__push(L, (struct plua_interface_t *)http);
 
 	assert(lua_gettop(L) == 1);
 
@@ -241,20 +244,7 @@ static void plua_network_http_callback(int code, char *content, int size, char *
 
 	logprintf(LOG_DEBUG, "lua http on state #%d", state->idx);
 
-	switch(state->module->type) {
-		case UNITTEST: {
-			sprintf(p, "unittest.%s", state->module->name);
-		} break;
-		case FUNCTION: {
-			sprintf(p, "function.%s", state->module->name);
-		} break;
-		case OPERATOR: {
-			sprintf(p, "operator.%s", state->module->name);
-		} break;
-		case ACTION: {
-			sprintf(p, "action.%s", state->module->name);
-		} break;
-	}
+	plua_namespace(state->module, p);
 
 	lua_getglobal(state->L, name);
 	if(lua_type(state->L, -1) == LUA_TNIL) {
@@ -349,20 +339,7 @@ static int plua_network_http_set_callback(lua_State *L) {
 	lua_remove(L, -1);
 
 	p = name;
-	switch(http->module->type) {
-		case UNITTEST: {
-			sprintf(p, "unittest.%s", http->module->name);
-		} break;
-		case FUNCTION: {
-			sprintf(p, "function.%s", http->module->name);
-		} break;
-		case OPERATOR: {
-			sprintf(p, "operator.%s", http->module->name);
-		} break;
-		case ACTION: {
-			sprintf(p, "action.%s", http->module->name);
-		} break;
-	}
+	plua_namespace(http->module, p);
 
 	lua_getglobal(L, name);
 	if(lua_type(L, -1) == LUA_TNIL) {
@@ -720,10 +697,7 @@ int plua_network_http(struct lua_State *L) {
 	}
 	memset(lua_http, '\0', sizeof(struct lua_http_t));
 
-	if((lua_http->table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-	memset(lua_http->table, 0, sizeof(struct plua_metatable_t));
+	plua_metatable_init(&lua_http->table);
 
 	lua_http->module = state->module;
 	lua_http->L = L;

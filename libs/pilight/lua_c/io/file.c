@@ -27,6 +27,7 @@
 
 #include "../../core/log.h"
 #include "../../config/config.h"
+#include "../table.h"
 #include "../io.h"
 
 typedef struct lua_file_t {
@@ -545,10 +546,7 @@ int plua_io_file(struct lua_State *L) {
 	}
 	memset(lua_file, '\0', sizeof(struct lua_file_t));
 
-	if((lua_file->table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-	memset(lua_file->table, 0, sizeof(struct plua_metatable_t));
+	plua_metatable_init(&lua_file->table);
 
 	if((lua_file->file = STRDUP(name)) == NULL) {
 		OUT_OF_MEMORY

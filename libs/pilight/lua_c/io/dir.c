@@ -27,6 +27,7 @@
 
 #include "../../core/log.h"
 #include "../../config/config.h"
+#include "../table.h"
 #include "../io.h"
 
 typedef struct lua_dir_t {
@@ -162,10 +163,7 @@ int plua_io_dir(struct lua_State *L) {
 	}
 	memset(lua_dir, '\0', sizeof(struct lua_dir_t));
 
-	if((lua_dir->table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-	memset(lua_dir->table, 0, sizeof(struct plua_metatable_t));
+	plua_metatable_init(&lua_dir->table);
 
 	if((lua_dir->dir = STRDUP(name)) == NULL) {
 		OUT_OF_MEMORY

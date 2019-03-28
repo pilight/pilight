@@ -28,6 +28,7 @@
 
 #include "../../core/log.h"
 #include "../config.h"
+#include "../table.h"
 #include "hardware.h"
 
 static void plua_config_hardware_gc(void *ptr) {
@@ -52,7 +53,7 @@ static int plua_config_hardware_get_data(lua_State *L) {
 		return 0;
 	}
 
-	plua_metatable_push(L, hw->table);
+	plua_metatable__push(L, (struct plua_interface_t *)hw);
 
 	assert(lua_gettop(L) == 1);
 
@@ -61,7 +62,6 @@ static int plua_config_hardware_get_data(lua_State *L) {
 
 static int plua_config_hardware_set_data(lua_State *L) {
 	struct plua_hardware_t *hw = (void *)lua_topointer(L, lua_upvalueindex(1));
-	struct plua_metatable_t *cpy = NULL;
 
 	if(lua_gettop(L) != 1) {
 		luaL_error(L, "hardware.setUserdata requires 1 argument, %d given", lua_gettop(L));
@@ -81,9 +81,14 @@ static int plua_config_hardware_set_data(lua_State *L) {
 		1, buf);
 
 	if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
-		cpy = (void *)lua_topointer(L, -1);
-		lua_remove(L, -1);
-		plua_metatable_clone(&cpy, &hw->table);
+		if(hw->table != (void *)lua_topointer(L, -1)) {
+			plua_metatable_free(hw->table);
+		}
+		hw->table = (void *)lua_topointer(L, -1);
+
+		if(hw->table->ref != NULL) {
+			uv_sem_post(hw->table->ref);
+		}
 
 		plua_ret_true(L);
 		return 1;
@@ -229,10 +234,7 @@ int plua_config_hardware(lua_State *L) {
 		if((hw->name = STRDUP((char *)module)) == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
-		if((hw->table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-			OUT_OF_MEMORY
-		}
-		memset(hw->table, 0, sizeof(struct plua_metatable_t));
+		plua_metatable_init(&hw->table);
 
 		lua_newtable(L);
 

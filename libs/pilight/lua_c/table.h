@@ -12,6 +12,7 @@
 #include "lua.h"
 
 extern int plua_table(struct lua_State *L);
+void plua_metatable_init(struct plua_metatable_t **table);
 int plua_metatable_get(struct plua_metatable_t *table, char *a, struct varcont_t *b);
 int plua_metatable_get_number(struct plua_metatable_t *table, char *a, double *b);
 int plua_metatable_get_boolean(struct plua_metatable_t *table, char *a, int *b);
