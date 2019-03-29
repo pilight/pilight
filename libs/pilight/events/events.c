@@ -1737,6 +1737,7 @@ static int run_action(struct tree_t *tree, struct rules_t *obj, unsigned short v
 			if(event_action_run(tree->token->value, args) == -1) {
 				return -1;
 			}
+			obj->status = 1;
 		}
 	}
 
@@ -2036,7 +2037,7 @@ void *events_loop(void *param) {
 #ifndef WIN32
 						clock_gettime(CLOCK_MONOTONIC, &tmp_rules->timestamp.first);
 #endif
-						if(event_parse_rule(str, tmp_rules, 0, 0) == 0) {
+						if(event_parse_rule(str, tmp_rules, 0, 0) == 1) {
 							if(tmp_rules->status == 1) {
 								logprintf(LOG_INFO, "executed rule: %s", tmp_rules->name);
 							}
