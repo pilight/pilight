@@ -195,6 +195,11 @@ static int plua_print(lua_State* L) {
 					CuAssertIntEquals(gtc, 1, lua_toboolean(L, -1));
 					run++;
 				break;
+				case 35:
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 1, lua_tonumber(L, -1));
+					run++;
+				break;
 			}
 		} break;
 		case 1: {
@@ -409,6 +414,20 @@ static void test_lua_c_metatable(CuTest *tc) {
 		print(data['c']); \
 	"));
 
+	CuAssertIntEquals(gtc, 0, luaL_dostring(state->L, " \
+		local thread = pilight.async.thread(); \
+		local data = thread.getUserdata(); \
+		local z = pilight.table(); \
+		z['a'] = pilight.table(); \
+		z['a']['b'] = 1; \
+		print(z['a']['b']); \
+		thread.setUserdata(z['a']());\
+		print(data['b']); \
+	"));
+
+	/*
+	 * Test for invalid (boolean) index
+	 */
 	CuAssertIntEquals(gtc, 1, luaL_dostring(state->L, " \
 		local z = pilight.table(); \
 		z[false] = 1; \
@@ -423,12 +442,13 @@ static void test_lua_c_metatable(CuTest *tc) {
 		local thread1 = pilight.async.thread(); \
 		thread.setUserdata(thread1.getUserdata()()); \
 	"));
+
 	uv_mutex_unlock(&state->lock);
 
 	plua_pause_coverage(0);
 	plua_gc();
 
-	CuAssertIntEquals(tc, 35, run);
+	CuAssertIntEquals(tc, 36, run);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -461,7 +481,7 @@ static void test_c_lua_metatable(CuTest *tc) {
 		luaL_loadstring(state->L, " \
 			print(_table['a']);\
 			print(_table['b']);\
-			");
+		");
 
 		plua_metatable_push(state->L, table);
 		lua_setglobal(state->L, "_table");
@@ -478,7 +498,7 @@ static void test_c_lua_metatable(CuTest *tc) {
 		luaL_loadstring(state->L, " \
 			print(_table[1]);\
 			print(_table[2]);\
-			");
+		");
 
 		plua_metatable_push(state->L, table);
 		lua_setglobal(state->L, "_table");
@@ -495,7 +515,7 @@ static void test_c_lua_metatable(CuTest *tc) {
 		luaL_loadstring(state->L, " \
 			print(_table['a']);\
 			print(_table['b']);\
-			");
+		");
 
 		plua_metatable_push(state->L, table);
 		lua_setglobal(state->L, "_table");
@@ -519,7 +539,7 @@ static void test_c_lua_metatable(CuTest *tc) {
 			print(_table['a'][2]['c'][1]['e']);\
 			print(_table['a'][2]['c'][2]['e']);\
 			print(_table['b']);\
-			");
+		");
 
 		plua_metatable_push(state->L, table);
 		lua_setglobal(state->L, "_table");

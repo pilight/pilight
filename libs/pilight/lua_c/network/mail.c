@@ -27,12 +27,11 @@
 
 #include "../../core/log.h"
 #include "../../core/mail.h"
+#include "../table.h"
 #include "../network.h"
 
 typedef struct lua_mail_t {
-	struct plua_metatable_t *table;
-	struct plua_module_t *module;
-	lua_State *L;
+	PLUA_INTERFACE_FIELDS
 
 	struct mail_t mail;
 
@@ -51,7 +50,6 @@ static void plua_network_mail_gc(void *ptr);
 
 static int plua_network_mail_set_data(lua_State *L) {
 	struct lua_mail_t *mail = (void *)lua_topointer(L, lua_upvalueindex(1));
-	struct plua_metatable_t *cpy = NULL;
 
 	if(lua_gettop(L) != 1) {
 		luaL_error(L, "mail.setData requires 1 argument, %d given", lua_gettop(L));
@@ -71,9 +69,14 @@ static int plua_network_mail_set_data(lua_State *L) {
 		1, buf);
 
 	if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
-		cpy = (void *)lua_topointer(L, -1);
-		lua_remove(L, -1);
-		plua_metatable_clone(&cpy, &mail->table);
+		if(mail->table != (void *)lua_topointer(L, -1)) {
+			plua_metatable_free(mail->table);
+		}
+		mail->table = (void *)lua_topointer(L, -1);
+
+		if(mail->table->ref != NULL) {
+			uv_sem_post(mail->table->ref);
+		}
 
 		plua_ret_true(L);
 
@@ -109,7 +112,7 @@ static int plua_network_mail_get_data(lua_State *L) {
 		return 0;
 	}
 
-	plua_metatable_push(L, mail->table);
+	plua_metatable__push(L, (struct plua_interface_t *)mail);
 
 	assert(lua_gettop(L) == 1);
 
@@ -416,20 +419,7 @@ static int plua_network_mail_set_callback(lua_State *L) {
 	lua_remove(L, -1);
 
 	p = name;
-	switch(mail->module->type) {
-		case UNITTEST: {
-			sprintf(p, "unittest.%s", mail->module->name);
-		} break;
-		case FUNCTION: {
-			sprintf(p, "function.%s", mail->module->name);
-		} break;
-		case OPERATOR: {
-			sprintf(p, "operator.%s", mail->module->name);
-		} break;
-		case ACTION: {
-			sprintf(p, "action.%s", mail->module->name);
-		} break;
-	}
+	plua_namespace(mail->module, p);
 
 	lua_getglobal(L, name);
 	if(lua_type(L, -1) == LUA_TNIL) {
@@ -501,20 +491,7 @@ static void plua_network_mail_callback(int status, struct mail_t *mail) {
 
 	logprintf(LOG_DEBUG, "lua mail on state #%d", state->idx);
 
-	switch(state->module->type) {
-		case UNITTEST: {
-			sprintf(p, "unittest.%s", state->module->name);
-		} break;
-		case FUNCTION: {
-			sprintf(p, "function.%s", state->module->name);
-		} break;
-		case OPERATOR: {
-			sprintf(p, "operator.%s", state->module->name);
-		} break;
-		case ACTION: {
-			sprintf(p, "action.%s", state->module->name);
-		} break;
-	}
+	plua_namespace(state->module, p);
 
 	lua_getglobal(state->L, name);
 	if(lua_type(state->L, -1) == LUA_TNIL) {
@@ -1049,10 +1026,7 @@ int plua_network_mail(struct lua_State *L) {
 	}
 	memset(lua_mail, '\0', sizeof(struct lua_mail_t));
 
-	if((lua_mail->table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-	memset(lua_mail->table, 0, sizeof(struct plua_metatable_t));
+	plua_metatable_init(&lua_mail->table);
 
 	lua_mail->module = state->module;
 	lua_mail->L = L;
