@@ -91,8 +91,8 @@ static void *listener(int reason, void *param, void *userdata) {
 	char *hardware = NULL;
 	double length = 0.0;
 	double pulse = 0.0;
-	int buffer[1024];
-	memset(&buffer, 0, 1024*sizeof(int));
+	int buffer[WIRINGX_BUFFER];
+	memset(&buffer, 0, WIRINGX_BUFFER*sizeof(int));
 
 	memset(&nr, 0, 255);
 
@@ -105,6 +105,7 @@ static void *listener(int reason, void *param, void *userdata) {
 		plua_metatable_get_number(table, nr, &pulse);
 		buffer[i] = (int)pulse;
 	}
+
 	if((int)length > 0) {
 		for(i=0;i<(int)length;i++) {
 			if(linefeed == 1) {
@@ -307,7 +308,7 @@ int main(int argc, char **argv) {
 	plua_metatable_set_number(table, "registry.hardware.RF433.mingaplen", 0);
 	plua_metatable_set_number(table, "registry.hardware.RF433.maxgaplen", 99999);
 	plua_metatable_set_number(table, "registry.hardware.RF433.minrawlen", 0);
-	plua_metatable_set_number(table, "registry.hardware.RF433.maxrawlen", 1024);
+	plua_metatable_set_number(table, "registry.hardware.RF433.maxrawlen", 4096);
 
 	if(config_hardware_run() == -1) {
 		logprintf(LOG_NOTICE, "there are no hardware modules configured");

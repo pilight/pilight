@@ -59,38 +59,37 @@ function M.callback(obj, nr, pulses)
 	data = obj.getUserdata();
 	data['hardware'] = '433gpio';
 
-	if data['length'] == nil then
-		data['length'] = 0;
-		length = 0;
-	end
 	if data['pulses'] == nil then
 		data['pulses'] = {};
 	end
+
+	length = #data['pulses'];
+
 	for i = 1, nr - 1, 1 do
 		pulse = pulses[i];
-		data['length'] = data['length'] + 1;
-		length = data['length'];
+		length = length + 1;
+
 		data['pulses'][length] = pulse;
-		if length > 512 then
+
+		if length > maxrawlen then
 			data['pulses'] = {};
-			data['length'] = 0;
 			length = 0;
 		end
 		if pulse > mingaplen then
 			if length >= minrawlen and
 				length <= maxrawlen and
 				((length+1 >= nr and minrawlen == 0) or (minrawlen > 0)) then
+
+				data['length'] = length;
 				local event = pilight.async.event();
 				event.register(pilight.reason.RECEIVED_OOK);
-				event.trigger(data());
+				event.trigger(getmetatable(data)());
 
 				data['pulses'] = {};
-				data['length'] = 0;
 				length = 0;
 			end
 			if length+1 >= nr then
 				data['pulses'] = {};
-				data['length'] = 0;
 				length = 0;
 			end
 		end

@@ -48,6 +48,7 @@
 
 #define MAX_CLIENTS							30
 #define BUFFER_SIZE							1025
+#define WIRINGX_BUFFER					4096
 #define MEMBUFFER								128
 #define EOSS										"\n\n" // End Of Socket Stream
 

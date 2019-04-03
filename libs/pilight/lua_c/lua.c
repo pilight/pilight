@@ -72,6 +72,7 @@ static int plua_metatable_ipairs(lua_State *L, struct plua_metatable_t *node);
 static int plua_metatable_next(lua_State *L, struct plua_metatable_t *node);
 static int plua_metatable_call(lua_State *L, struct plua_metatable_t *node);
 static int plua_metatable_newindex(lua_State *L, struct plua_metatable_t *node);
+static int plua_metatable_metatable(lua_State *L, struct plua_metatable_t *node);
 static int plua_metatable__index(lua_State *L);
 static int plua_metatable__gc(lua_State *L);
 static int plua_metatable__pairs(lua_State *L);
@@ -79,6 +80,7 @@ static int plua_metatable__ipairs(lua_State *L);
 static int plua_metatable__next(lua_State *L);
 static int plua_metatable__call(lua_State *L);
 static int plua_metatable__newindex(lua_State *L);
+static int plua_metatable__metatable(lua_State *L);
 static int plua_metatable___index(lua_State *L);
 static int plua_metatable___gc(lua_State *L);
 static int plua_metatable___pairs(lua_State *L);
@@ -86,6 +88,7 @@ static int plua_metatable___ipairs(lua_State *L);
 static int plua_metatable___next(lua_State *L);
 static int plua_metatable___call(lua_State *L);
 static int plua_metatable___newindex(lua_State *L);
+static int plua_metatable___metatable(lua_State *L);
 
 /* LCOV_EXCL_START */
 void plua_stack_dump(lua_State *L) {
@@ -314,6 +317,11 @@ void plua_metatable__push(lua_State *L, struct plua_interface_t *table) {
 	lua_pushcclosure(L, plua_metatable___call, 1);
 	lua_settable(L, -3);
 
+	lua_pushstring(L, "__metatable");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable___metatable, 1);
+	lua_settable(L, -3);
+
 	lua_setmetatable(L, -2);
 }
 
@@ -360,6 +368,11 @@ void plua_metatable_push(lua_State *L, struct plua_metatable_t *table) {
 	lua_pushstring(L, "__call");
 	lua_pushlightuserdata(L, table);
 	lua_pushcclosure(L, plua_metatable__call, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "__metatable");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable__metatable, 1);
 	lua_settable(L, -3);
 
 	lua_setmetatable(L, -2);
@@ -464,6 +477,32 @@ void plua_metatable_clone(struct plua_metatable_t **src, struct plua_metatable_t
 
 	uv_mutex_unlock(&(*dst)->lock);
 	uv_mutex_unlock(&a->lock);
+}
+
+static int plua_metatable_metatable(lua_State *L, struct plua_metatable_t *node) {
+	if(node == NULL) {
+		logprintf(LOG_ERR, "internal error: table object not passed");
+		return 0;
+	}
+
+	struct plua_metatable_t *tmp = NULL;
+	plua_metatable_clone(&node, &tmp);
+	lua_pushlightuserdata(L, tmp);
+
+	return 1;
+}
+
+static int plua_metatable__metatable(lua_State *L) {
+	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	return plua_metatable_metatable(L, node);
+}
+
+static int plua_metatable___metatable(lua_State *L) {
+	struct plua_interface_t *interface = (void *)lua_topointer(L, lua_upvalueindex(1));
+	struct plua_metatable_t *node = interface->table;
+
+	return plua_metatable_metatable(L, node);
 }
 
 static int plua_metatable_next(lua_State *L, struct plua_metatable_t *node) {

@@ -45,7 +45,7 @@ typedef struct lua_wiringx_gpio_t {
 	} timestamp;
 
 	struct {
-		int rbuffer[2][1024];
+		int rbuffer[2][WIRINGX_BUFFER];
 		int idx;
 		int rptr;
 	} data;
@@ -504,7 +504,7 @@ static void plua_wiringx_poll_cb(uv_poll_t *req, int status, int events) {
 		int duration = (int)((int)data->timestamp.second-(int)data->timestamp.first);
 		data->data.rbuffer[data->data.idx][data->data.rptr++] = duration;
 
-		if(data->data.rptr > 1023) {
+		if(data->data.rptr > (WIRINGX_BUFFER-1)) {
 			logprintf(LOG_NOTICE, "433gpio pulse buffer full");
 			data->data.rptr = 0;
 		}
