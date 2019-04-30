@@ -770,7 +770,7 @@ static struct tests_t get_tests[] = {
 		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		0, UV_RUN_DEFAULT,
 		0, &updates1[1],
-		{ &receives[1], &receives[0] },
+		{ &receives[0], &receives[1] },
 		{ 2, 0 }
 	},
 	{
@@ -786,7 +786,7 @@ static struct tests_t get_tests[] = {
 		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		0, UV_RUN_DEFAULT,
 		0, &updates1[1],
-		{ &receives[1], &receives[0] },
+		{ &receives[0], &receives[1] },
 		{ 2, 0 }
 	},
 	{

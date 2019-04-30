@@ -36,6 +36,11 @@ typedef struct lua_thread_t {
 	uv_work_t *work_req;
 } lua_thread_t;
 
+typedef struct lua_thread_list_t {
+	struct lua_thread_t *thread;
+	struct lua_thread_list_t *next;
+} lua_thread_list_t;
+
 typedef struct lua_timer_t {
 	PLUA_INTERFACE_FIELDS
 
@@ -55,6 +60,11 @@ typedef struct lua_event_t {
 	} reasons[REASON_END+10000];
 	char *callback;
 } lua_event_t;
+
+static uv_mutex_t thread_lock;
+static int async_init = 0;
+static uv_async_t *async_thread_req = NULL;
+static struct lua_thread_list_t *lua_thread_list = NULL;
 
 static void timer_callback(uv_timer_t *req);
 static void thread_callback(uv_work_t *req);
@@ -79,6 +89,9 @@ static void thread_free(uv_work_t *req, int status) {
 }
 
 static int plua_async_thread_trigger(lua_State *L) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
 	struct lua_thread_t *thread = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
@@ -102,10 +115,18 @@ static int plua_async_thread_trigger(lua_State *L) {
 		return 0;
 	}
 
-	if(uv_queue_work(uv_default_loop(), thread->work_req, "lua thread", thread_callback, thread_free) < 0) {
-		plua_ret_false(L);
-		return 0;
-	}
+	uv_mutex_lock(&thread_lock);
+
+	struct lua_thread_list_t *node = MALLOC(sizeof(struct lua_thread_list_t));
+	node->thread = thread;
+
+	node->next = lua_thread_list;
+	lua_thread_list = node;
+
+	uv_async_send(async_thread_req);
+
+	uv_mutex_unlock(&thread_lock);
+
 	plua_gc_unreg(L, thread);
 
 	plua_ret_true(L);
@@ -125,6 +146,20 @@ static void plua_async_thread_gc(void *ptr) {
 		FREE(lua_thread->callback);
 	}
 	FREE(lua_thread);
+}
+
+static void plua_async_thread_list_gc(void *ptr) {
+	uv_mutex_lock(&thread_lock);
+	struct lua_thread_list_t *node = NULL;
+	while(lua_thread_list) {
+		node = lua_thread_list;
+		lua_thread_list = lua_thread_list->next;
+		plua_async_thread_gc(node->thread);
+		FREE(node);
+	}
+	uv_mutex_unlock(&thread_lock);
+
+	async_init = 0;
 }
 
 static int plua_async_thread_set_data(lua_State *L) {
@@ -281,6 +316,28 @@ static void plua_async_thread_object(lua_State *L, struct lua_thread_t *thread) 
 	lua_settable(L, -3);
 }
 
+static void plua_async_thread_loop(uv_async_t *handle) {
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
+
+	uv_mutex_lock(&thread_lock);
+
+	struct lua_thread_list_t *node = NULL;
+	node = lua_thread_list;
+
+	if(node != NULL) {
+		uv_queue_work(uv_default_loop(), node->thread->work_req, "lua thread", thread_callback, thread_free);
+
+		lua_thread_list = lua_thread_list->next;
+		FREE(node);
+	}
+
+	if(lua_thread_list != NULL) {
+		uv_async_send(async_thread_req);
+	}
+	uv_mutex_unlock(&thread_lock);
+}
+
 static void thread_callback(uv_work_t *req) {
 	struct lua_thread_t *thread = req->data;
 	char name[255], *p = name;
@@ -367,6 +424,16 @@ int plua_async_thread(struct lua_State *L) {
 	plua_async_thread_object(L, lua_thread);
 
 	plua_gc_reg(L, lua_thread, plua_async_thread_gc);
+
+	if(async_init == 0) {
+		async_init = 1;
+		uv_mutex_init(&thread_lock);
+		if((async_thread_req = MALLOC(sizeof(uv_async_t))) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		uv_async_init(uv_default_loop(), async_thread_req, plua_async_thread_loop);
+		plua_gc_reg(NULL, NULL, plua_async_thread_list_gc);
+	}
 
 	assert(lua_gettop(L) == 1);
 
@@ -545,26 +612,7 @@ static int plua_async_timer_set_callback(lua_State *L) {
 	}
 
 	p = name;
-	switch(timer->module->type) {
-		case UNITTEST: {
-			sprintf(p, "unittest.%s", timer->module->name);
-		} break;
-		case FUNCTION: {
-			sprintf(p, "function.%s", timer->module->name);
-		} break;
-		case OPERATOR: {
-			sprintf(p, "operator.%s", timer->module->name);
-		} break;
-		case ACTION: {
-			sprintf(p, "action.%s", timer->module->name);
-		} break;
-		case STORAGE: {
-			sprintf(p, "storage.%s", timer->module->name);
-		} break;
-		case HARDWARE: {
-			sprintf(p, "hardware.%s", timer->module->name);
-		} break;
-	}
+	plua_namespace(timer->module, p);
 
 	lua_getglobal(L, name);
 	if(lua_type(L, -1) == LUA_TNIL) {
@@ -739,8 +787,8 @@ static void plua_async_timer_object(lua_State *L, struct lua_timer_t *timer) {
 
 static void timer_callback(uv_timer_t *req) {
 	struct lua_timer_t *timer = req->data;
-	char name[255], *p = name;
-	memset(name, '\0', 255);
+	char name[512], *p = name;
+	memset(name, '\0', 512);
 
 	/*
 	 * Only create a new state once the timer is triggered
@@ -750,26 +798,8 @@ static void timer_callback(uv_timer_t *req) {
 
 	logprintf(LOG_DEBUG, "lua timer on state #%d", state->idx);
 
-	switch(state->module->type) {
-		case UNITTEST: {
-			sprintf(p, "unittest.%s", state->module->name);
-		} break;
-		case FUNCTION: {
-			sprintf(p, "function.%s", state->module->name);
-		} break;
-		case OPERATOR: {
-			sprintf(p, "operator.%s", state->module->name);
-		} break;
-		case ACTION: {
-			sprintf(p, "action.%s", state->module->name);
-		} break;
-		case STORAGE: {
-			sprintf(p, "storage.%s", state->module->name);
-		} break;
-		case HARDWARE: {
-			sprintf(p, "hardware.%s", state->module->name);
-		} break;
-	}
+	p = name;
+	plua_namespace(state->module, p);
 
 	lua_getglobal(state->L, name);
 	if(lua_type(state->L, -1) == LUA_TNIL) {
@@ -889,8 +919,8 @@ static int plua_async_event_user_gc(struct lua_State *L) {
 
 void *plua_async_event_callback(int reason, void *param, void *userdata) {
 	struct lua_event_t *event = userdata;
-	char name[255], *p = name;
-	memset(name, '\0', 255);
+	char name[512], *p = name;
+	memset(name, '\0', 512);
 
 	if(event->callback == NULL){
 		return NULL;
@@ -904,26 +934,8 @@ void *plua_async_event_callback(int reason, void *param, void *userdata) {
 
 	logprintf(LOG_DEBUG, "lua async on state #%d", state->idx);
 
-	switch(state->module->type) {
-		case UNITTEST: {
-			sprintf(p, "unittest.%s", state->module->name);
-		} break;
-		case FUNCTION: {
-			sprintf(p, "function.%s", state->module->name);
-		} break;
-		case OPERATOR: {
-			sprintf(p, "operator.%s", state->module->name);
-		} break;
-		case ACTION: {
-			sprintf(p, "action.%s", state->module->name);
-		} break;
-		case STORAGE: {
-			sprintf(p, "storage.%s", state->module->name);
-		} break;
-		case HARDWARE: {
-			sprintf(p, "hardware.%s", state->module->name);
-		} break;
-	}
+	p = name;
+	plua_namespace(state->module, p);
 
 	lua_getglobal(state->L, name);
 	if(lua_type(state->L, -1) == LUA_TNIL) {
@@ -1160,26 +1172,7 @@ static int plua_async_event_set_callback(lua_State *L) {
 	}
 
 	p = name;
-	switch(event->module->type) {
-		case UNITTEST: {
-			sprintf(p, "unittest.%s", event->module->name);
-		} break;
-		case FUNCTION: {
-			sprintf(p, "function.%s", event->module->name);
-		} break;
-		case OPERATOR: {
-			sprintf(p, "operator.%s", event->module->name);
-		} break;
-		case ACTION: {
-			sprintf(p, "action.%s", event->module->name);
-		} break;
-		case STORAGE: {
-			sprintf(p, "storage.%s", event->module->name);
-		} break;
-		case HARDWARE: {
-			sprintf(p, "hardware.%s", event->module->name);
-		} break;
-	}
+	plua_namespace(event->module, p);
 
 	lua_getglobal(L, name);
 	if(lua_type(L, -1) == LUA_TNIL) {

@@ -15,6 +15,7 @@
 #include <time.h>
 #include <math.h>
 #include <string.h>
+#include <assert.h>
 #include <ctype.h>
 #ifndef _WIN32
 	#ifdef __mips__
@@ -105,13 +106,24 @@ typedef enum {
 	TACTION = 12
 } token_types;
 
+struct rule_list_t {
+	int ptr;
+	int nr;
+	int size;
+	struct rules_t **rules;
+} rule_list_t;
+
 static unsigned short loop = 1;
 static char *dummy = "a";
 static char true_[2];
 static char false_[2];
 static char dot_[2];
 
-static int running = 0;
+static uv_mutex_t event_lock;
+static uv_async_t *async_req = NULL;
+static struct rule_list_t *list = NULL;
+
+// static int running = 0;
 
 static int get_precedence(char *symbol) {
 	struct plua_module_t *modules = plua_get_modules();
@@ -215,13 +227,19 @@ void events_tree_gc(struct tree_t *tree) {
 int events_gc(void) {
 	loop = 0;
 
-	while(running == 1) {
-#ifdef _WIN32
-		SleepEx(10, TRUE);
-#else
-		usleep(10);
-#endif
+	uv_mutex_lock(&event_lock);
+	int i = 0;
+	if(list != NULL) {
+		for(i=0;i<list->nr;i++) {
+			if(list->rules[i]->jtrigger != NULL) {
+				json_delete(list->rules[i]->jtrigger);
+				list->rules[i]->jtrigger = NULL;
+			}
+		}
+		FREE(list->rules);
+		FREE(list);
 	}
+	uv_mutex_unlock(&event_lock);
 
 	event_operator_gc();
 	event_action_gc();
@@ -1913,22 +1931,18 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 	return -1;
 }
 
-struct rule_list_t {
-	int ptr;
-	int nr;
-	int size;
-	struct rules_t **rules;
-} rule_list_t;
+// static void fib_free(uv_work_t *req, int status) {
+	// FREE(req);
+// }
 
-static void fib_free(uv_work_t *req, int status) {
-	FREE(req);
-}
+static void events_iterate(uv_async_t *handle) {
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
-static void events_iterate(uv_work_t *req) {
-	running = 1;
-	struct rule_list_t *list = req->data;
 	struct rules_t *tmp_rules = NULL;
 	char *str = NULL;
+
+	uv_mutex_lock(&event_lock);
 
 	tmp_rules = list->rules[list->ptr++];
 
@@ -1955,16 +1969,7 @@ static void events_iterate(uv_work_t *req) {
 
 	tmp_rules->status = 0;
 	if(list->ptr < list->nr) {
-		uv_work_t *tp_work_req = MALLOC(sizeof(uv_work_t));
-		if(tp_work_req == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
-		tp_work_req->data = list;
-		if(uv_queue_work(uv_default_loop(), tp_work_req, "rules loop", events_iterate, fib_free) < 0) {
-			/*
-			 * FIXME
-			 */
-		}
+		uv_async_send(async_req);
 	} else {
 		int i = 0;
 		for(i=0;i<list->nr;i++) {
@@ -1976,18 +1981,14 @@ static void events_iterate(uv_work_t *req) {
 		FREE(list->rules);
 		FREE(list);
 	}
-	running = 0;
-	return;
+	uv_mutex_unlock(&event_lock);
 }
 
 void *events_loop(int reason, void *param, void *userdata) {
 	struct rules_t *tmp_rules = NULL;
-	struct rule_list_t *list = NULL;
 	struct reason_config_update_t *data1 = NULL;
 	struct reason_code_received_t *data2 = NULL;
 	int i = 0, x = 0, match = 0;
-
-	running = 1;
 
 	switch(reason) {
 		case REASON_CODE_RECEIVED: {
@@ -2008,7 +2009,7 @@ void *events_loop(int reason, void *param, void *userdata) {
 		}
 	}
 
-
+	uv_mutex_lock(&event_lock);
 	if(rules_select_struct(ORIGIN_MASTER, NULL, &tmp_rules) == 0) {
 		while(tmp_rules) {
 			if(tmp_rules->active == 1) {
@@ -2063,32 +2064,21 @@ void *events_loop(int reason, void *param, void *userdata) {
 	}
 
 	if(list != NULL && list->nr > 0) {
-		uv_work_t *tp_work_req = MALLOC(sizeof(uv_work_t));
-		if(tp_work_req == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
-		tp_work_req->data = list;
-
-		if(uv_queue_work(uv_default_loop(), tp_work_req, "rules loop", events_iterate, fib_free) < 0) {
-			/*
-			 * FIXME
-			 */
-			// if(node[i]->done != NULL) {
-				// node[i]->done((void *)node[i]->userdata);
-			// }
-			// FREE(tpdata);
-			// FREE(node[i]->ref);
-		}
+		uv_async_send(async_req);
 	}
-
-	running = 0;
-
-	return (void *)NULL;
+	uv_mutex_unlock(&event_lock);
+	return NULL;
 }
 
 void event_init(void) {
 	eventpool_callback(REASON_CONFIG_UPDATED, events_loop, NULL);
 	eventpool_callback(REASON_CODE_RECEIVED, events_loop, NULL);
+
+	uv_mutex_init(&event_lock);
+	if((async_req = MALLOC(sizeof(uv_async_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	uv_async_init(uv_default_loop(), async_req, events_iterate);
 
 	event_operator_init();
 	event_action_init();
