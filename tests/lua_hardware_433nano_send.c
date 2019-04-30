@@ -227,7 +227,7 @@ void test_lua_hardware_433nano_send(CuTest *tc) {
 
 	eventpool_init(EVENTPOOL_THREADED);
 
-	CuAssertIntEquals(tc, 0, config_read("lua_hardware_433nano.json", CONFIG_SETTINGS));
+	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433nano.json", CONFIG_SETTINGS));
 
 	unlink("/tmp/usb0");
 	fd = open("/tmp/usb0", O_CREAT | O_RDWR, 0777);
@@ -249,9 +249,9 @@ void test_lua_hardware_433nano_send(CuTest *tc) {
 
 	hardware_init();
 
-	CuAssertIntEquals(tc, 0, config_read("lua_hardware_433nano.json", CONFIG_HARDWARE));
+	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433nano.json", CONFIG_HARDWARE));
 
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	state = plua_get_free_state();
 	CuAssertPtrNotNull(tc, state);

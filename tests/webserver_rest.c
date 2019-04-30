@@ -160,7 +160,9 @@ static void test_webserver(CuTest *tc) {
 	test_set_plua_path(tc, __FILE__, "webserver_rest.c");
 
 	config_init();
-	CuAssertIntEquals(tc, 0, config_read("webserver.json", CONFIG_SETTINGS | CONFIG_REGISTRY));
+	struct lua_state_t *state = plua_get_free_state();
+	CuAssertIntEquals(tc, 0, config_read(state->L, "webserver.json", CONFIG_SETTINGS | CONFIG_REGISTRY));
+	plua_clear_state(state);
 
 	ssl_init();
 
@@ -253,7 +255,9 @@ static void test_webserver_rest_registry(CuTest *tc) {
 	run = REGISTRY;
 	test_webserver(tc);
 
-	char *registry = config_callback_write("registry");
+	struct lua_state_t *state = plua_get_free_state();
+	char *registry = config_callback_write(state->L, "registry");
+	plua_clear_state(state);
 	if(registry != NULL) {
 		CuAssertStrEquals(tc, registry, "{\n\t\"bar\": \"foo\"\n}");
 		FREE(registry);

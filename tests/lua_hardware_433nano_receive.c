@@ -139,8 +139,8 @@ static void *listener(int reason, void *param, void *userdata) {
 	double length = 0.0;
 	double pulse = 0.0;
 	char nr[255], *p = nr;
-	int buffer[133];
-	memset(&buffer, 0, 133*sizeof(int));
+	int buffer[1024];
+	memset(&buffer, 0, 1024*sizeof(int));
 
 	memset(&nr, 0, 255);
 
@@ -153,6 +153,7 @@ static void *listener(int reason, void *param, void *userdata) {
 		buffer[i-1] = (int)pulse;
 	}
 
+	plua_metatable_free(table);
 	if(round >= 1) {
 		for(i=0;i<length-1;i++) {
 			if(!((int)(buffer[i]*0.75) <= pulses[i] && (int)(buffer[i]*1.25) >= pulses[i])) {
@@ -161,6 +162,7 @@ static void *listener(int reason, void *param, void *userdata) {
 		}
 		if(check == 1 || round > 5) {
 			run = 0;
+			usleep(100000);
 			eventpool_callback_remove(node);
 			uv_stop(uv_default_loop());
 			plua_gc();
@@ -174,10 +176,10 @@ static void *listener(int reason, void *param, void *userdata) {
 
 static void *thread(void *arg) {
 	int fd = *((int *)arg);
-	char *code = "c:010203020302030203020302030203020302030203020302030203020302030203020302030203020302030203020302030203030202030302020302030203030204;p:286,2825,210,1353,11302;r:1@";
+	char *code = "c:123232323232323232323232323232323232323232323232323322332232323324;p:286,2825,210,1353,11302;r:1@";
 	int l = strlen(code);
 	while(run) {
-		write(fd, code, l);
+		CuAssertIntEquals(gtc, l, write(fd, code, l));
 		usleep(10000);
 	}
 	return NULL;
@@ -283,7 +285,7 @@ void test_lua_hardware_433nano_receive(CuTest *tc) {
 	eventpool_init(EVENTPOOL_THREADED);
 	node = eventpool_callback(REASON_RECEIVED_PULSETRAIN+10000, listener, NULL);
 
-	CuAssertIntEquals(tc, 0, config_read("lua_hardware_433nano.json", CONFIG_SETTINGS));
+	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433nano.json", CONFIG_SETTINGS));
 
 	unlink("/tmp/usb0");
 	fd = open("/tmp/usb0", O_CREAT | O_RDWR, 0777);
@@ -305,9 +307,9 @@ void test_lua_hardware_433nano_receive(CuTest *tc) {
 
 	hardware_init();
 
-	CuAssertIntEquals(tc, 0, config_read("lua_hardware_433nano.json", CONFIG_HARDWARE));
+	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433nano.json", CONFIG_HARDWARE));
 
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	state = plua_get_free_state();
 	CuAssertPtrNotNull(tc, state);

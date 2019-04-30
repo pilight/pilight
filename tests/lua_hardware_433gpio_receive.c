@@ -161,10 +161,13 @@ static void *listener(int reason, void *param, void *userdata) {
 		if(check == 1 || round > 5) {
 			wiringXGC();
 			eventpool_callback_remove(node);
-			uv_poll_stop(poll_req);
+			if(!uv_is_closing((uv_handle_t *)poll_req)) {
+				uv_poll_stop(poll_req);
+			}
 			uv_stop(uv_default_loop());
 		}
 	}
+	plua_metatable_free(table);
 	check = 1;
 	round++;
 	return NULL;
@@ -176,7 +179,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 
 	if(events & UV_WRITABLE) {
 		duration = pulses[iter++];
-		write(fd, "a", 1);
+		CuAssertIntEquals(gtc, 1, write(fd, "a", 1));
 		usleep(duration);
 		if(pulses[iter] == 0) {
 			iter = 0;
@@ -264,8 +267,7 @@ void test_lua_hardware_433gpio_receive(CuTest *tc) {
 	eventpool_init(EVENTPOOL_THREADED);
 	node = eventpool_callback(REASON_RECEIVED_OOK+10000, listener, NULL);
 
-	CuAssertIntEquals(tc, 0, config_read("lua_hardware_433gpio.json", CONFIG_SETTINGS));
-
+	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433gpio.json", CONFIG_SETTINGS));
 	int r = 0;
 
 	pipe_req1 = MALLOC(sizeof(uv_pipe_t));
@@ -301,9 +303,9 @@ void test_lua_hardware_433gpio_receive(CuTest *tc) {
 
 	hardware_init();
 
-	CuAssertIntEquals(tc, 0, config_read("lua_hardware_433gpio.json", CONFIG_HARDWARE));
+	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433gpio.json", CONFIG_HARDWARE));
 
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	state = plua_get_free_state();
 	CuAssertPtrNotNull(tc, state);
@@ -327,7 +329,7 @@ void test_lua_hardware_433gpio_receive(CuTest *tc) {
 
 	lua_pop(L, -1);
 
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);

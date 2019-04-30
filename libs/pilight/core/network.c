@@ -527,9 +527,12 @@ int whitelist_check(char *ip) {
 	char wip[16] = {'\0'};
 
 	/* Check if there are any whitelisted ip address */
-	if(config_setting_get_string("whitelist", 0, &whitelist) != 0) {
+	struct lua_state_t *state = plua_get_free_state();
+	if(config_setting_get_string(state->L, "whitelist", 0, &whitelist) != 0) {
+		plua_clear_state(state);
 		return 0;
 	}
+	plua_clear_state(state);
 
 	if(strlen(whitelist) == 0) {
 		/*LCOV_EXCL_START*/

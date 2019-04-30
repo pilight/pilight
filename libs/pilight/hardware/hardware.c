@@ -70,7 +70,9 @@ void hardware_init(void) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
-	int ret = config_setting_get_string("hardware-root", 0, &hardware_root);
+	struct lua_state_t *state = plua_get_free_state();
+	int ret = config_setting_get_string(state->L, "hardware-root", 0, &hardware_root);
+	plua_clear_state(state);
 
 	if((d = opendir(hardware_root))) {
 		while((file = readdir(d)) != NULL) {

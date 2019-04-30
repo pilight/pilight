@@ -260,9 +260,13 @@ static int checkValues(struct JsonNode *code) {
 				int gpio = (int)itmp;
 				char *platform = GPIO_PLATFORM;
 
-				if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
+				struct lua_state_t *state = plua_get_free_state();
+				if(config_setting_get_string(state->L, "gpio-platform", 0, &platform) != 0) {
 					logprintf(LOG_ERR, "no gpio-platform configured");
+					plua_clear_state(state);
 					return NULL;
+				} else {
+					plua_clear_state(state);
 				}
 				if(strcmp(platform, "none") == 0) {
 					FREE(platform);

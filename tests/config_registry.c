@@ -68,24 +68,27 @@ void test_config_registry(CuTest *tc) {
 		fclose(f);
 
 		memset(&out, 0, sizeof(struct varcont_t));
-		CuAssertIntEquals(tc, 0, config_read("storage_core.json", CONFIG_REGISTRY));
+		struct lua_state_t *state = plua_get_free_state();
+		CuAssertIntEquals(tc, 0, config_read(state->L, "storage_core.json", CONFIG_REGISTRY));
+
 		if(registry[i].type_ == JSON_STRING) {
-			CuAssertIntEquals(tc, 0, config_registry_set_string(registry[i].key, registry[i].val.string_));
-			CuAssertIntEquals(tc, 0, config_registry_get(registry[i].key, &out));
+			CuAssertIntEquals(tc, 0, config_registry_set_string(state->L, registry[i].key, registry[i].val.string_));
+			CuAssertIntEquals(tc, 0, config_registry_get(state->L, registry[i].key, &out));
 			CuAssertIntEquals(tc, LUA_TSTRING, out.type_);
 			CuAssertStrEquals(tc, registry[i].val.string_, out.string_);
 			FREE(out.string_);
 		} else if(registry[i].type_ == JSON_NUMBER) {
-			CuAssertIntEquals(tc, 0, config_registry_set_number(registry[i].key, registry[i].val.number_));
-			CuAssertIntEquals(tc, 0, config_registry_get(registry[i].key, &out));
+			CuAssertIntEquals(tc, 0, config_registry_set_number(state->L, registry[i].key, registry[i].val.number_));
+			CuAssertIntEquals(tc, 0, config_registry_get(state->L, registry[i].key, &out));
 			CuAssertIntEquals(tc, LUA_TNUMBER, out.type_);
 			CuAssertDblEquals(tc, registry[i].val.number_, out.number_, EPSILON);
 		} else if(registry[i].type_ == JSON_BOOL) {
-			CuAssertIntEquals(tc, 0, config_registry_set_boolean(registry[i].key, registry[i].val.bool_));
-			CuAssertIntEquals(tc, 0, config_registry_get(registry[i].key, &out));
+			CuAssertIntEquals(tc, 0, config_registry_set_boolean(state->L, registry[i].key, registry[i].val.bool_));
+			CuAssertIntEquals(tc, 0, config_registry_get(state->L, registry[i].key, &out));
 			CuAssertIntEquals(tc, LUA_TBOOLEAN, out.type_);
 			CuAssertIntEquals(tc, registry[i].val.bool_, out.bool_);
 		}
+		plua_clear_state(state);
 
 		config_write();
 		config_gc();

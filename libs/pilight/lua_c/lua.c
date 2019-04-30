@@ -64,6 +64,7 @@ static int init = 0;
  * garbage collection on pilight shutdown.
  */
 static struct lua_state_t lua_state[NRLUASTATES+1];
+static uv_sem_t sem_used_states;
 static struct plua_module_t *modules = NULL;
 
 static int plua_metatable_index(lua_State *L, struct plua_metatable_t *node);
@@ -72,6 +73,7 @@ static int plua_metatable_ipairs(lua_State *L, struct plua_metatable_t *node);
 static int plua_metatable_next(lua_State *L, struct plua_metatable_t *node);
 static int plua_metatable_call(lua_State *L, struct plua_metatable_t *node);
 static int plua_metatable_newindex(lua_State *L, struct plua_metatable_t *node);
+static int plua_metatable_metatable(lua_State *L, struct plua_metatable_t *node);
 static int plua_metatable__index(lua_State *L);
 static int plua_metatable__gc(lua_State *L);
 static int plua_metatable__pairs(lua_State *L);
@@ -79,6 +81,7 @@ static int plua_metatable__ipairs(lua_State *L);
 static int plua_metatable__next(lua_State *L);
 static int plua_metatable__call(lua_State *L);
 static int plua_metatable__newindex(lua_State *L);
+static int plua_metatable__metatable(lua_State *L);
 static int plua_metatable___index(lua_State *L);
 static int plua_metatable___gc(lua_State *L);
 static int plua_metatable___pairs(lua_State *L);
@@ -86,6 +89,7 @@ static int plua_metatable___ipairs(lua_State *L);
 static int plua_metatable___next(lua_State *L);
 static int plua_metatable___call(lua_State *L);
 static int plua_metatable___newindex(lua_State *L);
+static int plua_metatable___metatable(lua_State *L);
 
 /* LCOV_EXCL_START */
 void plua_stack_dump(lua_State *L) {
@@ -194,6 +198,56 @@ int plua_namespace(struct plua_module_t *module, char *p) {
 	return -1;
 }
 
+struct lua_state_t *plua_get_module(lua_State *L, char *namespace, char *module) {
+	struct lua_state_t *state = NULL;
+	int match = 0;
+
+	state = plua_get_current_state(L);
+
+	if(state == NULL) {
+		return NULL;
+	}
+
+	if((L = state->L) == NULL) {
+		plua_clear_state(state);
+		return NULL;
+	}
+
+	char name[255], *p = name;
+	memset(name, '\0', 255);
+
+	sprintf(p, "%s.%s", namespace, module);
+	lua_getglobal(L, name);
+
+	if(lua_isnil(L, -1) != 0) {
+		lua_pop(L, -1);
+		assert(lua_gettop(L) == 0);
+		plua_clear_state(state);
+		return NULL;
+	}
+	if(lua_istable(L, -1) != 0) {
+		struct plua_module_t *tmp = plua_get_modules();
+		while(tmp) {
+			if(strcmp(module, tmp->name) == 0) {
+				state->module = tmp;
+				match = 1;
+				break;
+			}
+			tmp = tmp->next;
+		}
+		if(match == 1) {
+			return state;
+		}
+	}
+
+	lua_pop(L, -1);
+
+	assert(lua_gettop(L) == 0);
+	plua_clear_state(state);
+
+	return NULL;
+}
+
 static int plua_metatable_len(lua_State *L, struct plua_metatable_t *node) {
 	if(node == NULL) {
 		logprintf(LOG_ERR, "internal error: table object not passed");
@@ -263,6 +317,11 @@ void plua_metatable__push(lua_State *L, struct plua_interface_t *table) {
 	lua_pushcclosure(L, plua_metatable___call, 1);
 	lua_settable(L, -3);
 
+	lua_pushstring(L, "__metatable");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable___metatable, 1);
+	lua_settable(L, -3);
+
 	lua_setmetatable(L, -2);
 }
 
@@ -311,16 +370,47 @@ void plua_metatable_push(lua_State *L, struct plua_metatable_t *table) {
 	lua_pushcclosure(L, plua_metatable__call, 1);
 	lua_settable(L, -3);
 
+	lua_pushstring(L, "__metatable");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable__metatable, 1);
+	lua_settable(L, -3);
+
 	lua_setmetatable(L, -2);
+}
+
+static int plua_metatable_metatable(lua_State *L, struct plua_metatable_t *node) {
+	if(node == NULL) {
+		logprintf(LOG_ERR, "internal error: table object not passed");
+		return 0;
+	}
+
+	struct plua_metatable_t *tmp = NULL;
+	plua_metatable_clone(&node, &tmp);
+	lua_pushlightuserdata(L, tmp);
+
+	return 1;
+}
+
+static int plua_metatable__metatable(lua_State *L) {
+	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	return plua_metatable_metatable(L, node);
+}
+
+static int plua_metatable___metatable(lua_State *L) {
+	struct plua_interface_t *interface = (void *)lua_topointer(L, lua_upvalueindex(1));
+	struct plua_metatable_t *node = interface->table;
+
+	return plua_metatable_metatable(L, node);
 }
 
 void plua_metatable_free(struct plua_metatable_t *table) {
 	int x = 0, y = 0;
 
-
 	if(table->ref != NULL) {
 		y = uv_sem_trywait(table->ref);
 	}
+
 	if((table->ref == NULL) || (y == UV__EAGAIN)) {
 		for(x=0;x<table->nrvar;x++) {
 			if(table->table[x].val.type_ == LUA_TSTRING) {
@@ -889,12 +979,20 @@ static int plua_metatable___gc(lua_State *L){
 
 struct lua_state_t *plua_get_free_state(void) {
 	int i = 0;
-	for(i=0;i<NRLUASTATES;i++) {
-		if(uv_mutex_trylock(&lua_state[i].lock) == 0) {
-			return &lua_state[i];
+	int error = 0;
+
+	while(1) {
+		for(i=0;i<NRLUASTATES;i++) {
+			if(uv_mutex_trylock(&lua_state[i].lock) == 0) {
+				return &lua_state[i];
+			}
 		}
+		if(error == 0) {
+			error = 1;
+			logprintf(LOG_DEBUG, "waiting free lua state to become available");
+		}
+		uv_sem_wait(&sem_used_states);
 	}
-	logprintf(LOG_ERR, "no free lua states available");
 	return NULL;
 }
 
@@ -930,6 +1028,7 @@ void plua_clear_state(struct lua_state_t *state) {
 	}
 
 	uv_mutex_unlock(&state->lock);
+	uv_sem_post(&sem_used_states);
 }
 
 static int plua_get_table_string_by_key(struct lua_State *L, const char *key, const char **ret) {
@@ -1255,7 +1354,7 @@ static int plua_writer(lua_State *L, const void* p, size_t sz, void* ud) {
 void plua_module_load(char *file, int type) {
 	struct plua_module_t *module = MALLOC(sizeof(struct plua_module_t));
 	lua_State *L = lua_state[0].L;
-	char name[255] = { '\0' }, *p = name;
+	char name[512] = { '\0' }, *p = name;
 	int i = 0;
 	if(module == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -1547,6 +1646,8 @@ void plua_init(void) {
 	}
 	init = 1;
 
+	uv_sem_init(&sem_used_states, 0);
+
 	int i = 0;
 	for(i=0;i<NRLUASTATES+1;i++) {
 		memset(&lua_state[i], 0, sizeof(struct lua_state_t));
@@ -1568,10 +1669,11 @@ void plua_init(void) {
 	plua_override_global("pairs", luaB_pairs);
 	plua_override_global("ipairs", luaB_ipairs);
 	plua_override_global("next", luaB_next);
+
 	/*
 	 * Initialize global state garbage collector
 	 */
-	i++;
+	i--;
 	memset(&lua_state[i], 0, sizeof(struct lua_state_t));
 	uv_mutex_init(&lua_state[i].gc.lock);
 }
@@ -1588,8 +1690,8 @@ int plua_module_exists(char *module, int type) {
 		return 1;
 	}
 
-	char name[255], *p = name;
-	memset(name, '\0', 255);
+	char name[512] = { '\0' }, *p = name;
+	memset(name, '\0', 512);
 
 	struct plua_module_t mod;
 	struct plua_module_t *a = &mod;
@@ -1816,32 +1918,32 @@ int plua_gc(void) {
 		modules = modules->next;
 		FREE(tmp);
 	}
-	int i = 0, x = 0, free = 1;
-	while(free) {
-		free = 0;
-		for(i=0;i<NRLUASTATES+1;i++) {
-			if(lua_state[i].L != NULL) {
-				if(uv_mutex_trylock(&lua_state[i].lock) == 0) {
-					for(x=0;x<lua_state[i].gc.nr;x++) {
-						if(lua_state[i].gc.list[x]->free == 0) {
-							lua_state[i].gc.list[x]->callback(lua_state[i].gc.list[x]->ptr);
-						}
-						FREE(lua_state[i].gc.list[x]);
-					}
-					if(lua_state[i].gc.size > 0) {
-						FREE(lua_state[i].gc.list);
-					}
-					lua_state[i].gc.nr = 0;
-					lua_state[i].gc.size = 0;
 
+	int i = 0, x = 0, _free = 1;
+	while(_free) {
+		_free = 0;
+		for(i=0;i<NRLUASTATES+1;i++) {
+			if(uv_mutex_trylock(&lua_state[i].lock) == 0) {
+				for(x=0;x<lua_state[i].gc.nr;x++) {
+					if(lua_state[i].gc.list[x]->free == 0) {
+						lua_state[i].gc.list[x]->callback(lua_state[i].gc.list[x]->ptr);
+					}
+					FREE(lua_state[i].gc.list[x]);
+				}
+				if(lua_state[i].gc.size > 0) {
+					FREE(lua_state[i].gc.list);
+				}
+				lua_state[i].gc.nr = 0;
+				lua_state[i].gc.size = 0;
+
+				if(lua_state[i].L != NULL) {
 					lua_gc(lua_state[i].L, LUA_GCCOLLECT, 0);
 					lua_close(lua_state[i].L);
 					lua_state[i].L = NULL;
-
-					uv_mutex_unlock(&lua_state[i].lock);
-				} else {
-					free = 1;
 				}
+				uv_mutex_unlock(&lua_state[i].lock);
+			} else {
+				_free = 1;
 			}
 		}
 	}
@@ -1872,7 +1974,7 @@ int plua_flush_coverage(void) {
 
 		for(i=0;i<nrcoverage;i++) {
 			char resolved_path[PATH_MAX];
-			realpath(&coverage[i]->file[1], resolved_path);
+			(void)(realpath(&coverage[i]->file[1], resolved_path)+1);
 
 			fprintf(fp, "TN:\n");
 			fprintf(fp, "SF:%s\n", resolved_path);

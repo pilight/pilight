@@ -54,7 +54,10 @@ void test_config_read(CuTest *tc) {
 	fprintf(f, config, "");
 	fclose(f);
 
-	CuAssertIntEquals(tc, 0, config_read("storage_core.json", CONFIG_SETTINGS | CONFIG_REGISTRY));
+	struct lua_state_t *state = plua_get_free_state();
+	CuAssertIntEquals(tc, 0, config_read(state->L, "storage_core.json", CONFIG_SETTINGS | CONFIG_REGISTRY));
+	plua_clear_state(state);
+
 	config_write();
 	config_gc();
 	plua_gc();

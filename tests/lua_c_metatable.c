@@ -23,6 +23,16 @@ static CuTest *gtc = NULL;
 static int run = 0;
 static int test = 0;
 
+static void close_cb(uv_handle_t *handle) {
+	FREE(handle);
+}
+
+static void walk_cb(uv_handle_t *handle, void *arg) {
+	if(!uv_is_closing(handle)) {
+		uv_close(handle, close_cb);
+	}
+}
+
 static int plua_print(lua_State* L) {
 	switch(test) {
 		case 0: {
@@ -445,6 +455,14 @@ static void test_lua_c_metatable(CuTest *tc) {
 
 	uv_mutex_unlock(&state->lock);
 
+	uv_run(uv_default_loop(), UV_RUN_NOWAIT);
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_NOWAIT);
+
+	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+		uv_run(uv_default_loop(), UV_RUN_NOWAIT);
+	}
+
 	plua_pause_coverage(0);
 	plua_gc();
 
@@ -657,6 +675,14 @@ static void test_c_lua_metatable(CuTest *tc) {
 	}
 
 	uv_mutex_unlock(&state->lock);
+
+	uv_run(uv_default_loop(), UV_RUN_NOWAIT);
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_NOWAIT);
+
+	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+		uv_run(uv_default_loop(), UV_RUN_NOWAIT);
+	}
 
 	plua_pause_coverage(0);
 	plua_gc();

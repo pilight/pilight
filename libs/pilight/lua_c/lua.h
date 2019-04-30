@@ -69,6 +69,7 @@ typedef struct lua_state_t {
 		uv_mutex_t lock;
 	} gc;
 
+	uv_thread_t thread_id;
 } lua_state_t;
 
 #define PLUA_INTERFACE_FIELDS			\

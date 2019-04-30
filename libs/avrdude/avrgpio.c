@@ -23,20 +23,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <errno.h>
 #include <wiringx.h>
-
-#ifndef _WIN32
-#include <unistd.h>
-#endif
 
 #include "avrdude.h"
 #include "avr.h"
 #include "pindefs.h"
 #include "pgm.h"
 #include "avrbitbang.h"
-#include "../pilight/config/settings.h"
+#include "defines.h"
 #include "../pilight/core/log.h"
+#include "../pilight/config/settings.h"
 
 /*
  * GPIO user space helpers
@@ -149,14 +147,17 @@ static void gpio_close(PROGRAMMER *pgm) {
 
 void gpio_initpgm(PROGRAMMER *pgm)
 {
-  strcpy(pgm->type, "GPIO");
 #if defined(__arm__) || defined(__mips__)
+  strcpy(pgm->type, "GPIO");
 	char *platform = GPIO_PLATFORM;
-	
-	if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
+
+	struct lua_state_t *state = plua_get_free_state();
+	if(config_setting_get_string(state->L, "gpio-platform", 0, &platform) != 0) {
+		plua_clear_state(state);
 		logprintf(LOG_ERR, "no gpio-platform configured");
 		exit(EXIT_FAILURE);
 	}
+	plua_clear_state(state);
 	if(strcmp(platform, "none") == 0) {
 		FREE(platform);
 		logprintf(LOG_ERR, "no gpio-platform configured");
@@ -188,7 +189,7 @@ void gpio_initpgm(PROGRAMMER *pgm)
   pgm->highpulsepin   = gpio_highpulsepin;
   pgm->read_byte      = avr_read_byte_default;
   pgm->write_byte     = avr_write_byte_default;
-#else		
+#else
 	logprintf(LOG_WARNING, "gpio firmware flashing is not supported on this hardware");
 	exit(EXIT_FAILURE);
 #endif

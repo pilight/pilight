@@ -527,8 +527,10 @@ void arp_scan(void) {
 			data[nrdata]->interval = 10;
 			data[nrdata]->timeout = 3;
 
-			if(config_setting_get_number("arp-interval", 0, &itmp) == 0) { data[nrdata]->interval = itmp; };
-			if(config_setting_get_number("arp-timeout", 0, &itmp) == 0) { data[nrdata]->timeout = itmp; };
+			struct lua_state_t *state = plua_get_free_state();
+			if(config_setting_get_number(state->L, "arp-interval", 0, &itmp) == 0) { data[nrdata]->interval = itmp; };
+			if(config_setting_get_number(state->L, "arp-timeout", 0, &itmp) == 0) { data[nrdata]->timeout = itmp; };
+			plua_clear_state(state);
 
 			data[nrdata]->timer_req->data = data[nrdata];
 

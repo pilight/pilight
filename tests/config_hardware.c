@@ -80,7 +80,11 @@ void test_config_hardware(CuTest *tc) {
 
 	FREE(file);
 
-	CuAssertIntEquals(tc, 0, config_read("storage_core.json", CONFIG_SETTINGS));
+	{
+		struct lua_state_t *state = plua_get_free_state();
+		CuAssertIntEquals(tc, 0, config_read(state->L, "storage_core.json", CONFIG_SETTINGS));
+		plua_clear_state(state);
+	}
 
 	unlink("/tmp/usb0");
 	int fd = open("/tmp/usb0", O_CREAT | O_RDWR, 0777);
@@ -93,7 +97,11 @@ void test_config_hardware(CuTest *tc) {
 
 	hardware_init();
 
-	CuAssertIntEquals(tc, 0, config_read("storage_core.json", CONFIG_HARDWARE));
+	{
+		struct lua_state_t *state = plua_get_free_state();
+		CuAssertIntEquals(tc, 0, config_read(state->L, "storage_core.json", CONFIG_HARDWARE));
+		plua_clear_state(state);
+	}
 
 	{
 		struct plua_metatable_t *config = config_get_metatable();

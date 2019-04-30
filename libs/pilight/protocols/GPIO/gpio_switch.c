@@ -199,9 +199,13 @@ static int checkValues(struct JsonNode *jvalues) {
 #if defined(__arm__) || defined(__mips__) || defined(PILIGHT_UNITTEST)
 	struct JsonNode *jid = NULL;
 	char *platform = GPIO_PLATFORM;
-	if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
+	struct lua_state_t *state = plua_get_free_state();
+	if(config_setting_get_string(state->L, "gpio-platform", 0, &platform) != 0) {
 		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
+		plua_clear_state(state);
 		return -1;
+	} else {
+		plua_clear_state(state);
 	}
 	if(strcmp(platform, "none") == 0) {
 		FREE(platform);

@@ -97,58 +97,8 @@ int config_exists(char *module) {
 	return plua_module_exists(module, STORAGE);
 }
 
-struct lua_state_t *plua_get_module(char *namespace, char *module) {
-	struct lua_state_t *state = NULL;
-	struct lua_State *L = NULL;
-	int match = 0;
-
-	state = plua_get_free_state();
-
-	if(state == NULL) {
-		return NULL;
-	}
-
-	if((L = state->L) == NULL) {
-		plua_clear_state(state);
-		return NULL;
-	}
-
-	char name[255], *p = name;
-	memset(name, '\0', 255);
-
-	sprintf(p, "%s.%s", namespace, module);
-	lua_getglobal(L, name);
-	if(lua_isnil(L, -1) != 0) {
-		lua_pop(L, -1);
-		assert(lua_gettop(L) == 0);
-		plua_clear_state(state);
-		return NULL;
-	}
-	if(lua_istable(L, -1) != 0) {
-		struct plua_module_t *tmp = plua_get_modules();
-		while(tmp) {
-			if(strcmp(module, tmp->name) == 0) {
-				state->module = tmp;
-				match = 1;
-				break;
-			}
-			tmp = tmp->next;
-		}
-		if(match == 1) {
-			return state;
-		}
-	}
-
-	lua_pop(L, -1);
-
-	assert(lua_gettop(L) == 0);
-	plua_clear_state(state);
-
-	return NULL;
-}
-
-int config_callback_read(char *module, char *string) {
-	struct lua_state_t *state = plua_get_module("storage", module);
+int config_callback_read(lua_State *L, char *module, char *string) {
+	struct lua_state_t *state = plua_get_module(L, "storage", module);
 	int x = 0;
 
 	if(state == NULL) {
@@ -177,8 +127,8 @@ int config_callback_read(char *module, char *string) {
 	return x;
 }
 
-char *config_callback_write(char *module) {
-	struct lua_state_t *state = plua_get_module("storage", module);
+char *config_callback_write(lua_State *L, char *module) {
+	struct lua_state_t *state = plua_get_module(L, "storage", module);
 	char *out = NULL;
 	int x = 0;
 
@@ -212,27 +162,27 @@ char *config_callback_write(char *module) {
 	return out;
 }
 
-int config_read(char *str, unsigned short objects) {
+int config_read(lua_State *L, char *str, unsigned short objects) {
 	if((string = STRDUP(str)) == NULL) {
 		OUT_OF_MEMORY
 	}
 
 	if((objects & CONFIG_SETTINGS) == CONFIG_SETTINGS) {
-		if(config_callback_read("settings", string) != 1) {
+		if(config_callback_read(L, "settings", string) != 1) {
 			FREE(string);
 			return -1;
 		}
 	}
 
 	if((objects & CONFIG_HARDWARE) == CONFIG_HARDWARE) {
-		if(config_callback_read("hardware", string) != 1) {
+		if(config_callback_read(L, "hardware", string) != 1) {
 			FREE(string);
 			return -1;
 		}
 	}
 
 	if((objects & CONFIG_REGISTRY) == CONFIG_REGISTRY) {
-		if(config_callback_read("registry", string) != 1) {
+		if(config_callback_read(L, "registry", string) != 1) {
 			FREE(string);
 			return -1;
 		}
@@ -267,15 +217,22 @@ struct plua_metatable_t *config_get_metatable(void) {
 }
 
 char *config_write(void) {
-	char *settings = config_callback_write("settings");
+	struct lua_state_t *state = plua_get_free_state();
+	char *settings = config_callback_write(state->L, "settings");
 	if(settings != NULL) {
 		FREE(settings);
 	}
 
-	char *registry = config_callback_write("registry");
+	char *hardware = config_callback_write(state->L, "hardware");
+	if(hardware != NULL) {
+		FREE(hardware);
+	}
+
+	char *registry = config_callback_write(state->L, "settings");
 	if(registry != NULL) {
 		FREE(registry);
 	}
+	plua_clear_state(state);
 
 	return 0;
 }

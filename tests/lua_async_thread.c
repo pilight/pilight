@@ -179,6 +179,14 @@ static void test_lua_async_thread_missing_parameters(CuTest *tc) {
 
 	uv_mutex_unlock(&state->lock);
 
+	uv_run(uv_default_loop(), UV_RUN_NOWAIT);
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_NOWAIT);
+
+	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+		uv_run(uv_default_loop(), UV_RUN_NOWAIT);
+	}
+
 	plua_pause_coverage(0);
 	plua_gc();
 	CuAssertIntEquals(tc, 0, run);

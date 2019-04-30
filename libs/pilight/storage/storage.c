@@ -2187,12 +2187,14 @@ int storage_read(char *file, unsigned long objects) {
 		return -1;
 	}
 
+	struct lua_state_t *state = plua_get_free_state();
 	/*
 	 * We have to validate the settings first to know the gpio-platform setting.
 	 */
 	if(((objects & CONFIG_SETTINGS) == CONFIG_SETTINGS || (objects & CONFIG_ALL) == CONFIG_ALL) &&
 		storage->settings_select(ORIGIN_CONFIG, NULL, &json) == 0) {
-		if(config_read(file, CONFIG_SETTINGS) != 0) {
+		if(config_read(state->L, file, CONFIG_SETTINGS) != 0) {
+			plua_clear_state(state);
 			return -1;
 		}
 		// json_clone(json, &jsettings_cache);
@@ -2205,6 +2207,7 @@ int storage_read(char *file, unsigned long objects) {
 		storage->devices_select(ORIGIN_CONFIG, NULL, &json) == 0) {
 		json_clone(json, &jdevices_cache);
 		if(storage_devices_validate(jdevices_cache) == -1) {
+			plua_clear_state(state);
 			return -1;
 		}
 	}
@@ -2213,16 +2216,18 @@ int storage_read(char *file, unsigned long objects) {
 		storage->gui_select(ORIGIN_CONFIG, NULL, &json) == 0) {
 		json_clone(json, &jgui_cache);
 		if(storage_gui_validate(jgui_cache) == -1) {
+			plua_clear_state(state);
 			return -1;
 		}
 	}
 
 	if(((objects & CONFIG_HARDWARE) == CONFIG_HARDWARE || (objects & CONFIG_ALL) == CONFIG_ALL) &&
-		storage->hardware_select(ORIGIN_CONFIG, NULL, &json) == 0) {
-		json_clone(json, &jhardware_cache);
-		if(storage_hardware_validate(jhardware_cache) == -1) {
+		storage->settings_select(CONFIG_HARDWARE, NULL, &json) == 0) {
+		if(config_read(state->L, file, CONFIG_HARDWARE) != 0) {
+			plua_clear_state(state);
 			return -1;
 		}
+		// json_clone(json, &jregistry_cache);
 	}
 
 #ifdef EVENTS
@@ -2230,6 +2235,7 @@ int storage_read(char *file, unsigned long objects) {
 		storage->rules_select(ORIGIN_CONFIG, NULL, &json) == 0) {
 		json_clone(json, &jrules_cache);
 		if(storage_rules_validate(jrules_cache) == -1) {
+			plua_clear_state(state);
 			return -1;
 		}
 	}
@@ -2237,13 +2243,15 @@ int storage_read(char *file, unsigned long objects) {
 
 	if(((objects & CONFIG_REGISTRY) == CONFIG_REGISTRY || (objects & CONFIG_ALL) == CONFIG_ALL) &&
 		storage->settings_select(CONFIG_REGISTRY, NULL, &json) == 0) {
-		if(config_read(file, CONFIG_REGISTRY) != 0) {
+		if(config_read(state->L, file, CONFIG_REGISTRY) != 0) {
+			plua_clear_state(state);
 			return -1;
 		}
 		// json_clone(json, &jregistry_cache);
 	}
 
 	storage->sync();
+	plua_clear_state(state);
 
 	return 0;
 }

@@ -837,7 +837,8 @@ void test_config_settings(CuTest *tc) {
 		fprintf(f, config, content);
 		fclose(f);
 
-		CuAssertIntEquals(tc, settings[i].status, config_read("storage_core.json", CONFIG_SETTINGS));
+		struct lua_state_t *state = plua_get_free_state();
+		CuAssertIntEquals(tc, settings[i].status, config_read(state->L, "storage_core.json", CONFIG_SETTINGS));
 
 		if(settings[i].status == 0) {
 			for(y=0;y<settings[i].nrpairs;y++) {
@@ -852,20 +853,20 @@ void test_config_settings(CuTest *tc) {
 						sprintf(check, "%s", settings[i].pairs[y].value);
 					}
 
-					CuAssertIntEquals(tc, settings[i].status, config_setting_get_string(settings[i].pairs[y].key, 0, &ret));
+					CuAssertIntEquals(tc, settings[i].status, config_setting_get_string(state->L, settings[i].pairs[y].key, 0, &ret));
 					CuAssertPtrNotNull(tc, ret);
 					CuAssertStrEquals(tc, check, ret);
 					FREE(ret);
 
-					CuAssertIntEquals(tc, -1, config_setting_get_number(settings[i].pairs[y].key, 0, &x));
+					CuAssertIntEquals(tc, -1, config_setting_get_number(state->L, settings[i].pairs[y].key, 0, &x));
 				} else if(settings[i].pairs[y].type == JSON_NUMBER) {
 					char *ret = NULL;
 					int x = 0;
 
-					CuAssertIntEquals(tc, settings[i].status, config_setting_get_number(settings[i].pairs[y].key, 0, &x));
+					CuAssertIntEquals(tc, settings[i].status, config_setting_get_number(state->L, settings[i].pairs[y].key, 0, &x));
 					CuAssertIntEquals(tc, atoi(settings[i].pairs[y].value), x);
 
-					CuAssertIntEquals(tc, -1, config_setting_get_string(settings[i].pairs[y].key, 0, &ret));
+					CuAssertIntEquals(tc, -1, config_setting_get_string(state->L, settings[i].pairs[y].key, 0, &ret));
 				} else if(settings[i].pairs[y].type == JSON_ARRAY) {
 					int el = 0;
 					struct JsonNode *jarray = json_decode(settings[i].pairs[y].value);
@@ -874,17 +875,17 @@ void test_config_settings(CuTest *tc) {
 						char *ret = NULL;
 						int x = 0;
 						if(jchild->tag == JSON_NUMBER) {
-							CuAssertIntEquals(tc, settings[i].status, config_setting_get_number(settings[i].pairs[y].key, 0, &x));
+							CuAssertIntEquals(tc, settings[i].status, config_setting_get_number(state->L, settings[i].pairs[y].key, 0, &x));
 							CuAssertIntEquals(tc, atoi(settings[i].pairs[y].value), x);
 
-							CuAssertIntEquals(tc, -1, config_setting_get_string(settings[i].pairs[y].key, 0, &ret));
+							CuAssertIntEquals(tc, -1, config_setting_get_string(state->L, settings[i].pairs[y].key, 0, &ret));
 						} else if(jchild->tag == JSON_STRING) {
-							CuAssertIntEquals(tc, settings[i].status, config_setting_get_string(settings[i].pairs[y].key, el, &ret));
+							CuAssertIntEquals(tc, settings[i].status, config_setting_get_string(state->L, settings[i].pairs[y].key, el, &ret));
 							CuAssertPtrNotNull(tc, ret);
 							CuAssertStrEquals(tc, jchild->string_, ret);
 							FREE(ret);
 
-							CuAssertIntEquals(tc, -1, config_setting_get_number(settings[i].pairs[y].key, el, &x));
+							CuAssertIntEquals(tc, -1, config_setting_get_number(state->L, settings[i].pairs[y].key, el, &x));
 						}
 						el++;
 					}
@@ -893,13 +894,15 @@ void test_config_settings(CuTest *tc) {
 						char *ret = NULL;
 						int x = 0;
 
-						CuAssertIntEquals(tc, -1, config_setting_get_string(settings[i].pairs[y].key, el, &ret));
-						CuAssertIntEquals(tc, -1, config_setting_get_number(settings[i].pairs[y].key, 0, &x));
+						CuAssertIntEquals(tc, -1, config_setting_get_string(state->L, settings[i].pairs[y].key, el, &ret));
+						CuAssertIntEquals(tc, -1, config_setting_get_number(state->L, settings[i].pairs[y].key, 0, &x));
 					}
 					json_delete(jarray);
 				}
 			}
 		}
+
+		plua_clear_state(state);
 
 		config_write();
 		config_gc();

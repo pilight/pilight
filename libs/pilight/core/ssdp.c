@@ -168,11 +168,13 @@ static int ssdp_create_header(char ***header) {
 	}
 
 	char *name = NULL;
-	if(config_setting_get_string("name", 0, &name) != 0) {
+	struct lua_state_t *state = plua_get_free_state();
+	if(config_setting_get_string(state->L, "name", 0, &name) != 0) {
 		if((name = STRDUP(hname)) == NULL) {
 			OUT_OF_MEMORY
 		}
 	}
+	plua_clear_state(state);
 
 	if((nrdevs = inetdevs(&devs)) > 0) {
 		for(x=0;x<nrdevs;x++) {

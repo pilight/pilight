@@ -10,14 +10,15 @@
 #define _CONFIG_H_
 
 #include "../core/json.h"
+#include "../lua_c/lua.h"
 
-struct lua_state_t *plua_get_module(char *namespace, char *module);
+struct lua_state_t *plua_get_module(lua_State *L, char *namespace, char *module);
 int config_callback_func(char *module, char *func, char *settings);
-char *config_callback_write(char *);
+char *config_callback_write(lua_State *L, char *);
 int config_root(char *path);
 void plua_pause_coverage(int status);
 void config_init(void);
-int config_read(char *file, unsigned short objects);
+int config_read(lua_State *L, char *str, unsigned short objects);
 char *config_write(void);
 struct plua_metatable_t *config_get_metatable(void);
 int config_exists(char *module);

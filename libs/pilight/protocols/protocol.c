@@ -94,13 +94,18 @@ void protocol_init(void) {
 
 	memset(pilight_commit, '\0', 3);
 
-	if(config_setting_get_string("protocol-root", 0, &protocol_root) != 0) {
+	struct lua_state_t *state = plua_get_free_state();
+	if(config_setting_get_string(state->L, "protocol-root", 0, &protocol_root) != 0) {
 		/* If no protocol root was set, use the default protocol root */
 		if((protocol_root = MALLOC(strlen(PROTOCOL_ROOT)+1)) == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(protocol_root, PROTOCOL_ROOT);
+		plua_clear_state(state);
+	} else {
+		plua_clear_state(state);
 	}
+
 	size_t len = strlen(protocol_root);
 	if(protocol_root[len-1] != '/') {
 		strcat(protocol_root, "/");

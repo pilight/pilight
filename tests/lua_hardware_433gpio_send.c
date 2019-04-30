@@ -182,7 +182,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 	if(events & UV_READABLE) {
 		uint8_t c = 0;
 
-		(void)read(fd, &c, 1);
+		CuAssertIntEquals(gtc, 1, read(fd, &c, 1));
 		lseek(fd, 0, SEEK_SET);
 
 		struct timeval tv;
@@ -309,7 +309,7 @@ void test_lua_hardware_433gpio_send(CuTest *tc) {
 
 	eventpool_init(EVENTPOOL_THREADED);
 
-	CuAssertIntEquals(tc, 0, config_read("lua_hardware_433gpio.json", CONFIG_SETTINGS | CONFIG_REGISTRY));
+	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433gpio.json", CONFIG_SETTINGS | CONFIG_REGISTRY));
 
 	int r = 0;
 
@@ -346,9 +346,9 @@ void test_lua_hardware_433gpio_send(CuTest *tc) {
 
 	hardware_init();
 
-	CuAssertIntEquals(tc, 0, config_read("lua_hardware_433gpio.json", CONFIG_HARDWARE));
+	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433gpio.json", CONFIG_HARDWARE));
 
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	state = plua_get_free_state();
 	CuAssertPtrNotNull(tc, state);

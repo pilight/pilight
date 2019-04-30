@@ -109,11 +109,13 @@ static void run(CuTest *tc, const char *func, char *config, int status) {
 
 	FREE(file);
 
-	CuAssertIntEquals(tc, 0, config_read("lua_hardware_433gpio.json", CONFIG_SETTINGS));
+	struct lua_state_t *state = plua_get_free_state();
+	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433gpio.json", CONFIG_SETTINGS));
 
 	hardware_init();
 
-	CuAssertIntEquals(tc, status, config_read("lua_hardware_433gpio.json", CONFIG_HARDWARE));
+	CuAssertIntEquals(tc, status, config_read(state->L, "lua_hardware_433gpio.json", CONFIG_HARDWARE));
+	plua_clear_state(state);
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
