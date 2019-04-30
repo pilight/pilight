@@ -52,7 +52,9 @@ void event_function_init(void) {
 		OUT_OF_MEMORY
 	}
 
-	int ret = config_setting_get_string("functions-root", 0, &functions_root);
+	struct lua_state_t *state = plua_get_free_state();
+	int ret = config_setting_get_string(state->L, "functions-root", 0, &functions_root);
+	plua_clear_state(state);
 
 	if((d = opendir(functions_root))) {
 		while((file = readdir(d)) != NULL) {
@@ -222,7 +224,7 @@ int event_function_callback(char *module, struct event_function_args_t *args, st
 	}
 	if((L = state->L) == NULL) {
 		assert(lua_gettop(L) == 0);
-		uv_mutex_unlock(&state->lock);
+		plua_clear_state(state);
 		return -1;
 	}
 
@@ -236,7 +238,7 @@ int event_function_callback(char *module, struct event_function_args_t *args, st
 		event_function_free_argument(args);
 		lua_remove(L, -1);
 		assert(lua_gettop(L) == 0);
-		uv_mutex_unlock(&state->lock);
+		plua_clear_state(state);
 		return -1;
 	}
 	if(lua_istable(L, -1) != 0) {
@@ -254,20 +256,20 @@ int event_function_callback(char *module, struct event_function_args_t *args, st
 			if(plua_function_module_run(L, file, args, v) == 0) {
 				lua_pop(L, -1);
 				assert(lua_gettop(L) == 0);
-				uv_mutex_unlock(&state->lock);
+				plua_clear_state(state);
 				return -1;
 			}
 		} else {
 			event_function_free_argument(args);
 			assert(lua_gettop(L) == 0);
-			uv_mutex_unlock(&state->lock);
+			plua_clear_state(state);
 			return -1;
 		}
 	}
 	lua_pop(L, -1);
 
 	assert(lua_gettop(L) == 0);
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	return 0;
 }

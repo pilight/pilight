@@ -10,6 +10,7 @@
 #define _CONFIG_H_
 
 #include "../core/json.h"
+#include "../lua_c/lua.h"
 
 #define CONFIG_INTERNAL	0
 #define CONFIG_FORWARD	1
@@ -25,14 +26,14 @@ typedef enum config_objects_t {
 	CONFIG_ALL = 0x3F
 } config_objects_t;
 
-struct lua_state_t *plua_get_module(char *namespace, char *module);
+struct lua_state_t *plua_get_module(lua_State *L, char *namespace, char *module);
 int config_callback_func(char *module, char *func, char *settings);
 int config_root(char *path);
 void plua_pause_coverage(int status);
 void config_init(void);
 struct JsonNode *config_print(int level, const char *media);
 int config_parse(struct JsonNode *root, unsigned short objects);
-int config_read(unsigned short objects);
+int config_read(lua_State *L, unsigned short objects);
 int config_write(int level, char *media);
 struct plua_metatable_t *config_get_metatable(void);
 int config_exists(char *module);

@@ -51,10 +51,10 @@ int plua_config_setting(lua_State *L) {
 		lua_remove(L, -1);
 	}
 
-	if(config_setting_get_string((char *)name, 0, &sval) == 0) {
+	if(config_setting_get_string(L, (char *)name, 0, &sval) == 0) {
 		lua_pushstring(L, sval);
 		FREE(sval);
-	} else if(config_setting_get_number((char *)name, 0, &ival) == 0) {
+	} else if(config_setting_get_number(L, (char *)name, 0, &ival) == 0) {
 		lua_pushnumber(L, ival);
 	} else {
 		lua_pushnil(L);

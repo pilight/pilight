@@ -52,7 +52,7 @@ static void createMessage(int gpio, int state) {
 static int createCode(JsonNode *code) {
 	int free_def = 0;
 	int gpio = -1;
-	int state = -1;
+	int state1 = -1;
 	double itmp = -1;
 	char *def = NULL;
 	int have_error = 0;
@@ -69,21 +69,17 @@ static int createCode(JsonNode *code) {
 
 	if(json_find_number(code, "gpio", &itmp) == 0)
 		gpio = (int)round(itmp);
-	if(json_find_number(code, "off", &itmp) == 0)
-		state=0;
-	else if(json_find_number(code, "on", &itmp) == 0)
-		state=1;
-
-	char *platform = GPIO_PLATFORM;
-
-	if(gpio == -1 || state == -1) {
-		logprintf(LOG_ERR, "relay: insufficient number of arguments");
-		have_error = 1;
-		goto clear;
+	}
+	if(json_find_number(code, "off", &itmp) == 0) {
+		state1=0;
+	} else if(json_find_number(code, "on", &itmp) == 0) {
+		state1=1;
 	}
 
-	if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
-		logprintf(LOG_ERR, "no gpio-platform configured");
+	char *platform = GPIO_PLATFORM;
+	struct lua_state_t *state = plua_get_free_state();
+	if(config_setting_get_string(state->L, "gpio-platform", 0, &platform) != 0) {
+		logprintf(LOG_ERR, "relay: no gpio-platform configured");
 		have_error = 1;
 		goto clear;
 	}
@@ -97,11 +93,10 @@ static int createCode(JsonNode *code) {
 		FREE(platform);
 		have_error = 1;
 		goto clear;
-	}
-	FREE(platform);
-
-	if(wiringXValidGPIO(gpio) != 0) {
-		logprintf(LOG_ERR, "relay: invalid gpio range");
+	} else
+#endif
+	if(gpio == -1 || state1 == -1) {
+		logprintf(LOG_ERR, "relay: insufficient number of arguments");
 		have_error = 1;
 		goto clear;
 	} else {
@@ -120,14 +115,20 @@ static int createCode(JsonNode *code) {
 					digitalWrite(gpio, HIGH);
 				}
 			}
-		} else {
-			wiringXGC();
+			createMessage(message, gpio, state1);
+			goto clear;
 		}
-		createMessage(gpio, state);
+	}
+#else
+	} else {
+		createMessage(message, gpio, state1);
 		goto clear;
 	}
 
 clear:
+#if defined(__arm__) || defined(__mips__)
+	plua_clear_state(state);
+#endif
 	if(free_def == 1) {
 		FREE(def);
 	}
@@ -173,14 +174,18 @@ static int checkValues(JsonNode *code) {
 				int gpio = (int)itmp;
 				int state = -1;
 				char *platform = GPIO_PLATFORM;
-				if(config_setting_get_string("gpio-platform", 0, &platform) != 0 || strcmp(platform, "none") == 0) {
+				struct lua_state_t *state = plua_get_free_state();
+				if(config_setting_get_string(state->L, "gpio-platform", 0, &platform) != 0 || strcmp(platform, "none") == 0) {
 					logprintf(LOG_ERR, "relay: no gpio-platform configured");
+					plua_clear_state(state);
 					return -1;
 				} else if(wiringXSetup(platform, logprintf1) < 0) {
 					logprintf(LOG_ERR, "unable to setup wiringX") ;
+					plua_clear_state(state);
 					return -1;
 				} else if(wiringXValidGPIO(gpio) != 0) {
 					logprintf(LOG_ERR, "relay: invalid gpio range");
+					plua_clear_state(state);
 					return -1;
 				} else {
 					pinMode(gpio, PINMODE_INPUT);
@@ -207,6 +212,8 @@ static int checkValues(JsonNode *code) {
 					json_delete(relay->message);
 					relay->message = NULL;
 				}
+				plua_clear_state(state);
+#endif
 			}
 		}
 	}

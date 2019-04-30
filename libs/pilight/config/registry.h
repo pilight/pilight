@@ -13,10 +13,10 @@
 #include "../config/config.h"
 #include "../lua_c/lua.h"
 
-int config_registry_get(char *key, struct varcont_t *ret);
-int config_registry_set_number(char *key, double val);
-int config_registry_set_string(char *key, char *val);
-int config_registry_set_boolean(char *key, int val);
-int config_registry_set_null(char *key);
+int config_registry_get(lua_State *L, char *key, struct varcont_t *ret);
+int config_registry_set_number(lua_State *L, char *key, double val);
+int config_registry_set_string(lua_State *L, char *key, char *val);
+int config_registry_set_boolean(lua_State *L, char *key, int val);
+int config_registry_set_null(lua_State *L, char *key);
 
 #endif

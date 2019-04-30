@@ -11,9 +11,9 @@
 
 #include "../lua_c/lua.h"
 
-int config_setting_get_number(char *key, int idx, int *ret);
-int config_setting_get_string(char *key, int idx, char **ret);
-int config_setting_set_number(char *key, int idx, int val);
-int config_setting_set_string(char *key, int idx, char *val);
+int config_setting_get_number(lua_State *L, char *key, int idx, int *ret);
+int config_setting_get_string(lua_State *L, char *key, int idx, char **ret);
+int config_setting_set_number(lua_State *L, char *key, int idx, int val);
+int config_setting_set_string(lua_State *L, char *key, int idx, char *val);
 
 #endif

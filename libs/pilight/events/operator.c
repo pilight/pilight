@@ -52,7 +52,9 @@ void event_operator_init(void) {
 		OUT_OF_MEMORY
 	}
 
-	int ret = config_setting_get_string("operators-root", 0, &operator_root);
+	struct lua_state_t *state = plua_get_free_state();
+	int ret = config_setting_get_string(state->L, "operators-root", 0, &operator_root);
+	plua_clear_state(state);
 
 	if((d = opendir(operator_root))) {
 		while((file = readdir(d)) != NULL) {
@@ -235,7 +237,7 @@ int event_operator_precedence(char *module, int *ret) {
 
 	if((L = state->L) == NULL) {
 		assert(lua_gettop(L) == 0);
-		uv_mutex_unlock(&state->lock);
+		plua_clear_state(state);
 		return -1;
 	}
 
@@ -247,7 +249,7 @@ int event_operator_precedence(char *module, int *ret) {
 	lua_getglobal(L, name);
 	if(lua_isnil(L, -1) != 0) {
 		assert(lua_gettop(L) == 0);
-		uv_mutex_unlock(&state->lock);
+		plua_clear_state(state);
 		return -1;
 	}
 	if(lua_istable(L, -1) != 0) {
@@ -264,14 +266,14 @@ int event_operator_precedence(char *module, int *ret) {
 		if(plua_operator_precedence_run(L, file, ret) == 0) {
 			lua_pop(L, -1);
 			assert(lua_gettop(L) == 0);
-			uv_mutex_unlock(&state->lock);
+			plua_clear_state(state);
 			return -1;
 		}
 	}
 	lua_pop(L, -1);
 
 	assert(lua_gettop(L) == 0);
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	return 0;
 }
@@ -286,7 +288,7 @@ int event_operator_associativity(char *module, int *ret) {
 
 	if((L = state->L) == NULL) {
 		assert(lua_gettop(L) == 0);
-		uv_mutex_unlock(&state->lock);
+		plua_clear_state(state);
 		return -1;
 	}
 
@@ -298,7 +300,7 @@ int event_operator_associativity(char *module, int *ret) {
 	lua_getglobal(L, name);
 	if(lua_isnil(L, -1) != 0) {
 		assert(lua_gettop(L) == 0);
-		uv_mutex_unlock(&state->lock);
+		plua_clear_state(state);
 		return -1;
 	}
 	if(lua_istable(L, -1) != 0) {
@@ -315,14 +317,14 @@ int event_operator_associativity(char *module, int *ret) {
 		if(plua_operator_associativity_run(L, file, ret) == 0) {
 			lua_pop(L, -1);
 			assert(lua_gettop(L) == 0);
-			uv_mutex_unlock(&state->lock);
+			plua_clear_state(state);
 			return -1;
 		}
 	}
 	lua_pop(L, -1);
 
 	assert(lua_gettop(L) == 0);
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	return 0;
 }
@@ -337,7 +339,7 @@ int event_operator_callback(char *module, struct varcont_t *a, struct varcont_t 
 
 	if((L = state->L) == NULL) {
 		assert(lua_gettop(L) == 0);
-		uv_mutex_unlock(&state->lock);
+		plua_clear_state(state);
 		return -1;
 	}
 
@@ -349,7 +351,7 @@ int event_operator_callback(char *module, struct varcont_t *a, struct varcont_t 
 	lua_getglobal(L, name);
 	if(lua_isnil(L, -1) != 0) {
 		assert(lua_gettop(L) == 0);
-		uv_mutex_unlock(&state->lock);
+		plua_clear_state(state);
 		return -1;
 	}
 	if(lua_istable(L, -1) != 0) {
@@ -366,14 +368,14 @@ int event_operator_callback(char *module, struct varcont_t *a, struct varcont_t 
 		if(plua_operator_module_run(L, file, a, b, v) == 0) {
 			lua_pop(L, -1);
 			assert(lua_gettop(L) == 0);
-			uv_mutex_unlock(&state->lock);
+			plua_clear_state(state);
 			return -1;
 		}
 	}
 	lua_pop(L, -1);
 
 	assert(lua_gettop(L) == 0);
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	return 0;
 }

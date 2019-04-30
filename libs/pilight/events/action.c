@@ -67,7 +67,9 @@ void event_action_init(void) {
 		OUT_OF_MEMORY
 	}
 
-	int ret = config_setting_get_string("actions-root", 0, &actions_root);
+	struct lua_state_t *state = plua_get_free_state();
+	int ret = config_setting_get_string(state->L, "actions-root", 0, &actions_root);
+	plua_clear_state(state);
 
 	if((d = opendir(actions_root))) {
 		while((file = readdir(d)) != NULL) {
@@ -325,7 +327,7 @@ static int event_action_prepare_call(char *module, char *func, struct event_acti
 		return -1;
 	}
 	if((L = state->L) == NULL) {
-		uv_mutex_unlock(&state->lock);
+		plua_clear_state(state);
 		return -1;
 	}
 
@@ -346,7 +348,7 @@ static int event_action_prepare_call(char *module, char *func, struct event_acti
 		event_action_free_argument(args);
 		lua_remove(L, -1);
 		assert(lua_gettop(L) == 0);
-		uv_mutex_unlock(&state->lock);
+		plua_clear_state(state);
 		return -1;
 	}
 	if(lua_istable(L, -1) != 0) {
@@ -364,20 +366,20 @@ static int event_action_prepare_call(char *module, char *func, struct event_acti
 			if(plua_action_module_call(L, file, func, args) == 0) {
 				lua_pop(L, -1);
 				assert(lua_gettop(L) == 0);
-				uv_mutex_unlock(&state->lock);
+				plua_clear_state(state);
 				return -1;
 			}
 		} else {
 			event_action_free_argument(args);
 			assert(lua_gettop(L) == 0);
-			uv_mutex_unlock(&state->lock);
+			plua_clear_state(state);
 			return -1;
 		}
 	}
 	lua_remove(L, -1);
 
 	assert(lua_gettop(L) == 0);
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	return 0;
 }
@@ -445,7 +447,7 @@ int event_action_get_parameters(char *module, int *nr, char ***ret) {
 	}
 
 	if((L = state->L) == NULL) {
-		uv_mutex_unlock(&state->lock);
+		plua_clear_state(state);
 		return -1;
 	}
 
@@ -465,7 +467,7 @@ int event_action_get_parameters(char *module, int *nr, char ***ret) {
 	if(lua_isnil(L, -1) != 0) {
 		lua_remove(L, -1);
 		assert(lua_gettop(L) == 0);
-		uv_mutex_unlock(&state->lock);
+		plua_clear_state(state);
 		return -1;
 	}
 	if(lua_istable(L, -1) != 0) {
@@ -482,14 +484,14 @@ int event_action_get_parameters(char *module, int *nr, char ***ret) {
 		if(event_action_parameters_run(L, file, nr, ret) == 0) {
 			lua_pop(L, -1);
 			assert(lua_gettop(L) == 0);
-			uv_mutex_unlock(&state->lock);
+			plua_clear_state(state);
 			return -1;
 		}
 	}
 	lua_pop(L, -1);
 
 	assert(lua_gettop(L) == 0);
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	return 0;
 }

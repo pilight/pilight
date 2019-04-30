@@ -132,8 +132,8 @@ int config_callback_read(char *module, char *string) {
 	return x;
 }
 
-char *config_callback_write(char *module) {
-	struct lua_state_t *state = plua_get_module("storage", module);
+char *config_callback_write(lua_State *L, char *module) {
+	struct lua_state_t *state = plua_get_module(L, "storage", module);
 	char *out = NULL;
 	int x = 0;
 
@@ -167,99 +167,28 @@ char *config_callback_write(char *module) {
 	return out;
 }
 
-int config_set_file(char *settfile) {
-	if(access(settfile, R_OK | W_OK) != -1) {
-		if((string = STRDUP(settfile)) == NULL) {
-			OUT_OF_MEMORY
-		}
-	} else {
-		logprintf(LOG_ERR, "the config file %s does not exist", settfile);
-		return EXIT_FAILURE;
+int config_read(lua_State *L, char *str, unsigned short objects) {
+	if((string = STRDUP(str)) == NULL) {
+		OUT_OF_MEMORY
 	}
 
-	return EXIT_SUCCESS;
-}
-
-char *config_get_file(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	return string;
-}
-
-int config_parse(struct JsonNode *root, unsigned short objects) {
-
-	if(((objects & CONFIG_DEVICES) == CONFIG_DEVICES) || ((objects & CONFIG_ALL) == CONFIG_ALL)) {
-		struct JsonNode *jnode = json_find_member(root, "devices");
-		if(jnode == NULL) {
-			return -1;
-		}
-		if(config_devices_parse(jnode) != 0) {
-			return -1;
-		}
-	}
-
-	if(((objects & CONFIG_GUI) == CONFIG_GUI) || ((objects & CONFIG_ALL) == CONFIG_ALL)) {
-		struct JsonNode *jnode = json_find_member(root, "gui");
-		if(jnode == NULL) {
-			return -1;
-		}
-		if(config_gui_parse(jnode) != 0) {
-			return -1;
-		}
-	}
-
-#ifdef EVENTS
-	if(((objects & CONFIG_RULES) == CONFIG_RULES) || ((objects & CONFIG_ALL) == CONFIG_ALL)) {
-		struct JsonNode *jnode = json_find_member(root, "rules");
-		if(jnode == NULL) {
-			return -1;
-		}
-		if(config_rules_parse(jnode) != 0) {
-			return -1;
-		}
-	}
-#endif
-
-	return 0;
-}
-
-int config_read(unsigned short objects) {
-	if(string != NULL) {
-		if(((objects & CONFIG_SETTINGS) == CONFIG_SETTINGS) || ((objects & CONFIG_ALL) == CONFIG_ALL)) {
-			if(config_callback_read("settings", string) != 1) {
-				return -1;
-			}
-		}
-
-		if(((objects & CONFIG_REGISTRY) == CONFIG_REGISTRY) || ((objects & CONFIG_ALL) == CONFIG_ALL)) {
-			if(config_callback_read("registry", string) != 1) {
-				return -1;
-			}
-		}
-	}
-
-	if(((objects & CONFIG_HARDWARE) == CONFIG_HARDWARE) || ((objects & CONFIG_ALL) == CONFIG_ALL)) {
-		if(config_callback_read("hardware", string) != 1) {
+	if((objects & CONFIG_SETTINGS) == CONFIG_SETTINGS) {
+		if(config_callback_read(L, "settings", string) != 1) {
 			FREE(string);
 			return -1;
 		}
 	}
 
-	char *content = NULL;
-	/* Read JSON config file */
-	if(file_get_contents(string, &content) == 0) {
-		/* Validate JSON and turn into JSON object */
-		if(json_validate(content) == false) {
-			logprintf(LOG_ERR, "config is not in a valid json format");
-			FREE(content);
-			return EXIT_FAILURE;
+	if((objects & CONFIG_HARDWARE) == CONFIG_HARDWARE) {
+		if(config_callback_read(L, "hardware", string) != 1) {
+			FREE(string);
+			return -1;
 		}
+	}
 
-		struct JsonNode *root = json_decode(content);
-
-		if(config_parse(root, objects) == -1) {
-			json_delete(root);
-			FREE(content);
+	if((objects & CONFIG_REGISTRY) == CONFIG_REGISTRY) {
+		if(config_callback_read(L, "registry", string) != 1) {
+			FREE(string);
 			return -1;
 		}
 
@@ -389,24 +318,23 @@ struct plua_metatable_t *config_get_metatable(void) {
 	return table;
 }
 
-int config_write(int level, char *media) {
-	FILE *fp = NULL;
+char *config_write(void) {
+	struct lua_state_t *state = plua_get_free_state();
+	char *settings = config_callback_write(state->L, "settings");
+	if(settings != NULL) {
+		FREE(settings);
+	}
 
-	struct JsonNode *root = config_print(level, media);
-	/* Overwrite config file with proper format */
-	if((fp = fopen(string, "w+")) == NULL) {
-		logprintf(LOG_ERR, "cannot write config file: %s", string);
-		json_delete(root);
-		return EXIT_FAILURE;
+	char *hardware = config_callback_write(state->L, "hardware");
+	if(hardware != NULL) {
+		FREE(hardware);
 	}
-	fseek(fp, 0L, SEEK_SET);
-	char *content = NULL;
-	if((content = json_stringify(root, "\t")) != NULL) {
-		fwrite(content, sizeof(char), strlen(content), fp);
-		json_free(content);
+
+	char *registry = config_callback_write(state->L, "settings");
+	if(registry != NULL) {
+		FREE(registry);
 	}
-	json_delete(root);
-	fclose(fp);
+	plua_clear_state(state);
 
 	return 0;
 }

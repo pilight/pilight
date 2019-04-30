@@ -31,15 +31,17 @@ int ssl_server_init_status(void) {
 void ssl_init(void) {
 	char *pemfile = NULL, buffer[BUFFER_SIZE];
 	int ret = 0;
-	int pem_file_free = 0;
 
-	if(config_setting_get_string("pem-file", 0, &pemfile) != 0) {
+	struct lua_state_t *state = plua_get_free_state();
+	if(config_setting_get_string(state->L, "pem-file", 0, &pemfile) != 0) {
+		plua_clear_state(state);
 		if((pemfile = REALLOC(pemfile, strlen(PEM_FILE)+1)) == NULL) {
 			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(pemfile, PEM_FILE);
-		pem_file_free = 1;
+	} else {
+		plua_clear_state(state);
 	}
 	if(file_exists(pemfile) != 0) {
 		logprintf(LOG_NOTICE, "pemfile does not exists: %s", pemfile);
@@ -118,9 +120,7 @@ void ssl_init(void) {
 		}
 	}
 
-	if(pem_file_free == 1) {
-		FREE(pemfile);
-	}
+	FREE(pemfile);
 }
 
 void ssl_gc(void) {
