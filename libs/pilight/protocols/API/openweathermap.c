@@ -754,6 +754,16 @@ static int checkValues(JsonNode *code) {
 }
 
 static int createCode(JsonNode *code) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	/*
+	 * FIXME
+	 *
+	 * const uv_thread_t pth_cur_id = uv_thread_self();
+	 * assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
+	 */
+
 #ifdef PILIGHT_DEVELOPMENT
 	struct settings_t *wtmp = settings;
 	char *country = NULL;
