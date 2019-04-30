@@ -16,27 +16,33 @@ function M.send(obj, reason, data)
 		return;
 	end
 
-	local config = pilight.config();
-	local data1 = config.getData();
-	local platform = config.getSetting("gpio-platform");
-	local sender = data1['hardware']['433gpio']['sender'];
-
-	local wx = wiringX.setup(platform);
-
-	local count = 0;
-	for _ in pairs(data['pulses']) do
-		count = count + 1
+	if data['hwtype'] ~= pilight.hardware.RF433 then
+		return;
 	end
-	if sender >= 0 then
-		for i = 1, data['txrpt'], 1 do
-			wx.digitalWrite(sender, 1, data['pulses']());
+
+	if data['pulses'] ~= nil and type(data['pulses']) == 'table' then
+		local config = pilight.config();
+		local data1 = config.getData();
+		local platform = config.getSetting("gpio-platform");
+		local sender = data1['hardware']['433gpio']['sender'];
+
+		local wx = wiringX.setup(platform);
+
+		local count = 0;
+		for _ in pairs(data['pulses']) do
+			count = count + 1
 		end
-		--
-		-- Make sure we don't leave the GPIO dangling
-		-- in HIGH position.
-		--
-		if (count % 2) == 0 then
-			wx.digitalWrite(sender, 0);
+		if sender >= 0 then
+			for i = 1, data['txrpt'], 1 do
+				wx.digitalWrite(sender, 1, data['pulses']());
+			end
+			--
+			-- Make sure we don't leave the GPIO dangling
+			-- in HIGH position.
+			--
+			if (count % 2) == 0 then
+				wx.digitalWrite(sender, 0);
+			end
 		end
 	end
 end

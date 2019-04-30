@@ -188,7 +188,7 @@ function M.callback(rw, serial, line)
 
 						local event = pilight.async.event();
 						event.register(pilight.reason.RECEIVED_PULSETRAIN);
-						event.trigger(data());
+						event.trigger(getmetatable(data)());
 
 						data['pulses'] = {};
 						data['content'] = tmp;
