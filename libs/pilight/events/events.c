@@ -1714,6 +1714,7 @@ static int run_action(struct tree_t *tree, struct rules_t *obj, unsigned short v
 			if(event_action_run(tree->token->value, args) == -1) {
 				return -1;
 			}
+			obj->status = 1;
 		}
 	}
 
