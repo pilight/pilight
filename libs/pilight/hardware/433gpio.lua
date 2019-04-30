@@ -16,27 +16,33 @@ function M.send(obj, reason, data)
 		return;
 	end
 
-	local config = pilight.config();
-	local data1 = config.getData();
-	local platform = config.getSetting("gpio-platform");
-	local sender = data1['hardware']['433gpio']['sender'];
-
-	local wx = wiringX.setup(platform);
-
-	local count = 0;
-	for _ in pairs(data['pulses']) do
-		count = count + 1
+	if data['hwtype'] ~= pilight.hardware.RF433 then
+		return;
 	end
-	if sender >= 0 then
-		for i = 1, data['txrpt'], 1 do
-			wx.digitalWrite(sender, 1, data['pulses']());
+
+	if data['pulses'] ~= nil and type(data['pulses']) == 'table' then
+		local config = pilight.config();
+		local data1 = config.getData();
+		local platform = config.getSetting("gpio-platform");
+		local sender = data1['hardware']['433gpio']['sender'];
+
+		local wx = wiringX.setup(platform);
+
+		local count = 0;
+		for _ in pairs(data['pulses']) do
+			count = count + 1
 		end
-		--
-		-- Make sure we don't leave the GPIO dangling
-		-- in HIGH position.
-		--
-		if (count % 2) == 0 then
-			wx.digitalWrite(sender, 0);
+		if sender >= 0 then
+			for i = 1, data['txrpt'], 1 do
+				wx.digitalWrite(sender, 1, data['pulses']());
+			end
+			--
+			-- Make sure we don't leave the GPIO dangling
+			-- in HIGH position.
+			--
+			if (count % 2) == 0 then
+				wx.digitalWrite(sender, 0);
+			end
 		end
 	end
 end
@@ -59,38 +65,37 @@ function M.callback(obj, nr, pulses)
 	data = obj.getUserdata();
 	data['hardware'] = '433gpio';
 
-	if data['length'] == nil then
-		data['length'] = 0;
-		length = 0;
-	end
 	if data['pulses'] == nil then
 		data['pulses'] = {};
 	end
+
+	length = #data['pulses'];
+
 	for i = 1, nr - 1, 1 do
 		pulse = pulses[i];
-		data['length'] = data['length'] + 1;
-		length = data['length'];
+		length = length + 1;
+
 		data['pulses'][length] = pulse;
-		if length > 512 then
+
+		if length > maxrawlen then
 			data['pulses'] = {};
-			data['length'] = 0;
 			length = 0;
 		end
 		if pulse > mingaplen then
 			if length >= minrawlen and
 				length <= maxrawlen and
 				((length+1 >= nr and minrawlen == 0) or (minrawlen > 0)) then
+
+				data['length'] = length;
 				local event = pilight.async.event();
 				event.register(pilight.reason.RECEIVED_OOK);
-				event.trigger(data());
+				event.trigger(getmetatable(data)());
 
 				data['pulses'] = {};
-				data['length'] = 0;
 				length = 0;
 			end
 			if length+1 >= nr then
 				data['pulses'] = {};
-				data['length'] = 0;
 				length = 0;
 			end
 		end
