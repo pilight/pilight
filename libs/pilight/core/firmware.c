@@ -563,10 +563,12 @@ static void firmware_init_pgm(PROGRAMMER **pgm) {
 		(*pgm)->pinno[6] = FIRMWARE_GPIO_MISO;
 		// (*pgm)->ispdelay = 50;
 
-		if(config_setting_get_number("firmware-gpio-reset", 0, &itmp) == 0) { (*pgm)->pinno[3] = itmp; }
-		if(config_setting_get_number("firmware-gpio-sck", 0, &itmp) == 0) { (*pgm)->pinno[4] = itmp; }
-		if(config_setting_get_number("firmware-gpio-mosi", 0, &itmp) == 0) { (*pgm)->pinno[5] = itmp; }
-		if(config_setting_get_number("firmware-gpio-miso", 0, &itmp) == 0) { (*pgm)->pinno[6] = itmp; }
+		struct lua_state_t *state = plua_get_free_state();
+		if(config_setting_get_number(state->L, "firmware-gpio-reset", 0, &itmp) == 0) { (*pgm)->pinno[3] = itmp; }
+		if(config_setting_get_number(state->L, "firmware-gpio-sck", 0, &itmp) == 0) { (*pgm)->pinno[4] = itmp; }
+		if(config_setting_get_number(state->L, "firmware-gpio-mosi", 0, &itmp) == 0) { (*pgm)->pinno[5] = itmp; }
+		if(config_setting_get_number(state->L, "firmware-gpio-miso", 0, &itmp) == 0) { (*pgm)->pinno[6] = itmp; }
+		plua_clear_state(state);
 	} else {
 #endif
 		arduino_initpgm(*pgm);
