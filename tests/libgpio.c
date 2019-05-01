@@ -88,7 +88,7 @@ int pinMode(int gpio, int mode) {
 		memset(&address, 0, sizeof(struct sockaddr_un));
 
 		address.sun_family = AF_UNIX;
-		snprintf(address.sun_path, 128, "/dev/gpio%d", gpio);
+		snprintf(address.sun_path, 108, "/dev/gpio%d", gpio);
 
 		if(connect(fd[gpio], (struct sockaddr *)&address, sizeof(struct sockaddr_un)) != 0) {
 			logprintf(LOG_ERR, "connect");
