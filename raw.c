@@ -300,15 +300,19 @@ int main(int argc, char **argv) {
 	protocol_init();
 	hardware_init();
 	config_init();
-	if(config_read(CONFIG_SETTINGS | CONFIG_HARDWARE) != EXIT_SUCCESS) {
+
+	struct lua_state_t *state = plua_get_free_state();
+	if(config_read(state->L, CONFIG_SETTINGS | CONFIG_HARDWARE) != EXIT_SUCCESS) {
+		plua_clear_state(state);
 		goto close;
 	}
+	plua_clear_state(state);
 
 	struct plua_metatable_t *table = config_get_metatable();
 	plua_metatable_set_number(table, "registry.hardware.RF433.mingaplen", 0);
 	plua_metatable_set_number(table, "registry.hardware.RF433.maxgaplen", 99999);
 	plua_metatable_set_number(table, "registry.hardware.RF433.minrawlen", 0);
-	plua_metatable_set_number(table, "registry.hardware.RF433.maxrawlen", 4096);
+	plua_metatable_set_number(table, "registry.hardware.RF433.maxrawlen", WIRINGX_BUFFER);
 
 	if(config_hardware_run() == -1) {
 		logprintf(LOG_NOTICE, "there are no hardware modules configured");

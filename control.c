@@ -196,9 +196,12 @@ int main(int argc, char **argv) {
 	protocol_init();
 	config_init();
 	if(hasconfarg == 1) {
-		if(config_read(CONFIG_SETTINGS) != EXIT_SUCCESS) {
+		struct lua_state_t *state = plua_get_free_state();
+		if(config_read(state->L, CONFIG_SETTINGS) != EXIT_SUCCESS) {
+			plua_clear_state(state);
 			goto close;
 		}
+		plua_clear_state(state);
 	}
 
 	socket_write(sockfd, "{\"action\":\"identify\"}");

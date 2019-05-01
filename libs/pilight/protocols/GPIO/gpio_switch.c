@@ -97,12 +97,15 @@ static void *thread(void *param) {
 }
 
 static struct threadqueue_t *initDev(JsonNode *jdevice) {
+	struct lua_state_t *state = plua_get_free_state();
 	char *platform = GPIO_PLATFORM;
 
-	if(config_setting_get_string("gpio-platform", 0, &platform) != 0) {
+	if(config_setting_get_string(state->L, "gpio-platform", 0, &platform) != 0) {
 		logprintf(LOG_ERR, "no gpio-platform configured");
+		plua_clear_state(state);
 		return NULL;
 	}
+	plua_clear_state(state);
 	if(strcmp(platform, "none") == 0) {
 		FREE(platform);
 		logprintf(LOG_ERR, "no gpio-platform configured");
@@ -129,12 +132,11 @@ static int checkValues(struct JsonNode *jvalues) {
 
 	struct lua_state_t *state = plua_get_free_state();
 	if(config_setting_get_string(state->L, "gpio-platform", 0, &platform) != 0) {
-		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
+		logprintf(LOG_ERR, "no gpio-platform configured");
 		plua_clear_state(state);
 		return -1;
-	} else {
-		plua_clear_state(state);
 	}
+	plua_clear_state(state);
 	if(strcmp(platform, "none") == 0) {
 		FREE(platform);
 		logprintf(LOG_ERR, "no gpio-platform configured");

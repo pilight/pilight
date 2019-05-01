@@ -33,8 +33,8 @@
 #include "config.h"
 #include "registry.h"
 
-int config_hardware_get_type(char *module) {
-	struct lua_state_t *state = plua_get_module("hardware", "433nano");
+int config_hardware_get_type(lua_State *L, char *module) {
+	struct lua_state_t *state = plua_get_module(L, "hardware", "433nano");
 	int out = -1;
 	int x = 0;
 
@@ -68,7 +68,7 @@ int config_hardware_get_type(char *module) {
 
 int config_hardware_run(void) {
 	struct lua_state_t *state = NULL;
-	char name[255] = { '\0' }, *p = name;
+	char name[512] = { '\0' }, *p = name;
 	struct varcont_t val;
 	int match = 0;
 
@@ -81,11 +81,11 @@ int config_hardware_run(void) {
 	struct plua_metatable_t *table = config_get_metatable();
 	struct plua_module_t *tmp = plua_get_modules(), *oldmod = NULL;
 	while(tmp) {
-		memset(name, '\0', 255);
+		memset(name, '\0', 512);
 		sprintf(p, "hardware.%s", tmp->name);
 
 		if(plua_metatable_get(table, p, &val) == LUA_TTABLE) {
-			memset(name, '\0', 255);
+			memset(name, '\0', 512);
 			sprintf(p, "hardware.%s", tmp->name);
 
 			lua_getglobal(state->L, name);
@@ -126,7 +126,7 @@ int config_hardware_run(void) {
 
 	assert(lua_gettop(state->L) == 0);
 
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	if(match == 1) {
 		return 0;

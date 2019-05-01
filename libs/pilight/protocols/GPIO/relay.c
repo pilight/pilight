@@ -52,7 +52,7 @@ static void createMessage(int gpio, int state) {
 static int createCode(JsonNode *code) {
 	int free_def = 0;
 	int gpio = -1;
-	int state1 = -1;
+	int state = -1;
 	double itmp = -1;
 	char *def = NULL;
 	int have_error = 0;
@@ -69,20 +69,30 @@ static int createCode(JsonNode *code) {
 
 	if(json_find_number(code, "gpio", &itmp) == 0)
 		gpio = (int)round(itmp);
-	}
-	if(json_find_number(code, "off", &itmp) == 0) {
-		state1=0;
-	} else if(json_find_number(code, "on", &itmp) == 0) {
-		state1=1;
-	}
+	if(json_find_number(code, "off", &itmp) == 0)
+		state=0;
+	else if(json_find_number(code, "on", &itmp) == 0)
+		state=1;
 
 	char *platform = GPIO_PLATFORM;
-	struct lua_state_t *state = plua_get_free_state();
-	if(config_setting_get_string(state->L, "gpio-platform", 0, &platform) != 0) {
-		logprintf(LOG_ERR, "relay: no gpio-platform configured");
+
+	if(gpio == -1 || state == -1) {
+		logprintf(LOG_ERR, "relay: insufficient number of arguments");
 		have_error = 1;
 		goto clear;
 	}
+
+	{
+		struct lua_state_t *state = plua_get_free_state();
+		if(config_setting_get_string(state->L, "gpio-platform", 0, &platform) != 0) {
+			logprintf(LOG_ERR, "no gpio-platform configured");
+			have_error = 1;
+			plua_clear_state(state);
+			goto clear;
+		}
+		plua_clear_state(state);
+	}
+
 	if(strcmp(platform, "none") == 0) {
 		FREE(platform);
 		logprintf(LOG_ERR, "no gpio-platform configured");
@@ -93,10 +103,11 @@ static int createCode(JsonNode *code) {
 		FREE(platform);
 		have_error = 1;
 		goto clear;
-	} else
-#endif
-	if(gpio == -1 || state1 == -1) {
-		logprintf(LOG_ERR, "relay: insufficient number of arguments");
+	}
+	FREE(platform);
+
+	if(wiringXValidGPIO(gpio) != 0) {
+		logprintf(LOG_ERR, "relay: invalid gpio range");
 		have_error = 1;
 		goto clear;
 	} else {
@@ -115,20 +126,14 @@ static int createCode(JsonNode *code) {
 					digitalWrite(gpio, HIGH);
 				}
 			}
-			createMessage(message, gpio, state1);
-			goto clear;
+		} else {
+			wiringXGC();
 		}
-	}
-#else
-	} else {
-		createMessage(message, gpio, state1);
+		createMessage(gpio, state);
 		goto clear;
 	}
 
 clear:
-#if defined(__arm__) || defined(__mips__)
-	plua_clear_state(state);
-#endif
 	if(free_def == 1) {
 		FREE(def);
 	}
@@ -172,48 +177,49 @@ static int checkValues(JsonNode *code) {
 		if((jchild = json_find_element(jid, 0)) != NULL) {
 			if(json_find_number(jchild, "gpio", &itmp) == 0) {
 				int gpio = (int)itmp;
-				int state = -1;
+				int state1 = -1;
 				char *platform = GPIO_PLATFORM;
+
 				struct lua_state_t *state = plua_get_free_state();
 				if(config_setting_get_string(state->L, "gpio-platform", 0, &platform) != 0 || strcmp(platform, "none") == 0) {
 					logprintf(LOG_ERR, "relay: no gpio-platform configured");
 					plua_clear_state(state);
 					return -1;
-				} else if(wiringXSetup(platform, logprintf1) < 0) {
-					logprintf(LOG_ERR, "unable to setup wiringX") ;
-					plua_clear_state(state);
-					return -1;
-				} else if(wiringXValidGPIO(gpio) != 0) {
-					logprintf(LOG_ERR, "relay: invalid gpio range");
-					plua_clear_state(state);
-					return -1;
 				} else {
-					pinMode(gpio, PINMODE_INPUT);
-					state = digitalRead(gpio);
-					if(strcmp(def, "on") == 0) {
-						state ^= 1;
-					}
+					plua_clear_state(state);
 
-					relay->message = json_mkobject();
-					JsonNode *code = json_mkobject();
-					json_append_member(code, "gpio", json_mknumber(gpio, 0));
-					if(state == 1) {
-						json_append_member(code, "state", json_mkstring("on"));
+					if(wiringXSetup(platform, logprintf1) < 0) {
+						logprintf(LOG_ERR, "unable to setup wiringX") ;
+						return -1;
+					} else if(wiringXValidGPIO(gpio) != 0) {
+						logprintf(LOG_ERR, "relay: invalid gpio range");
+						return -1;
 					} else {
-						json_append_member(code, "state", json_mkstring("off"));
-					}
+						pinMode(gpio, PINMODE_INPUT);
+						state1 = digitalRead(gpio);
+						if(strcmp(def, "on") == 0) {
+							state1 ^= 1;
+						}
 
-					json_append_member(relay->message, "message", code);
-					json_append_member(relay->message, "origin", json_mkstring("sender"));
-					json_append_member(relay->message, "protocol", json_mkstring(relay->id));
-					if(pilight.broadcast != NULL) {
-						pilight.broadcast(relay->id, relay->message, PROTOCOL);
+						relay->message = json_mkobject();
+						JsonNode *code = json_mkobject();
+						json_append_member(code, "gpio", json_mknumber(gpio, 0));
+						if(state1 == 1) {
+							json_append_member(code, "state", json_mkstring("on"));
+						} else {
+							json_append_member(code, "state", json_mkstring("off"));
+						}
+
+						json_append_member(relay->message, "message", code);
+						json_append_member(relay->message, "origin", json_mkstring("sender"));
+						json_append_member(relay->message, "protocol", json_mkstring(relay->id));
+						if(pilight.broadcast != NULL) {
+							pilight.broadcast(relay->id, relay->message, PROTOCOL);
+						}
+						json_delete(relay->message);
+						relay->message = NULL;
 					}
-					json_delete(relay->message);
-					relay->message = NULL;
 				}
-				plua_clear_state(state);
-#endif
 			}
 		}
 	}

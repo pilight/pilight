@@ -48,7 +48,7 @@ static char *lua_root = LUA_ROOT;
 static int raw[MAXPULSESTREAMLENGTH] = {0};
 static int pRaw[MAXPULSESTREAMLENGTH] = {0};
 static int rawLength = 0;
-static int buffer[1024];
+static int buffer[WIRINGX_BUFFER];
 static int footer = 0;
 static int pulselen = 0;
 static int bit = 0;
@@ -96,7 +96,7 @@ int main_gc(void) {
 
 static void *received_pulsetrain(int reason, void *param, void *userdata) {
 	int pulse = 0;
-	int buffer[1024];
+	int buffer[WIRINGX_BUFFER];
 
 	struct tm tm;
 	time_t now = 0;
@@ -495,9 +495,13 @@ int main(int argc, char **argv) {
 	protocol_init();
 	hardware_init();
 	config_init();
-	if(config_read(CONFIG_SETTINGS | CONFIG_HARDWARE) != EXIT_SUCCESS) {
+
+	struct lua_state_t *state = plua_get_free_state();
+	if(config_read(state->L, CONFIG_SETTINGS | CONFIG_HARDWARE) != EXIT_SUCCESS) {
+		plua_clear_state(state);
 		goto clear;
 	}
+	plua_clear_state(state);
 
 	struct plua_metatable_t *table = config_get_metatable();
 	plua_metatable_set_number(table, "registry.hardware.RF433.mingaplen", 5100);

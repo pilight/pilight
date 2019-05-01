@@ -164,57 +164,6 @@ static int luaB_ipairs (lua_State *L) {
   return pairsmeta(L, "__ipairs", 1, ipairsaux);
 }
 
-struct lua_state_t *plua_get_module(char *namespace, char *module) {
-	struct lua_state_t *state = NULL;
-	struct lua_State *L = NULL;
-	int match = 0;
-
-	state = plua_get_free_state();
-
-	if(state == NULL) {
-		return NULL;
-	}
-
-	if((L = state->L) == NULL) {
-		plua_clear_state(state);
-		return NULL;
-	}
-
-	char name[255], *p = name;
-	memset(name, '\0', 255);
-
-	sprintf(p, "%s.%s", namespace, module);
-	lua_getglobal(L, name);
-
-	if(lua_isnil(L, -1) != 0) {
-		lua_pop(L, -1);
-		assert(lua_gettop(L) == 0);
-		plua_clear_state(state);
-		return NULL;
-	}
-	if(lua_istable(L, -1) != 0) {
-		struct plua_module_t *tmp = plua_get_modules();
-		while(tmp) {
-			if(strcmp(module, tmp->name) == 0) {
-				state->module = tmp;
-				match = 1;
-				break;
-			}
-			tmp = tmp->next;
-		}
-		if(match == 1) {
-			return state;
-		}
-	}
-
-	lua_pop(L, -1);
-
-	assert(lua_gettop(L) == 0);
-	plua_clear_state(state);
-
-	return NULL;
-}
-
 int plua_namespace(struct plua_module_t *module, char *p) {
 	switch(module->type) {
 		case UNITTEST: {
@@ -427,32 +376,6 @@ void plua_metatable_push(lua_State *L, struct plua_metatable_t *table) {
 	lua_settable(L, -3);
 
 	lua_setmetatable(L, -2);
-}
-
-static int plua_metatable_metatable(lua_State *L, struct plua_metatable_t *node) {
-	if(node == NULL) {
-		logprintf(LOG_ERR, "internal error: table object not passed");
-		return 0;
-	}
-
-	struct plua_metatable_t *tmp = NULL;
-	plua_metatable_clone(&node, &tmp);
-	lua_pushlightuserdata(L, tmp);
-
-	return 1;
-}
-
-static int plua_metatable__metatable(lua_State *L) {
-	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
-
-	return plua_metatable_metatable(L, node);
-}
-
-static int plua_metatable___metatable(lua_State *L) {
-	struct plua_interface_t *interface = (void *)lua_topointer(L, lua_upvalueindex(1));
-	struct plua_metatable_t *node = interface->table;
-
-	return plua_metatable_metatable(L, node);
 }
 
 void plua_metatable_free(struct plua_metatable_t *table) {

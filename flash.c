@@ -142,9 +142,13 @@ int main(int argc, char **argv) {
 
 	protocol_init();
 	config_init();
-	if(config_read(CONFIG_ALL) != EXIT_SUCCESS) {
+
+	struct lua_state_t *state = plua_get_free_state();
+	if(config_read(state->L, CONFIG_ALL) != EXIT_SUCCESS) {
+		plua_clear_state(state);
 		goto close;
 	}
+	plua_clear_state(state);
 
 #ifdef _WIN32
 	if(fwfile == NULL || strlen(fwfile) == 0 || strlen(comport) == 0) {

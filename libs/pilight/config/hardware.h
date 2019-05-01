@@ -19,6 +19,8 @@
 #ifndef _HARDWARE_H_
 #define _HARDWARE_H_
 
+#include "../lua_c/lua.h"
+
 typedef enum {
 	HWINTERNAL = -1,
 	RFNONE = 0,
@@ -32,7 +34,7 @@ typedef enum {
 
 void hardware_init(void);
 int hardware_gc(void);
-int config_hardware_get_type(char *module);
+int config_hardware_get_type(lua_State *L, char *module);
 int config_hardware_run(void);
 
 #endif
