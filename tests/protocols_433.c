@@ -65,7 +65,7 @@ static void test_protocols_433(CuTest *tc) {
 	memtrack();	
 
 	char **array = NULL, message[255], name[255];
-	int raw[255], nrtests = 0, nrraw = 0;
+	int raw[1024], nrtests = 0, nrraw = 0;
 	int x = 0, y = 0, i = 0;
 
 	nrtests = sizeof(tests)/sizeof(tests[0]);
