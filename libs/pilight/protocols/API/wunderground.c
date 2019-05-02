@@ -659,6 +659,12 @@ static void thread(uv_work_t *req) {
 }
 
 static void *update(void *param) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
+
 	uv_timer_t *timer_req = param;
 	struct data_t *settings = timer_req->data;
 
