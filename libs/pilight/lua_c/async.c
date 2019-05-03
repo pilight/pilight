@@ -89,9 +89,6 @@ static void thread_free(uv_work_t *req, int status) {
 }
 
 static int plua_async_thread_trigger(lua_State *L) {
-	/*
-	 * Make sure we execute in the main thread
-	 */
 	struct lua_thread_t *thread = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
@@ -389,6 +386,7 @@ static void thread_callback(uv_work_t *req) {
 
 	lua_remove(state->L, -1);
 	assert(lua_gettop(state->L) == 0);
+
 	plua_clear_state(state);
 }
 
@@ -1149,7 +1147,7 @@ static int plua_async_event_set_callback(lua_State *L) {
 	}
 
 	const char *func = NULL;
-	char buf[128] = { '\0' }, *p = buf, name[255] = { '\0' };
+	char buf[128] = { '\0' }, *p = buf, name[512] = { '\0' };
 	char *error = "string expected, got %s";
 
 	sprintf(p, error, lua_typename(L, lua_type(L, -1)));

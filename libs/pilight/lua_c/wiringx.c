@@ -585,6 +585,7 @@ static int plua_wiringx_isr(struct lua_State *L) {
 			lua_remove(L, 1);
 
 			p = name;
+
 			plua_namespace(wiringx->module, p);
 
 			lua_getglobal(L, name);
