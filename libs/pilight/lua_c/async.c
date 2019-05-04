@@ -36,11 +36,6 @@ typedef struct lua_thread_t {
 	uv_work_t *work_req;
 } lua_thread_t;
 
-typedef struct lua_thread_list_t {
-	struct lua_thread_t *thread;
-	struct lua_thread_list_t *next;
-} lua_thread_list_t;
-
 typedef struct lua_timer_t {
 	PLUA_INTERFACE_FIELDS
 
@@ -60,11 +55,6 @@ typedef struct lua_event_t {
 	} reasons[REASON_END+10000];
 	char *callback;
 } lua_event_t;
-
-static uv_mutex_t thread_lock;
-static int async_init = 0;
-static uv_async_t *async_thread_req = NULL;
-static struct lua_thread_list_t *lua_thread_list = NULL;
 
 static void timer_callback(uv_timer_t *req);
 static void thread_callback(uv_work_t *req);
@@ -86,6 +76,12 @@ static void thread_free(uv_work_t *req, int status) {
 		}
 		FREE(lua_thread);
 	}
+}
+
+static void plua_async_thread_gc(void *ptr) {
+	struct lua_thread_t *lua_thread = ptr;
+
+	thread_free(lua_thread->work_req, -99);
 }
 
 static int plua_async_thread_trigger(lua_State *L) {
@@ -112,51 +108,12 @@ static int plua_async_thread_trigger(lua_State *L) {
 		return 0;
 	}
 
-	uv_mutex_lock(&thread_lock);
-
-	struct lua_thread_list_t *node = MALLOC(sizeof(struct lua_thread_list_t));
-	node->thread = thread;
-
-	node->next = lua_thread_list;
-	lua_thread_list = node;
-
-	uv_async_send(async_thread_req);
-
-	uv_mutex_unlock(&thread_lock);
+	uv_queue_work_s(thread->work_req, "lua thread", thread_callback, thread_free);
 
 	plua_gc_unreg(L, thread);
 
 	plua_ret_true(L);
 	return 1;
-}
-
-static void plua_async_thread_gc(void *ptr) {
-	struct lua_thread_t *lua_thread = ptr;
-
-	if(lua_thread->table != NULL) {
-		plua_metatable_free(lua_thread->table);
-	}
-	if(lua_thread->work_req != NULL) {
-		FREE(lua_thread->work_req);
-	}
-	if(lua_thread->callback != NULL) {
-		FREE(lua_thread->callback);
-	}
-	FREE(lua_thread);
-}
-
-static void plua_async_thread_list_gc(void *ptr) {
-	uv_mutex_lock(&thread_lock);
-	struct lua_thread_list_t *node = NULL;
-	while(lua_thread_list) {
-		node = lua_thread_list;
-		lua_thread_list = lua_thread_list->next;
-		plua_async_thread_gc(node->thread);
-		FREE(node);
-	}
-	uv_mutex_unlock(&thread_lock);
-
-	async_init = 0;
 }
 
 static int plua_async_thread_set_data(lua_State *L) {
@@ -313,28 +270,6 @@ static void plua_async_thread_object(lua_State *L, struct lua_thread_t *thread) 
 	lua_settable(L, -3);
 }
 
-static void plua_async_thread_loop(uv_async_t *handle) {
-	const uv_thread_t pth_cur_id = uv_thread_self();
-	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
-
-	uv_mutex_lock(&thread_lock);
-
-	struct lua_thread_list_t *node = NULL;
-	node = lua_thread_list;
-
-	if(node != NULL) {
-		uv_queue_work(uv_default_loop(), node->thread->work_req, "lua thread", thread_callback, thread_free);
-
-		lua_thread_list = lua_thread_list->next;
-		FREE(node);
-	}
-
-	if(lua_thread_list != NULL) {
-		uv_async_send(async_thread_req);
-	}
-	uv_mutex_unlock(&thread_lock);
-}
-
 static void thread_callback(uv_work_t *req) {
 	struct lua_thread_t *thread = req->data;
 	char name[255], *p = name;
@@ -422,16 +357,6 @@ int plua_async_thread(struct lua_State *L) {
 	plua_async_thread_object(L, lua_thread);
 
 	plua_gc_reg(L, lua_thread, plua_async_thread_gc);
-
-	if(async_init == 0) {
-		async_init = 1;
-		uv_mutex_init(&thread_lock);
-		if((async_thread_req = MALLOC(sizeof(uv_async_t))) == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
-		uv_async_init(uv_default_loop(), async_thread_req, plua_async_thread_loop);
-		plua_gc_reg(NULL, NULL, plua_async_thread_list_gc);
-	}
 
 	assert(lua_gettop(L) == 1);
 

@@ -547,7 +547,7 @@ static void *update(void *param) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	work_req->data = settings;
-	uv_queue_work(uv_default_loop(), work_req, "openweathermap", thread, thread_free);
+	uv_queue_work_s(work_req, "openweathermap", thread, thread_free);
 	if(time_override > -1) {
 		settings->update = time_override;
 	} else {
@@ -760,16 +760,6 @@ static int checkValues(JsonNode *code) {
 }
 
 static int createCode(JsonNode *code) {
-	/*
-	 * Make sure we execute in the main thread
-	 */
-	/*
-	 * FIXME
-	 *
-	 * const uv_thread_t pth_cur_id = uv_thread_self();
-	 * assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
-	 */
-
 #ifdef PILIGHT_DEVELOPMENT
 	struct settings_t *wtmp = settings;
 	char *country = NULL;
@@ -835,7 +825,7 @@ static int createCode(JsonNode *code) {
 						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					work_req->data = tmp;
-					uv_queue_work(uv_default_loop(), work_req, "openweathermap", thread, thread_free);
+					uv_queue_work_s(work_req, "openweathermap", thread, thread_free);
 
 					if(time_override > -1) {
 						tmp->update = time_override;
