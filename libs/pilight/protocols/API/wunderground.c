@@ -312,7 +312,7 @@ static void *update(void *param) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	work_req->data = settings;
-	uv_queue_work(uv_default_loop(), work_req, "wunderground", thread, thread_free);
+	uv_queue_work_s(work_req, "wunderground", thread, thread_free);
 	if(time_override > -1) {
 		settings->update = time_override;
 	} else {
@@ -573,7 +573,7 @@ static int createCode(struct JsonNode *code, char **message) {
 						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					work_req->data = tmp;
-					uv_queue_work(uv_default_loop(), work_req, "wunderground", thread, thread_free);
+					uv_queue_work_s(work_req, "wunderground", thread, thread_free);
 
 					if(time_override > -1) {
 						tmp->update = time_override;

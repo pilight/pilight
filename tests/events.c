@@ -766,7 +766,7 @@ static struct tests_t get_tests[] = {
 			"\"dimmer\":{\"protocol\":[\"generic_dimmer\"],\"id\":[{\"id\":100}],\"state\":\"off\",\"dimlevel\":10}"\
 		"},"\
 		"\"gui\":{},"\
-		"\"rules\":{\"dimmer\":{\"rule\":\"IF 1 == 1 THEN switch DEVICE 'switch' TO on AND dim DEVICE dimmer TO 2\",\"active\":1}},"\
+		"\"rules\":{\"dimmer\":{\"rule\":\"IF 1 == 1 THEN dim DEVICE dimmer TO 2 AND switch DEVICE 'switch' TO on\",\"active\":1}},"\
 		"\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		0, UV_RUN_DEFAULT,
 		0, &updates1[1],
@@ -781,8 +781,8 @@ static struct tests_t get_tests[] = {
 		"},"\
 		"\"gui\":{},"\
 		"\"rules\":{"\
-			"\"dimmer\":{\"rule\":\"IF 1 == 1 THEN dim DEVICE dimmer TO 2\",\"active\":1},"\
-			"\"switch\":{\"rule\":\"IF 1 == 1 THEN switch DEVICE 'switch' TO on\",\"active\":1}"\
+			"\"switch\":{\"rule\":\"IF 1 == 1 THEN switch DEVICE 'switch' TO on\",\"active\":1},"\
+			"\"dimmer\":{\"rule\":\"IF 1 == 1 THEN dim DEVICE dimmer TO 2\",\"active\":1}"\
 		"},\"settings\":%s,\"hardware\":{},\"registry\":{}}",
 		0, UV_RUN_DEFAULT,
 		0, &updates1[1],

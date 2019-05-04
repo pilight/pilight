@@ -46,19 +46,33 @@
 #include "mem.h"
 #include "network.h"
 
-static uv_async_t *async_req = NULL;
+static uv_async_t *async_event_req = NULL;
 
-struct eventqueue_t {
+typedef struct eventqueue_t {
 	int reason;
 	void *(*done)(void *);
 	void *data;
 	struct eventqueue_t *next;
 } eventqueue_t;
 
-struct eventqueue_data_t {
+typedef struct eventqueue_data_t {
 	void *data;
 	void *userdata;
 } eventqueue_data_t;
+
+typedef struct thread_list_t {
+	char *name;
+	void *gc;
+	uv_work_t *work_req;
+	uv_work_cb work_cb;
+	uv_after_work_cb after_work_cb;
+	struct thread_list_t *next;
+} thread_list_t;
+
+static struct thread_list_t *thread_list = NULL;
+
+static uv_mutex_t thread_lock;
+static uv_async_t *thread_async_req = NULL;
 
 static int nrlisteners[REASON_END+10000] = {0};
 static struct eventqueue_t *eventqueue = NULL;
@@ -116,6 +130,44 @@ static struct reasons_t {
 	{	REASON_LOG,										"REASON_LOG",										0 },
 	{	REASON_END,										"REASON_END",										0 }
 };
+
+static void safe_thread_loop(uv_async_t *handle) {
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
+
+	uv_mutex_lock(&thread_lock);
+
+	struct thread_list_t *node = NULL;
+	node = thread_list;
+
+	if(node != NULL) {
+		uv_queue_work(uv_default_loop(), node->work_req, node->name, node->work_cb, node->after_work_cb);
+
+		thread_list = thread_list->next;
+		FREE(node);
+	}
+
+	if(thread_list != NULL) {
+		uv_async_send(thread_async_req);
+	}
+	uv_mutex_unlock(&thread_lock);
+}
+
+void uv_queue_work_s(uv_work_t *req, char *name, uv_work_cb work_cb, uv_after_work_cb after_work_cb) {
+	uv_mutex_lock(&thread_lock);
+
+	struct thread_list_t *node = MALLOC(sizeof(struct thread_list_t));
+	node->name = name;
+	node->work_cb = work_cb;
+	node->work_req = req;
+	node->after_work_cb = after_work_cb;
+	node->next = thread_list;
+	thread_list = node;
+
+	uv_async_send(thread_async_req);
+
+	uv_mutex_unlock(&thread_lock);
+}
 
 static void fib_free(uv_work_t *req, int status) {
 	FREE(req->data);
@@ -255,7 +307,7 @@ void eventpool_trigger(int reason, void *(*done)(void *), void *data) {
 
 	uv_mutex_unlock(&listeners_lock);
 
-	uv_async_send(async_req);
+	uv_async_send(async_event_req);
 }
 
 static void eventpool_execute(uv_async_t *handle) {
@@ -399,7 +451,7 @@ static void eventpool_execute(uv_async_t *handle) {
 	FREE(node);
 	uv_mutex_lock(&listeners_lock);
 	if(eventqueue != NULL) {
-		uv_async_send(async_req);
+		uv_async_send(async_event_req);
 	}
 	uv_mutex_unlock(&listeners_lock);
 }
@@ -436,6 +488,17 @@ int eventpool_gc(void) {
 	if(lockinit == 1) {
 		uv_mutex_unlock(&listeners_lock);
 	}
+
+	uv_mutex_lock(&thread_lock);
+	struct thread_list_t *node = NULL;
+	while(thread_list) {
+		node = thread_list;
+		thread_list = thread_list->next;
+		node->after_work_cb(node->work_req, -99);
+		FREE(node);
+	}
+	uv_mutex_unlock(&thread_lock);
+
 	eventpoolinit = 0;
 	return 0;
 }
@@ -934,10 +997,16 @@ void eventpool_init(enum eventpool_threads_t t) {
 	eventpoolinit = 1;
 	threads = t;
 
-	if((async_req = MALLOC(sizeof(uv_async_t))) == NULL) {
+	uv_mutex_init(&thread_lock);
+	if((thread_async_req = MALLOC(sizeof(uv_async_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
-	uv_async_init(uv_default_loop(), async_req, eventpool_execute);
+	uv_async_init(uv_default_loop(), thread_async_req, safe_thread_loop);
+
+	if((async_event_req = MALLOC(sizeof(uv_async_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	uv_async_init(uv_default_loop(), async_event_req, eventpool_execute);
 
 	if(lockinit == 0) {
 		lockinit = 1;

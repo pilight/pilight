@@ -208,6 +208,7 @@ static void test_lua_async_thread(CuTest *tc) {
 	gtc = tc;
 	memtrack();
 
+	eventpool_init(EVENTPOOL_NO_THREADS);
 	plua_init();
 	plua_override_global("print", plua_print);
 	plua_pause_coverage(1);
@@ -273,6 +274,7 @@ static void test_lua_async_thread(CuTest *tc) {
 	}
 
 	plua_pause_coverage(0);
+	eventpool_gc();
 	plua_gc();
 	CuAssertIntEquals(tc, 14, run);
 	CuAssertIntEquals(tc, 0, xfree());
