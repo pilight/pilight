@@ -196,50 +196,20 @@ int plua_wiringx_digital_write(struct lua_State *L) {
 	int is_table = 0;
 	struct plua_metatable_t *table = NULL;
 
-	{
-		char buf[128] = { '\0' }, *p = buf;
-		char *error = "number expected, got %s";
-		sprintf(p, error, lua_typename(L, lua_type(L, 1)));
-
-		luaL_argcheck(L,
-			(lua_type(L, 1) == LUA_TNUMBER),
-			1, buf);
-
-		if(lua_type(L, 1) == LUA_TNUMBER) {
-			gpio = lua_tonumber(L, -1);
-			lua_remove(L, 1);
-		}
-	}
-
-	{
-		char buf[128] = { '\0' }, *p = buf;
-		char *error = "number expected, got %s";
-		sprintf(p, error, lua_typename(L, lua_type(L, 1)));
-
-		luaL_argcheck(L,
-			(lua_type(L, 1) == LUA_TNUMBER),
-			1, buf);
-
-		if(lua_type(L, 1) == LUA_TNUMBER) {
-			mode = lua_tonumber(L, 1);
-			lua_remove(L, 1);
-		}
-	}
-
-	if(lua_gettop(L) == 1) {
+	if(lua_gettop(L) == 3) {
 		char buf[128] = { '\0' }, *p = buf;
 		char *error = "userdata expected, got %s";
 
-		sprintf(p, error, lua_typename(L, lua_type(L, 1)));
+		sprintf(p, error, lua_typename(L, lua_type(L, -1)));
 
 		luaL_argcheck(L,
-			(lua_type(L, 1) == LUA_TLIGHTUSERDATA || lua_type(L, 1) == LUA_TTABLE),
+			(lua_type(L, -1) == LUA_TLIGHTUSERDATA || lua_type(L, -1) == LUA_TTABLE),
 			1, buf);
 
-		if(lua_type(L, 1) == LUA_TLIGHTUSERDATA) {
-			table = (void *)lua_topointer(L, 1);
-			lua_remove(L, 1);
-		} else if(lua_type(L, 1) == LUA_TTABLE) {
+		if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
+			table = (void *)lua_topointer(L, -1);
+			lua_remove(L, -1);
+		} else if(lua_type(L, -1) == LUA_TTABLE) {
 			is_table = 1;
 
 			plua_metatable_init(&table);
@@ -249,6 +219,36 @@ int plua_wiringx_digital_write(struct lua_State *L) {
 				plua_metatable_parse_set(L, table);
 				lua_pop(L, 1);
 			}
+		}
+	}
+
+	{
+		char buf[128] = { '\0' }, *p = buf;
+		char *error = "number expected, got %s";
+		sprintf(p, error, lua_typename(L, lua_type(L, -1)));
+
+		luaL_argcheck(L,
+			(lua_type(L, -1) == LUA_TNUMBER),
+			1, buf);
+
+		if(lua_type(L, -1) == LUA_TNUMBER) {
+			mode = lua_tonumber(L, -1);
+			lua_remove(L, -1);
+		}
+	}
+
+	{
+		char buf[128] = { '\0' }, *p = buf;
+		char *error = "number expected, got %s";
+		sprintf(p, error, lua_typename(L, lua_type(L, -1)));
+
+		luaL_argcheck(L,
+			(lua_type(L, -1) == LUA_TNUMBER),
+			1, buf);
+
+		if(lua_type(L, -1) == LUA_TNUMBER) {
+			gpio = lua_tonumber(L, -1);
+			lua_remove(L, -1);
 		}
 	}
 
