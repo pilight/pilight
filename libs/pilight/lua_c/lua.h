@@ -15,7 +15,7 @@
 
 #include "../libs/pilight/core/common.h"
 
-#define NRLUASTATES	4
+#define NRLUASTATES	8
 
 #define UNITTEST	0
 #define OPERATOR	1
