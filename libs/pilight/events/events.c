@@ -23,6 +23,7 @@
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
+#include <assert.h>
 #endif
 
 #include "../core/pilight.h"

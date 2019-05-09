@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <math.h>
+#include <assert.h>
 #ifndef _WIN32
 #include <wiringx.h>
 #endif
@@ -87,9 +88,11 @@ static int createCode(JsonNode *code) {
 		if(config_setting_get_string(state->L, "gpio-platform", 0, &platform) != 0) {
 			logprintf(LOG_ERR, "no gpio-platform configured");
 			have_error = 1;
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 			goto clear;
 		}
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 	}
 
@@ -183,9 +186,11 @@ static int checkValues(JsonNode *code) {
 				struct lua_state_t *state = plua_get_free_state();
 				if(config_setting_get_string(state->L, "gpio-platform", 0, &platform) != 0 || strcmp(platform, "none") == 0) {
 					logprintf(LOG_ERR, "relay: no gpio-platform configured");
+					assert(lua_gettop(state->L) == 0);
 					plua_clear_state(state);
 					return -1;
 				} else {
+					assert(lua_gettop(state->L) == 0);
 					plua_clear_state(state);
 
 					if(wiringXSetup(platform, logprintf1) < 0) {

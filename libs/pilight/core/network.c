@@ -63,6 +63,7 @@
 #ifdef __FreeBSD__
 	#include <net/if_dl.h>
 #endif
+#include <assert.h>
 
 #include "../config/settings.h"
 #include "mem.h"
@@ -569,9 +570,11 @@ int whitelist_check(char *ip) {
 	/* Check if there are any whitelisted ip address */
 	struct lua_state_t *state = plua_get_free_state();
 	if(config_setting_get_string(state->L, "whitelist", 0, &whitelist) != 0) {
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 		return 0;
 	}
+	assert(lua_gettop(state->L) == 0);
 	plua_clear_state(state);
 
 	if(strlen(whitelist) == 0) {

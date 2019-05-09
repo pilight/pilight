@@ -704,6 +704,7 @@ static int parse_rest(uv_poll_t *req) {
 					}
 					struct lua_state_t *state = plua_get_free_state();
 					if(config_registry_get(state->L, key, &out) == 0) {
+						assert(lua_gettop(state->L) == 0);
 						plua_clear_state(state);
 						if(out.type_ == LUA_TNUMBER) {
 							struct JsonNode *jsend = json_mkobject();
@@ -738,6 +739,7 @@ static int parse_rest(uv_poll_t *req) {
 							goto clear;
 						}
 					} else {
+						assert(lua_gettop(state->L) == 0);
 						plua_clear_state(state);
 						FREE(key);
 					}
@@ -752,6 +754,7 @@ static int parse_rest(uv_poll_t *req) {
 						if(isNumeric(value) == 0) {
 							struct lua_state_t *state = plua_get_free_state();
 							if(config_registry_set_number(state->L, key, atof(value)) == 0) {
+								assert(lua_gettop(state->L) == 0);
 								plua_clear_state(state);
 
 								char *z = "{\"message\":\"success\"}";
@@ -761,11 +764,13 @@ static int parse_rest(uv_poll_t *req) {
 								FREE(value);
 								goto clear;
 							} else {
+								assert(lua_gettop(state->L) == 0);
 								plua_clear_state(state);
 							}
 						} else {
 							struct lua_state_t *state = plua_get_free_state();
 							if(config_registry_set_string(state->L, key, value) == 0) {
+								assert(lua_gettop(state->L) == 0);
 								plua_clear_state(state);
 
 								char *z = "{\"message\":\"success\"}";
@@ -775,6 +780,7 @@ static int parse_rest(uv_poll_t *req) {
 								FREE(value);
 								goto clear;
 							} else {
+								assert(lua_gettop(state->L) == 0);
 								plua_clear_state(state);
 							}
 						}
@@ -792,6 +798,7 @@ static int parse_rest(uv_poll_t *req) {
 					struct lua_state_t *state = plua_get_free_state();
 					if(config_registry_get(state->L, key, &out) == 0 &&
 						config_registry_set_null(state->L, key) == 0) {
+						assert(lua_gettop(state->L) == 0);
 						plua_clear_state(state);
 						char *z = "{\"message\":\"success\"}";
 						send_data(req, "application/json", z, strlen(z));
@@ -802,6 +809,7 @@ static int parse_rest(uv_poll_t *req) {
 						FREE(key);
 						goto clear;
 					} else {
+						assert(lua_gettop(state->L) == 0);
 						plua_clear_state(state);
 					}
 					char *z = "{\"message\":\"failed\"}";
@@ -2103,6 +2111,7 @@ int webserver_start(void) {
 		webserver_init(http_port, 0);
 	}
 
+	assert(lua_gettop(state->L) == 0);
 	plua_clear_state(state);
 
 	return 0;

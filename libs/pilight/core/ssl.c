@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "pilight.h"
 #include "ssl.h"
@@ -34,6 +35,7 @@ void ssl_init(void) {
 
 	struct lua_state_t *state = plua_get_free_state();
 	if(config_setting_get_string(state->L, "pem-file", 0, &pemfile) != 0) {
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 		if((pemfile = REALLOC(pemfile, strlen(PEM_FILE)+1)) == NULL) {
 			fprintf(stderr, "out of memory\n");
@@ -41,6 +43,7 @@ void ssl_init(void) {
 		}
 		strcpy(pemfile, PEM_FILE);
 	} else {
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 	}
 	if(file_exists(pemfile) != 0) {

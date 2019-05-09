@@ -50,6 +50,7 @@
 #else
 	#include <termios.h>
 #endif
+#include <assert.h>
 
 #include "../../avrdude/avr.h"
 #include "../../avrdude/arduino.h"

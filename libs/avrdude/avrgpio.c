@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <wiringx.h>
+#include <assert.h>
 
 #include "avrdude.h"
 #include "avr.h"

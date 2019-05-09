@@ -28,6 +28,7 @@
 	#endif
 #endif
 #include <pthread.h>
+#include <assert.h>
 
 #include "../core/pilight.h"
 #include "../core/common.h"
@@ -131,8 +132,10 @@ void protocol_init(void) {
 			exit(EXIT_FAILURE);
 		}
 		strcpy(protocol_root, PROTOCOL_ROOT);
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 	} else {
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 	}
 

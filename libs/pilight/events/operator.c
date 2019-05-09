@@ -54,6 +54,7 @@ void event_operator_init(void) {
 
 	struct lua_state_t *state = plua_get_free_state();
 	int ret = config_setting_get_string(state->L, "operators-root", 0, &operator_root);
+	assert(lua_gettop(state->L) == 0);
 	plua_clear_state(state);
 
 	if((d = opendir(operator_root))) {

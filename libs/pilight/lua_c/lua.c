@@ -209,6 +209,7 @@ struct lua_state_t *plua_get_module(lua_State *L, char *namespace, char *module)
 	}
 
 	if((L = state->L) == NULL) {
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 		return NULL;
 	}
@@ -221,7 +222,7 @@ struct lua_state_t *plua_get_module(lua_State *L, char *namespace, char *module)
 
 	if(lua_isnil(L, -1) != 0) {
 		lua_pop(L, -1);
-		assert(lua_gettop(L) == 0);
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 		return NULL;
 	}
@@ -242,7 +243,7 @@ struct lua_state_t *plua_get_module(lua_State *L, char *namespace, char *module)
 
 	lua_pop(L, -1);
 
-	assert(lua_gettop(L) == 0);
+	assert(lua_gettop(state->L) == 0);
 	plua_clear_state(state);
 
 	return NULL;
@@ -1686,6 +1687,7 @@ int plua_module_exists(char *module, int type) {
 		return 1;
 	}
 	if((L = state->L) == NULL) {
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 		return 1;
 	}
@@ -1711,7 +1713,7 @@ int plua_module_exists(char *module, int type) {
 	}
 	lua_pop(L, -1);
 
-	assert(lua_gettop(L) == 0);
+	assert(lua_gettop(state->L) == 0);
 	plua_clear_state(state);
 
 	return 0;

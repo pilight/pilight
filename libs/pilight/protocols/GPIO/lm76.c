@@ -34,6 +34,7 @@
 	#include <wiringx.h>
 #endif
 #include <pthread.h>
+#include <assert.h>
 
 #include "../../core/pilight.h"
 #include "../../core/common.h"
@@ -176,9 +177,11 @@ static struct threadqueue_t *initDev(JsonNode *jdevice) {
 	struct lua_state_t *state = plua_get_free_state();
 	if(config_setting_get_string(state->L, "gpio-platform", 0, &platform) != 0) {
 		logprintf(LOG_ERR, "no gpio-platform configured");
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 		return NULL;
 	}
+	assert(lua_gettop(state->L) == 0);
 	plua_clear_state(state);
 	if(strcmp(platform, "none") == 0) {
 		FREE(platform);

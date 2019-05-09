@@ -25,6 +25,7 @@
 #ifndef _WIN32
 #include <wiringx.h>
 #endif
+#include <assert.h>
 
 #include "../../core/pilight.h"
 #include "../../core/common.h"

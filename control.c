@@ -16,6 +16,7 @@
 #ifndef _WIN32
 #include <wiringx.h>
 #endif
+#include <assert.h>
 
 #include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"

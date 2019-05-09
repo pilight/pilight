@@ -34,6 +34,7 @@
 	#include <wiringx.h>
 #endif
 #include <pthread.h>
+#include <assert.h>
 
 #include "../../core/pilight.h"
 #include "../../core/common.h"

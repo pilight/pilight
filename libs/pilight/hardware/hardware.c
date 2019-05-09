@@ -26,6 +26,7 @@
 #endif
 #include <sys/stat.h>
 #include <time.h>
+#include <assert.h>
 
 #include "../core/pilight.h"
 #include "../core/common.h"

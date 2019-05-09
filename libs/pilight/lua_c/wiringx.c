@@ -462,12 +462,14 @@ static void plua_wiringx_poll_timer(uv_timer_t *req) {
 	if(lua_pcall(state->L, 3, 0, 0) == LUA_ERRRUN) {
 		if(lua_type(state->L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 			return;
 		}
 		if(lua_type(state->L, -1) == LUA_TSTRING) {
 			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
 			lua_pop(state->L, -1);
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 			return;
 		}

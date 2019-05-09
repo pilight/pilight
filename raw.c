@@ -19,6 +19,7 @@
 #ifndef _WIN32
 #include <wiringx.h>
 #endif
+#include <assert.h>
 
 #include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
@@ -303,9 +304,11 @@ int main(int argc, char **argv) {
 
 	struct lua_state_t *state = plua_get_free_state();
 	if(config_read(state->L, CONFIG_SETTINGS | CONFIG_HARDWARE) != EXIT_SUCCESS) {
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 		goto close;
 	}
+	assert(lua_gettop(state->L) == 0);
 	plua_clear_state(state);
 
 	struct plua_metatable_t *table = config_get_metatable();

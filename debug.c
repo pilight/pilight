@@ -16,6 +16,7 @@
 #include <time.h>
 #include <math.h>
 #include <string.h>
+#include <assert.h>
 
 #ifndef _WIN32
 #include <wiringx.h>
