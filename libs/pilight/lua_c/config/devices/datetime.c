@@ -211,6 +211,8 @@ static int plua_config_device_datetime_get_table(lua_State *L) {
 	struct tm tm;
 	int i = 0;
 
+	memset(&tm, 0, sizeof(struct tm));
+
 	if(dev == NULL) {
 		luaL_error(L, "internal error: device object not passed");
 	}
