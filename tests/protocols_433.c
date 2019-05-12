@@ -23,17 +23,19 @@
 #include "../libs/pilight/protocols/433.92/arctech_dusk.h"
 #include "../libs/pilight/protocols/433.92/livolo_switch.h"
 #include "../libs/pilight/protocols/433.92/iwds07.h"
+#include "../libs/pilight/protocols/433.92/kerui_d026.h"
+#include "../libs/pilight/protocols/433.92/tfa2017.h"
 
 #include "alltests.h"
 
-static const struct raw_t {
+const struct raw_t {
 	char *input;
 	char *message;
 	char *output;
 	int validate;
 } raw_t;
 
-static const struct test_t {
+const struct test_t {
 	void (*init)(void);
 	struct protocol_t **protocol;
 	const struct raw_t *raw;
@@ -47,6 +49,8 @@ static const struct test_t {
 #include "protocols/arctech_dusk.h"
 #include "protocols/livolo_switch.h"
 #include "protocols/iwds07.h"
+#include "protocols/kerui_d026.h"
+#include "protocols/tfa2017.h"
 
 static const struct test_t tests[] = {
 	{ &alectoWS1700Init, &alecto_ws1700, alecto_ws1700_tests, &alecto_ws1700_nrtests },
@@ -56,13 +60,15 @@ static const struct test_t tests[] = {
 	{ &arctechDimmerInit, &arctech_dimmer, arctech_dimmer_tests, &arctech_dimmer_nrtests },
 	{ &arctechDuskInit, &arctech_dusk, arctech_dusk_tests, &arctech_dusk_nrtests },
 	{ &livoloSwitchInit, &livolo_switch, livolo_switch_tests, &livolo_switch_nrtests },
+	{ &keruiD026Init, &kerui_D026, kerui_d026_tests, &kerui_d026_nrtests },
+	{ &tfa2017Init, &tfa2017, tfa2017_tests, &tfa2017_nrtests },
 };
 
 static void test_protocols_433(CuTest *tc) {
 	memtrack();	
 
 	char **array = NULL, message[255], name[255];
-	int raw[74], nrtests = 0, nrraw = 0;
+	int raw[1024], nrtests = 0, nrraw = 0;
 	int x = 0, y = 0, i = 0;
 
 	nrtests = sizeof(tests)/sizeof(tests[0]);
@@ -99,7 +105,8 @@ static void test_protocols_433(CuTest *tc) {
 			}
 
 			if(tests[x].raw[i].validate == 0) {
-				protocol->parseCode(message);
+				char *p = message;
+				protocol->parseCode(&p);
 
 				CuAssertStrEquals(tc, tests[x].raw[i].message, message);
 			}
@@ -110,13 +117,9 @@ static void test_protocols_433(CuTest *tc) {
 			 * Check if input paramters are parsed to proper pulses
 			 */
 			if(protocol->createCode != NULL && strlen(tests[x].raw[i].output) > 0) {
-				/*
-				 * FIXME:
-				 * The message should be passed as a pointer, because now it won't
-				 * be filled at the moment. This is an issue in all protocols.
-				 */
 				struct JsonNode *json = json_decode(tests[x].raw[i].message);
-				protocol->createCode(json, message);
+				char *p = message;
+				protocol->createCode(json, &p);
 				json_delete(json);
 
 				int n = explode(tests[x].raw[i].output, " ", &array);
