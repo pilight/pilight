@@ -22,6 +22,7 @@
 #include "../libs/pilight/protocols/433.92/arctech_dimmer.h"
 #include "../libs/pilight/protocols/433.92/arctech_dusk.h"
 #include "../libs/pilight/protocols/433.92/livolo_switch.h"
+#include "../libs/pilight/protocols/433.92/iwds07.h"
 #include "../libs/pilight/protocols/433.92/kerui_d026.h"
 #include "../libs/pilight/protocols/433.92/tfa2017.h"
 
@@ -47,6 +48,7 @@ const struct test_t {
 #include "protocols/arctech_dimmer.h"
 #include "protocols/arctech_dusk.h"
 #include "protocols/livolo_switch.h"
+#include "protocols/iwds07.h"
 #include "protocols/kerui_d026.h"
 #include "protocols/tfa2017.h"
 
@@ -54,6 +56,7 @@ static const struct test_t tests[] = {
 	{ &alectoWS1700Init, &alecto_ws1700, alecto_ws1700_tests, &alecto_ws1700_nrtests },
 	{ &alectoWX500Init, &alecto_wx500, alecto_wx500_tests, &alecto_wx500_nrtests },
 	{ &arctechContactInit, &arctech_contact, arctech_contact_tests, &arctech_contact_nrtests },
+	{ &iwds07Init, &iwds07, iwds07_tests, &iwds07_nrtests },
 	{ &arctechDimmerInit, &arctech_dimmer, arctech_dimmer_tests, &arctech_dimmer_nrtests },
 	{ &arctechDuskInit, &arctech_dusk, arctech_dusk_tests, &arctech_dusk_nrtests },
 	{ &livoloSwitchInit, &livolo_switch, livolo_switch_tests, &livolo_switch_nrtests },
