@@ -379,6 +379,7 @@ struct JsonNode *config_print(int level, const char *media) {
 			json_remove_from_parent(jchild);
 			json_append_member(root, "registry", jchild);
 		}
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 	}
 

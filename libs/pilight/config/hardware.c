@@ -125,7 +125,6 @@ int config_hardware_run(void) {
 	lua_pop(state->L, -1);
 
 	assert(lua_gettop(state->L) == 0);
-
 	plua_clear_state(state);
 
 	if(match == 1) {

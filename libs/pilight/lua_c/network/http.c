@@ -289,11 +289,13 @@ static void plua_network_http_callback(int code, char *content, int size, char *
 		if(lua_type(state->L, -1) == LUA_TSTRING) {
 			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
 			lua_pop(state->L, -1);
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 			goto error;
 		}
 	}
 	lua_remove(state->L, 1);
+	assert(lua_gettop(state->L) == 0);
 	plua_clear_state(state);
 
 error:

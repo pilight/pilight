@@ -2122,6 +2122,7 @@ void *events_clientize(void *param) {
 
 	struct lua_state_t *state = plua_get_free_state();
 	config_setting_get_number(state->L, "standalone", 0, &standalone);
+	assert(lua_gettop(state->L) == 0);
 	plua_clear_state(state);
 
 	while(loop) {

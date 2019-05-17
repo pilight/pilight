@@ -443,6 +443,7 @@ void *broadcast(void *param) {
 								config_registry_set_number(state->L, "pilight.firmware.version", firmware.version);
 								config_registry_set_number(state->L, "pilight.firmware.lpf", firmware.lpf);
 								config_registry_set_number(state->L, "pilight.firmware.hpf", firmware.hpf);
+								assert(lua_gettop(state->L) == 0);
 								plua_clear_state(state);
 
 								struct JsonNode *jmessage = json_mkobject();
@@ -1337,6 +1338,7 @@ static void socket_parse_data(int i, char *buffer) {
 									} else {
 										socket_write(sd, "{\"status\":\"failed\"}");
 									}
+									assert(lua_gettop(state->L) == 0);
 									plua_clear_state(state);
 								} else if(value->tag == JSON_STRING) {
 									struct lua_state_t *state = plua_get_free_state();
@@ -1345,6 +1347,7 @@ static void socket_parse_data(int i, char *buffer) {
 									} else {
 										socket_write(sd, "{\"status\":\"failed\"}");
 									}
+									assert(lua_gettop(state->L) == 0);
 									plua_clear_state(state);
 								} else {
 									logprintf(LOG_ERR, "registry value can only be a string or number");
@@ -1362,6 +1365,7 @@ static void socket_parse_data(int i, char *buffer) {
 								} else {
 									socket_write(sd, "{\"status\":\"failed\"}");
 								}
+								assert(lua_gettop(state->L) == 0);
 								plua_clear_state(state);
 							}
 						} else if(strcmp(type, "get") == 0) {
@@ -1373,6 +1377,7 @@ static void socket_parse_data(int i, char *buffer) {
 								memset(&out, 0, sizeof(struct varcont_t));
 								struct lua_state_t *state = plua_get_free_state();
 								if(config_registry_get(state->L, key, &out) == 0) {
+									assert(lua_gettop(state->L) == 0);
 									plua_clear_state(state);
 									if(out.type_ == JSON_NUMBER) {
 										struct JsonNode *jsend = json_mkobject();
@@ -1393,6 +1398,7 @@ static void socket_parse_data(int i, char *buffer) {
 										json_free(output);
 										json_delete(jsend);
 									} else {
+										assert(lua_gettop(state->L) == 0);
 										plua_clear_state(state);
 										logprintf(LOG_ERR, "registry key '%s' doesn't exists", key);
 										socket_write(sd, "{\"status\":\"failed\"}");
@@ -1615,6 +1621,7 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 								if(value->tag == JSON_NUMBER) {
 									struct lua_state_t *state = plua_get_free_state();
 									if(config_registry_set_number(state->L, key, value->number_) == 0) {
+										assert(lua_gettop(state->L) == 0);
 										plua_clear_state(state);
 										if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
 											OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -1623,6 +1630,7 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 										json_delete(json);
 										return 0;
 									} else {
+										assert(lua_gettop(state->L) == 0);
 										plua_clear_state(state);
 										if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
 											OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -1634,6 +1642,7 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 								} else if(value->tag == JSON_STRING) {
 									struct lua_state_t *state = plua_get_free_state();
 									if(config_registry_set_string(state->L, key, value->string_) == 0) {
+										assert(lua_gettop(state->L) == 0);
 										plua_clear_state(state);
 										if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
 											OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -1642,6 +1651,7 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 										json_delete(json);
 										return 0;
 									} else {
+										assert(lua_gettop(state->L) == 0);
 										plua_clear_state(state);
 										if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
 											OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -1672,6 +1682,7 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 							} else {
 								struct lua_state_t *state = plua_get_free_state();
 								if(config_registry_set_null(state->L, key) == 0) {
+									assert(lua_gettop(state->L) == 0);
 									plua_clear_state(state);
 									if((*respons = MALLOC(strlen("{\"status\":\"success\"}")+1)) == NULL) {
 										OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -1680,6 +1691,7 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 									json_delete(json);
 									return 0;
 								} else {
+									assert(lua_gettop(state->L) == 0);
 									plua_clear_state(state);
 									logprintf(LOG_ERR, "registry value can only be a string or number");
 									if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
@@ -1704,6 +1716,7 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 								memset(&out, 0, sizeof(struct varcont_t));
 								struct lua_state_t *state = plua_get_free_state();
 								if(config_registry_get(state->L, key, &out) == 0) {
+									assert(lua_gettop(state->L) == 0);
 									plua_clear_state(state);
 									if(out.type_ == JSON_NUMBER) {
 										struct JsonNode *jsend = json_mkobject();
@@ -1743,6 +1756,7 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 										return 0;
 									}
 								} else {
+									assert(lua_gettop(state->L) == 0);
 									plua_clear_state(state);
 									logprintf(LOG_ERR, "registry key '%s' does not exist", key);
 									if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
@@ -2059,6 +2073,7 @@ static void *receivePulseTrain1(int reason, void *param, void *userdata) {
 
 	struct lua_state_t *state = plua_get_free_state();
 	int hwtype = config_hardware_get_type(state->L, hardware);
+	assert(lua_gettop(state->L) == 0);
 	plua_clear_state(state);
 
 	if(hwtype == -1 && hwtype != RF433 && hwtype != RFNONE && hwtype != RF868) {
@@ -2433,6 +2448,7 @@ void registerVersion(void) {
 		struct lua_state_t *state = plua_get_free_state();
 		config_registry_set_null(state->L, "pilight.version");
 		config_registry_set_string(state->L, "pilight.version.current", (char *)PILIGHT_VERSION);
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 	}
 }
@@ -2490,6 +2506,7 @@ static void pilight_stats(uv_timer_t *timer_req) {
 		struct lua_state_t *state = plua_get_free_state();
 		config_setting_get_number(state->L, "watchdog-enable", 0, &watchdog);
 		config_setting_get_number(state->L, "stats-enable", 0, &stats);
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 	}
 
@@ -2874,10 +2891,12 @@ int start_pilight(int argc, char **argv) {
 	{
 		struct lua_state_t *state = plua_get_free_state();
 		if(config_read(state->L, CONFIG_SETTINGS | CONFIG_REGISTRY | CONFIG_DEVICES | CONFIG_RULES | CONFIG_GUI) != EXIT_SUCCESS) {
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 			logprintf(LOG_ERR, "failed to read config");
 			goto clear;
 		} else {
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 		}
 	}
@@ -2888,9 +2907,11 @@ int start_pilight(int argc, char **argv) {
 		struct lua_state_t *state = plua_get_free_state();
 		if(config_read(state->L, CONFIG_HARDWARE) != EXIT_SUCCESS) {
 			logprintf(LOG_ERR, "failed to read config");
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 			goto clear;
 		} else {
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 		}
 	}
@@ -2901,6 +2922,7 @@ int start_pilight(int argc, char **argv) {
 	if(verbosity_changed == 0) {
 		struct lua_state_t *state = plua_get_free_state();
 		config_setting_get_number(state->L, "log-level", 0, &verbosity);
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 	}
 
@@ -2909,6 +2931,7 @@ int start_pilight(int argc, char **argv) {
 	{
 		struct lua_state_t *state = plua_get_free_state();
 		if(config_setting_get_string(state->L, "log-file", 0, &stmp) == 0) {
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 			if(log_file_set(stmp) == EXIT_FAILURE) {
 				FREE(stmp);
@@ -2916,6 +2939,7 @@ int start_pilight(int argc, char **argv) {
 			}
 			FREE(stmp);
 		} else {
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 		}
 	}
@@ -2927,6 +2951,7 @@ int start_pilight(int argc, char **argv) {
 	{
 		struct lua_state_t *state = plua_get_free_state();
 		if(config_setting_get_string(state->L, "pem-file", 0, &pemfile) != 0) {
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 			if((pemfile = REALLOC(pemfile, strlen(PEM_FILE)+1)) == NULL) {
 				fprintf(stderr, "out of memory\n");
@@ -2934,6 +2959,7 @@ int start_pilight(int argc, char **argv) {
 			}
 			strcpy(pemfile, PEM_FILE);
 		}	else {
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 		}
 
@@ -2962,6 +2988,7 @@ int start_pilight(int argc, char **argv) {
 				config_registry_set_number(state->L, "webserver.ssl.certificate.secure", 1);
 			}
 			config_registry_set_string(state->L, "webserver.ssl.certificate.location", pemfile);
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 
 			FREE(content);
@@ -2978,6 +3005,7 @@ int start_pilight(int argc, char **argv) {
 		config_setting_get_number(state->L, "webserver-enable", 0, &webserver_enable);
 		config_setting_get_number(state->L, "webserver-http-port", 0, &webserver_http_port);
 		if(config_setting_get_string(state->L, "webserver-root", 0, &webserver_root) != 0) {
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 			if((webserver_root = REALLOC(webserver_root, strlen(WEBSERVER_ROOT)+1)) == NULL) {
 				fprintf(stderr, "out of memory\n");
@@ -2985,6 +3013,7 @@ int start_pilight(int argc, char **argv) {
 			}
 			strcpy(webserver_root, WEBSERVER_ROOT);
 		} else {
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 		}
 	}
@@ -2995,6 +3024,7 @@ int start_pilight(int argc, char **argv) {
 	{
 		struct lua_state_t *state = plua_get_free_state();
 		if(config_setting_get_string(state->L, "pid-file", 0, &pid_file) != 0) {
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 			if((pid_file = REALLOC(pid_file, strlen(PID_FILE)+1)) == NULL) {
 				fprintf(stderr, "out of memory\n");
@@ -3002,6 +3032,7 @@ int start_pilight(int argc, char **argv) {
 			}
 			strcpy(pid_file, PID_FILE);
 		} else {
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 		}
 
@@ -3084,6 +3115,7 @@ int start_pilight(int argc, char **argv) {
 		struct lua_state_t *state = plua_get_free_state();
 		config_setting_get_number(state->L, "port", 0, &port);
 		config_setting_get_number(state->L, "standalone", 0, &standalone);
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 	}
 
@@ -3210,6 +3242,7 @@ int start_pilight(int argc, char **argv) {
 			webserver_start();
 		}
 #endif
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 	}
 #endif
@@ -3228,6 +3261,7 @@ int start_pilight(int argc, char **argv) {
 		if(nrservers > 0) {
 			ntpsync();
 		}
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 	}
 

@@ -64,6 +64,7 @@ void hardware_init(void) {
 
 	struct lua_state_t *state = plua_get_free_state();
 	int ret = config_setting_get_string(state->L, "hardware-root", 0, &hardware_root);
+	assert(lua_gettop(state->L) == 0);
 	plua_clear_state(state);
 
 	if((d = opendir(hardware_root))) {

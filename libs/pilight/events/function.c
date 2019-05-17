@@ -54,6 +54,7 @@ void event_function_init(void) {
 
 	struct lua_state_t *state = plua_get_free_state();
 	int ret = config_setting_get_string(state->L, "functions-root", 0, &functions_root);
+	assert(lua_gettop(state->L) == 0);
 	plua_clear_state(state);
 
 	if((d = opendir(functions_root))) {
@@ -223,7 +224,7 @@ int event_function_callback(char *module, struct event_function_args_t *args, st
 		return -1;
 	}
 	if((L = state->L) == NULL) {
-		assert(lua_gettop(L) == 0);
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 		return -1;
 	}
@@ -237,7 +238,7 @@ int event_function_callback(char *module, struct event_function_args_t *args, st
 	if(lua_isnil(L, -1) != 0) {
 		event_function_free_argument(args);
 		lua_remove(L, -1);
-		assert(lua_gettop(L) == 0);
+		assert(lua_gettop(state->L) == 0);
 		plua_clear_state(state);
 		return -1;
 	}
@@ -255,20 +256,20 @@ int event_function_callback(char *module, struct event_function_args_t *args, st
 		if(file != NULL) {
 			if(plua_function_module_run(L, file, args, v) == 0) {
 				lua_pop(L, -1);
-				assert(lua_gettop(L) == 0);
+				assert(lua_gettop(state->L) == 0);
 				plua_clear_state(state);
 				return -1;
 			}
 		} else {
 			event_function_free_argument(args);
-			assert(lua_gettop(L) == 0);
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 			return -1;
 		}
 	}
 	lua_pop(L, -1);
 
-	assert(lua_gettop(L) == 0);
+	assert(lua_gettop(state->L) == 0);
 	plua_clear_state(state);
 
 	return 0;

@@ -308,12 +308,14 @@ static void thread_callback(uv_work_t *req) {
 	if(lua_pcall(state->L, 1, 0, 0) == LUA_ERRRUN) {
 		if(lua_type(state->L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 			return;
 		}
 		if(lua_type(state->L, -1) == LUA_TSTRING) {
 			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
 			lua_pop(state->L, -1);
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 			return;
 		}
@@ -321,7 +323,6 @@ static void thread_callback(uv_work_t *req) {
 
 	lua_remove(state->L, -1);
 	assert(lua_gettop(state->L) == 0);
-
 	plua_clear_state(state);
 }
 
@@ -747,18 +748,21 @@ static void timer_callback(uv_timer_t *req) {
 	if(lua_pcall(state->L, 1, 0, 0) == LUA_ERRRUN) {
 		if(lua_type(state->L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 			return;
 		}
 		if(lua_type(state->L, -1) == LUA_TSTRING) {
 			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
 			lua_pop(state->L, -1);
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 			return;
 		}
 	}
 
 	lua_remove(state->L, 1);
+	assert(lua_gettop(state->L) == 0);
 	plua_clear_state(state);
 }
 
@@ -885,18 +889,21 @@ void *plua_async_event_callback(int reason, void *param, void *userdata) {
 	if(lua_pcall(state->L, 3, 0, 0) == LUA_ERRRUN) {
 		if(lua_type(state->L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 			return NULL;
 		}
 		if(lua_type(state->L, -1) == LUA_TSTRING) {
 			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
 			lua_pop(state->L, -1);
+			assert(lua_gettop(state->L) == 0);
 			plua_clear_state(state);
 			return NULL;
 		}
 	}
 
 	lua_remove(state->L, 1);
+	assert(lua_gettop(state->L) == 0);
 	plua_clear_state(state);
 	return NULL;
 }
