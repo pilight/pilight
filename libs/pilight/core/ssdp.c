@@ -313,7 +313,7 @@ static void alloc(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
 	memset(buf->base, 0, len);
 }
 
-static void read_cb(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const struct sockaddr *addr, unsigned int port) {
+static void read_cb(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const struct sockaddr *addr, unsigned int flags) {
 	struct data_t *node = stream->data;
 	char name[BUFFER_SIZE];
 	char *p = name;

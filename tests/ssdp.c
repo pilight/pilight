@@ -270,7 +270,7 @@ static void test_ssdp_server(CuTest *tc) {
 	 * Don't make this too quick so we can properly test the
 	 * timeout of the SSDP library itself.
 	 */
-	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);	
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
 	eventpool_callback(REASON_SSDP_RECEIVED, ssdp_found, NULL);
