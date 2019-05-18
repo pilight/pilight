@@ -54,6 +54,7 @@ CuSuite *suite_webserver(void);
 CuSuite *suite_webserver_rest(void);
 #endif
 CuSuite *suite_socket(void);
+CuSuite *suite_coap(void);
 CuSuite *suite_log(void);
 CuSuite *suite_lua_log(void);
 CuSuite *suite_lua_cast(void);
@@ -218,6 +219,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_webserver_rest();
 #endif
 	suites[nr++] = suite_socket();
+	suites[nr++] = suite_coap();
 	suites[nr++] = suite_protocols_433();
 	suites[nr++] = suite_protocols_api(); // Ported
 #ifndef _WIN32
