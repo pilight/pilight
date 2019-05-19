@@ -212,7 +212,11 @@ static void coap_server_tx(void) {
 	memset((char *)&addr, '\0', sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
+#ifdef PILIGHT_UNITTEST
+	addr.sin_port = htons(15683);
+#else
 	addr.sin_port = htons(5683);
+#endif
 
 	r = setsockopt(coap_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(int));
 	CuAssertTrue(gtc, (r >= 0));
@@ -247,7 +251,11 @@ static void coap_server_rx(void) {
 	memset((char *)&addr, '\0', sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = inet_addr("224.0.1.187");
+#ifdef PILIGHT_UNITTEST
+	addr.sin_port = htons(15683);
+#else
 	addr.sin_port = htons(5683);
+#endif
 
 	r = setsockopt(coap_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(int));
 	CuAssertTrue(gtc, (r >= 0));

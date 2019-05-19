@@ -365,7 +365,11 @@ int coap_listen(void (*func)(const struct sockaddr *addr, struct coap_packet_t *
 		/*LCOV_EXCL_STOP*/
 	}
 
+#ifdef PILIGHT_UNITTEST
+	r = uv_ip4_addr("224.0.1.187", 15683, &addr);
+#else
 	r = uv_ip4_addr("224.0.1.187", 5683, &addr);
+#endif
 	if(r != 0) {
 		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_ip4_addr: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
@@ -453,7 +457,11 @@ int coap_send(struct coap_packet_t *pkt, void (*func)(const struct sockaddr *add
 	}
 	memset(send_req, 0, sizeof(uv_udp_send_t));
 
+#ifdef PILIGHT_UNITTEST
+	int r = uv_ip4_addr("224.0.1.187", 15683, &addr);
+#else
 	int r = uv_ip4_addr("224.0.1.187", 5683, &addr);
+#endif
 	if(r != 0) {
 		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_udp_init: %s (%s #%d)", uv_strerror(r), __FILE__, __LINE__);
