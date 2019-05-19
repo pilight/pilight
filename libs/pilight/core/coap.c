@@ -21,9 +21,13 @@
 
 #include "../../libuv/uv.h"
 
+#define LISTEN	0
+#define SEND		1
+
 typedef struct coap_data_t {
 	void (*callback)(const struct sockaddr *addr, struct coap_packet_t *pkt, void *userdata);
 	void *userdata;
+	int type;
 } coap_data_t;
 
 static uv_mutex_t lock;
@@ -134,6 +138,10 @@ unsigned char *coap_encode(struct coap_packet_t *coap, unsigned int *len) {
 				OUT_OF_MEMORY
 			}
 			buf[(*len)++] = (coap->options[i]->len - 13);
+		} else {
+			if((buf = REALLOC(buf, (*len)+coap->options[i]->len)) == NULL) {
+				OUT_OF_MEMORY
+			}
 		}
 
 		for(x=0;x<coap->options[i]->len;x++) {
@@ -322,6 +330,10 @@ static void read_cb(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const st
 			coap_free(&pkt);
 		}
 	}
+	free(buf->base);
+	if(data->type == SEND) {
+		uv_udp_recv_stop(stream);
+	}
 }
 
 int coap_listen(void (*func)(const struct sockaddr *addr, struct coap_packet_t *pkt, void *userdata), void *userdata) {
@@ -388,6 +400,7 @@ int coap_listen(void (*func)(const struct sockaddr *addr, struct coap_packet_t *
 
 	data[nrdata]->callback = func;
 	data[nrdata]->userdata = userdata;
+	data[nrdata]->type = LISTEN;
 
 	coap_req->data = data[nrdata];
 	nrdata++;
@@ -480,6 +493,7 @@ int coap_send(struct coap_packet_t *pkt, void (*func)(const struct sockaddr *add
 
 	data[nrdata]->callback = func;
 	data[nrdata]->userdata = userdata;
+	data[nrdata]->type = SEND;
 
 	coap_req->data = data[nrdata];
 	nrdata++;
