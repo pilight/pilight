@@ -66,6 +66,7 @@ CuSuite *suite_lua_async_timer(void);
 CuSuite *suite_lua_async_event(void);
 CuSuite *suite_lua_network_mail(void);
 CuSuite *suite_lua_network_http(void);
+CuSuite *suite_lua_network_coap(void);
 CuSuite *suite_lua_io(void);
 CuSuite *suite_lua_config(void);
 CuSuite *suite_protocols_433(void);
@@ -202,6 +203,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_arp();
 	suites[nr++] = suite_http(); // ipv4 ported / ipv6 not ported
 	suites[nr++] = suite_mail(); // ipv4 ported / ipv6 not ported
+	suites[nr++] = suite_coap();
 	suites[nr++] = suite_lua_log(); // Ported
 	suites[nr++] = suite_lua_cast(); // Ported
 	suites[nr++] = suite_lua_c_metatable(); // Ported
@@ -212,6 +214,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_lua_async_event(); // Ported
 	suites[nr++] = suite_lua_network_mail(); // Ported
 	suites[nr++] = suite_lua_network_http();
+	suites[nr++] = suite_lua_network_coap();
 	suites[nr++] = suite_lua_io();
 	suites[nr++] = suite_lua_config(); // Ported
 #ifdef WEBSERVER
@@ -219,7 +222,6 @@ int RunAllTests(void) {
 	suites[nr++] = suite_webserver_rest();
 #endif
 	suites[nr++] = suite_socket();
-	suites[nr++] = suite_coap();
 	suites[nr++] = suite_protocols_433();
 	suites[nr++] = suite_protocols_api(); // Ported
 #ifndef _WIN32
