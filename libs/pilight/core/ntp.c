@@ -168,9 +168,8 @@ static void on_read(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const st
 				FREE(data);
 			}
 		}
-		free(buf->base);
-		return;
 	}
+	free(buf->base);
 }
 
 static void alloc(uv_handle_t *handle, size_t len, uv_buf_t *buf) {
