@@ -30,9 +30,13 @@
 #include "../table.h"
 #include "../network.h"
 
+#define LISTEN	0
+#define	SEND		1
+
 typedef struct lua_coap_t {
 	PLUA_INTERFACE_FIELDS
 
+	int type;
 	char *callback;
 } lua_coap_t;
 
@@ -282,8 +286,10 @@ static void read_cb(const struct sockaddr *addr, struct coap_packet_t *pkt, void
 		lua_pushnumber(state->L, port);
 	}
 
+	if(data->type == SEND) {
+		plua_gc_unreg(NULL, data);
+	}
 
-	plua_gc_unreg(state->L, data);
 	if(lua_pcall(state->L, numargs, 0, 0) == LUA_ERRRUN) {
 		if(lua_type(state->L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
@@ -299,6 +305,9 @@ static void read_cb(const struct sockaddr *addr, struct coap_packet_t *pkt, void
 	lua_remove(state->L, 1);
 	plua_clear_state(state);
 
+	if(data->type == LISTEN) {
+		return;
+	}
 error:
 	plua_metatable_free(data->table);
 	FREE(data->callback);
@@ -472,6 +481,7 @@ static int plua_network_coap_send(lua_State *L) {
 		}
 	}
 
+	coap->type = SEND;
 	coap_send(&pkt, read_cb, coap);
 	coap_free(&pkt);
 
@@ -494,6 +504,7 @@ static int plua_network_coap_listen(lua_State *L) {
 		luaL_error(L, "internal error: coap object not passed");
 	}
 
+	coap->type = LISTEN;
 	coap_listen(read_cb, coap);
 
 	lua_pushboolean(L, 1);
@@ -590,7 +601,7 @@ int plua_network_coap(struct lua_State *L) {
 	lua_coap->module = state->module;
 	lua_coap->L = L;
 
-	plua_gc_reg(L, lua_coap, plua_network_coap_gc);
+	plua_gc_reg(NULL, lua_coap, plua_network_coap_gc);
 
 	plua_network_coap_object(L, lua_coap);
 
