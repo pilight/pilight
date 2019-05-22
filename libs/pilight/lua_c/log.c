@@ -30,11 +30,11 @@
 
 int plua_log(struct lua_State *L) {
 	if(lua_gettop(L) != 2) {
-		luaL_error(L, "log requires 2 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "log requires 2 arguments, %d given", lua_gettop(L));
 	}
 
 	int loglevel = 0;
-	const char *msg = NULL;
+	const char *msg = NULL, *file = NULL;
 
 	{
 		char buf[128] = { '\0' }, *p = buf;
@@ -67,7 +67,7 @@ int plua_log(struct lua_State *L) {
 	}
 
 	if(loglevel < 0 || loglevel > LOG_DEBUG) {
-		luaL_error(L, "%d is an invalid loglevel", loglevel);
+		pluaL_error(L, "%d is an invalid loglevel", loglevel);
 	}
 
 	logprintf(loglevel, msg);

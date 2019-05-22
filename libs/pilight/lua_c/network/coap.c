@@ -47,11 +47,11 @@ static int plua_network_coap_set_userdata(lua_State *L) {
 	struct lua_coap_t *coap = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "coap.setUserdata requires 1 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "coap.setUserdata requires 1 argument, %d given", lua_gettop(L));
 	}
 
 	if(coap == NULL) {
-		luaL_error(L, "internal error: coap object not passed");
+		pluaL_error(L, "internal error: coap object not passed");
 	}
 
 	char buf[128] = { '\0' }, *p = buf;
@@ -98,12 +98,12 @@ static int plua_network_coap_get_userdata(lua_State *L) {
 	struct lua_coap_t *coap = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "coap.getUserdata requires 0 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "coap.getUserdata requires 0 argument, %d given", lua_gettop(L));
 		return 0;
 	}
 
 	if(coap == NULL) {
-		luaL_error(L, "internal error: coap object not passed");
+		pluaL_error(L, "internal error: coap object not passed");
 		return 0;
 	}
 
@@ -119,15 +119,15 @@ static int plua_network_coap_set_callback(lua_State *L) {
 	char *func = NULL;
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "coap.setCallback requires 1 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "coap.setCallback requires 1 argument, %d given", lua_gettop(L));
 	}
 
 	if(coap == NULL) {
-		luaL_error(L, "internal error: coap object not passed");
+		pluaL_error(L, "internal error: coap object not passed");
 	}
 
 	if(coap->module == NULL) {
-		luaL_error(L, "internal error: lua state not properly initialized");
+		pluaL_error(L, "internal error: lua state not properly initialized");
 	}
 
 	char buf[128] = { '\0' }, *p = buf, name[255] = { '\0' };
@@ -147,12 +147,12 @@ static int plua_network_coap_set_callback(lua_State *L) {
 
 	lua_getglobal(L, name);
 	if(lua_type(L, -1) == LUA_TNIL) {
-		luaL_error(L, "cannot find %s lua module", coap->module->name);
+		pluaL_error(L, "cannot find %s lua module", coap->module->name);
 	}
 
 	lua_getfield(L, -1, func);
 	if(lua_type(L, -1) != LUA_TFUNCTION) {
-		luaL_error(L, "%s: coap callback %s does not exist", coap->module->file, func);
+		pluaL_error(L, "%s: coap callback %s does not exist", coap->module->file, func);
 	}
 	lua_remove(L, -1);
 	lua_remove(L, -1);
@@ -190,13 +190,13 @@ static void read_cb(const struct sockaddr *addr, struct coap_packet_t *pkt, void
 
 	lua_getglobal(state->L, name);
 	if(lua_type(state->L, -1) == LUA_TNIL) {
-		luaL_error(state->L, "cannot find %s lua module", name);
+		pluaL_error(state->L, "cannot find %s lua module", name);
 	}
 
 	lua_getfield(state->L, -1, data->callback);
 
 	if(lua_type(state->L, -1) != LUA_TFUNCTION) {
-		luaL_error(state->L, "%s: coap callback %s does not exist", state->module->file, data->callback);
+		pluaL_error(state->L, "%s: coap callback %s does not exist", state->module->file, data->callback);
 	}
 
 	plua_network_coap_object(state->L, data);
@@ -325,11 +325,11 @@ static int plua_network_coap_send(lua_State *L) {
 	char nr[255], *p = nr;
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "coap.send requires 1 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "coap.send requires 1 arguments, %d given", lua_gettop(L));
 	}
 
 	if(coap == NULL) {
-		luaL_error(L, "internal error: coap object not passed");
+		pluaL_error(L, "internal error: coap object not passed");
 	}
 
 	char buf[128] = { '\0' };
@@ -360,21 +360,21 @@ static int plua_network_coap_send(lua_State *L) {
 		pkt.ver = (int)ret;
 	} else {
 		plua_metatable_free(data);
-		luaL_error(L, "coap packet requires a numeric 'ver'");
+		pluaL_error(L, "coap packet requires a numeric 'ver'");
 	}
 
 	if(plua_metatable_get_number(data, "t", &ret) == 0) {
 		pkt.t = (int)ret;
 	} else {
 		plua_metatable_free(data);
-		luaL_error(L, "coap packet requires a numeric 't'");
+		pluaL_error(L, "coap packet requires a numeric 't'");
 	}
 
 	struct varcont_t var;
 	if(plua_metatable_get(data, "token", &var) > 0) {
 		if(var.type_ != LUA_TSTRING) {
 			plua_metatable_free(data);
-			luaL_error(L, "coap packet 'token' must be a string");
+			pluaL_error(L, "coap packet 'token' must be a string");
 		}
 	}
 	if(plua_metatable_get_string(data, "token", &str) == 0) {
@@ -388,7 +388,7 @@ static int plua_network_coap_send(lua_State *L) {
 	if(plua_metatable_get(data, "payload", &var) > 0) {
 		if(var.type_ != LUA_TSTRING) {
 			plua_metatable_free(data);
-			luaL_error(L, "coap packet 'payload' must be a string");
+			pluaL_error(L, "coap packet 'payload' must be a string");
 		}
 	}
 	if(plua_metatable_get_string(data, "payload", &str) == 0) {
@@ -400,13 +400,13 @@ static int plua_network_coap_send(lua_State *L) {
 	if(plua_metatable_get(data, "code", &var) > 0) {
 		if(var.type_ != LUA_TNUMBER) {
 			plua_metatable_free(data);
-			luaL_error(L, "coap packet 'code' must be a number");
+			pluaL_error(L, "coap packet 'code' must be a number");
 		}
 	}
 	if(plua_metatable_get_number(data, "code", &ret) == 0) {
 		if((int)ret < 0 || (int)ret > 705) {
 			plua_metatable_free(data);
-			luaL_error(L, "coap packet 'code' %d is invalid", (int)ret);
+			pluaL_error(L, "coap packet 'code' %d is invalid", (int)ret);
 		}
 
 		high = (int)ret / 100;
@@ -416,13 +416,13 @@ static int plua_network_coap_send(lua_State *L) {
 		pkt.code[1] = low;
 	} else {
 		plua_metatable_free(data);
-		luaL_error(L, "coap packet requires a numeric 'code'");
+		pluaL_error(L, "coap packet requires a numeric 'code'");
 	}
 
 	if(plua_metatable_get(data, "msgid", &var) > 0) {
 		if(var.type_ != LUA_TNUMBER) {
 			plua_metatable_free(data);
-			luaL_error(L, "coap packet 'msgid' must be a number");
+			pluaL_error(L, "coap packet 'msgid' must be a number");
 		}
 	}
 
@@ -432,7 +432,7 @@ static int plua_network_coap_send(lua_State *L) {
 
 		if((int)ret < 0 || (int)ret > 0xFFFF) {
 			plua_metatable_free(data);
-			luaL_error(L, "coap packet 'msgid' %d is invalid", (int)ret);
+			pluaL_error(L, "coap packet 'msgid' %d is invalid", (int)ret);
 		}
 
 		pkt.msgid[0] = high;
@@ -451,7 +451,7 @@ static int plua_network_coap_send(lua_State *L) {
 		   plua_metatable_get_string(option, "val", &str) == -1) {
 			coap_free(&pkt);
 			plua_metatable_free(data);
-			luaL_error(L, "coap packet options require a numeric 'num' and string 'val'");
+			pluaL_error(L, "coap packet options require a numeric 'num' and string 'val'");
 		} else if(str == NULL) {
 			break;
 		}
@@ -477,7 +477,7 @@ static int plua_network_coap_send(lua_State *L) {
 		if(plua_metatable_get(data, "options", &var) > 0) {
 			coap_free(&pkt);
 			plua_metatable_free(data);
-			luaL_error(L, "coap packet options must be an array type");
+			pluaL_error(L, "coap packet options must be an array type");
 		}
 	}
 
@@ -497,11 +497,11 @@ static int plua_network_coap_listen(lua_State *L) {
 	struct lua_coap_t *coap = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "coap.send requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "coap.send requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(coap == NULL) {
-		luaL_error(L, "internal error: coap object not passed");
+		pluaL_error(L, "internal error: coap object not passed");
 	}
 
 	coap->type = LISTEN;
@@ -517,11 +517,11 @@ static int plua_network_coap_get_callback(lua_State *L) {
 	struct lua_coap_t *coap = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "coap.getSSL requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "coap.getSSL requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(coap == NULL) {
-		luaL_error(L, "internal error: coap object not passed");
+		pluaL_error(L, "internal error: coap object not passed");
 	}
 
 	if(coap->callback != NULL) {
@@ -581,7 +581,7 @@ static void plua_network_coap_object(lua_State *L, struct lua_coap_t *coap) {
 
 int plua_network_coap(struct lua_State *L) {
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "timer requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "timer requires 0 arguments, %d given", lua_gettop(L));
 		return 0;
 	}
 

@@ -53,11 +53,11 @@ static int plua_network_http_set_userdata(lua_State *L) {
 	struct lua_http_t *http = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "http.setUserdata requires 1 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "http.setUserdata requires 1 argument, %d given", lua_gettop(L));
 	}
 
 	if(http == NULL) {
-		luaL_error(L, "internal error: http object not passed");
+		pluaL_error(L, "internal error: http object not passed");
 	}
 
 	char buf[128] = { '\0' }, *p = buf;
@@ -104,12 +104,12 @@ static int plua_network_http_get_userdata(lua_State *L) {
 	struct lua_http_t *http = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "http.getUserdata requires 0 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "http.getUserdata requires 0 argument, %d given", lua_gettop(L));
 		return 0;
 	}
 
 	if(http == NULL) {
-		luaL_error(L, "internal error: http object not passed");
+		pluaL_error(L, "internal error: http object not passed");
 		return 0;
 	}
 
@@ -125,11 +125,11 @@ static int plua_network_http_set_mimetype(lua_State *L) {
 	char *mimetype = NULL;
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "http.setMimetype requires 1 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "http.setMimetype requires 1 argument, %d given", lua_gettop(L));
 	}
 
 	if(http == NULL) {
-		luaL_error(L, "internal error: http object not passed");
+		pluaL_error(L, "internal error: http object not passed");
 	}
 
 	char buf[128] = { '\0' }, *p = buf;
@@ -162,11 +162,11 @@ static int plua_network_http_set_data(lua_State *L) {
 	char *data = NULL;
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "http.setData requires 1 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "http.setData requires 1 argument, %d given", lua_gettop(L));
 	}
 
 	if(http == NULL) {
-		luaL_error(L, "internal error: http object not passed");
+		pluaL_error(L, "internal error: http object not passed");
 	}
 
 	char buf[128] = { '\0' }, *p = buf;
@@ -199,11 +199,11 @@ static int plua_network_http_set_url(lua_State *L) {
 	char *url = NULL;
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "http.setUrl requires 1 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "http.setUrl requires 1 argument, %d given", lua_gettop(L));
 	}
 
 	if(http == NULL) {
-		luaL_error(L, "internal error: http object not passed");
+		pluaL_error(L, "internal error: http object not passed");
 	}
 
 	char buf[128] = { '\0' }, *p = buf;
@@ -248,13 +248,13 @@ static void plua_network_http_callback(int code, char *content, int size, char *
 
 	lua_getglobal(state->L, name);
 	if(lua_type(state->L, -1) == LUA_TNIL) {
-		luaL_error(state->L, "cannot find %s lua module", name);
+		pluaL_error(state->L, "cannot find %s lua module", name);
 	}
 
 	lua_getfield(state->L, -1, data->callback);
 
 	if(lua_type(state->L, -1) != LUA_TFUNCTION) {
-		luaL_error(state->L, "%s: http callback %s does not exist", state->module->file, data->callback);
+		pluaL_error(state->L, "%s: http callback %s does not exist", state->module->file, data->callback);
 	}
 
 	plua_network_http_object(state->L, data);
@@ -317,15 +317,15 @@ static int plua_network_http_set_callback(lua_State *L) {
 	char *func = NULL;
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "http.setCallback requires 1 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "http.setCallback requires 1 argument, %d given", lua_gettop(L));
 	}
 
 	if(http == NULL) {
-		luaL_error(L, "internal error: http object not passed");
+		pluaL_error(L, "internal error: http object not passed");
 	}
 
 	if(http->module == NULL) {
-		luaL_error(L, "internal error: lua state not properly initialized");
+		pluaL_error(L, "internal error: lua state not properly initialized");
 	}
 
 	char buf[128] = { '\0' }, *p = buf, name[255] = { '\0' };
@@ -345,12 +345,12 @@ static int plua_network_http_set_callback(lua_State *L) {
 
 	lua_getglobal(L, name);
 	if(lua_type(L, -1) == LUA_TNIL) {
-		luaL_error(L, "cannot find %s lua module", http->module->name);
+		pluaL_error(L, "cannot find %s lua module", http->module->name);
 	}
 
 	lua_getfield(L, -1, func);
 	if(lua_type(L, -1) != LUA_TFUNCTION) {
-		luaL_error(L, "%s: http callback %s does not exist", http->module->file, func);
+		pluaL_error(L, "%s: http callback %s does not exist", http->module->file, func);
 	}
 	lua_remove(L, -1);
 	lua_remove(L, -1);
@@ -373,21 +373,21 @@ static int plua_network_http_get(lua_State *L) {
 	struct lua_http_t *http = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "http.get requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "http.get requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(http == NULL) {
-		luaL_error(L, "internal error: http object not passed");
+		pluaL_error(L, "internal error: http object not passed");
 	}
 
 	http->type = GET;
 
 	if(http->url == NULL) {
-		luaL_error(L, "http server url not set");
+		pluaL_error(L, "http server url not set");
 	}
 
 	if(http->callback == NULL) {
-		luaL_error(L, "http callback not set");
+		pluaL_error(L, "http callback not set");
 	}
 
 	if(http_get_content(http->url, plua_network_http_callback, http) != 0) {
@@ -412,29 +412,29 @@ static int plua_network_http_post(lua_State *L) {
 	struct lua_http_t *http = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "http.post requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "http.post requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(http == NULL) {
-		luaL_error(L, "internal error: http object not passed");
+		pluaL_error(L, "internal error: http object not passed");
 	}
 
 	http->type = POST;
 
 	if(http->url == NULL) {
-		luaL_error(L, "http server url not set");
+		pluaL_error(L, "http server url not set");
 	}
 
 	if(http->data == NULL) {
-		luaL_error(L, "http data not set");
+		pluaL_error(L, "http data not set");
 	}
 
 	if(http->mimetype == NULL) {
-		luaL_error(L, "http mimetype not set");
+		pluaL_error(L, "http mimetype not set");
 	}
 
 	if(http->callback == NULL) {
-		luaL_error(L, "http callback not set");
+		pluaL_error(L, "http callback not set");
 	}
 
 	if(http_post_content(http->url, http->mimetype, http->data, plua_network_http_callback, http) != 0) {
@@ -459,11 +459,11 @@ static int plua_network_http_get_code(lua_State *L) {
 	struct lua_http_t *http = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "http.getCode requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "http.getCode requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(http == NULL) {
-		luaL_error(L, "internal error: http object not passed");
+		pluaL_error(L, "internal error: http object not passed");
 	}
 
 	if(http->code > -1) {
@@ -481,11 +481,11 @@ static int plua_network_http_get_size(lua_State *L) {
 	struct lua_http_t *http = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "http.getSize requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "http.getSize requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(http == NULL) {
-		luaL_error(L, "internal error: http object not passed");
+		pluaL_error(L, "internal error: http object not passed");
 	}
 
 	if(http->size > -1) {
@@ -503,11 +503,11 @@ static int plua_network_http_get_mimetype(lua_State *L) {
 	struct lua_http_t *http = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "http.getSubject requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "http.getSubject requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(http == NULL) {
-		luaL_error(L, "internal error: http object not passed");
+		pluaL_error(L, "internal error: http object not passed");
 	}
 
 	if(http->mimetype != NULL) {
@@ -525,11 +525,11 @@ static int plua_network_http_get_url(lua_State *L) {
 	struct lua_http_t *http = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "http.getTo requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "http.getTo requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(http == NULL) {
-		luaL_error(L, "internal error: http object not passed");
+		pluaL_error(L, "internal error: http object not passed");
 	}
 
 	if(http->url != NULL) {
@@ -547,11 +547,11 @@ static int plua_network_http_get_data(lua_State *L) {
 	struct lua_http_t *http = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "http.getData requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "http.getData requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(http == NULL) {
-		luaL_error(L, "internal error: http object not passed");
+		pluaL_error(L, "internal error: http object not passed");
 	}
 
 	if(http->data != NULL) {
@@ -569,11 +569,11 @@ static int plua_network_http_get_callback(lua_State *L) {
 	struct lua_http_t *http = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "http.getSSL requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "http.getSSL requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(http == NULL) {
-		luaL_error(L, "internal error: http object not passed");
+		pluaL_error(L, "internal error: http object not passed");
 	}
 
 	if(http->callback != NULL) {
@@ -684,7 +684,7 @@ static void plua_network_http_object(lua_State *L, struct lua_http_t *http) {
 
 int plua_network_http(struct lua_State *L) {
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "timer requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "timer requires 0 arguments, %d given", lua_gettop(L));
 		return 0;
 	}
 

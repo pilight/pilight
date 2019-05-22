@@ -41,11 +41,11 @@ static int plua_config_device_set_action_id(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "config getType requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config getType requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	unsigned long id = event_action_set_execution_id(dev->name);
@@ -61,11 +61,11 @@ static int plua_config_device_get_action_id(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "config getType requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config getType requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	unsigned long id = 0;
@@ -84,11 +84,11 @@ static int plua_config_device_get_name(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "config getName requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config getName requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	lua_pushstring(L, dev->name);
@@ -103,11 +103,11 @@ static int plua_config_device_get_type(lua_State *L) {
 	int x = 0;
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "config getType requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config getType requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	lua_newtable(L);
@@ -128,11 +128,11 @@ static int plua_config_device_has_setting(lua_State *L) {
 	const char *setting = NULL;
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "config getType requires 1 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config getType requires 1 arguments, %d given", lua_gettop(L));
 	}
 
 	char buf[128] = { '\0' }, *p = buf;
@@ -167,11 +167,11 @@ static int plua_config_device_get_id(lua_State *L) {
 	int i = 0;
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "config getType requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config getType requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	struct JsonNode *jrespond = NULL;

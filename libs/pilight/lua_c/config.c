@@ -37,11 +37,11 @@ static int plua_config_set_data(lua_State *L) {
 	// struct plua_metatable_t *cpy = NULL;
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "config.setData requires 1 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "config.setData requires 1 argument, %d given", lua_gettop(L));
 	}
 
 	// if(thread == NULL) {
-		// luaL_error(L, "internal error: thread object not passed");
+		// pluaL_error(L, "internal error: thread object not passed");
 	// }
 
 	char buf[128] = { '\0' }, *p = buf;
@@ -84,12 +84,12 @@ static int plua_config_get_data(lua_State *L) {
 	// struct lua_timer_t *timer = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "config.getData requires 0 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "config.getData requires 0 argument, %d given", lua_gettop(L));
 		return 0;
 	}
 
 	// if(timer == NULL) {
-		// luaL_error(L, "internal error: config object not passed");
+		// pluaL_error(L, "internal error: config object not passed");
 		// return 0;
 	// }
 
@@ -159,7 +159,7 @@ static void plua_config_object(lua_State *L, void *foo) {
 
 int plua_config(struct lua_State *L) {
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "config requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config requires 0 arguments, %d given", lua_gettop(L));
 		return 0;
 	}
 

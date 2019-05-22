@@ -26,11 +26,11 @@ static int plua_config_device_datetime_get_year(lua_State *L) {
 	int dec = 0.0;
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) > 0) {
-		luaL_error(L, "config getYear requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config getYear requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(devices_select_number_setting(ORIGIN_ACTION, dev->name, "year", &num, &dec) == 0) {
@@ -49,11 +49,11 @@ static int plua_config_device_datetime_get_month(lua_State *L) {
 	int dec = 0.0;
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) > 0) {
-		luaL_error(L, "config getMonth requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config getMonth requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(devices_select_number_setting(ORIGIN_ACTION, dev->name, "month", &num, &dec) == 0) {
@@ -72,11 +72,11 @@ static int plua_config_device_datetime_get_day(lua_State *L) {
 	int dec = 0.0;
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) > 0) {
-		luaL_error(L, "config getDay requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config getDay requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(devices_select_number_setting(ORIGIN_ACTION, dev->name, "day", &num, &dec) == 0) {
@@ -95,11 +95,11 @@ static int plua_config_device_datetime_get_hour(lua_State *L) {
 	int dec = 0.0;
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) > 0) {
-		luaL_error(L, "config getHour requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config getHour requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(devices_select_number_setting(ORIGIN_ACTION, dev->name, "hour", &num, &dec) == 0) {
@@ -118,11 +118,11 @@ static int plua_config_device_datetime_get_minute(lua_State *L) {
 	int dec = 0.0;
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) > 0) {
-		luaL_error(L, "config getMinute requires 1 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config getMinute requires 1 arguments, %d given", lua_gettop(L));
 	}
 
 	if(devices_select_number_setting(ORIGIN_ACTION, dev->name, "minute", &num, &dec) == 0) {
@@ -141,11 +141,11 @@ static int plua_config_device_datetime_get_second(lua_State *L) {
 	int dec = 0.0;
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) > 0) {
-		luaL_error(L, "config getSecond requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config getSecond requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(devices_select_number_setting(ORIGIN_ACTION, dev->name, "second", &num, &dec) == 0) {
@@ -164,11 +164,11 @@ static int plua_config_device_datetime_get_weekday(lua_State *L) {
 	int dec = 0.0;
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) > 0) {
-		luaL_error(L, "config getWeekday requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config getWeekday requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(devices_select_number_setting(ORIGIN_ACTION, dev->name, "weekday", &num, &dec) == 0) {
@@ -187,11 +187,11 @@ static int plua_config_device_datetime_get_dst(lua_State *L) {
 	int dec = 0.0;
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) > 0) {
-		luaL_error(L, "config getDST requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config getDST requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(devices_select_number_setting(ORIGIN_ACTION, dev->name, "dst", &num, &dec) == 0) {
@@ -214,11 +214,11 @@ static int plua_config_device_datetime_get_table(lua_State *L) {
 	memset(&tm, 0, sizeof(struct tm));
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) > 0) {
-		luaL_error(L, "config getTable requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config getTable requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	while(devices_select_settings(0, dev->name, i++, &setting, &val) == 0) {

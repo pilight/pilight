@@ -46,11 +46,11 @@ static int plua_config_device_screen_send(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "config send requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config send requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	struct reason_control_device_t *data1 = MALLOC(sizeof(struct reason_control_device_t));
@@ -90,11 +90,11 @@ static int plua_config_device_screen_get_state(lua_State *L) {
 	char *state = NULL;
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "config getState requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config getState requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(devices_select_string_setting(ORIGIN_ACTION, dev->name, "state", &state) == 0) {
@@ -119,11 +119,11 @@ static int plua_config_device_screen_has_state(lua_State *L) {
 	int i = 0;
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "config hasState requires 1 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "config hasState requires 1 argument, %d given", lua_gettop(L));
 		return 0;
 	}
 
@@ -169,11 +169,11 @@ static int plua_config_device_screen_set_state(lua_State *L) {
 	int i = 0, match = 0;
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) > 1) {
-		luaL_error(L, "config setState requires 1 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "config setState requires 1 argument, %d given", lua_gettop(L));
 	}
 
 	char buf[128] = { '\0' }, *p = buf;
