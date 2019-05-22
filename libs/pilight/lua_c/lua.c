@@ -1644,7 +1644,17 @@ void plua_coverage_output(const char *file) {
 
 static int plua_atpanic(lua_State *L) {
 	struct lua_state_t *state = plua_get_current_state(L);
-	logprintf(LOG_ERR, "(%s #%d) Lua panic (#%d): %s", state->file, state->line, state->idx, lua_tostring(L, -1));
+	if(state == NULL) {
+		if(state->file == NULL || state->line == -1) {
+			logprintf(LOG_ERR, "(%s #%d) Lua panic (#%d): %s", state->file, state->line, state->idx, lua_tostring(L, -1));
+		} else {
+			logprintf(LOG_ERR, "Lua panic (#%d): %s", state->idx, lua_tostring(L, -1));
+		}
+		state->file = NULL;
+		state->line = -1;
+	} else {
+		logprintf(LOG_ERR, "Lua panic: %s", lua_tostring(L, -1));
+	}
 	abort();
 	return 0;
 }
@@ -1675,6 +1685,8 @@ void plua_init(void) {
 		plua_register_library(L);
 		lua_state[i].L = L;
 		lua_state[i].idx = i;
+		lua_state[i].file = NULL;
+		lua_state[i].line = -1;
 
 		lua_atpanic(L, &plua_atpanic);
 #ifdef PILIGHT_UNITTEST
