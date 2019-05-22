@@ -131,12 +131,12 @@ static int plua_io_spi_rw(struct lua_State *L) {
 	struct lua_spi_t *spi = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "spi.rw requires 1 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "spi.rw requires 1 argument, %d given", lua_gettop(L));
 		return 0;
 	}
 
 	if(spi == NULL) {
-		luaL_error(L, "internal error: spi object not passed");
+		pluaL_error(L, "internal error: spi object not passed");
 	}
 
 	uint8_t *tmp = NULL;
@@ -157,7 +157,7 @@ static int plua_io_spi_rw(struct lua_State *L) {
 			while(lua_next(L, -2) != 0) {
 				if(lua_type(L, -2) != LUA_TNUMBER || lua_type(L, -1) != LUA_TNUMBER) {
 					lua_pop(L, 3);
-					luaL_error(L, "spi.rw table should contain both nummeric keys and values", lua_gettop(L));
+					pluaL_error(L, "spi.rw table should contain both nummeric keys and values", lua_gettop(L));
 				}
 
 				if((tmp = REALLOC(tmp, sizeof(uint8_t *)*(nr+1))) == NULL) {
@@ -199,7 +199,7 @@ static void plua_io_spi_object(lua_State *L, struct lua_spi_t *spi) {
 
 int plua_io_spi(struct lua_State *L) {
 	if(lua_gettop(L) != 1 && lua_gettop(L) != 2) {
-		luaL_error(L, "spi requires 1 or 2 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "spi requires 1 or 2 arguments, %d given", lua_gettop(L));
 		return 0;
 	}
 

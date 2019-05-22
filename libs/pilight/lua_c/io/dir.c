@@ -55,16 +55,16 @@ static int plua_io_dir_exists(struct lua_State *L) {
 	struct lua_dir_t *dir = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "dir.exists requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "dir.exists requires 0 arguments, %d given", lua_gettop(L));
 		return 0;
 	}
 
 	if(dir == NULL) {
-		luaL_error(L, "internal error: dir object not passed");
+		pluaL_error(L, "internal error: dir object not passed");
 	}
 
 	if(dir->dir == NULL) {
-		luaL_error(L, "dir.exists: dir has not been set");
+		pluaL_error(L, "dir.exists: dir has not been set");
 	}
 
 	struct stat s;
@@ -94,16 +94,16 @@ static int plua_io_dir_close(struct lua_State *L) {
 	struct lua_dir_t *dir = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "dir.close requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "dir.close requires 0 arguments, %d given", lua_gettop(L));
 		return 0;
 	}
 
 	if(dir == NULL) {
-		luaL_error(L, "internal error: dir object not passed");
+		pluaL_error(L, "internal error: dir object not passed");
 	}
 
 	if(dir->dir == NULL) {
-		luaL_error(L, "dir.close: dir has not been set");
+		pluaL_error(L, "dir.close: dir has not been set");
 	}
 
 	plua_gc_unreg(L, dir);
@@ -132,7 +132,7 @@ static void plua_io_dir_object(lua_State *L, struct lua_dir_t *dir) {
 
 int plua_io_dir(struct lua_State *L) {
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "dir requires 1 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "dir requires 1 argument, %d given", lua_gettop(L));
 		return 0;
 	}
 

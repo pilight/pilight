@@ -288,20 +288,20 @@ static int plua_io_serial_close(struct lua_State *L) {
 	struct lua_serial_t *serial = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "serial.close requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "serial.close requires 0 arguments, %d given", lua_gettop(L));
 		return 0;
 	}
 
 	if(serial == NULL) {
-		luaL_error(L, "internal error: serial object not passed");
+		pluaL_error(L, "internal error: serial object not passed");
 	}
 
 	if(serial->file == NULL) {
-		luaL_error(L, "serial.close: serial device has not been set");
+		pluaL_error(L, "serial.close: serial device has not been set");
 	}
 
 	if(serial->fd == -1) {
-		luaL_error(L, "serial.close: device %s has not been opened", serial->file);
+		pluaL_error(L, "serial.close: device %s has not been opened", serial->file);
 	}
 
 	serial->stop = 1;
@@ -336,7 +336,7 @@ static void plua_io_serial_callback(char *type, uv_fs_t *req) {
 		/*
 		 * FIXME shouldn't state be freed?
 		 */
-		luaL_error(state->L, "cannot find %s lua module", name);
+		pluaL_error(state->L, "cannot find %s lua module", name);
 		return;
 	}
 
@@ -345,7 +345,7 @@ static void plua_io_serial_callback(char *type, uv_fs_t *req) {
 		/*
 		 * FIXME shouldn't state be freed?
 		 */
-		luaL_error(state->L, "%s: async callback %s does not exist", state->module->file, serial->callback);
+		pluaL_error(state->L, "%s: async callback %s does not exist", state->module->file, serial->callback);
 		return;
 	}
 
@@ -456,15 +456,15 @@ static int plua_io_serial_set_callback(lua_State *L) {
 	struct lua_serial_t *serial = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "serial.setCallback requires 1 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "serial.setCallback requires 1 argument, %d given", lua_gettop(L));
 	}
 
 	if(serial == NULL) {
-		luaL_error(L, "internal error: serial object not passed");
+		pluaL_error(L, "internal error: serial object not passed");
 	}
 
 	if(serial->file == NULL) {
-		luaL_error(L, "serial.setCallback: serial device has not been set");
+		pluaL_error(L, "serial.setCallback: serial device has not been set");
 	}
 
 	const char *func = NULL;
@@ -487,13 +487,13 @@ static int plua_io_serial_set_callback(lua_State *L) {
 
 	lua_getglobal(L, name);
 	if(lua_type(L, -1) == LUA_TNIL) {
-		luaL_error(L, "cannot find %s lua module", serial->module->name);
+		pluaL_error(L, "cannot find %s lua module", serial->module->name);
 		return 0;
 	}
 
 	lua_getfield(L, -1, func);
 	if(lua_type(L, -1) != LUA_TFUNCTION) {
-		luaL_error(L, "%s: serial callback %s does not exist", serial->module->file, func);
+		pluaL_error(L, "%s: serial callback %s does not exist", serial->module->file, func);
 		return 0;
 	}
 
@@ -514,11 +514,11 @@ static int plua_io_serial__open(struct lua_serial_t *serial, lua_State *L) {
 	int nrargs = lua_gettop(L);
 
 	if(nrargs != 0) {
-		luaL_error(L, "serial.open requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "serial.open requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(serial == NULL) {
-		luaL_error(L, "internal error: serial object not passed");
+		pluaL_error(L, "internal error: serial object not passed");
 	}
 
 	if((serial->fd = open(serial->file, O_RDWR | O_NOCTTY | O_NDELAY | O_NONBLOCK)) == -1) {
@@ -558,12 +558,12 @@ static int plua_io_serial_set_baudrate(struct lua_State *L) {
 	int baudrate = 9600;
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "serial.setBaudrate requires 1 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "serial.setBaudrate requires 1 arguments, %d given", lua_gettop(L));
 		return 0;
 	}
 
 	if(serial == NULL) {
-		luaL_error(L, "internal error: serial object not passed");
+		pluaL_error(L, "internal error: serial object not passed");
 	}
 
 	char buf[128] = { '\0' }, *p = buf;
@@ -599,12 +599,12 @@ static int plua_io_serial_set_parity(struct lua_State *L) {
 	char list[8][2] = { "n", "N", "o", "O", "e", "E", "s", "S"};
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "serial.setParity requires 1 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "serial.setParity requires 1 arguments, %d given", lua_gettop(L));
 		return 0;
 	}
 
 	if(serial == NULL) {
-		luaL_error(L, "internal error: serial object not passed");
+		pluaL_error(L, "internal error: serial object not passed");
 	}
 
 	char buf[128] = { '\0' }, *p = buf;
@@ -629,7 +629,7 @@ static int plua_io_serial_set_parity(struct lua_State *L) {
 		}
 	}
 	if(match == 0) {
-		luaL_error(L, "serial.setParity: \"%s\" is an unsupported parity", parity);
+		pluaL_error(L, "serial.setParity: \"%s\" is an unsupported parity", parity);
 	}
 
 	serial->parity = tolower(parity[0]);
@@ -649,12 +649,12 @@ static int plua_io_serial_get_data(lua_State *L) {
 	struct lua_serial_t *serial = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "serial.getUserdata requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "serial.getUserdata requires 0 arguments, %d given", lua_gettop(L));
 		return 0;
 	}
 
 	if(serial == NULL) {
-		luaL_error(L, "internal error: serial object not passed");
+		pluaL_error(L, "internal error: serial object not passed");
 		return 0;
 	}
 
@@ -670,11 +670,11 @@ static int plua_io_serial_write(lua_State *L) {
 	char *content = NULL;
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "serial.write requires 1 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "serial.write requires 1 argument, %d given", lua_gettop(L));
 	}
 
 	if(serial == NULL) {
-		luaL_error(L, "internal error: serial object not passed");
+		pluaL_error(L, "internal error: serial object not passed");
 	}
 
 	if(serial->stopping == 1) {
@@ -717,11 +717,11 @@ static int plua_io_serial_read(lua_State *L) {
 	struct lua_serial_t *serial = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "serial.write requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "serial.write requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(serial == NULL) {
-		luaL_error(L, "internal error: serial object not passed");
+		pluaL_error(L, "internal error: serial object not passed");
 	}
 
 	uv_fs_t *read_req = NULL;
@@ -744,11 +744,11 @@ static int plua_io_serial_set_data(lua_State *L) {
 	struct lua_serial_t *serial = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "serial.setUserdata requires 1 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "serial.setUserdata requires 1 argument, %d given", lua_gettop(L));
 	}
 
 	if(serial == NULL) {
-		luaL_error(L, "internal error: serial object not passed");
+		pluaL_error(L, "internal error: serial object not passed");
 	}
 
 	char buf[128] = { '\0' }, *p = buf;
@@ -841,7 +841,7 @@ static void plua_io_serial_object(lua_State *L, struct lua_serial_t *serial) {
 
 int plua_io_serial(struct lua_State *L) {
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "serial requires 1 argument, %d given", lua_gettop(L));
+		pluaL_error(L, "serial requires 1 argument, %d given", lua_gettop(L));
 		return 0;
 	}
 

@@ -69,6 +69,8 @@ typedef struct lua_state_t {
 		uv_mutex_t lock;
 	} gc;
 
+	char *file;
+	int line;
 	uv_thread_t thread_id;
 } lua_state_t;
 
@@ -82,6 +84,7 @@ typedef struct plua_interface_t {
   PLUA_INTERFACE_FIELDS
 } plua_interface_t;
 
+void plua_set_file_line(lua_State *L, char *file, int line);
 int plua_json_to_table(struct plua_metatable_t *table, struct JsonNode *jnode);
 int plua_pcall(struct lua_State *L, char *file, int args, int ret);
 int plua_get_method(struct lua_State *L, char *file, char *method);
@@ -112,5 +115,11 @@ int plua_namespace(struct plua_module_t *module, char *p);
 void plua_package_path(const char *path);
 void plua_override_global(char *name, int (*func)(lua_State *L));
 int plua_gc(void);
+
+#define pluaL_error(a, b, ...) \
+	do { \
+		plua_set_file_line(a, __FILE__, __LINE__); \
+		luaL_error(a, b, ##__VA_ARGS__); \
+	} while(0)
 
 #endif

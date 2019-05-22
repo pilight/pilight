@@ -16,6 +16,7 @@
 #include <time.h>
 #include <limits.h>
 #include <assert.h>
+#include <setjmp.h>
 
 #ifndef _WIN32
 	#include <libgen.h>
@@ -1640,6 +1641,19 @@ void plua_coverage_output(const char *file) {
 }
 #endif
 
+static int plua_atpanic(lua_State *L) {
+	struct lua_state_t *state = plua_get_current_state(L);
+	logprintf(LOG_ERR, "(%s #%d) Lua panic (#%d): %s", state->file, state->line, state->idx, lua_tostring(L, -1));
+	abort();
+	return 0;
+}
+
+void plua_set_file_line(lua_State *L, char *file, int line) {
+	struct lua_state_t *state = plua_get_current_state(L);
+	state->line = line;
+	state->file = file;
+}
+
 void plua_init(void) {
 	if(init == 1) {
 		return;
@@ -1661,6 +1675,7 @@ void plua_init(void) {
 		lua_state[i].L = L;
 		lua_state[i].idx = i;
 
+		lua_atpanic(L, &plua_atpanic);
 #ifdef PILIGHT_UNITTEST
 		lua_sethook(L, hook, LUA_MASKLINE, 0);
 #endif

@@ -49,11 +49,11 @@ static int plua_config_device_label_send(lua_State *L) {
 	struct plua_device_t *dev = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "config send requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config send requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	struct reason_control_device_t *data1 = MALLOC(sizeof(struct reason_control_device_t));
@@ -97,11 +97,11 @@ static int plua_config_device_label_get_label(lua_State *L) {
 	int decimals = 0;
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "config getLabel requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config getLabel requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(devices_select_string_setting(ORIGIN_ACTION, dev->name, "label", &slabel) == 0) {
@@ -129,11 +129,11 @@ static int plua_config_device_label_get_color(lua_State *L) {
 	char *slabel = NULL;
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "config getColor requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config getColor requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(devices_select_string_setting(ORIGIN_ACTION, dev->name, "color", &slabel) == 0) {
@@ -155,11 +155,11 @@ static int plua_config_device_label_set_label(lua_State *L) {
 	const char *label = NULL;
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "config setLabel requires 1 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config setLabel requires 1 arguments, %d given", lua_gettop(L));
 	}
 
 	char buf[128] = { '\0' }, *p = buf;
@@ -201,11 +201,11 @@ static int plua_config_device_label_set_color(lua_State *L) {
 	const char *color = NULL;
 
 	if(dev == NULL) {
-		luaL_error(L, "internal error: device object not passed");
+		pluaL_error(L, "internal error: device object not passed");
 	}
 
 	if(lua_gettop(L) != 1) {
-		luaL_error(L, "config setColor requires 1 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "config setColor requires 1 arguments, %d given", lua_gettop(L));
 	}
 
 	char buf[128] = { '\0' }, *p = buf;

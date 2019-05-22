@@ -403,7 +403,7 @@ void plua_metatable_init(struct plua_metatable_t **table) {
 
 int plua_table(struct lua_State *L) {
 	if(lua_gettop(L) != 0) {
-		luaL_error(L, "table requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "table requires 0 arguments, %d given", lua_gettop(L));
 		return 0;
 	}
 
