@@ -118,6 +118,7 @@ int plua_gc(void);
 
 #define pluaL_error(a, b, ...) \
 	do { \
+		logprintf(LOG_DEBUG, "(%s #%d) pluaL_error", __FILE__, __LINE__); \
 		plua_set_file_line(a, __FILE__, __LINE__); \
 		luaL_error(a, b, ##__VA_ARGS__); \
 	} while(0)

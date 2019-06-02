@@ -1644,8 +1644,9 @@ void plua_coverage_output(const char *file) {
 
 static int plua_atpanic(lua_State *L) {
 	struct lua_state_t *state = plua_get_current_state(L);
-	if(state == NULL) {
-		if(state->file == NULL || state->line == -1) {
+
+	if(state != NULL) {
+		if(state->file != NULL && state->line != -1) {
 			logprintf(LOG_ERR, "(%s #%d) Lua panic (#%d): %s", state->file, state->line, state->idx, lua_tostring(L, -1));
 		} else {
 			logprintf(LOG_ERR, "Lua panic (#%d): %s", state->idx, lua_tostring(L, -1));
