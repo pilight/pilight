@@ -2926,7 +2926,6 @@ int start_pilight(int argc, char **argv) {
 		struct lua_state_t *state = plua_get_free_state();
 		if(config_read(state->L, CONFIG_HARDWARE) != EXIT_SUCCESS) {
 			logprintf(LOG_ERR, "failed to read config");
-			exit(-1);
 			assert(plua_check_stack(state->L, 0) == 0);
 			plua_clear_state(state);
 			goto clear;
