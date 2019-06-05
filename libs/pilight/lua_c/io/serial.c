@@ -289,7 +289,6 @@ static int plua_io_serial_close(struct lua_State *L) {
 
 	if(lua_gettop(L) != 0) {
 		pluaL_error(L, "serial.close requires 0 arguments, %d given", lua_gettop(L));
-		return 0;
 	}
 
 	if(serial == NULL) {
@@ -307,7 +306,7 @@ static int plua_io_serial_close(struct lua_State *L) {
 	serial->stop = 1;
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -337,7 +336,6 @@ static void plua_io_serial_callback(char *type, uv_fs_t *req) {
 		 * FIXME shouldn't state be freed?
 		 */
 		pluaL_error(state->L, "cannot find %s lua module", name);
-		return;
 	}
 
 	lua_getfield(state->L, -1, serial->callback);
@@ -346,7 +344,6 @@ static void plua_io_serial_callback(char *type, uv_fs_t *req) {
 		 * FIXME shouldn't state be freed?
 		 */
 		pluaL_error(state->L, "%s: async callback %s does not exist", state->module->file, serial->callback);
-		return;
 	}
 
 	lua_pushstring(state->L, type);
@@ -361,24 +358,31 @@ static void plua_io_serial_callback(char *type, uv_fs_t *req) {
 		lua_pushstring(state->L, serial->rbuffer);
 	}
 
+	assert(plua_check_stack(state->L, 5, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TSTRING, PLUA_TTABLE, PLUA_TSTRING) == 0);
 	if(lua_pcall(state->L, 3, 0, 0) == LUA_ERRRUN) {
 		if(lua_type(state->L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
-			assert(lua_gettop(state->L) == 0);
+
+			assert(plua_check_stack(state->L, 0) == 0);
+
 			plua_clear_state(state);
 			return;
 		}
 		if(lua_type(state->L, -1) == LUA_TSTRING) {
 			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
 			lua_pop(state->L, -1);
-			assert(lua_gettop(state->L) == 0);
+
+			assert(plua_check_stack(state->L, 0) == 0);
+
 			plua_clear_state(state);
 			return;
 		}
 	}
 
 	lua_remove(state->L, 1);
-	assert(lua_gettop(state->L) == 0);
+
+	assert(plua_check_stack(state->L, 0) == 0);
+
 	plua_clear_state(state);
 }
 
@@ -491,13 +495,11 @@ static int plua_io_serial_set_callback(lua_State *L) {
 	lua_getglobal(L, name);
 	if(lua_type(L, -1) == LUA_TNIL) {
 		pluaL_error(L, "cannot find %s lua module", serial->module->name);
-		return 0;
 	}
 
 	lua_getfield(L, -1, func);
 	if(lua_type(L, -1) != LUA_TFUNCTION) {
 		pluaL_error(L, "%s: serial callback %s does not exist", serial->module->file, func);
-		return 0;
 	}
 
 	if(serial->callback != NULL) {
@@ -508,7 +510,12 @@ static int plua_io_serial_set_callback(lua_State *L) {
 		OUT_OF_MEMORY
 	}
 
+	lua_remove(L, -1);
+	lua_remove(L, -1);
+
 	lua_pushboolean(L, 1);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -545,6 +552,8 @@ static int plua_io_serial__open(struct lua_serial_t *serial, lua_State *L) {
 		uv_timer_init(uv_default_loop(), serial->timer_req);
 	}
 
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
 	return 1;
 }
 
@@ -553,7 +562,7 @@ static int plua_io_serial_open(lua_State *L) {
 
 	plua_io_serial__open(serial, L);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -564,7 +573,6 @@ static int plua_io_serial_set_baudrate(struct lua_State *L) {
 
 	if(lua_gettop(L) != 1) {
 		pluaL_error(L, "serial.setBaudrate requires 1 arguments, %d given", lua_gettop(L));
-		return 0;
 	}
 
 	if(serial == NULL) {
@@ -593,7 +601,7 @@ static int plua_io_serial_set_baudrate(struct lua_State *L) {
 		lua_pushboolean(L, 0);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -605,7 +613,6 @@ static int plua_io_serial_set_parity(struct lua_State *L) {
 
 	if(lua_gettop(L) != 1) {
 		pluaL_error(L, "serial.setParity requires 1 arguments, %d given", lua_gettop(L));
-		return 0;
 	}
 
 	if(serial == NULL) {
@@ -645,7 +652,7 @@ static int plua_io_serial_set_parity(struct lua_State *L) {
 		lua_pushboolean(L, 0);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -655,17 +662,15 @@ static int plua_io_serial_get_data(lua_State *L) {
 
 	if(lua_gettop(L) != 0) {
 		pluaL_error(L, "serial.getUserdata requires 0 arguments, %d given", lua_gettop(L));
-		return 0;
 	}
 
 	if(serial == NULL) {
 		pluaL_error(L, "internal error: serial object not passed");
-		return 0;
 	}
 
 	plua_metatable__push(L, (struct plua_interface_t *)serial);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }
@@ -683,6 +688,7 @@ static int plua_io_serial_write(lua_State *L) {
 	}
 
 	if(serial->stopping == 1) {
+		assert(plua_check_stack(L, 0) == 0);
 		return 0;
 	}
 
@@ -713,9 +719,11 @@ static int plua_io_serial_write(lua_State *L) {
 
 	uv_fs_write(uv_default_loop(), write_req, serial->fd, &wbuf, 1, -1, plua_io_serial_write_callback);
 
-	plua_ret_false(L);
+	lua_pushboolean(L, 1);
 
-	return 0;
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 1;
 }
 
 static int plua_io_serial_read(lua_State *L) {
@@ -741,9 +749,12 @@ static int plua_io_serial_read(lua_State *L) {
 	uv_buf_t buffer = uv_buf_init(serial->rbuffer, BUFFER_SIZE);
 	uv_fs_read(uv_default_loop(), read_req, serial->fd, &buffer, 1, -1, plua_io_serial_read_callback);
 
-	plua_ret_true(L);
 
-	return 0;
+	lua_pushboolean(L, 1);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 1;
 }
 
 static int plua_io_serial_set_data(lua_State *L) {
@@ -776,7 +787,10 @@ static int plua_io_serial_set_data(lua_State *L) {
 			uv_sem_post(serial->table->ref);
 		}
 
-		plua_ret_true(L);
+		lua_pushboolean(L, 1);
+
+		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
 		return 1;
 	}
 
@@ -787,13 +801,18 @@ static int plua_io_serial_set_data(lua_State *L) {
 			lua_pop(L, 1);
 		}
 
-		plua_ret_true(L);
+		lua_pushboolean(L, 1);
+
+		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
 		return 1;
 	}
 
-	plua_ret_false(L);
+	lua_pushboolean(L, 0);
 
-	return 0;
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 1;
 }
 
 static void plua_io_serial_object(lua_State *L, struct lua_serial_t *serial) {
@@ -848,7 +867,6 @@ static void plua_io_serial_object(lua_State *L, struct lua_serial_t *serial) {
 int plua_io_serial(struct lua_State *L) {
 	if(lua_gettop(L) != 1) {
 		pluaL_error(L, "serial requires 1 argument, %d given", lua_gettop(L));
-		return 0;
 	}
 
 	char *name = NULL;
@@ -869,6 +887,7 @@ int plua_io_serial(struct lua_State *L) {
 
 	struct lua_state_t *state = plua_get_current_state(L);
 	if(state == NULL) {
+		assert(plua_check_stack(L, 0) == 0);
 		return 0;
 	}
 
@@ -957,7 +976,7 @@ int plua_io_serial(struct lua_State *L) {
 		plua_gc_reg(NULL, NULL, plua_io_serial_global_gc);
 	}
 
-	lua_assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(state->L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }

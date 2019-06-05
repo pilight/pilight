@@ -136,7 +136,7 @@ static int checkValues(struct JsonNode *jvalues) {
 	struct lua_state_t *state = plua_get_free_state();
 	if(config_setting_get_string(state->L, "gpio-platform", 0, &platform) != 0) {
 		logprintf(LOG_ERR, "no gpio-platform configured");
-		assert(lua_gettop(state->L) == 0);
+		assert(plua_check_stack(state->L, 0) == 0);
 		plua_clear_state(state);
 		return -1;
 	}

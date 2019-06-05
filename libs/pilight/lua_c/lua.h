@@ -25,6 +25,18 @@
 #define STORAGE		5
 #define HARDWARE	6
 
+#define PLUA_TNONE               (-1)
+
+#define PLUA_TNIL                1
+#define PLUA_TBOOLEAN            2
+#define PLUA_TLIGHTUSERDATA      4
+#define PLUA_TNUMBER             8
+#define PLUA_TSTRING             16
+#define PLUA_TTABLE              32
+#define PLUA_TFUNCTION           64
+#define PLUA_TUSERDATA           128
+#define PLUA_TTHREAD             256
+
 typedef struct plua_metatable_t {
 	struct {
 		struct varcont_t val;
@@ -85,6 +97,7 @@ typedef struct plua_interface_t {
 } plua_interface_t;
 
 void plua_set_file_line(lua_State *L, char *file, int line);
+void plua_metatable_to_json(struct plua_metatable_t *table, struct JsonNode **jnode);
 int plua_json_to_table(struct plua_metatable_t *table, struct JsonNode *jnode);
 int plua_pcall(struct lua_State *L, char *file, int args, int ret);
 int plua_get_method(struct lua_State *L, char *file, char *method);
@@ -104,8 +117,7 @@ void plua_clear_state(struct lua_state_t *state);
 struct lua_state_t *plua_get_current_state(lua_State *L);
 struct plua_module_t *plua_get_modules(void);
 void plua_init(void);
-void plua_ret_true(lua_State *L);
-void plua_ret_false(lua_State *L);
+int plua_check_stack(lua_State *L, int numargs, ...);
 #ifdef PILIGHT_UNITTEST
 void plua_pause_coverage(int status);
 void plua_coverage_output(const char *);

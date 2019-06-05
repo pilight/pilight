@@ -44,6 +44,7 @@ int config_hardware_get_type(lua_State *L, char *module) {
 
 	plua_get_method(state->L, state->module->file, "implements");
 
+	assert(plua_check_stack(state->L, 2, PLUA_TTABLE, PLUA_TFUNCTION) == 0);
 	if((x = plua_pcall(state->L, state->module->file, 0, 1)) == 0) {
 		if(lua_type(state->L, -1) != LUA_TNUMBER && lua_type(state->L, -1) != LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: the implements function returned %s, string or nil expected", state->module->file, lua_typename(state->L, lua_type(state->L, -1)));
@@ -106,6 +107,7 @@ int config_hardware_run(void) {
 				continue;
 			}
 
+			assert(plua_check_stack(state->L, 2, PLUA_TTABLE, PLUA_TFUNCTION) == 0);
 			if(lua_pcall(state->L, 0, 0, 0) == LUA_ERRRUN) {
 				logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
 				state->module = oldmod;

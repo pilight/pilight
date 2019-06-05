@@ -75,8 +75,8 @@ static int plua_config_device_program_send(lua_State *L) {
 	eventpool_trigger(REASON_CONTROL_DEVICE, reason_control_device_free, data1);
 
 	lua_pushboolean(L, 0);
-
-	assert(lua_gettop(L) == 1);
+	
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 0;
 }
@@ -96,16 +96,16 @@ static int plua_config_device_program_get_state(lua_State *L) {
 	if(devices_select_string_setting(ORIGIN_ACTION, dev->name, "state", &state) == 0) {
 		lua_pushstring(L, state);
 
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TSTRING) == 0);
 
 		return 1;
 	}
 
 	lua_pushnil(L);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TNIL) == 0);
 
-	return 0;
+	return 1;
 }
 
 static int plua_config_device_program_has_state(lua_State *L) {
@@ -142,7 +142,7 @@ static int plua_config_device_program_has_state(lua_State *L) {
 				if(strcmp(opt->name, state) == 0) {
 					lua_pushboolean(L, 1);
 
-					assert(lua_gettop(L) == 1);
+					assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 					return 1;
 				}
@@ -153,7 +153,7 @@ static int plua_config_device_program_has_state(lua_State *L) {
 
 	lua_pushboolean(L, 0);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -199,7 +199,7 @@ static int plua_config_device_program_set_state(lua_State *L) {
 	if(match == 0) {
 		lua_pushboolean(L, 0);
 
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 		return 1;
 	}
@@ -223,7 +223,7 @@ static int plua_config_device_program_set_state(lua_State *L) {
 
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -243,12 +243,15 @@ static int plua_config_device_program_get_name(lua_State *L) {
 	if(devices_select_string_setting(ORIGIN_ACTION, dev->name, "name", &name) == 0) {
 		lua_pushstring(L, name);
 
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TSTRING) == 0);
 		return 1;
 	}
 
-	plua_ret_false(L);
-	return 0;
+	lua_pushboolean(L, 0);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 1;
 }
 
 static int plua_config_device_program_get_start_command(lua_State *L) {
@@ -266,12 +269,15 @@ static int plua_config_device_program_get_start_command(lua_State *L) {
 	if(devices_select_string_setting(ORIGIN_ACTION, dev->name, "start-command", &name) == 0) {
 		lua_pushstring(L, name);
 
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TSTRING) == 0);
 		return 1;
 	}
 
-	plua_ret_false(L);
-	return 0;
+	lua_pushboolean(L, 0);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 1;
 }
 
 static int plua_config_device_program_get_stop_command(lua_State *L) {
@@ -289,12 +295,15 @@ static int plua_config_device_program_get_stop_command(lua_State *L) {
 	if(devices_select_string_setting(ORIGIN_ACTION, dev->name, "stop-command", &name) == 0) {
 		lua_pushstring(L, name);
 
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TSTRING) == 0);
 		return 1;
 	}
 
-	plua_ret_false(L);
-	return 0;
+	lua_pushboolean(L, 0);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 1;
 }
 
 static int plua_config_device_program_get_program(lua_State *L) {
@@ -312,12 +321,15 @@ static int plua_config_device_program_get_program(lua_State *L) {
 	if(devices_select_string_setting(ORIGIN_ACTION, dev->name, "program", &name) == 0) {
 		lua_pushstring(L, name);
 
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TSTRING) == 0);
 		return 1;
 	}
 
-	plua_ret_false(L);
-	return 0;
+	lua_pushboolean(L, 0);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 1;
 }
 
 static int plua_config_device_program_get_pid(lua_State *L) {
@@ -336,12 +348,15 @@ static int plua_config_device_program_get_pid(lua_State *L) {
 	if(devices_select_number_setting(ORIGIN_ACTION, dev->name, "pid", &pid, &decimals) == 0) {
 		lua_pushnumber(L, pid);
 
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 		return 1;
 	}
 
-	plua_ret_false(L);
-	return 0;
+	lua_pushboolean(L, 0);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 1;
 }
 
 static int plua_config_device_program_get_arguments(lua_State *L) {
@@ -359,12 +374,15 @@ static int plua_config_device_program_get_arguments(lua_State *L) {
 	if(devices_select_string_setting(ORIGIN_ACTION, dev->name, "arguments", &name) == 0) {
 		lua_pushstring(L, name);
 
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TSTRING) == 0);
 		return 1;
 	}
 
-	plua_ret_false(L);
-	return 0;
+	lua_pushboolean(L, 0);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 1;
 }
 
 int plua_config_device_program(lua_State *L, struct plua_device_t *dev) {

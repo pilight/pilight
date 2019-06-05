@@ -34,7 +34,7 @@ int plua_log(struct lua_State *L) {
 	}
 
 	int loglevel = 0;
-	const char *msg = NULL, *file = NULL;
+	const char *msg = NULL;
 
 	{
 		char buf[128] = { '\0' }, *p = buf;

@@ -20,7 +20,6 @@ function M.read(f)
 	end
 
 	local file = pilight.io.file(f);
-
 	file.open("r");
 	local content = '';
 	for line in file.readline() do

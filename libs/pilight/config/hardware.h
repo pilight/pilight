@@ -29,7 +29,8 @@ typedef enum {
 	RFIR,
 	SENSOR,
 	HWRELAY,
-	API
+	API,
+	SHELLY
 } hwtype_t;
 
 void hardware_init(void);

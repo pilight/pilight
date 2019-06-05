@@ -25,6 +25,7 @@
 	#include <unistd.h>
 #endif
 
+#include "../core/log.h"
 #include "cast.h"
 
 int plua_cast_toboolean(struct lua_State *L) {
@@ -63,7 +64,7 @@ int plua_cast_toboolean(struct lua_State *L) {
 		} break;
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -104,7 +105,7 @@ int plua_cast_tonumber(struct lua_State *L) {
 		} break;
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 
 	return 1;
 }
@@ -153,7 +154,7 @@ int plua_cast_tostring(struct lua_State *L) {
 		} break;
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TSTRING) == 0);
 
 	return 1;
 }

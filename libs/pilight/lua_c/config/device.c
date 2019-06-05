@@ -52,7 +52,7 @@ static int plua_config_device_set_action_id(lua_State *L) {
 
 	lua_pushnumber(L, id);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 
 	return 1;
 }
@@ -75,7 +75,7 @@ static int plua_config_device_get_action_id(lua_State *L) {
 		lua_pushnumber(L, id);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TNIL | PLUA_TNUMBER) == 0);
 
 	return 1;
 }
@@ -93,7 +93,7 @@ static int plua_config_device_get_name(lua_State *L) {
 
 	lua_pushstring(L, dev->name);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TSTRING) == 0);
 
 	return 1;
 }
@@ -118,7 +118,7 @@ static int plua_config_device_get_type(lua_State *L) {
 		lua_settable(L, -3);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }
@@ -151,13 +151,14 @@ static int plua_config_device_has_setting(lua_State *L) {
 		devices_select_string_setting(ORIGIN_ACTION, dev->name, (char *)setting, NULL) == 0) {
 		lua_pushboolean(L, 1);
 
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
 		return 1;
 	}
 
 	lua_pushboolean(L, 0);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -201,15 +202,16 @@ static int plua_config_device_get_id(lua_State *L) {
 			}
 		}
 
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
+
 		return 1;
 	}
 
 	lua_pushnil(L);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TNIL) == 0);
 
-	return 0;
+	return 1;
 }
 
 static void plua_config_device_gc(void *ptr) {
@@ -238,7 +240,10 @@ int plua_config_device(lua_State *L) {
 
 	if(devices_select(0, (char *)name, NULL) != 0) {
 		lua_pushnil(L);
-		return 0;
+
+		assert(plua_check_stack(L, 1, PLUA_TNIL) == 0);
+
+		return 1;
 	}
 
 	struct plua_device_t *dev = MALLOC(sizeof(struct plua_device_t));
@@ -310,7 +315,7 @@ int plua_config_device(lua_State *L) {
 
 	plua_gc_reg(L, (void *)dev, plua_config_device_gc);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }

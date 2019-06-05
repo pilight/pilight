@@ -55,7 +55,7 @@ static int plua_config_hardware_get_data(lua_State *L) {
 
 	plua_metatable__push(L, (struct plua_interface_t *)hw);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }
@@ -90,7 +90,10 @@ static int plua_config_hardware_set_data(lua_State *L) {
 			uv_sem_post(hw->table->ref);
 		}
 
-		plua_ret_true(L);
+		lua_pushboolean(L, 1);
+
+		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
 		return 1;
 	}
 
@@ -101,13 +104,18 @@ static int plua_config_hardware_set_data(lua_State *L) {
 			lua_pop(L, 1);
 		}
 
-		plua_ret_true(L);
+		lua_pushboolean(L, 1);
+
+		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
 		return 1;
 	}
 
-	plua_ret_false(L);
+	lua_pushboolean(L, 0);
 
-	return 0;
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 1;
 }
 
 static int plua_config_hardware_validate(lua_State *L) {
@@ -130,8 +138,10 @@ static int plua_config_hardware_validate(lua_State *L) {
 
 	if(lua_isnil(L, -1) != 0) {
 		lua_remove(L, -1);
-		assert(lua_gettop(L) == 0);
-		return -1;
+
+		assert(plua_check_stack(L, 0) == 0);
+
+		return 0;
 	}
 
 	if(lua_istable(L, -1) != 0) {
@@ -157,16 +167,27 @@ static int plua_config_hardware_validate(lua_State *L) {
 #endif
 			logprintf(LOG_ERR, "%s: validate function missing", file);
 			state->module = oldmod;
+
+			assert(plua_check_stack(L, 0) == 0);
+
 			return 0;
 		}
-		lua_pushstring(L, setting);
+		if(setting == NULL) {
+			lua_pushnil(L);
+		} else {
+			lua_pushstring(L, setting);
+		}
+
+		assert(plua_check_stack(L, 3, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TSTRING | PLUA_TNIL) == 0);
 		if(lua_pcall(L, 1, 1, 0) == LUA_ERRRUN) {
 			if(lua_type(L, -1) == LUA_TNIL) {
 				logprintf(LOG_ERR, "%s: syntax error", file);
 				state->module = oldmod;
 				lua_remove(L, 1);
 				lua_pushboolean(L, 0);
-				assert(lua_gettop(L) == 1);
+
+				assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
 				return 1;
 			}
 			if(lua_type(L, -1) == LUA_TSTRING) {
@@ -175,7 +196,9 @@ static int plua_config_hardware_validate(lua_State *L) {
 				state->module = oldmod;
 				lua_remove(L, 1);
 				lua_pushboolean(L, 0);
-				assert(lua_gettop(L) == 1);
+
+				assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
 				return 1;
 			}
 		}
@@ -183,12 +206,14 @@ static int plua_config_hardware_validate(lua_State *L) {
 
 		lua_remove(L, 1);
 
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TNIL) == 0);
 
 		return 1;
 	}
 	lua_pushboolean(L, 0);
-	assert(lua_gettop(L) == 1);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
 	return 1;
 }
 
@@ -218,8 +243,10 @@ int plua_config_hardware(lua_State *L) {
 
 	if(lua_isnil(L, -1) != 0) {
 		lua_remove(L, -1);
-		assert(lua_gettop(L) == 0);
-		return -1;
+
+		assert(plua_check_stack(L, 0) == 0);
+
+		return 0;
 	}
 
 	if(lua_istable(L, -1) != 0) {
@@ -256,7 +283,7 @@ int plua_config_hardware(lua_State *L) {
 		plua_gc_reg(L, (void *)hw, plua_config_hardware_gc);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }

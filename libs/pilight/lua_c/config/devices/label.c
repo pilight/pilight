@@ -91,7 +91,7 @@ static int plua_config_device_label_send(lua_State *L) {
 
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -113,21 +113,21 @@ static int plua_config_device_label_get_label(lua_State *L) {
 	if(devices_select_string_setting(ORIGIN_ACTION, dev->name, "label", &slabel) == 0) {
 		lua_pushstring(L, slabel);
 
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TSTRING) == 0);
 		return 1;
 	}
 
 	if(devices_select_number_setting(ORIGIN_ACTION, dev->name, "label", &dlabel, &decimals) == 0) {
 		lua_pushnumber(L, dlabel);
 
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 		return 1;
 	}
 
 	lua_pushboolean(L, 0);
 
-	assert(lua_gettop(L) == 1);
-	return 0;
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+	return 1;
 }
 
 static int plua_config_device_label_get_color(lua_State *L) {
@@ -145,15 +145,15 @@ static int plua_config_device_label_get_color(lua_State *L) {
 	if(devices_select_string_setting(ORIGIN_ACTION, dev->name, "color", &slabel) == 0) {
 		lua_pushstring(L, slabel);
 
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TSTRING) == 0);
 		return 1;
 	}
 
 	lua_pushboolean(L, 0);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
-	return 0;
+	return 1;
 }
 
 static int plua_config_device_label_set_label(lua_State *L) {
@@ -197,7 +197,7 @@ static int plua_config_device_label_set_label(lua_State *L) {
 
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -243,7 +243,7 @@ static int plua_config_device_label_set_color(lua_State *L) {
 
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -273,6 +273,8 @@ int plua_config_device_label(lua_State *L, struct plua_device_t *dev) {
 	lua_pushlightuserdata(L, dev);
 	lua_pushcclosure(L, plua_config_device_label_send, 1);
 	lua_settable(L, -3);
+
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }

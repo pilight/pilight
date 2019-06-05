@@ -56,7 +56,6 @@ static int plua_io_dir_exists(struct lua_State *L) {
 
 	if(lua_gettop(L) != 0) {
 		pluaL_error(L, "dir.exists requires 0 arguments, %d given", lua_gettop(L));
-		return 0;
 	}
 
 	if(dir == NULL) {
@@ -84,7 +83,7 @@ static int plua_io_dir_exists(struct lua_State *L) {
     }
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -111,7 +110,8 @@ static int plua_io_dir_close(struct lua_State *L) {
 	plua_io_dir_gc(dir);
 
 	lua_pushboolean(L, 1);
-	assert(lua_gettop(L) == 1);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -133,7 +133,6 @@ static void plua_io_dir_object(lua_State *L, struct lua_dir_t *dir) {
 int plua_io_dir(struct lua_State *L) {
 	if(lua_gettop(L) != 1) {
 		pluaL_error(L, "dir requires 1 argument, %d given", lua_gettop(L));
-		return 0;
 	}
 
 	char *name = NULL;
@@ -176,7 +175,7 @@ int plua_io_dir(struct lua_State *L) {
 
 	plua_io_dir_object(L, lua_dir);
 
-	lua_assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }

@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 #include <ctype.h>
 #include <libgen.h>
 #ifdef _WIN32
@@ -570,11 +571,11 @@ int whitelist_check(char *ip) {
 	/* Check if there are any whitelisted ip address */
 	struct lua_state_t *state = plua_get_free_state();
 	if(config_setting_get_string(state->L, "whitelist", 0, &whitelist) != 0) {
-		assert(lua_gettop(state->L) == 0);
+		assert(plua_check_stack(state->L, 0) == 0);
 		plua_clear_state(state);
 		return 0;
 	}
-	assert(lua_gettop(state->L) == 0);
+	assert(plua_check_stack(state->L, 0) == 0);
 	plua_clear_state(state);
 
 	if(strlen(whitelist) == 0) {

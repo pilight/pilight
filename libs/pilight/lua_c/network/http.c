@@ -79,7 +79,11 @@ static int plua_network_http_set_userdata(lua_State *L) {
 			uv_sem_post(http->table->ref);
 		}
 
-		plua_ret_true(L);
+		lua_remove(L, -1);
+
+		lua_pushboolean(L, 1);
+
+		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 		return 1;
 	}
@@ -91,11 +95,18 @@ static int plua_network_http_set_userdata(lua_State *L) {
 			lua_pop(L, 1);
 		}
 
-		plua_ret_true(L);
+		lua_remove(L, -1);
+
+		lua_pushboolean(L, 1);
+
+		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
 		return 1;
 	}
 
-	plua_ret_false(L);
+	lua_pushboolean(L, 0);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 0;
 }
@@ -105,17 +116,15 @@ static int plua_network_http_get_userdata(lua_State *L) {
 
 	if(lua_gettop(L) != 0) {
 		pluaL_error(L, "http.getUserdata requires 0 argument, %d given", lua_gettop(L));
-		return 0;
 	}
 
 	if(http == NULL) {
 		pluaL_error(L, "internal error: http object not passed");
-		return 0;
 	}
 
 	plua_metatable__push(L, (struct plua_interface_t *)http);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }
@@ -152,7 +161,7 @@ static int plua_network_http_set_mimetype(lua_State *L) {
 
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -189,7 +198,7 @@ static int plua_network_http_set_data(lua_State *L) {
 
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -226,7 +235,7 @@ static int plua_network_http_set_url(lua_State *L) {
 
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -281,21 +290,30 @@ static void plua_network_http_callback(int code, char *content, int size, char *
 	}
 
 	plua_gc_unreg(state->L, data);
+
+	assert(plua_check_stack(state->L, 3, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE) == 0);
 	if(lua_pcall(state->L, 1, 0, 0) == LUA_ERRRUN) {
 		if(lua_type(state->L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
+			lua_remove(state->L, -1);
+			lua_remove(state->L, -1);
+			assert(plua_check_stack(state->L, 0) == 0);
+			plua_clear_state(state);
 			goto error;
 		}
 		if(lua_type(state->L, -1) == LUA_TSTRING) {
 			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
-			lua_pop(state->L, -1);
-			assert(lua_gettop(state->L) == 0);
+			lua_remove(state->L, -1);
+			lua_remove(state->L, -1);
+			assert(plua_check_stack(state->L, 0) == 0);
 			plua_clear_state(state);
 			goto error;
 		}
 	}
 	lua_remove(state->L, 1);
-	assert(lua_gettop(state->L) == 0);
+
+	assert(plua_check_stack(state->L, 0) == 0);
+
 	plua_clear_state(state);
 
 error:
@@ -364,7 +382,7 @@ static int plua_network_http_set_callback(lua_State *L) {
 
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -395,7 +413,8 @@ static int plua_network_http_get(lua_State *L) {
 		plua_network_http_gc((void *)http);
 
 		lua_pushboolean(L, 0);
-		assert(lua_gettop(L) == 1);
+
+		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 		return 1;
 	}
@@ -403,7 +422,8 @@ static int plua_network_http_get(lua_State *L) {
 	plua_gc_unreg(http->L, http);
 
 	lua_pushboolean(L, 1);
-	assert(lua_gettop(L) == 1);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -442,7 +462,8 @@ static int plua_network_http_post(lua_State *L) {
 		plua_network_http_gc((void *)http);
 
 		lua_pushboolean(L, 0);
-		assert(lua_gettop(L) == 1);
+
+		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 		return 1;
 	}
@@ -450,7 +471,8 @@ static int plua_network_http_post(lua_State *L) {
 	plua_gc_unreg(http->L, http);
 
 	lua_pushboolean(L, 1);
-	assert(lua_gettop(L) == 1);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -472,7 +494,7 @@ static int plua_network_http_get_code(lua_State *L) {
 		lua_pushnil(L);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TNUMBER | PLUA_TNIL) == 0);
 
 	return 1;
 }
@@ -494,7 +516,7 @@ static int plua_network_http_get_size(lua_State *L) {
 		lua_pushnil(L);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TNUMBER | PLUA_TNIL) == 0);
 
 	return 1;
 }
@@ -516,7 +538,7 @@ static int plua_network_http_get_mimetype(lua_State *L) {
 		lua_pushnil(L);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TSTRING | PLUA_TNIL) == 0);
 
 	return 1;
 }
@@ -538,7 +560,7 @@ static int plua_network_http_get_url(lua_State *L) {
 		lua_pushnil(L);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TSTRING | PLUA_TNIL) == 0);
 
 	return 1;
 }
@@ -560,7 +582,7 @@ static int plua_network_http_get_data(lua_State *L) {
 		lua_pushnil(L);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TSTRING | PLUA_TNIL) == 0);
 
 	return 1;
 }
@@ -582,7 +604,7 @@ static int plua_network_http_get_callback(lua_State *L) {
 		lua_pushnil(L);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TSTRING | PLUA_TNIL) == 0);
 
 	return 1;
 }
@@ -685,7 +707,6 @@ static void plua_network_http_object(lua_State *L, struct lua_http_t *http) {
 int plua_network_http(struct lua_State *L) {
 	if(lua_gettop(L) != 0) {
 		pluaL_error(L, "timer requires 0 arguments, %d given", lua_gettop(L));
-		return 0;
 	}
 
 	struct lua_state_t *state = plua_get_current_state(L);
@@ -709,7 +730,7 @@ int plua_network_http(struct lua_State *L) {
 
 	plua_network_http_object(L, lua_http);
 
-	lua_assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }

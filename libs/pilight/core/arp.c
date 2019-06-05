@@ -83,6 +83,7 @@ int arp_resolv(char *if_name, char *srcmac, char *dstmac, char **ip) {
 	#include <regex.h>
 	#include <netdb.h>
 #endif
+#include <assert.h>
 #include <pcap.h>
 
 #include <ctype.h>

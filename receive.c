@@ -165,9 +165,12 @@ int main(int argc, char **argv) {
 	if(ssdp_list != NULL) {
 		ssdp_free(ssdp_list);
 	}
-	if(server != NULL) {
-		FREE(server);
-	}
+	/*
+	 * Already freed with the options struct
+	 */
+	// if(server != NULL) {
+		// FREE(server);
+	// }
 
 	struct JsonNode *jclient = json_mkobject();
 	struct JsonNode *joptions = json_mkobject();

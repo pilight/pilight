@@ -199,11 +199,11 @@ int main(int argc, char **argv) {
 	if(hasconfarg == 1) {
 		struct lua_state_t *state = plua_get_free_state();
 		if(config_read(state->L, CONFIG_SETTINGS) != EXIT_SUCCESS) {
-			assert(lua_gettop(state->L) == 0);
+			assert(plua_check_stack(state->L, 0) == 0);
 			plua_clear_state(state);
 			goto close;
 		}
-		assert(lua_gettop(state->L) == 0);
+		assert(plua_check_stack(state->L, 0) == 0);
 		plua_clear_state(state);
 	}
 

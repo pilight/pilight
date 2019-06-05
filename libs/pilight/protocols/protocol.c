@@ -19,8 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dirent.h>
-#include <sys/time.h>
+#include <assert.h>
 #include <sys/stat.h>
 #ifndef _WIN32
 	#ifdef __mips__
@@ -132,10 +131,10 @@ void protocol_init(void) {
 			exit(EXIT_FAILURE);
 		}
 		strcpy(protocol_root, PROTOCOL_ROOT);
-		assert(lua_gettop(state->L) == 0);
+		assert(plua_check_stack(state->L, 0) == 0);
 		plua_clear_state(state);
 	} else {
-		assert(lua_gettop(state->L) == 0);
+		assert(plua_check_stack(state->L, 0) == 0);
 		plua_clear_state(state);
 	}
 
