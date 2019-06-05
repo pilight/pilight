@@ -63,7 +63,7 @@ int plua_common_random(struct lua_State *L) {
 
 	lua_pushnumber(L, r);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 
 	return 1;
 }
@@ -111,7 +111,7 @@ int plua_common_explode(struct lua_State *L) {
 	}
 	array_free(&array, n);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }

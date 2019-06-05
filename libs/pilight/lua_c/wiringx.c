@@ -145,7 +145,10 @@ static int plua_wiringx_set_userdata(lua_State *L) {
 		if(wiringx->table->ref != NULL) {
 			uv_sem_post(wiringx->table->ref);
 		}
-		plua_ret_true(L);
+
+		lua_pushboolean(L, 1);
+
+		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 		return 1;
 	}
@@ -157,11 +160,16 @@ static int plua_wiringx_set_userdata(lua_State *L) {
 			lua_pop(L, 1);
 		}
 
-		plua_ret_true(L);
+		lua_pushboolean(L, 1);
+
+		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
 		return 1;
 	}
 
-	plua_ret_false(L);
+	lua_pushboolean(L, 0);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 0;
 }
@@ -181,7 +189,7 @@ static int plua_wiringx_get_userdata(lua_State *L) {
 
 	plua_metatable__push(L, (struct plua_interface_t *)wiringx);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }
@@ -299,7 +307,7 @@ int plua_wiringx_digital_write(struct lua_State *L) {
 		plua_metatable_free(table);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 
 	return 1;
 }
@@ -331,7 +339,7 @@ int plua_wiringx_has_gpio(struct lua_State *L) {
 		lua_pushboolean(L, 0);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -400,7 +408,7 @@ int plua_wiringx_pin_mode(struct lua_State *L) {
 		lua_pushboolean(L, 1);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -459,22 +467,30 @@ static void plua_wiringx_poll_timer(uv_timer_t *req) {
 		lua_settable(state->L, -3);
 	}
 
+	assert(plua_check_stack(state->L, 5, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE, PLUA_TNUMBER, PLUA_TTABLE) == 0);
 	if(lua_pcall(state->L, 3, 0, 0) == LUA_ERRRUN) {
 		if(lua_type(state->L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
+			lua_remove(state->L, -1);
+			lua_remove(state->L, -1);
+			assert(plua_check_stack(state->L, 0) == 0);
 			plua_clear_state(state);
 			return;
 		}
 		if(lua_type(state->L, -1) == LUA_TSTRING) {
 			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
-			lua_pop(state->L, -1);
+			lua_remove(state->L, -1);
+			lua_remove(state->L, -1);
+			assert(plua_check_stack(state->L, 0) == 0);
 			plua_clear_state(state);
 			return;
 		}
 	}
 
 	lua_remove(state->L, -1);
-	assert(lua_gettop(state->L) == 0);
+
+	assert(plua_check_stack(state->L, 0) == 0);
+
 	plua_clear_state(state);
 
 	return;
@@ -492,7 +508,7 @@ static void plua_wiringx_poll_cb(uv_poll_t *req, int status, int events) {
 #endif
 		uint8_t c = 0;
 
-		(void)read(fd, &c, 1);
+		(void)(read(fd, &c, 1)+1);
 		lseek(fd, 0, SEEK_SET);
 
 		struct timeval tv;
@@ -670,6 +686,8 @@ static int plua_wiringx_isr(struct lua_State *L) {
 		}
 	}
 
+	assert(plua_check_stack(L, 0) == 0);
+
 	return 0;
 }
 
@@ -741,6 +759,7 @@ int plua_wiringx_setup(struct lua_State *L) {
 
 	struct lua_state_t *state = plua_get_current_state(L);
 	if(state == NULL) {
+		assert(plua_check_stack(L, 0) == 0);
 		return 0;
 	}
 
@@ -780,9 +799,9 @@ int plua_wiringx_setup(struct lua_State *L) {
 		wiringx[i]->module = state->module;
 		plua_wiringx_object(L, wiringx[i]);
 	}
-
-	lua_assert(lua_gettop(L) == 1);
 #endif
+
+	assert(plua_check_stack(L, 1, PLUA_TTABLE | PLUA_TNIL | PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }

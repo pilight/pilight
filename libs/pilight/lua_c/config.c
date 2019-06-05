@@ -58,8 +58,8 @@ static int plua_config_set_data(lua_State *L) {
 		// lua_remove(L, -1);
 		// plua_metatable_clone(&cpy, &thread->table);
 
-		// plua_ret_true(L);
-		return 1;
+		// printf("-- plua_ret_true --\n");
+		return 0;
 	}
 
 	if(lua_type(L, -1) == LUA_TTABLE) {
@@ -71,13 +71,15 @@ static int plua_config_set_data(lua_State *L) {
 			lua_pop(L, 1);
 		}
 
-		plua_ret_true(L);
+		lua_pushboolean(L, 1);
+		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 		return 1;
 	}
 
-	plua_ret_false(L);
+	lua_pushboolean(L, 0);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
-	return 0;
+	return 1;
 }
 
 static int plua_config_get_data(lua_State *L) {
@@ -97,13 +99,13 @@ static int plua_config_get_data(lua_State *L) {
 
 	if(table == NULL) {
 		lua_pushnil(L);
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TNIL) == 0);
 		return 1;
 	}
 
 	plua_metatable_push(L, table);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }
@@ -170,7 +172,7 @@ int plua_config(struct lua_State *L) {
 
 	plua_config_object(L, NULL);
 
-	lua_assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }

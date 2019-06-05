@@ -54,6 +54,7 @@ void event_operator_init(void) {
 
 	struct lua_state_t *state = plua_get_free_state();
 	int ret = config_setting_get_string(state->L, "operators-root", 0, &operator_root);
+	assert(plua_check_stack(state->L, 0) == 0);
 	plua_clear_state(state);
 
 	if((d = opendir(operator_root))) {
@@ -87,29 +88,39 @@ static int plua_operator_precedence_run(struct lua_State *L, char *file, int *re
 	if(lua_getfield(L, -1, "precedence") == 0) {
 #endif
 		logprintf(LOG_ERR, "%s: precedence function missing", file);
+		assert(plua_check_stack(L, 0) == 0);
 		return 0;
 	}
 
+	assert(plua_check_stack(L, 2, PLUA_TTABLE, PLUA_TFUNCTION) == 0);
 	if(lua_pcall(L, 0, 1, 0) == LUA_ERRRUN) {
 		if(lua_type(L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", file);
+			lua_remove(L, -1);
+			lua_remove(L, -1);
+			assert(plua_check_stack(L, 0) == 0);
 			return 0;
 		}
 		if(lua_type(L, -1) == LUA_TSTRING) {
 			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
-			lua_pop(L, 1);
+			lua_remove(L, -1);
+			lua_remove(L, -1);
+			assert(plua_check_stack(L, 0) == 0);
 			return 0;
 		}
 	}
 
 	if(lua_isnumber(L, -1) == 0) {
 		logprintf(LOG_ERR, "%s: the precedence function returned %s, number expected", file, lua_typename(L, lua_type(L, -1)));
+		assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 		return 0;
 	}
 
 	*ret = lua_tonumber(L, -1);
 
-	lua_pop(L, 1);
+	lua_remove(L, 1);
+
+	assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 
 	return 1;
 }
@@ -125,26 +136,35 @@ static int plua_operator_associativity_run(struct lua_State *L, char *file, int 
 		return 0;
 	}
 
+	assert(plua_check_stack(L, 2, PLUA_TTABLE, PLUA_TFUNCTION) == 0);
 	if(lua_pcall(L, 0, 1, 0) == LUA_ERRRUN) {
 		if(lua_type(L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", file);
+			lua_remove(L, -1);
+			lua_remove(L, -1);
+			assert(plua_check_stack(L, 0) == 0);
 			return 0;
 		}
 		if(lua_type(L, -1) == LUA_TSTRING) {
 			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
-			lua_pop(L, 1);
+			lua_remove(L, -1);
+			lua_remove(L, -1);
+			assert(plua_check_stack(L, 0) == 0);
 			return 0;
 		}
 	}
 
 	if(lua_isnumber(L, -1) == 0) {
 		logprintf(LOG_ERR, "%s: the associativity function returned %s, number expected", file, lua_typename(L, lua_type(L, -1)));
+		assert(plua_check_stack(L, 0) == 0);
 		return 0;
 	}
 
 	*ret = lua_tonumber(L, -1);
 
-	lua_pop(L, 1);
+	lua_remove(L, 1);
+
+	assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 
 	return 1;
 }
@@ -157,7 +177,7 @@ static int plua_operator_module_run(struct lua_State *L, char *file, struct varc
 	if(lua_getfield(L, -1, "run") == 0) {
 #endif
 		logprintf(LOG_ERR, "%s: run function missing", file);
-		return 0;
+		return -1;
 	}
 
 	switch(a->type_) {
@@ -183,15 +203,23 @@ static int plua_operator_module_run(struct lua_State *L, char *file, struct varc
 		break;
 	}
 
+	assert(plua_check_stack(L, 4, PLUA_TTABLE, PLUA_TFUNCTION,
+		PLUA_TNUMBER | PLUA_TSTRING | PLUA_TBOOLEAN,
+		PLUA_TNUMBER | PLUA_TSTRING | PLUA_TBOOLEAN) == 0);
 	if(lua_pcall(L, 2, 1, 0) == LUA_ERRRUN) {
 		if(lua_type(L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", file);
-			return 0;
+			lua_remove(L, -1);
+			lua_remove(L, -1);
+			assert(plua_check_stack(L, 0) == 0);
+			return -1;
 		}
 		if(lua_type(L, -1) == LUA_TSTRING) {
 			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
-			lua_pop(L, 1);
-			return 0;
+			lua_remove(L, -1);
+			lua_remove(L, -1);
+			assert(plua_check_stack(L, 0) == 0);
+			return -1;
 		}
 	}
 
@@ -199,7 +227,8 @@ static int plua_operator_module_run(struct lua_State *L, char *file, struct varc
 		lua_isnumber(L, -1) == 0 &&
 		lua_isboolean(L, -1) == 0) {
 		logprintf(LOG_ERR, "%s: the run function returned %s, string, number or boolean expected", file, lua_typename(L, lua_type(L, -1)));
-		return 0;
+		assert(plua_check_stack(L, 0) == 0);
+		return -1;
 	}
 
 	if(lua_isnumber(L, -1) == 1) {
@@ -220,9 +249,12 @@ static int plua_operator_module_run(struct lua_State *L, char *file, struct varc
 		v->type_ = JSON_BOOL;
 	}
 
-	lua_pop(L, 1);
+	lua_remove(L, 1);
+	lua_remove(L, 1);
 
-	return 1;
+	assert(plua_check_stack(L, 0) == 0);
+
+	return 0;
 }
 
 int event_operator_exists(char *module) {
@@ -238,7 +270,7 @@ int event_operator_precedence(char *module, int *ret) {
 	}
 
 	if((L = state->L) == NULL) {
-		assert(lua_gettop(L) == 0);
+		assert(plua_check_stack(L, 0) == 0);
 		plua_clear_state(state);
 		return -1;
 	}
@@ -250,8 +282,7 @@ int event_operator_precedence(char *module, int *ret) {
 
 	lua_getglobal(L, name);
 	if(lua_isnil(L, -1) != 0) {
-		assert(lua_gettop(L) == 0);
-		plua_clear_state(state);
+		assert(plua_check_stack(L, 0) == 0);
 		return -1;
 	}
 	if(lua_istable(L, -1) != 0) {
@@ -267,14 +298,14 @@ int event_operator_precedence(char *module, int *ret) {
 		}
 		if(plua_operator_precedence_run(L, file, ret) == 0) {
 			lua_pop(L, -1);
-			assert(lua_gettop(L) == 0);
+			assert(plua_check_stack(L, 0) == 0);
 			plua_clear_state(state);
 			return -1;
 		}
 	}
 	lua_pop(L, -1);
 
-	assert(lua_gettop(L) == 0);
+	assert(plua_check_stack(L, 0) == 0);
 	plua_clear_state(state);
 
 	return 0;
@@ -289,7 +320,7 @@ int event_operator_associativity(char *module, int *ret) {
 	}
 
 	if((L = state->L) == NULL) {
-		assert(lua_gettop(L) == 0);
+		assert(plua_check_stack(L, 0) == 0);
 		plua_clear_state(state);
 		return -1;
 	}
@@ -301,7 +332,7 @@ int event_operator_associativity(char *module, int *ret) {
 
 	lua_getglobal(L, name);
 	if(lua_isnil(L, -1) != 0) {
-		assert(lua_gettop(L) == 0);
+		assert(plua_check_stack(L, 0) == 0);
 		plua_clear_state(state);
 		return -1;
 	}
@@ -318,14 +349,14 @@ int event_operator_associativity(char *module, int *ret) {
 		}
 		if(plua_operator_associativity_run(L, file, ret) == 0) {
 			lua_pop(L, -1);
-			assert(lua_gettop(L) == 0);
+			assert(plua_check_stack(L, 0) == 0);
 			plua_clear_state(state);
 			return -1;
 		}
 	}
 	lua_pop(L, -1);
 
-	assert(lua_gettop(L) == 0);
+	assert(plua_check_stack(L, 0) == 0);
 	plua_clear_state(state);
 
 	return 0;
@@ -340,7 +371,7 @@ int event_operator_callback(char *module, struct varcont_t *a, struct varcont_t 
 	}
 
 	if((L = state->L) == NULL) {
-		assert(lua_gettop(L) == 0);
+		assert(plua_check_stack(L, 0) == 0);
 		plua_clear_state(state);
 		return -1;
 	}
@@ -352,7 +383,7 @@ int event_operator_callback(char *module, struct varcont_t *a, struct varcont_t 
 
 	lua_getglobal(L, name);
 	if(lua_isnil(L, -1) != 0) {
-		assert(lua_gettop(L) == 0);
+		assert(plua_check_stack(L, 0) == 0);
 		plua_clear_state(state);
 		return -1;
 	}
@@ -367,16 +398,16 @@ int event_operator_callback(char *module, struct varcont_t *a, struct varcont_t 
 			}
 			tmp = tmp->next;
 		}
-		if(plua_operator_module_run(L, file, a, b, v) == 0) {
+		if(plua_operator_module_run(L, file, a, b, v) == -1) {
 			lua_pop(L, -1);
-			assert(lua_gettop(L) == 0);
+			assert(plua_check_stack(L, 0) == 0);
 			plua_clear_state(state);
 			return -1;
 		}
 	}
 	lua_pop(L, -1);
 
-	assert(lua_gettop(L) == 0);
+	assert(plua_check_stack(L, 0) == 0);
 	plua_clear_state(state);
 
 	return 0;

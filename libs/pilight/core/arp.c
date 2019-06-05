@@ -43,6 +43,7 @@
 	#include <regex.h>
 	#include <netdb.h>
 #endif
+#include <assert.h>
 #include <pcap.h>
 #include <ctype.h>
 #include <string.h>
@@ -530,6 +531,7 @@ void arp_scan(void) {
 			struct lua_state_t *state = plua_get_free_state();
 			if(config_setting_get_number(state->L, "arp-interval", 0, &itmp) == 0) { data[nrdata]->interval = itmp; };
 			if(config_setting_get_number(state->L, "arp-timeout", 0, &itmp) == 0) { data[nrdata]->timeout = itmp; };
+			assert(plua_check_stack(state->L, 0) == 0);
 			plua_clear_state(state);
 
 			data[nrdata]->timer_req->data = data[nrdata];

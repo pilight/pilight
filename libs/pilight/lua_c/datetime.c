@@ -106,7 +106,7 @@ int plua_datetime_strptime(struct lua_State *L) {
 	lua_pushnumber(L, weekday);
 	lua_settable(L, -3);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }

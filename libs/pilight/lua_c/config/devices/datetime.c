@@ -30,12 +30,15 @@ static int plua_config_device_datetime_get_year(lua_State *L) {
 
 	if(devices_select_number_setting(ORIGIN_ACTION, dev->name, "year", &num, &dec) == 0) {
 		lua_pushnumber(L, num);
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 		return 1;
 	}
 
-	plua_ret_false(L);
-	return 0;
+	lua_pushboolean(L, 0);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 1;
 }
 
 static int plua_config_device_datetime_get_month(lua_State *L) {
@@ -53,12 +56,15 @@ static int plua_config_device_datetime_get_month(lua_State *L) {
 
 	if(devices_select_number_setting(ORIGIN_ACTION, dev->name, "month", &num, &dec) == 0) {
 		lua_pushnumber(L, num);
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 		return 1;
 	}
 
-	plua_ret_false(L);
-	return 0;
+	lua_pushboolean(L, 0);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 1;
 }
 
 static int plua_config_device_datetime_get_day(lua_State *L) {
@@ -76,12 +82,15 @@ static int plua_config_device_datetime_get_day(lua_State *L) {
 
 	if(devices_select_number_setting(ORIGIN_ACTION, dev->name, "day", &num, &dec) == 0) {
 		lua_pushnumber(L, num);
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 		return 1;
 	}
 
-	plua_ret_false(L);
-	return 0;
+	lua_pushboolean(L, 0);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 1;
 }
 
 static int plua_config_device_datetime_get_hour(lua_State *L) {
@@ -99,12 +108,15 @@ static int plua_config_device_datetime_get_hour(lua_State *L) {
 
 	if(devices_select_number_setting(ORIGIN_ACTION, dev->name, "hour", &num, &dec) == 0) {
 		lua_pushnumber(L, num);
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 		return 1;
 	}
 
-	plua_ret_false(L);
-	return 0;
+	lua_pushboolean(L, 0);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 1;
 }
 
 static int plua_config_device_datetime_get_minute(lua_State *L) {
@@ -122,12 +134,15 @@ static int plua_config_device_datetime_get_minute(lua_State *L) {
 
 	if(devices_select_number_setting(ORIGIN_ACTION, dev->name, "minute", &num, &dec) == 0) {
 		lua_pushnumber(L, num);
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 		return 1;
 	}
 
-	plua_ret_false(L);
-	return 0;
+	lua_pushboolean(L, 0);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 1;
 }
 
 static int plua_config_device_datetime_get_second(lua_State *L) {
@@ -145,12 +160,15 @@ static int plua_config_device_datetime_get_second(lua_State *L) {
 
 	if(devices_select_number_setting(ORIGIN_ACTION, dev->name, "second", &num, &dec) == 0) {
 		lua_pushnumber(L, num);
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 		return 1;
 	}
 
-	plua_ret_false(L);
-	return 0;
+	lua_pushboolean(L, 0);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 1;
 }
 
 static int plua_config_device_datetime_get_weekday(lua_State *L) {
@@ -168,12 +186,15 @@ static int plua_config_device_datetime_get_weekday(lua_State *L) {
 
 	if(devices_select_number_setting(ORIGIN_ACTION, dev->name, "weekday", &num, &dec) == 0) {
 		lua_pushnumber(L, num);
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 		return 1;
 	}
 
-	plua_ret_false(L);
-	return 0;
+	lua_pushboolean(L, 0);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 1;
 }
 
 static int plua_config_device_datetime_get_dst(lua_State *L) {
@@ -191,12 +212,15 @@ static int plua_config_device_datetime_get_dst(lua_State *L) {
 
 	if(devices_select_number_setting(ORIGIN_ACTION, dev->name, "dst", &num, &dec) == 0) {
 		lua_pushnumber(L, num);
-		assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 		return 1;
 	}
 
-	plua_ret_false(L);
-	return 0;
+	lua_pushboolean(L, 0);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 1;
 }
 
 static int plua_config_device_datetime_get_table(lua_State *L) {
@@ -205,6 +229,8 @@ static int plua_config_device_datetime_get_table(lua_State *L) {
 	struct varcont_t val;
 	struct tm tm;
 	int i = 0;
+
+	memset(&tm, 0, sizeof(struct tm));
 
 	if(dev == NULL) {
 		pluaL_error(L, "internal error: device object not passed");
@@ -281,7 +307,7 @@ static int plua_config_device_datetime_get_table(lua_State *L) {
 	lua_pushnumber(L, weekday);
 	lua_settable(L, -3);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }
@@ -331,6 +357,8 @@ int plua_config_device_datetime(lua_State *L, struct plua_device_t *dev) {
 	lua_pushlightuserdata(L, dev);
 	lua_pushcclosure(L, plua_config_device_datetime_get_table, 1);
 	lua_settable(L, -3);
+
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }

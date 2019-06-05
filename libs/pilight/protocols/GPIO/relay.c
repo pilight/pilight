@@ -123,6 +123,7 @@ static int createCode(struct JsonNode *code, char **message) {
 
 clear:
 #if defined(__arm__) || defined(__mips__)
+	assert(plua_check_stack(state->L, 0) == 0);
 	plua_clear_state(state);
 #endif
 	if(free_def == 1) {
@@ -172,17 +173,21 @@ static int checkValues(struct JsonNode *code) {
 				struct lua_state_t *state = plua_get_free_state();
 				if(config_setting_get_string(state->L, "gpio-platform", 0, &platform) != 0 || strcmp(platform, "none") == 0) {
 					logprintf(LOG_ERR, "relay: no gpio-platform configured");
+					assert(plua_check_stack(state->L, 0) == 0);
 					plua_clear_state(state);
 					return -1;
 				} else if(wiringXSetup(platform, _logprintf) < 0) {
 					logprintf(LOG_ERR, "unable to setup wiringX") ;
+					assert(plua_check_stack(state->L, 0) == 0);
 					plua_clear_state(state);
 					return -1;
 				} else if(wiringXValidGPIO(gpio) != 0) {
 					logprintf(LOG_ERR, "relay: invalid gpio range");
+					assert(plua_check_stack(state->L, 0) == 0);
 					plua_clear_state(state);
 					return -1;
 				}
+				assert(plua_check_stack(state->L, 0) == 0);
 				plua_clear_state(state);
 #endif
 			}

@@ -81,7 +81,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 	if(events & node->pollpri) {
 		uint8_t c = 0;
 
-		(void)read(fd, &c, 1);
+		(void)(read(fd, &c, 1)+1);
 		lseek(fd, 0, SEEK_SET);
 
 		uv_poll_stop(req);
@@ -202,9 +202,11 @@ static int checkValues(struct JsonNode *jvalues) {
 	struct lua_state_t *state = plua_get_free_state();
 	if(config_setting_get_string(state->L, "gpio-platform", 0, &platform) != 0) {
 		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
+		assert(plua_check_stack(state->L, 0) == 0);
 		plua_clear_state(state);
 		return -1;
 	} else {
+		assert(plua_check_stack(state->L, 0) == 0);
 		plua_clear_state(state);
 	}
 	if(strcmp(platform, "none") == 0) {

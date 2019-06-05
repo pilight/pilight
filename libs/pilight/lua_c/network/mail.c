@@ -78,7 +78,9 @@ static int plua_network_mail_set_data(lua_State *L) {
 			uv_sem_post(mail->table->ref);
 		}
 
-		plua_ret_true(L);
+		lua_pushboolean(L, 1);
+
+		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 1);
 
 		return 1;
 	}
@@ -90,11 +92,16 @@ static int plua_network_mail_set_data(lua_State *L) {
 			lua_pop(L, 1);
 		}
 
-		plua_ret_true(L);
+		lua_pushboolean(L, 1);
+
+		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 1);
+
 		return 1;
 	}
 
-	plua_ret_false(L);
+	lua_pushboolean(L, 0);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 1);
 
 	return 0;
 }
@@ -114,7 +121,7 @@ static int plua_network_mail_get_data(lua_State *L) {
 
 	plua_metatable__push(L, (struct plua_interface_t *)mail);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }
@@ -148,7 +155,7 @@ static int plua_network_mail_set_subject(lua_State *L) {
 
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -182,7 +189,7 @@ static int plua_network_mail_set_from(lua_State *L) {
 
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -216,7 +223,7 @@ static int plua_network_mail_set_to(lua_State *L) {
 
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -250,7 +257,7 @@ static int plua_network_mail_set_message(lua_State *L) {
 
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -283,7 +290,7 @@ static int plua_network_mail_set_port(lua_State *L) {
 
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -317,7 +324,7 @@ static int plua_network_mail_set_host(lua_State *L) {
 
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -351,7 +358,7 @@ static int plua_network_mail_set_user(lua_State *L) {
 
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -385,7 +392,7 @@ static int plua_network_mail_set_password(lua_State *L) {
 
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -439,7 +446,7 @@ static int plua_network_mail_set_callback(lua_State *L) {
 
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -468,12 +475,11 @@ static int plua_network_mail_set_ssl(lua_State *L) {
 	ssl = lua_tonumber(L, -1);
 	mail->is_ssl = ssl;
 
-
 	lua_remove(L, -1);
 
 	lua_pushboolean(L, 1);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -508,19 +514,28 @@ static void plua_network_mail_callback(int status, struct mail_t *mail) {
 
 	data->status = status;
 
+	assert(plua_check_stack(state->L, 3, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE) == 0);
 	if(lua_pcall(state->L, 1, 0, 0) == LUA_ERRRUN) {
 		if(lua_type(state->L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
+			lua_remove(state->L, -1);
+			lua_remove(state->L, -1);
+			assert(plua_check_stack(state->L, 0) == 0);
+			plua_clear_state(state);
 			goto error;
 		}
 		if(lua_type(state->L, -1) == LUA_TSTRING) {
 			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
-			lua_pop(state->L, -1);
+			lua_remove(state->L, -1);
+			lua_remove(state->L, -1);
+			assert(plua_check_stack(state->L, 0) == 0);
 			plua_clear_state(state);
 			goto error;
 		}
 	}
 	lua_remove(state->L, 1);
+
+	assert(plua_check_stack(state->L, 0) == 0);
 	plua_clear_state(state);
 
 error:
@@ -599,7 +614,8 @@ static int plua_network_mail_send(lua_State *L) {
 		plua_network_mail_gc((void *)mail);
 
 		lua_pushboolean(L, 0);
-		assert(lua_gettop(L) == 1);
+
+		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 		return 1;
 	}
@@ -607,7 +623,8 @@ static int plua_network_mail_send(lua_State *L) {
 	plua_gc_unreg(mail->L, mail);
 
 	lua_pushboolean(L, 1);
-	assert(lua_gettop(L) == 1);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
 	return 1;
 }
@@ -635,7 +652,7 @@ static int plua_network_mail_get_status(lua_State *L) {
 		break;
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN | PLUA_TNIL) == 0);
 
 	return 1;
 }
@@ -657,7 +674,7 @@ static int plua_network_mail_get_subject(lua_State *L) {
 		lua_pushnil(L);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TSTRING | PLUA_TNIL) == 0);
 
 	return 1;
 }
@@ -679,7 +696,7 @@ static int plua_network_mail_get_to(lua_State *L) {
 		lua_pushnil(L);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TSTRING | PLUA_TNIL) == 0);
 
 	return 1;
 }
@@ -701,7 +718,7 @@ static int plua_network_mail_get_from(lua_State *L) {
 		lua_pushnil(L);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TSTRING | PLUA_TNIL) == 0);
 
 	return 1;
 }
@@ -723,7 +740,7 @@ static int plua_network_mail_get_message(lua_State *L) {
 		lua_pushnil(L);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TSTRING | PLUA_TNIL) == 0);
 
 	return 1;
 }
@@ -745,7 +762,7 @@ static int plua_network_mail_get_host(lua_State *L) {
 		lua_pushnil(L);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TSTRING | PLUA_TNIL) == 0);
 
 	return 1;
 }
@@ -767,7 +784,7 @@ static int plua_network_mail_get_user(lua_State *L) {
 		lua_pushnil(L);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TSTRING | PLUA_TNIL) == 0);
 
 	return 1;
 }
@@ -789,7 +806,7 @@ static int plua_network_mail_get_password(lua_State *L) {
 		lua_pushnil(L);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TSTRING | PLUA_TNIL) == 0);
 
 	return 1;
 }
@@ -807,7 +824,7 @@ static int plua_network_mail_get_ssl(lua_State *L) {
 
 	lua_pushnumber(L, mail->is_ssl);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 
 	return 1;
 }
@@ -825,7 +842,7 @@ static int plua_network_mail_get_port(lua_State *L) {
 
 	lua_pushnumber(L, mail->port);
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 
 	return 1;
 }
@@ -847,7 +864,7 @@ static int plua_network_mail_get_callback(lua_State *L) {
 		lua_pushnil(L);
 	}
 
-	assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TSTRING | PLUA_TNIL) == 0);
 
 	return 1;
 }
@@ -1036,7 +1053,7 @@ int plua_network_mail(struct lua_State *L) {
 
 	plua_network_mail_object(L, lua_mail);
 
-	lua_assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }

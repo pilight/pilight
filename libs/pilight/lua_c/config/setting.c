@@ -54,13 +54,17 @@ int plua_config_setting(lua_State *L) {
 	if(config_setting_get_string(L, (char *)name, 0, &sval) == 0) {
 		lua_pushstring(L, sval);
 		FREE(sval);
+
+		assert(plua_check_stack(L, 1, PLUA_TSTRING) == 0);
 	} else if(config_setting_get_number(L, (char *)name, 0, &ival) == 0) {
 		lua_pushnumber(L, ival);
+
+		assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
 	} else {
 		lua_pushnil(L);
-	}
 
-	assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TNIL) == 0);
+	}
 
 	return 1;
 }

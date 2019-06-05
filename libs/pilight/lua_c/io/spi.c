@@ -132,7 +132,6 @@ static int plua_io_spi_rw(struct lua_State *L) {
 
 	if(lua_gettop(L) != 1) {
 		pluaL_error(L, "spi.rw requires 1 argument, %d given", lua_gettop(L));
-		return 0;
 	}
 
 	if(spi == NULL) {
@@ -179,12 +178,16 @@ static int plua_io_spi_rw(struct lua_State *L) {
 	if((rxbuf[0] & 0x80) == 0) { // read
 		lua_pushnumber(L, tmp[1]);
 		FREE(tmp);
-		assert(lua_gettop(L) == 1);
+
+		assert(plua_check_stack(L, 1, PLUA_TNUMBER) == 0);
+
 		return 1;
 	}
 
 	FREE(tmp);
-	assert(lua_gettop(L) == 0);
+
+	assert(plua_check_stack(L, 0) == 0);
+
 	return 0;
 }
 
@@ -200,7 +203,6 @@ static void plua_io_spi_object(lua_State *L, struct lua_spi_t *spi) {
 int plua_io_spi(struct lua_State *L) {
 	if(lua_gettop(L) != 1 && lua_gettop(L) != 2) {
 		pluaL_error(L, "spi requires 1 or 2 arguments, %d given", lua_gettop(L));
-		return 0;
 	}
 
 	char buf[128] = { '\0' }, *p = buf;
@@ -270,7 +272,7 @@ int plua_io_spi(struct lua_State *L) {
 		logprintf(LOG_ERR, "known SPI channel (%d) is unknown to wiringX", channel);
 		lua_pushnil(L);
 
-		lua_assert(lua_gettop(L) == 1);
+		assert(plua_check_stack(L, 1, PLUA_TNIL) == 0);
 
 		return 1;
 	}
@@ -278,11 +280,14 @@ int plua_io_spi(struct lua_State *L) {
 	if(match == 0) {
 		if(wiringXSPISetup(channel, speed) == -1) {
 			lua_pushnil(L);
-			lua_assert(lua_gettop(L) == 1);
+
+			assert(plua_check_stack(L, 1, PLUA_TNIL) == 0);
+
 			return 1;
 		} else {
 			struct lua_state_t *state = plua_get_current_state(L);
 			if(state == NULL) {
+				assert(plua_check_stack(L, 0) == 0);
 				return 0;
 			}
 
@@ -329,7 +334,7 @@ int plua_io_spi(struct lua_State *L) {
 		plua_gc_reg(NULL, NULL, plua_io_spi_global_gc);
 	}
 
-	lua_assert(lua_gettop(L) == 1);
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
 	return 1;
 }

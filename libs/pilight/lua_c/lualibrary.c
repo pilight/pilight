@@ -257,5 +257,5 @@ void plua_register_library(struct lua_State *L) {
 	}
 	lua_setglobal(L, "wiringX");
 
-	assert(lua_gettop(L) == 0);
+	assert(plua_check_stack(L, 0) == 0);
 }

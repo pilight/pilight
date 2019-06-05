@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include <sys/stat.h>
 #ifndef _WIN32
 	#ifdef __mips__
@@ -101,8 +102,10 @@ void protocol_init(void) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		strcpy(protocol_root, PROTOCOL_ROOT);
+		assert(plua_check_stack(state->L, 0) == 0);
 		plua_clear_state(state);
 	} else {
+		assert(plua_check_stack(state->L, 0) == 0);
 		plua_clear_state(state);
 	}
 

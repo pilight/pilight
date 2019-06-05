@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <math.h>
+#include <assert.h>
 #include <wiringx.h>
 
 #include "../hardware/hardware.h"
@@ -2194,6 +2195,7 @@ int storage_read(char *file, unsigned long objects) {
 	if(((objects & CONFIG_SETTINGS) == CONFIG_SETTINGS || (objects & CONFIG_ALL) == CONFIG_ALL) &&
 		storage->settings_select(ORIGIN_CONFIG, NULL, &json) == 0) {
 		if(config_read(state->L, file, CONFIG_SETTINGS) != 0) {
+			assert(plua_check_stack(state->L, 0) == 0);
 			plua_clear_state(state);
 			return -1;
 		}
@@ -2207,6 +2209,7 @@ int storage_read(char *file, unsigned long objects) {
 		storage->devices_select(ORIGIN_CONFIG, NULL, &json) == 0) {
 		json_clone(json, &jdevices_cache);
 		if(storage_devices_validate(jdevices_cache) == -1) {
+			assert(plua_check_stack(state->L, 0) == 0);
 			plua_clear_state(state);
 			return -1;
 		}
@@ -2216,6 +2219,7 @@ int storage_read(char *file, unsigned long objects) {
 		storage->gui_select(ORIGIN_CONFIG, NULL, &json) == 0) {
 		json_clone(json, &jgui_cache);
 		if(storage_gui_validate(jgui_cache) == -1) {
+			assert(plua_check_stack(state->L, 0) == 0);
 			plua_clear_state(state);
 			return -1;
 		}
@@ -2224,6 +2228,7 @@ int storage_read(char *file, unsigned long objects) {
 	if(((objects & CONFIG_HARDWARE) == CONFIG_HARDWARE || (objects & CONFIG_ALL) == CONFIG_ALL) &&
 		storage->settings_select(CONFIG_HARDWARE, NULL, &json) == 0) {
 		if(config_read(state->L, file, CONFIG_HARDWARE) != 0) {
+			assert(plua_check_stack(state->L, 0) == 0);
 			plua_clear_state(state);
 			return -1;
 		}
@@ -2235,6 +2240,7 @@ int storage_read(char *file, unsigned long objects) {
 		storage->rules_select(ORIGIN_CONFIG, NULL, &json) == 0) {
 		json_clone(json, &jrules_cache);
 		if(storage_rules_validate(jrules_cache) == -1) {
+			assert(plua_check_stack(state->L, 0) == 0);
 			plua_clear_state(state);
 			return -1;
 		}
@@ -2244,6 +2250,7 @@ int storage_read(char *file, unsigned long objects) {
 	if(((objects & CONFIG_REGISTRY) == CONFIG_REGISTRY || (objects & CONFIG_ALL) == CONFIG_ALL) &&
 		storage->settings_select(CONFIG_REGISTRY, NULL, &json) == 0) {
 		if(config_read(state->L, file, CONFIG_REGISTRY) != 0) {
+			assert(plua_check_stack(state->L, 0) == 0);
 			plua_clear_state(state);
 			return -1;
 		}
@@ -2251,6 +2258,7 @@ int storage_read(char *file, unsigned long objects) {
 	}
 
 	storage->sync();
+	assert(plua_check_stack(state->L, 0) == 0);
 	plua_clear_state(state);
 
 	return 0;

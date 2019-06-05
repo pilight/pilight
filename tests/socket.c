@@ -34,6 +34,7 @@
 #include "../libs/pilight/core/pilight.h"
 #include "../libs/pilight/core/network.h"
 #include "../libs/pilight/core/socket.h"
+#include "../libs/pilight/lua_c/lua.h"
 
 #include "alltests.h"
 #include "gplv3.h"
@@ -295,6 +296,8 @@ static void test_socket_client(CuTest *tc) {
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
+	plua_init();
+
 	async_close_req = MALLOC(sizeof(uv_async_t));
 	CuAssertPtrNotNull(gtc, async_close_req);
 	uv_async_init(uv_default_loop(), async_close_req, async_close_cb);
@@ -322,6 +325,7 @@ static void test_socket_client(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
+	plua_gc();
 	eventpool_gc();
 
 	CuAssertIntEquals(tc, 1, check);
@@ -343,6 +347,8 @@ static void test_socket_reject_client(CuTest *tc) {
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
+	plua_init();
+
 	async_close_req = MALLOC(sizeof(uv_async_t));
 	CuAssertPtrNotNull(gtc, async_close_req);
 	uv_async_init(uv_default_loop(), async_close_req, async_close_cb);
@@ -370,6 +376,7 @@ static void test_socket_reject_client(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
+	plua_gc();
 	eventpool_gc();
 
 	socket_override(-1);
@@ -391,6 +398,8 @@ static void test_socket_server(CuTest *tc) {
 	
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);	
 
+	plua_init();
+
 	async_close_req = MALLOC(sizeof(uv_async_t));
 	CuAssertPtrNotNull(gtc, async_close_req);
 	uv_async_init(uv_default_loop(), async_close_req, async_close_cb);
@@ -417,6 +426,7 @@ static void test_socket_server(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
+	plua_gc();
 	eventpool_gc();
 
 	CuAssertIntEquals(tc, 1, check);
@@ -436,6 +446,8 @@ static void test_socket_large_content(CuTest *tc) {
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
+	plua_init();
+
 	async_close_req = MALLOC(sizeof(uv_async_t));
 	CuAssertPtrNotNull(gtc, async_close_req);
 	uv_async_init(uv_default_loop(), async_close_req, async_close_cb);
@@ -462,6 +474,7 @@ static void test_socket_large_content(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
+	plua_gc();
 	eventpool_gc();
 	
 	CuAssertIntEquals(tc, 1, check);

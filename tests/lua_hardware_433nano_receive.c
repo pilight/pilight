@@ -77,7 +77,6 @@ static int pulses[] = {
 };
 
 static int plua_print(lua_State* L) {
-	plua_stack_dump(L);
 	return 0;
 }
 

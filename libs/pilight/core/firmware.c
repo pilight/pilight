@@ -39,6 +39,7 @@
 #include <ctype.h>
 #include <sys/types.h>
 #include <limits.h>
+#include <assert.h>
 #include <sys/stat.h>
 #ifdef _WIN32
 	#define STRICT
@@ -568,6 +569,7 @@ static void firmware_init_pgm(PROGRAMMER **pgm) {
 		if(config_setting_get_number(state->L, "firmware-gpio-sck", 0, &itmp) == 0) { (*pgm)->pinno[4] = itmp; }
 		if(config_setting_get_number(state->L, "firmware-gpio-mosi", 0, &itmp) == 0) { (*pgm)->pinno[5] = itmp; }
 		if(config_setting_get_number(state->L, "firmware-gpio-miso", 0, &itmp) == 0) { (*pgm)->pinno[6] = itmp; }
+		assert(plua_check_stack(state->L, 0) == 0);
 		plua_clear_state(state);
 	} else {
 #endif

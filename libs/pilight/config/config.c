@@ -107,8 +107,13 @@ int config_callback_read(lua_State *L, char *module, char *string) {
 
 	plua_get_method(state->L, state->module->file, "read");
 
-	lua_pushstring(state->L, string);
+	if(string != NULL) {
+		lua_pushstring(state->L, string);
+	} else {
+		lua_pushnil(state->L);
+	}
 
+	assert(plua_check_stack(state->L, 3, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TSTRING | PLUA_TNIL) == 0);
 	if((x = plua_pcall(state->L, state->module->file, 1, 1)) == 0) {
 		if(lua_isnumber(state->L, -1) == 0) {
 			logprintf(LOG_ERR, "%s: the read function returned %s, number expected", state->module->file, lua_typename(state->L, lua_type(state->L, -1)));
@@ -121,7 +126,7 @@ int config_callback_read(lua_State *L, char *module, char *string) {
 		lua_pop(state->L, -1);
 	}
 
-	assert(lua_gettop(state->L) == 0);
+	assert(plua_check_stack(state->L, 0) == 0);
 	plua_clear_state(state);
 
 	return x;
@@ -138,8 +143,13 @@ char *config_callback_write(lua_State *L, char *module) {
 
 	plua_get_method(state->L, state->module->file, "write");
 
-	lua_pushstring(state->L, string);
+	if(string != NULL) {
+		lua_pushstring(state->L, string);
+	} else {
+		lua_pushnil(state->L);
+	}
 
+	assert(plua_check_stack(state->L, 3, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TSTRING | PLUA_TNIL) == 0);
 	if((x = plua_pcall(state->L, state->module->file, 1, 1)) == 0) {
 		if(lua_type(state->L, -1) != LUA_TSTRING && lua_type(state->L, -1) != LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: the write function returned %s, string or nil expected", state->module->file, lua_typename(state->L, lua_type(state->L, -1)));
@@ -156,7 +166,7 @@ char *config_callback_write(lua_State *L, char *module) {
 		lua_pop(state->L, -1);
 	}
 
-	assert(lua_gettop(state->L) == 0);
+	assert(plua_check_stack(state->L, 0) == 0);
 	plua_clear_state(state);
 
 	return out;
@@ -232,6 +242,8 @@ char *config_write(void) {
 	if(registry != NULL) {
 		FREE(registry);
 	}
+
+	assert(plua_check_stack(state->L, 0) == 0);
 	plua_clear_state(state);
 
 	return 0;
