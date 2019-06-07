@@ -36,7 +36,7 @@ static CuTest *gtc = NULL;
 
 static struct {
 	unsigned int len;
-	unsigned char msg[522];
+	unsigned char msg[523];
 } messages[4] = {
 	/*
 	 * Tosmato
@@ -371,7 +371,7 @@ static void mdns_wait(void *param) {
 	int n = 0, r = 0;
 	socklen_t addrlen = sizeof(addr);
 	fd_set fdsread;
-	char message[1025];
+	char buffer[8096];
 
 #ifdef _WIN32
 	unsigned long on = 1;
@@ -404,8 +404,8 @@ static void mdns_wait(void *param) {
 			goto clear;
 		} else if(n > 0) {
 			if(FD_ISSET(mdns_socket, &fdsread)) {
-				memset(message, '\0', BUFFER_SIZE);
-				r = recvfrom(mdns_socket, message, sizeof(message), 0, (struct sockaddr *)&addr, &addrlen);
+				memset(buffer, '\0', sizeof(buffer));
+				r = recvfrom(mdns_socket, buffer, sizeof(buffer), 0, (struct sockaddr *)&addr, &addrlen);
 				if(step == 0) {
 					CuAssertIntEquals(gtc, r, 316);
 				} else if(step == 1) {
@@ -413,7 +413,8 @@ static void mdns_wait(void *param) {
 				}
 
 				struct mdns_packet_t pkt;
-				CuAssertIntEquals(gtc, mdns_decode(&pkt, (unsigned char *)message, r), 0);
+				memset(&pkt, 0, sizeof(struct mdns_packet_t));
+				CuAssertIntEquals(gtc, mdns_decode(&pkt, (unsigned char *)buffer, r), 0);
 
 				CuAssertIntEquals(gtc, 0xAABB, pkt.id);
 				CuAssertIntEquals(gtc, step, pkt.qr);

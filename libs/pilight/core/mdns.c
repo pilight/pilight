@@ -71,7 +71,8 @@ static void write_name(struct mdns_packet_t *pkt, unsigned char **buf, unsigned 
 	if((suffices = MALLOC(sizeof(char *)*(count))) == NULL) {
 		OUT_OF_MEMORY
 	}
-
+	memset(suffices, 0, sizeof(char *)*count);
+	
 	nrsuffices = 0, i = 0, count = 0;
 	while((ptr = strstr(&name[i], ".")) != NULL) {
 		if((suffices[nrsuffices++] = STRDUP(&name[i])) == NULL) {
@@ -108,13 +109,14 @@ static void write_name(struct mdns_packet_t *pkt, unsigned char **buf, unsigned 
 
 	l = strlen(name);
 
+	if((pkt->cache = REALLOC(pkt->cache, sizeof(struct mdns_cache_t *)*(pkt->nrcache+nrsuffices))) == NULL) {
+		OUT_OF_MEMORY
+	}
 	for(i=0;i<nrsuffices;i++) {
-		if((pkt->cache = REALLOC(pkt->cache, sizeof(struct mdns_cache_t *)*(pkt->nrcache+1))) == NULL) {
-			OUT_OF_MEMORY
-		}
 		if((pkt->cache[pkt->nrcache] = MALLOC(sizeof(struct mdns_cache_t))) == NULL) {
 			OUT_OF_MEMORY
 		}
+		memset(pkt->cache[pkt->nrcache], 0, sizeof(struct mdns_cache_t));
 		if((pkt->cache[pkt->nrcache]->suffix = STRDUP(suffices[i])) == NULL) {
 			OUT_OF_MEMORY
 		}
