@@ -55,6 +55,7 @@ CuSuite *suite_webserver_rest(void);
 #endif
 CuSuite *suite_socket(void);
 CuSuite *suite_coap(void);
+CuSuite *suite_mdns(void);
 CuSuite *suite_log(void);
 CuSuite *suite_lua_panic(void);
 CuSuite *suite_lua_log(void);
@@ -205,6 +206,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_http(); // ipv4 ported / ipv6 not ported
 	suites[nr++] = suite_mail(); // ipv4 ported / ipv6 not ported
 	suites[nr++] = suite_coap();
+	suites[nr++] = suite_mdns();
 	// suites[nr++] = suite_lua_panic(); // Ported
 	suites[nr++] = suite_lua_log(); // Ported
 	suites[nr++] = suite_lua_cast(); // Ported
