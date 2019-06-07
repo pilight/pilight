@@ -323,11 +323,14 @@ static void read_cb(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const st
 
 	void (*func)(const struct sockaddr *addr, struct coap_packet_t *pkt, void *userdata) = data->callback;
 	struct coap_packet_t pkt;
+	memset(&pkt, 0, sizeof(struct coap_packet_t));
 
-	if(func != NULL) {
-		if(coap_decode(&pkt, (unsigned char *)buf->base, len) == 0) {
-			func(addr, &pkt, data->userdata);
-			coap_free(&pkt);
+	if(len > 0) {
+		if(func != NULL) {
+			if(coap_decode(&pkt, (unsigned char *)buf->base, len) == 0) {
+				func(addr, &pkt, data->userdata);
+				coap_free(&pkt);
+			}
 		}
 	}
 	free(buf->base);
