@@ -79,6 +79,8 @@ static int plua_network_http_set_userdata(lua_State *L) {
 			uv_sem_post(http->table->ref);
 		}
 
+		lua_remove(L, -1);
+
 		lua_pushboolean(L, 1);
 
 		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
@@ -92,6 +94,8 @@ static int plua_network_http_set_userdata(lua_State *L) {
 			plua_metatable_parse_set(L, http->table);
 			lua_pop(L, 1);
 		}
+
+		lua_remove(L, -1);
 
 		lua_pushboolean(L, 1);
 
