@@ -334,9 +334,6 @@ static void read_cb(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const st
 		}
 	}
 	free(buf->base);
-	if(data->type == SEND) {
-		uv_udp_recv_stop(stream);
-	}
 }
 
 int coap_listen(void (*func)(const struct sockaddr *addr, struct coap_packet_t *pkt, void *userdata), void *userdata) {

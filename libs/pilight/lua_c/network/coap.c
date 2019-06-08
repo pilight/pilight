@@ -293,10 +293,6 @@ static void read_cb(const struct sockaddr *addr, struct coap_packet_t *pkt, void
 		lua_pushnumber(state->L, port);
 	}
 
-	if(data->type == SEND) {
-		plua_gc_unreg(NULL, data);
-	}
-
 	if(numargs == 2) {
 		assert(plua_check_stack(state->L, 4, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE, PLUA_TTABLE) == 0);
 	} else if(numargs == 4) {
@@ -309,7 +305,7 @@ static void read_cb(const struct sockaddr *addr, struct coap_packet_t *pkt, void
 			lua_remove(state->L, -1);
 			assert(plua_check_stack(state->L, 0) == 0);
 			plua_clear_state(state);
-			goto error;
+			return;
 		}
 		if(lua_type(state->L, -1) == LUA_TSTRING) {
 			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
@@ -317,20 +313,14 @@ static void read_cb(const struct sockaddr *addr, struct coap_packet_t *pkt, void
 			lua_remove(state->L, -1);
 			assert(plua_check_stack(state->L, 0) == 0);
 			plua_clear_state(state);
-			goto error;
+			return;
 		}
 	}
 	lua_remove(state->L, 1);
 	assert(plua_check_stack(state->L, 0) == 0);
 	plua_clear_state(state);
 
-	if(data->type == LISTEN) {
-		return;
-	}
-error:
-	plua_metatable_free(data->table);
-	FREE(data->callback);
-	FREE(data);
+	return;
 }
 
 static int plua_network_coap_send(lua_State *L) {
@@ -516,7 +506,7 @@ static int plua_network_coap_listen(lua_State *L) {
 	struct lua_coap_t *coap = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		pluaL_error(L, "coap.send requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "coap.listen requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(coap == NULL) {
@@ -536,7 +526,7 @@ static int plua_network_coap_get_callback(lua_State *L) {
 	struct lua_coap_t *coap = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	if(lua_gettop(L) != 0) {
-		pluaL_error(L, "coap.getSSL requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "coap.getCallback requires 0 arguments, %d given", lua_gettop(L));
 	}
 
 	if(coap == NULL) {
