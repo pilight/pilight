@@ -67,6 +67,7 @@ typedef struct lua_state_t {
 	lua_State *L;
 	uv_mutex_t lock;
 	struct plua_module_t *module;
+	struct plua_module_t *oldmod;
 	struct plua_metatable_t *table;
 	int idx;
 

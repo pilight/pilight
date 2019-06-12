@@ -34,8 +34,11 @@
 
 #define LOG_STACK		255
 
+#define logprintf(a, b, ...) _logprintf(a, __FILE__, __LINE__, b, ##__VA_ARGS__)
+
+void _logprintf(int prio, char *file, int line, const char *str, ...);
 void logprintf1(int prio, char *file, int line, const char *format_str, ...);
-void logprintf(int prio, const char *format_str, ...);
+// void logprintf(int prio, const char *format_str, ...);
 void logperror(int prio, const char *s);
 void *logloop(void *param);
 void log_file_enable(void);
