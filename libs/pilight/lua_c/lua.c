@@ -1012,7 +1012,7 @@ struct lua_state_t *plua_get_current_state(lua_State *L) {
 	return NULL;
 }
 
-void plua_clear_state(struct lua_state_t *state) {
+void _plua_clear_state(struct lua_state_t *state, char *file, int line) {
 	int i = 0;
 	uv_mutex_lock(&state->gc.lock);
 	for(i=0;i<state->gc.nr;i++) {
@@ -1026,6 +1026,12 @@ void plua_clear_state(struct lua_state_t *state) {
 	}
 	state->gc.nr = 0;
 	state->gc.size = 0;
+
+	state->oldmod = state->module;
+	if(state->oldmod != NULL) {
+		state->oldmod->btfile = file;
+		state->oldmod->btline = line;
+	}
 
 	uv_mutex_unlock(&state->gc.lock);
 
@@ -1873,10 +1879,17 @@ static unsigned int number2bitwise(unsigned int num) {
 };
 
 int plua_check_stack(lua_State *L, int numargs, ...) {
+	struct lua_state_t *state = plua_get_current_state(L);
 	unsigned int val = 0, i = 0, a = 0, b = 0;
 	va_list ap;
 
 	if(lua_gettop(L) != numargs || lua_gettop(L) < 0) {
+		plua_stack_dump(L);
+		if(state->oldmod != NULL) {
+			logprintf(LOG_ERR, "%s:%s %s #%d\n",
+				state->oldmod->name, state->oldmod->file, state->oldmod->btfile, state->oldmod->btline
+			);
+		}
 		return -1;
 	}
 
@@ -1886,6 +1899,12 @@ int plua_check_stack(lua_State *L, int numargs, ...) {
 		a = number2bitwise(lua_type(L, i+1));
 		b = val;
 		if((b & a) != a) {
+			plua_stack_dump(L);
+			if(state->oldmod != NULL) {
+				logprintf(LOG_ERR, "%:%s %s #%d\n",
+					state->oldmod->name, state->oldmod->file, state->oldmod->btfile, state->oldmod->btline
+				);
+			}
 			return -1;
 		}
 	}

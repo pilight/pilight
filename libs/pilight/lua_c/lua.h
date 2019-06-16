@@ -58,6 +58,9 @@ typedef struct plua_module_t {
 	char *bytecode;
 	int size;
 	int type;
+
+	int btline;
+	const char *btfile;
 	// struct plua_metatable_t *table;
 
 	struct plua_module_t *next;
@@ -114,7 +117,7 @@ void plua_module_load(char *, int);
 int plua_module_exists(char *, int);
 void plua_metatable_clone(struct plua_metatable_t **, struct plua_metatable_t **);
 struct lua_state_t *plua_get_free_state(void);
-void plua_clear_state(struct lua_state_t *state);
+void _plua_clear_state(struct lua_state_t *state, char *file, int line);
 struct lua_state_t *plua_get_current_state(lua_State *L);
 struct plua_module_t *plua_get_modules(void);
 void plua_init(void);
@@ -135,5 +138,7 @@ int plua_gc(void);
 		plua_set_file_line(a, __FILE__, __LINE__); \
 		luaL_error(a, b, ##__VA_ARGS__); \
 	} while(0)
+
+#define plua_clear_state(a) _plua_clear_state(a, __FILE__, __LINE__);
 
 #endif
