@@ -329,6 +329,9 @@ static void test_lua_network_http_missing_parameters(CuTest *tc) {
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "local http = pilight.network.http(); http.post();"));
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "local http = pilight.network.http(); http.post(\"foo\");"));
 
+	while(lua_gettop(state->L) > 0) {
+		lua_remove(state->L, -1);
+	}
 	plua_clear_state(state);
 
 	plua_pause_coverage(0);

@@ -64,7 +64,9 @@ static void thread_free(uv_work_t *req, int status) {
 	struct lua_thread_t *lua_thread = req->data;
 
 	if(lua_thread != NULL) {
-		plua_gc_unreg(lua_thread->L, lua_thread);
+		if(status > -99) {
+			plua_gc_unreg(lua_thread->L, lua_thread);
+		}
 		if(lua_thread->table != NULL) {
 			plua_metatable_free(lua_thread->table);
 		}

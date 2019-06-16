@@ -119,6 +119,9 @@ static void test_lua_common_random(CuTest *tc) {
 		CuAssertTrue(tc, (numbers[i] > 600) && (numbers[i] < 1200));
 	}
 
+	lua_remove(state->L, -1);
+	lua_remove(state->L, -1);
+	lua_remove(state->L, -1);
 	plua_clear_state(state);
 
 	plua_pause_coverage(0);
@@ -180,6 +183,9 @@ static void test_lua_common_explode(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, luaL_dostring(state->L, "print(pilight.common.explode(\"sleep\", \"ee\"))"));
 	FREE(lua_return[0].var.string_);
 
+	while(lua_gettop(state->L) > 0) {
+		lua_remove(state->L, -1);
+	}
 	plua_clear_state(state);
 	plua_pause_coverage(0);
 	plua_gc();

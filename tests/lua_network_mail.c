@@ -377,6 +377,9 @@ static void test_lua_network_mail_missing_parameters(CuTest *tc) {
 
 	plua_pause_coverage(0);
 
+	while(lua_gettop(state->L) > 0) {
+		lua_remove(state->L, -1);
+	}
 	plua_clear_state(state);
 
 	plua_gc();

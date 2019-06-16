@@ -237,6 +237,9 @@ static void test_lua_async_event_missing_parameters(CuTest *tc) {
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "local event = pilight.async.event(); event.trigger('a');"));
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "local event = pilight.async.event(); event.trigger(1);"));
 
+	while(lua_gettop(state->L) > 0) {
+		lua_remove(state->L, -1);
+	}
 	plua_clear_state(state);
 
 	plua_pause_coverage(0);

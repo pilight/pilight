@@ -453,6 +453,7 @@ static void test_lua_c_metatable(CuTest *tc) {
 		thread.setUserdata(thread1.getUserdata()()); \
 	"));
 
+	lua_remove(state->L, -1);
 	plua_clear_state(state);
 
 	uv_run(uv_default_loop(), UV_RUN_NOWAIT);

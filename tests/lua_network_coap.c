@@ -443,6 +443,9 @@ static void test_lua_network_coap_missing_parameters(CuTest *tc) {
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "local coap = pilight.network.coap(); coap.send();"));
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "local coap = pilight.network.coap(); coap.send(\"foo\");"));
 
+	while(lua_gettop(state->L) > 0) {
+		lua_remove(state->L, -1);
+	}
 	plua_clear_state(state);
 
 	plua_pause_coverage(0);
@@ -599,6 +602,9 @@ static void test_lua_network_coap_invalid_packet(CuTest *tc) {
 		coap.send(send); \
 	"));
 
+	while(lua_gettop(state->L) > 0) {
+		lua_remove(state->L, -1);
+	}
 	plua_clear_state(state);
 
 	plua_pause_coverage(0);

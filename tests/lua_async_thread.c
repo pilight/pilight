@@ -176,6 +176,9 @@ static void test_lua_async_thread_missing_parameters(CuTest *tc) {
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "local thread = pilight.async.thread(); thread.trigger();"));
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "local thread = pilight.async.thread(); thread.trigger(\"foo\");"));
 
+	while(lua_gettop(state->L) > 0) {
+		lua_remove(state->L, -1);
+	}
 	plua_clear_state(state);
 
 	uv_run(uv_default_loop(), UV_RUN_NOWAIT);

@@ -205,6 +205,9 @@ static void test_lua_async_timer_missing_parameters(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
+	while(lua_gettop(state->L) > 0) {
+		lua_remove(state->L, -1);
+	}
 	plua_clear_state(state);
 
 	plua_pause_coverage(0);

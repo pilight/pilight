@@ -104,6 +104,10 @@ static void test_lua_datetime_strptime(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, luaL_dostring(state->L, "print(pilight.datetime.strptime(\"2016-10-16 21:04:36\", \"%Y-%m-%d %H:%M:%S\"))"));
 	FREE(lua_return[0].var.string_);
 
+	while(lua_gettop(state->L) > 0) {
+		lua_remove(state->L, -1);
+	}
+
 	plua_clear_state(state);
 
 	plua_pause_coverage(0);
