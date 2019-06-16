@@ -139,21 +139,8 @@ static int plua_function_module_run(struct lua_State *L, char *file, struct even
 		}
 	}
 
-	if(lua_pcall(L, nrargs, 1, 0) == LUA_ERRRUN) {
-		if(lua_type(L, -1) == LUA_TNIL) {
-			logprintf(LOG_ERR, "%s: syntax error", file);
-			lua_remove(L, -1);
-			lua_remove(L, -1);
-			assert(plua_check_stack(L, 0) == 0);
-			return -1;
-		}
-		if(lua_type(L, -1) == LUA_TSTRING) {
-			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
-			lua_remove(L, -1);
-			lua_remove(L, -1);
-			assert(plua_check_stack(L, 0) == 0);
-			return -1;
-		}
+	if(plua_pcall(L, file, nrargs, 1) == -1) {
+		return -1;
 	}
 
 	if(lua_isstring(L, -1) == 0 &&

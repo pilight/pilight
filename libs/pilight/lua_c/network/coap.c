@@ -298,24 +298,13 @@ static void read_cb(const struct sockaddr *addr, struct coap_packet_t *pkt, void
 	} else if(numargs == 4) {
 		assert(plua_check_stack(state->L, 6, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE, PLUA_TTABLE, PLUA_TSTRING, PLUA_TNUMBER) == 0);
 	}
-	if(lua_pcall(state->L, numargs, 0, 0) == LUA_ERRRUN) {
-		if(lua_type(state->L, -1) == LUA_TNIL) {
-			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
-			lua_remove(state->L, -1);
-			lua_remove(state->L, -1);
-			assert(plua_check_stack(state->L, 0) == 0);
-			plua_clear_state(state);
-			return;
-		}
-		if(lua_type(state->L, -1) == LUA_TSTRING) {
-			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
-			lua_remove(state->L, -1);
-			lua_remove(state->L, -1);
-			assert(plua_check_stack(state->L, 0) == 0);
-			plua_clear_state(state);
-			return;
-		}
+
+	if(plua_pcall(state->L, state->module->file, numargs, 0) == -1) {
+		assert(plua_check_stack(state->L, 0) == 0);
+		plua_clear_state(state);
+		return;
 	}
+
 	lua_remove(state->L, 1);
 	assert(plua_check_stack(state->L, 0) == 0);
 	plua_clear_state(state);

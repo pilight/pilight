@@ -317,23 +317,10 @@ static void thread_callback(uv_work_t *req) {
 	plua_async_thread_object(state->L, thread);
 
 	assert(plua_check_stack(state->L, 3, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE) == 0);
-	if(lua_pcall(state->L, 1, 0, 0) == LUA_ERRRUN) {
-		if(lua_type(state->L, -1) == LUA_TNIL) {
-			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
-			lua_remove(state->L, -1);
-			lua_remove(state->L, -1);
-			assert(plua_check_stack(state->L, 0) == 0);
-			plua_clear_state(state);
-			return;
-		}
-		if(lua_type(state->L, -1) == LUA_TSTRING) {
-			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
-			lua_remove(state->L, -1);
-			lua_remove(state->L, -1);
-			assert(plua_check_stack(state->L, 0) == 0);
-			plua_clear_state(state);
-			return;
-		}
+	if(plua_pcall(state->L, state->module->file, 1, 0) == -1) {
+		assert(plua_check_stack(state->L, 0) == 0);
+		plua_clear_state(state);
+		return;
 	}
 
 	lua_remove(state->L, -1);
@@ -769,23 +756,10 @@ static void timer_callback(uv_timer_t *req) {
 	plua_async_timer_object(state->L, timer);
 
 	assert(plua_check_stack(state->L, 3, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE) == 0);
-	if(lua_pcall(state->L, 1, 0, 0) == LUA_ERRRUN) {
-		if(lua_type(state->L, -1) == LUA_TNIL) {
-			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
-			lua_remove(state->L, -1);
-			lua_remove(state->L, -1);
-			assert(plua_check_stack(state->L, 0) == 0);
-			plua_clear_state(state);
-			return;
-		}
-		if(lua_type(state->L, -1) == LUA_TSTRING) {
-			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
-			lua_remove(state->L, -1);
-			lua_remove(state->L, -1);
-			assert(plua_check_stack(state->L, 0) == 0);
-			plua_clear_state(state);
-			return;
-		}
+	if(plua_pcall(state->L, state->module->file, 1, 0) == -1) {
+		assert(plua_check_stack(state->L, 0) == 0);
+		plua_clear_state(state);
+		return;
 	}
 
 	lua_remove(state->L, 1);
@@ -912,23 +886,10 @@ void *plua_async_event_callback(int reason, void *param, void *userdata) {
 	plua_metatable_push(state->L, param);
 
 	assert(plua_check_stack(state->L, 5, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE, PLUA_TNUMBER, PLUA_TTABLE) == 0);
-	if(lua_pcall(state->L, 3, 0, 0) == LUA_ERRRUN) {
-		if(lua_type(state->L, -1) == LUA_TNIL) {
-			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
-			lua_remove(state->L, -1);
-			lua_remove(state->L, -1);
-			assert(plua_check_stack(state->L, 0) == 0);
-			plua_clear_state(state);
-			return NULL;
-		}
-		if(lua_type(state->L, -1) == LUA_TSTRING) {
-			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
-			lua_remove(state->L, -1);
-			lua_remove(state->L, -1);
-			assert(plua_check_stack(state->L, 0) == 0);
-			plua_clear_state(state);
-			return NULL;
-		}
+	if(plua_pcall(state->L, state->module->file, 3, 0) == -1) {
+		assert(plua_check_stack(state->L, 0) == 0);
+		plua_clear_state(state);
+		return NULL;
 	}
 
 	lua_remove(state->L, 1);

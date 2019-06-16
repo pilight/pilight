@@ -117,7 +117,7 @@ int config_callback_read(lua_State *L, char *module, char *string) {
 	} else {
 		lua_pushnil(state->L);
 	}
- 
+
 	assert(plua_check_stack(state->L, 3, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TSTRING | PLUA_TNIL) == 0);
 	if((x = plua_pcall(state->L, state->module->file, 1, 1)) == 0) {
 		if(lua_isnumber(state->L, -1) == 0) {
@@ -126,10 +126,9 @@ int config_callback_read(lua_State *L, char *module, char *string) {
 		}
 
 		x = (int)lua_tonumber(state->L, -1);
-
-		lua_pop(state->L, 1);
-		lua_pop(state->L, -1);
 	}
+	lua_pop(state->L, 1);
+	lua_pop(state->L, -1);
 
 	assert(plua_check_stack(state->L, 0) == 0);
 	plua_clear_state(state);

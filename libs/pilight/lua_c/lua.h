@@ -13,6 +13,8 @@
 #include <luajit-2.0/lualib.h>
 #include <luajit-2.0/lauxlib.h>
 
+// #include "ctrace.h"
+
 #include "../libs/pilight/core/common.h"
 
 #define NRLUASTATES	8

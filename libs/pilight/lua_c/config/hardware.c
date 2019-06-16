@@ -179,29 +179,14 @@ static int plua_config_hardware_validate(lua_State *L) {
 		}
 
 		assert(plua_check_stack(L, 3, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TSTRING | PLUA_TNIL) == 0);
-		if(lua_pcall(L, 1, 1, 0) == LUA_ERRRUN) {
-			if(lua_type(L, -1) == LUA_TNIL) {
-				logprintf(LOG_ERR, "%s: syntax error", file);
-				state->module = oldmod;
-				lua_remove(L, 1);
-				lua_pushboolean(L, 0);
+		if(plua_pcall(L, file, 1, 1) == -1) {
+			state->module = oldmod;
+			lua_pushboolean(L, 0);
+			assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 
-				assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
-
-				return 1;
-			}
-			if(lua_type(L, -1) == LUA_TSTRING) {
-				logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
-				lua_pop(L, 1);
-				state->module = oldmod;
-				lua_remove(L, 1);
-				lua_pushboolean(L, 0);
-
-				assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
-
-				return 1;
-			}
+			return 1;
 		}
+
 		state->module = oldmod;
 
 		lua_remove(L, 1);
