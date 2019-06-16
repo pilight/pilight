@@ -169,10 +169,11 @@ static void write_name(struct mdns_packet_t *pkt, unsigned char **buf, unsigned 
 static void encode_payload(struct mdns_packet_t *pkt, int type, unsigned char **buf, unsigned int *len) {
 	struct mdns_payload_t *payload = NULL;
 	int x = 0, nr = 0;
+	unsigned int length_bits = 0;
 	switch(type) {
-		case 0: {
+		/*case 0: {
 			nr = pkt->nrqueries;
-		} break;
+		} break;*/
 		case 1: {
 			nr = pkt->nranswers;
 		} break;
@@ -183,9 +184,9 @@ static void encode_payload(struct mdns_packet_t *pkt, int type, unsigned char **
 
 	for(x=0;x<nr;x++) {
 		switch(type) {
-			case 0: {
+			/*case 0: {
 				payload = &pkt->queries[x]->payload;
-			} break;
+			} break;*/
 			case 1: {
 				payload = pkt->answers[x];
 			} break;
@@ -243,6 +244,7 @@ static void encode_payload(struct mdns_packet_t *pkt, int type, unsigned char **
 			case 16:
 			case 28:
 			case 33: {
+				length_bits = (*len);
 				(*buf)[(*len)++] = (payload->length >> 8) & 0xFF;
 				(*buf)[(*len)++] = payload->length & 0xFF;
 			} break;
@@ -287,7 +289,15 @@ static void encode_payload(struct mdns_packet_t *pkt, int type, unsigned char **
 			} break;
 			case 12:
 			case 33: {
+				unsigned int slen = *len;
 				write_name(pkt, buf, len, payload->data.domain);
+
+				payload->length = (*len)-slen;
+				if(payload->type == 33) {
+					payload->length += 6;
+				}
+				(*buf)[length_bits] = (payload->length >> 8) & 0xFF;
+				(*buf)[length_bits+1] = payload->length & 0xFF;
 			} break;
 			case 28: {
 				int i = 0;
@@ -330,15 +340,20 @@ unsigned char *mdns_encode(struct mdns_packet_t *pkt, unsigned int *len) {
 
 	if(pkt->qr == 0) {
 		for(x=0;x<pkt->nrqueries;x++) {
-			write_name(pkt, &buf, len, pkt->queries[x]->query.name);
+			// write_name(pkt, &buf, len, pkt->queries[x]->query.name);
+			write_name(pkt, &buf, len, pkt->queries[x]->name);
 
 			if((buf = REALLOC(buf, (*len)+4)) == NULL) {
 				OUT_OF_MEMORY
 			}
-			buf[(*len)++] = (pkt->queries[x]->query.type >> 8) & 0xFF;
-			buf[(*len)++] = pkt->queries[x]->query.type & 0xFF;
+			// buf[(*len)++] = (pkt->queries[x]->query.type >> 8) & 0xFF;
+			// buf[(*len)++] = pkt->queries[x]->query.type & 0xFF;
 
-			switch(pkt->queries[x]->query.type) {
+			buf[(*len)++] = (pkt->queries[x]->type >> 8) & 0xFF;
+			buf[(*len)++] = pkt->queries[x]->type & 0xFF;
+
+			// switch(pkt->queries[x]->query.type) {
+			switch(pkt->queries[x]->type) {
 				case 1:
 				case 5:
 				case 12:
@@ -347,15 +362,18 @@ unsigned char *mdns_encode(struct mdns_packet_t *pkt, unsigned int *len) {
 				case 28:
 				case 33:
 				case 47: {
-					buf[(*len)] = (pkt->queries[x]->query.qu & 0x1) << 7;
-					buf[(*len)++] |= (pkt->queries[x]->query.class >> 8) & 0x7F;
-					buf[(*len)++] = pkt->queries[x]->query.class & 0xFF;
+					// buf[(*len)] = (pkt->queries[x]->query.qu & 0x1) << 7;
+					// buf[(*len)++] |= (pkt->queries[x]->query.class >> 8) & 0x7F;
+					// buf[(*len)++] = pkt->queries[x]->query.class & 0xFF;
+					buf[(*len)] = (pkt->queries[x]->qu & 0x1) << 7;
+					buf[(*len)++] |= (pkt->queries[x]->class >> 8) & 0x7F;
+					buf[(*len)++] = pkt->queries[x]->class & 0xFF;
 				} break;
 			}
 		}
-	} else {
+	}/* else {
 		encode_payload(pkt, 0, &buf, len);
-	}
+	}*/
 
 	encode_payload(pkt, 1, &buf, len);
 	encode_payload(pkt, 2, &buf, len);
@@ -381,10 +399,13 @@ void mdns_free(struct mdns_packet_t *pkt) {
 	for(x=0;x<pkt->nrqueries;x++) {
 		if(pkt->queries[x] != NULL) {
 			if(pkt->qr == 0) {
-				if(pkt->queries[x]->query.name != NULL) {
+				/*if(pkt->queries[x]->query.name != NULL) {
 					FREE(pkt->queries[x]->query.name);
+				}*/
+				if(pkt->queries[x]->name != NULL) {
+					FREE(pkt->queries[x]->name);
 				}
-			} else {
+			}/* else {
 				if(pkt->queries[x]->payload.name != NULL) {
 					FREE(pkt->queries[x]->payload.name);
 				}
@@ -411,7 +432,7 @@ void mdns_free(struct mdns_packet_t *pkt) {
 					case 28: {
 					} break;
 				}
-			}
+			}*/
 		}
 		FREE(pkt->queries[x]);
 	}
@@ -509,11 +530,15 @@ void mdns_dump(struct mdns_packet_t *pkt) {
 
 	for(x=0;x<pkt->nrqueries;x++) {
 		if(pkt->qr == 0) {
-			printf("query[%d].name: %s\n", x, pkt->queries[x]->query.name);
+			/*printf("query[%d].name: %s\n", x, pkt->queries[x]->query.name);
 			printf("query[%d].qu: %d\n", x, pkt->queries[x]->query.qu);
 			printf("query[%d].class: %d\n", x, pkt->queries[x]->query.class);
-			printf("query[%d].type: %d\n", x, pkt->queries[x]->query.type);
-		} else {
+			printf("query[%d].type: %d\n", x, pkt->queries[x]->query.type);*/
+			printf("query[%d].name: %s\n", x, pkt->queries[x]->name);
+			printf("query[%d].qu: %d\n", x, pkt->queries[x]->qu);
+			printf("query[%d].class: %d\n", x, pkt->queries[x]->class);
+			printf("query[%d].type: %d\n", x, pkt->queries[x]->type);
+		}/*else {
 			printf("query[%d].name: %s\n", x, pkt->queries[x]->payload.name);
 			printf("query[%d].type: %d\n", x, pkt->queries[x]->payload.type);
 			printf("query[%d].flush: %d\n", x, pkt->queries[x]->payload.flush);
@@ -553,7 +578,7 @@ void mdns_dump(struct mdns_packet_t *pkt) {
 							pkt->queries[x]->payload.data.ip6[12], pkt->queries[x]->payload.data.ip6[13], pkt->queries[x]->payload.data.ip6[14], pkt->queries[x]->payload.data.ip6[15]);
 				} break;
 			}
-		}
+		}*/
 	}
 
 	for(x=0;x<pkt->nranswers;x++) {
@@ -735,11 +760,14 @@ static int parse_query(struct mdns_packet_t *pkt, unsigned char *buf, unsigned i
 		if((pkt->queries[x] = MALLOC(sizeof(struct mdns_query_t))) == NULL) {
 			OUT_OF_MEMORY
 		}
-		if((pkt->queries[x]->query.name = MALLOC(255)) == NULL) {
+		// if((pkt->queries[x]->query.name = MALLOC(255)) == NULL) {
+		if((pkt->queries[x]->name = MALLOC(255)) == NULL) {
 			OUT_OF_MEMORY
 		}
-		memset(pkt->queries[x]->query.name, 0, 255);
-		if((ret = read_name(&pkt->queries[x]->query.name, buf, i, len)) < 0) {
+		// memset(pkt->queries[x]->query.name, 0, 255);
+		memset(pkt->queries[x]->name, 0, 255);
+		// if((ret = read_name(&pkt->queries[x]->query.name, buf, i, len)) < 0) {
+		if((ret = read_name(&pkt->queries[x]->name, buf, i, len)) < 0) {
 			return ret;
 		}
 
@@ -751,9 +779,11 @@ static int parse_query(struct mdns_packet_t *pkt, unsigned char *buf, unsigned i
 			return -7;
 		}
 
-		pkt->queries[x]->query.type = (buf[(*i)] << 8) | buf[(*i)+1];
+		// pkt->queries[x]->query.type = (buf[(*i)] << 8) | buf[(*i)+1];
+		pkt->queries[x]->type = (buf[(*i)] << 8) | buf[(*i)+1];
 		(*i) += 2;
-		switch(pkt->queries[x]->query.type) {
+		// switch(pkt->queries[x]->query.type) {
+		switch(pkt->queries[x]->type) {
 			case 1:
 			case 5:
 			case 12:
@@ -762,8 +792,10 @@ static int parse_query(struct mdns_packet_t *pkt, unsigned char *buf, unsigned i
 			case 28:
 			case 33:
 			case 47: {
-				pkt->queries[x]->query.qu = (buf[*i] >> 7);
-				pkt->queries[x]->query.class = ((buf[(*i)] << 8) & 0x7F) | buf[(*i)+1];
+				// pkt->queries[x]->query.qu = (buf[*i] >> 7);
+				// pkt->queries[x]->query.class = ((buf[(*i)] << 8) & 0x7F) | buf[(*i)+1];
+				pkt->queries[x]->qu = (buf[*i] >> 7);
+				pkt->queries[x]->class = ((buf[(*i)] << 8) & 0x7F) | buf[(*i)+1];
 				(*i) += 2;
 			} break;
 		}
@@ -775,9 +807,9 @@ static int parse_payload(struct mdns_packet_t *pkt, int type, unsigned char *buf
 	struct mdns_payload_t *payload = NULL;
 	int x = 0, ret = 0, nr = 0;
 	switch(type) {
-		case 0: {
+		/*case 0: {
 			nr = pkt->nrqueries;
-		} break;
+		} break;*/
 		case 1: {
 			nr = pkt->nranswers;
 		} break;
@@ -788,12 +820,12 @@ static int parse_payload(struct mdns_packet_t *pkt, int type, unsigned char *buf
 
 	for(x=0;x<nr;x++) {
 		switch(type) {
-			case 0: {
+			/*case 0: {
 				if((pkt->queries[x] = MALLOC(sizeof(struct mdns_payload_t))) == NULL) {
 					OUT_OF_MEMORY
 				}
 				payload = &pkt->queries[x]->payload;
-			} break;
+			} break;*/
 			case 1: {
 				if((pkt->answers[x] = MALLOC(sizeof(struct mdns_payload_t))) == NULL) {
 					OUT_OF_MEMORY
@@ -987,7 +1019,7 @@ int mdns_decode(struct mdns_packet_t *pkt, unsigned char *buf, unsigned int len)
 			/*
 			 * 0 = query
 			 */
-		if(pkt->nrqueries > 0) {
+		/*if(pkt->nrqueries > 0) {
 			if((pkt->queries = MALLOC(sizeof(struct mdns_query_t *)*pkt->nrqueries)) == NULL) {
 				OUT_OF_MEMORY
 			}
@@ -996,7 +1028,7 @@ int mdns_decode(struct mdns_packet_t *pkt, unsigned char *buf, unsigned int len)
 				mdns_free(pkt);
 				return ret;
 			}
-		}
+		}*/
 	}
 	if(pkt->nranswers > 0) {
 		/*
@@ -1051,9 +1083,6 @@ static void read_cb(uv_udp_t *stream, ssize_t len, const uv_buf_t *buf, const st
 		}
 	}
 	free(buf->base);
-	if(data->type == SEND) {
-		uv_udp_recv_stop(stream);
-	}
 }
 
 int mdns_listen(void (*func)(const struct sockaddr *addr, struct mdns_packet_t *pkt, void *userdata), void *userdata) {

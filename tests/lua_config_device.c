@@ -117,7 +117,7 @@ static void test_lua_config_device_unknown(CuTest *tc) {
 		print(dev);\
 	");
 
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	eventpool_gc();
 	plua_pause_coverage(0);
@@ -267,7 +267,7 @@ static void test_lua_config_device_switch(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	plua_pause_coverage(0);
 	storage_gc();
@@ -419,7 +419,7 @@ static void test_lua_config_device_screen(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	plua_pause_coverage(0);
 	storage_gc();
@@ -556,7 +556,7 @@ static void test_lua_config_device_relay(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	plua_pause_coverage(0);
 	storage_gc();
@@ -705,7 +705,7 @@ static void test_lua_config_device_label(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	plua_pause_coverage(0);
 	storage_gc();
@@ -854,7 +854,7 @@ static void test_lua_config_device_datetime(CuTest *tc) {
 	FREE(lua_return[2].var.string_);
 	FREE(lua_return[11].var.string_);
 
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	plua_pause_coverage(0);
 	storage_gc();
@@ -1021,7 +1021,7 @@ static void test_lua_config_device_dimmer(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	plua_pause_coverage(0);
 	storage_gc();

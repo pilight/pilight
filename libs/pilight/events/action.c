@@ -274,19 +274,9 @@ static int plua_action_module_call(struct lua_State *L, char *file, char *func, 
 	args = NULL;
 
 	assert(plua_check_stack(L, 3, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE) == 0);
-	if(lua_pcall(L, 1, 1, 0) == LUA_ERRRUN) {
-		if(lua_type(L, -1) == LUA_TNIL) {
-			logprintf(LOG_ERR, "%s: syntax error", file);
-			assert(plua_check_stack(L, 0) == 0);
-			return -1;
-		}
-		if(lua_type(L, -1) == LUA_TSTRING) {
-			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
-			lua_remove(L, -1);
-			lua_remove(L, -1);
-			assert(plua_check_stack(L, 0) == 0);
-			return -1;
-		}
+	if(plua_pcall(L, file, 1, 1) == -1) {
+		assert(plua_check_stack(L, 0) == 0);
+		return -1;
 	}
 
 	if(lua_isnumber(L, -1) == 0) {
@@ -406,21 +396,9 @@ static int event_action_parameters_run(struct lua_State *L, char *file, int *nr,
 	}
 
 	assert(plua_check_stack(L, 2, PLUA_TTABLE, PLUA_TFUNCTION) == 0);
-	if(lua_pcall(L, 0, LUA_MULTRET, 0) == LUA_ERRRUN) {
-		if(lua_type(L, -1) == LUA_TNIL) {
-			logprintf(LOG_ERR, "%s: syntax error", file);
-			lua_remove(L, -1);
-			lua_remove(L, -1);
-			assert(plua_check_stack(L, 0) == 0);
-			return -1;
-		}
-		if(lua_type(L, -1) == LUA_TSTRING) {
-			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
-			lua_remove(L, -1);
-			lua_remove(L, -1);
-			assert(plua_check_stack(L, 0) == 0);
-			return -1;
-		}
+	if(plua_pcall(L, file, 0, LUA_MULTRET) == -1) {
+		assert(plua_check_stack(L, 0) == 0);
+		return -1;
 	}
 
 	int i = 0, err = 0;

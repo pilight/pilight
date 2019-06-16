@@ -62,6 +62,7 @@ CuSuite *suite_lua_log(void);
 CuSuite *suite_lua_cast(void);
 CuSuite *suite_lua_datetime(void);
 CuSuite *suite_lua_c_metatable(void);
+CuSuite *suite_metatable_to_json(void);
 CuSuite *suite_lua_common(void);
 CuSuite *suite_lua_async_thread(void);
 CuSuite *suite_lua_async_timer(void);
@@ -211,6 +212,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_lua_log(); // Ported
 	suites[nr++] = suite_lua_cast(); // Ported
 	suites[nr++] = suite_lua_c_metatable(); // Ported
+	suites[nr++] = suite_metatable_to_json(); // Ported
 	suites[nr++] = suite_lua_datetime(); // Ported
 	suites[nr++] = suite_lua_common(); // Ported
 	suites[nr++] = suite_lua_async_thread(); // Ported

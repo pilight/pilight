@@ -359,24 +359,10 @@ static void plua_io_serial_callback(char *type, uv_fs_t *req) {
 	}
 
 	assert(plua_check_stack(state->L, 5, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TSTRING, PLUA_TTABLE, PLUA_TSTRING) == 0);
-	if(lua_pcall(state->L, 3, 0, 0) == LUA_ERRRUN) {
-		if(lua_type(state->L, -1) == LUA_TNIL) {
-			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
-
-			assert(plua_check_stack(state->L, 0) == 0);
-
-			plua_clear_state(state);
-			return;
-		}
-		if(lua_type(state->L, -1) == LUA_TSTRING) {
-			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
-			lua_pop(state->L, -1);
-
-			assert(plua_check_stack(state->L, 0) == 0);
-
-			plua_clear_state(state);
-			return;
-		}
+	if(plua_pcall(state->L, state->module->file, 3, 0) == -1) {
+		assert(plua_check_stack(state->L, 0) == 0);
+		plua_clear_state(state);
+		return;
 	}
 
 	lua_remove(state->L, 1);

@@ -453,7 +453,7 @@ static void test_lua_c_metatable(CuTest *tc) {
 		thread.setUserdata(thread1.getUserdata()()); \
 	"));
 
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	uv_run(uv_default_loop(), UV_RUN_NOWAIT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -503,7 +503,7 @@ static void test_c_lua_metatable(CuTest *tc) {
 
 		plua_metatable_push(state->L, table);
 		lua_setglobal(state->L, "_table");
-		lua_pcall(state->L, 0, LUA_MULTRET, 0);
+		plua_pcall(state->L, __FILE__, 0, LUA_MULTRET);
 		plua_metatable_free(table);
 	}
 
@@ -520,7 +520,7 @@ static void test_c_lua_metatable(CuTest *tc) {
 
 		plua_metatable_push(state->L, table);
 		lua_setglobal(state->L, "_table");
-		lua_pcall(state->L, 0, LUA_MULTRET, 0);
+		plua_pcall(state->L, __FILE__, 0, LUA_MULTRET);
 		plua_metatable_free(table);
 	}
 
@@ -537,7 +537,7 @@ static void test_c_lua_metatable(CuTest *tc) {
 
 		plua_metatable_push(state->L, table);
 		lua_setglobal(state->L, "_table");
-		lua_pcall(state->L, 0, LUA_MULTRET, 0);
+		plua_pcall(state->L, __FILE__, 0, LUA_MULTRET);
 		plua_metatable_free(table);
 	}
 
@@ -561,7 +561,7 @@ static void test_c_lua_metatable(CuTest *tc) {
 
 		plua_metatable_push(state->L, table);
 		lua_setglobal(state->L, "_table");
-		lua_pcall(state->L, 0, LUA_MULTRET, 0);
+		plua_pcall(state->L, __FILE__, 0, LUA_MULTRET);
 		plua_metatable_free(table);
 	}
 
@@ -599,7 +599,7 @@ static void test_c_lua_metatable(CuTest *tc) {
 
 		plua_metatable_push(state->L, table);
 		lua_setglobal(state->L, "_table");
-		lua_pcall(state->L, 0, LUA_MULTRET, 0);
+		plua_pcall(state->L, __FILE__, 0, LUA_MULTRET);
 		plua_metatable_free(table);
 	}
 
@@ -625,7 +625,7 @@ static void test_c_lua_metatable(CuTest *tc) {
 			return table(); \
 		");
 
-		lua_pcall(state->L, 0, 1, 0);
+		plua_pcall(state->L, __FILE__, 0, 1);
 
 		struct plua_metatable_t *table = NULL, *cpy = NULL;
 
@@ -674,7 +674,7 @@ static void test_c_lua_metatable(CuTest *tc) {
 		plua_metatable_free(table);
 	}
 
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	uv_run(uv_default_loop(), UV_RUN_NOWAIT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);

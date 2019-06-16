@@ -317,23 +317,10 @@ static void thread_callback(uv_work_t *req) {
 	plua_async_thread_object(state->L, thread);
 
 	assert(plua_check_stack(state->L, 3, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE) == 0);
-	if(lua_pcall(state->L, 1, 0, 0) == LUA_ERRRUN) {
-		if(lua_type(state->L, -1) == LUA_TNIL) {
-			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
-			lua_remove(state->L, -1);
-			lua_remove(state->L, -1);
-			assert(plua_check_stack(state->L, 0) == 0);
-			plua_clear_state(state);
-			return;
-		}
-		if(lua_type(state->L, -1) == LUA_TSTRING) {
-			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
-			lua_remove(state->L, -1);
-			lua_remove(state->L, -1);
-			assert(plua_check_stack(state->L, 0) == 0);
-			plua_clear_state(state);
-			return;
-		}
+	if(plua_pcall(state->L, state->module->file, 1, 0) == -1) {
+		assert(plua_check_stack(state->L, 0) == 0);
+		plua_clear_state(state);
+		return;
 	}
 
 	lua_remove(state->L, -1);
@@ -769,23 +756,10 @@ static void timer_callback(uv_timer_t *req) {
 	plua_async_timer_object(state->L, timer);
 
 	assert(plua_check_stack(state->L, 3, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE) == 0);
-	if(lua_pcall(state->L, 1, 0, 0) == LUA_ERRRUN) {
-		if(lua_type(state->L, -1) == LUA_TNIL) {
-			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
-			lua_remove(state->L, -1);
-			lua_remove(state->L, -1);
-			assert(plua_check_stack(state->L, 0) == 0);
-			plua_clear_state(state);
-			return;
-		}
-		if(lua_type(state->L, -1) == LUA_TSTRING) {
-			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
-			lua_remove(state->L, -1);
-			lua_remove(state->L, -1);
-			assert(plua_check_stack(state->L, 0) == 0);
-			plua_clear_state(state);
-			return;
-		}
+	if(plua_pcall(state->L, state->module->file, 1, 0) == -1) {
+		assert(plua_check_stack(state->L, 0) == 0);
+		plua_clear_state(state);
+		return;
 	}
 
 	lua_remove(state->L, 1);
@@ -912,23 +886,10 @@ void *plua_async_event_callback(int reason, void *param, void *userdata) {
 	plua_metatable_push(state->L, param);
 
 	assert(plua_check_stack(state->L, 5, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE, PLUA_TNUMBER, PLUA_TTABLE) == 0);
-	if(lua_pcall(state->L, 3, 0, 0) == LUA_ERRRUN) {
-		if(lua_type(state->L, -1) == LUA_TNIL) {
-			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
-			lua_remove(state->L, -1);
-			lua_remove(state->L, -1);
-			assert(plua_check_stack(state->L, 0) == 0);
-			plua_clear_state(state);
-			return NULL;
-		}
-		if(lua_type(state->L, -1) == LUA_TSTRING) {
-			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
-			lua_remove(state->L, -1);
-			lua_remove(state->L, -1);
-			assert(plua_check_stack(state->L, 0) == 0);
-			plua_clear_state(state);
-			return NULL;
-		}
+	if(plua_pcall(state->L, state->module->file, 3, 0) == -1) {
+		assert(plua_check_stack(state->L, 0) == 0);
+		plua_clear_state(state);
+		return NULL;
 	}
 
 	lua_remove(state->L, 1);
@@ -1178,6 +1139,87 @@ static int plua_async_event_set_callback(lua_State *L) {
 	return 1;
 }
 
+static int plua_async_event_set_data(lua_State *L) {
+	struct lua_thread_t *event = (void *)lua_topointer(L, lua_upvalueindex(1));
+	if(lua_gettop(L) != 1) {
+		pluaL_error(L, "event.setUserdata requires 1 argument, %d given", lua_gettop(L));
+	}
+
+	if(event == NULL) {
+		pluaL_error(L, "internal error: event object not passed");
+	}
+
+	char buf[128] = { '\0' }, *p = buf;
+	char *error = "userdata expected, got %s";
+
+	sprintf(p, error, lua_typename(L, lua_type(L, -1)));
+
+	luaL_argcheck(L,
+		(lua_type(L, -1) == LUA_TLIGHTUSERDATA || lua_type(L, -1) == LUA_TTABLE),
+		1, buf);
+
+	if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
+		if(event->table != (void *)lua_topointer(L, -1)) {
+			plua_metatable_free(event->table);
+		}
+		event->table = (void *)lua_topointer(L, -1);
+
+		if(event->table->ref != NULL) {
+			uv_sem_post(event->table->ref);
+		}
+
+		lua_remove(L, -1);
+
+		lua_pushboolean(L, 1);
+
+		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+		return 1;
+	}
+
+	if(lua_type(L, -1) == LUA_TTABLE) {
+		lua_pushnil(L);
+		while(lua_next(L, -2) != 0) {
+			plua_metatable_parse_set(L, event->table);
+			lua_pop(L, 1);
+		}
+
+		lua_remove(L, -1);
+
+		lua_pushboolean(L, 1);
+
+		assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+		return 1;
+	}
+
+	lua_pushboolean(L, 0);
+
+	assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
+
+	return 0;
+}
+
+static int plua_async_event_get_data(lua_State *L) {
+	struct lua_thread_t *event = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	if(lua_gettop(L) != 0) {
+		pluaL_error(L, "event.getUserdata requires 0 arguments, %d given", lua_gettop(L));
+		return 0;
+	}
+
+	if(event == NULL) {
+		pluaL_error(L, "internal error: event object not passed");
+		return 0;
+	}
+
+	plua_metatable__push(L, (struct plua_interface_t *)event);
+
+	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
+
+	return 1;
+}
+
 static void plua_async_event_object(lua_State *L, struct lua_event_t *event) {
 	lua_newtable(L);
 
@@ -1199,6 +1241,16 @@ static void plua_async_event_object(lua_State *L, struct lua_event_t *event) {
 	lua_pushstring(L, "setCallback");
 	lua_pushlightuserdata(L, event);
 	lua_pushcclosure(L, plua_async_event_set_callback, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "getUserdata");
+	lua_pushlightuserdata(L, event);
+	lua_pushcclosure(L, plua_async_event_get_data, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "setUserdata");
+	lua_pushlightuserdata(L, event);
+	lua_pushcclosure(L, plua_async_event_set_data, 1);
 	lua_settable(L, -3);
 
 	lua_pushstring(L, "gc");

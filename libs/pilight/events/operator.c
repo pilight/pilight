@@ -93,21 +93,9 @@ static int plua_operator_precedence_run(struct lua_State *L, char *file, int *re
 	}
 
 	assert(plua_check_stack(L, 2, PLUA_TTABLE, PLUA_TFUNCTION) == 0);
-	if(lua_pcall(L, 0, 1, 0) == LUA_ERRRUN) {
-		if(lua_type(L, -1) == LUA_TNIL) {
-			logprintf(LOG_ERR, "%s: syntax error", file);
-			lua_remove(L, -1);
-			lua_remove(L, -1);
-			assert(plua_check_stack(L, 0) == 0);
-			return 0;
-		}
-		if(lua_type(L, -1) == LUA_TSTRING) {
-			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
-			lua_remove(L, -1);
-			lua_remove(L, -1);
-			assert(plua_check_stack(L, 0) == 0);
-			return 0;
-		}
+	if(plua_pcall(L, file, 0, 1) == -1) {
+		assert(plua_check_stack(L, 0) == 0);
+		return 0;
 	}
 
 	if(lua_isnumber(L, -1) == 0) {
@@ -137,21 +125,9 @@ static int plua_operator_associativity_run(struct lua_State *L, char *file, int 
 	}
 
 	assert(plua_check_stack(L, 2, PLUA_TTABLE, PLUA_TFUNCTION) == 0);
-	if(lua_pcall(L, 0, 1, 0) == LUA_ERRRUN) {
-		if(lua_type(L, -1) == LUA_TNIL) {
-			logprintf(LOG_ERR, "%s: syntax error", file);
-			lua_remove(L, -1);
-			lua_remove(L, -1);
-			assert(plua_check_stack(L, 0) == 0);
-			return 0;
-		}
-		if(lua_type(L, -1) == LUA_TSTRING) {
-			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
-			lua_remove(L, -1);
-			lua_remove(L, -1);
-			assert(plua_check_stack(L, 0) == 0);
-			return 0;
-		}
+	if(plua_pcall(L, file, 0, 1) == -1) {
+		assert(plua_check_stack(L, 0) == 0);
+		return 0;
 	}
 
 	if(lua_isnumber(L, -1) == 0) {
@@ -206,21 +182,10 @@ static int plua_operator_module_run(struct lua_State *L, char *file, struct varc
 	assert(plua_check_stack(L, 4, PLUA_TTABLE, PLUA_TFUNCTION,
 		PLUA_TNUMBER | PLUA_TSTRING | PLUA_TBOOLEAN,
 		PLUA_TNUMBER | PLUA_TSTRING | PLUA_TBOOLEAN) == 0);
-	if(lua_pcall(L, 2, 1, 0) == LUA_ERRRUN) {
-		if(lua_type(L, -1) == LUA_TNIL) {
-			logprintf(LOG_ERR, "%s: syntax error", file);
-			lua_remove(L, -1);
-			lua_remove(L, -1);
-			assert(plua_check_stack(L, 0) == 0);
-			return -1;
-		}
-		if(lua_type(L, -1) == LUA_TSTRING) {
-			logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
-			lua_remove(L, -1);
-			lua_remove(L, -1);
-			assert(plua_check_stack(L, 0) == 0);
-			return -1;
-		}
+
+	if(plua_pcall(L, file, 2, 1) == -1) {
+		assert(plua_check_stack(L, 0) == 0);
+		return -1;
 	}
 
 	if(lua_isstring(L, -1) == 0 &&

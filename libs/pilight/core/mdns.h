@@ -31,7 +31,7 @@ struct mdns_payload_t {
 	uint8_t length;
 	uint8_t priority;
 	uint8_t weight;
-	uint8_t port;
+	uint16_t port;
 	union {
 		char *domain;
 		uint8_t ip4[4];
@@ -64,11 +64,12 @@ struct mdns_packet_t {
 	uint16_t rr_auth;
 	uint16_t rr_add;
 
-	union {
+	/*union {
 		struct mdns_payload_t payload;
 		struct mdns_query_t query;
-	} **queries;
+	} **queries;*/
 
+	struct mdns_query_t **queries;
 	struct mdns_payload_t **answers;
 	struct mdns_payload_t **records;
 

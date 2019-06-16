@@ -515,23 +515,10 @@ static void plua_network_mail_callback(int status, struct mail_t *mail) {
 	data->status = status;
 
 	assert(plua_check_stack(state->L, 3, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE) == 0);
-	if(lua_pcall(state->L, 1, 0, 0) == LUA_ERRRUN) {
-		if(lua_type(state->L, -1) == LUA_TNIL) {
-			logprintf(LOG_ERR, "%s: syntax error", state->module->file);
-			lua_remove(state->L, -1);
-			lua_remove(state->L, -1);
-			assert(plua_check_stack(state->L, 0) == 0);
-			plua_clear_state(state);
-			goto error;
-		}
-		if(lua_type(state->L, -1) == LUA_TSTRING) {
-			logprintf(LOG_ERR, "%s", lua_tostring(state->L,  -1));
-			lua_remove(state->L, -1);
-			lua_remove(state->L, -1);
-			assert(plua_check_stack(state->L, 0) == 0);
-			plua_clear_state(state);
-			goto error;
-		}
+	if(plua_pcall(state->L, state->module->file, 1, 0) == -1) {
+		assert(plua_check_stack(state->L, 0) == 0);
+		plua_clear_state(state);
+		goto error;
 	}
 	lua_remove(state->L, 1);
 

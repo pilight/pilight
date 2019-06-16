@@ -9,6 +9,10 @@ local json = require "json";
 local M = {}
 
 function M.read(f)
+	if type(f) ~= 'string' then
+		return;
+	end
+
 	local file = pilight.io.file(f);
 
 	file.open("r");

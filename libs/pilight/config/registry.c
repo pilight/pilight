@@ -57,7 +57,7 @@ static int config_callback_get(lua_State *L, char *module, char *key, struct var
 	lua_pushstring(state->L, key);
 
 	assert(plua_check_stack(state->L, 3, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TSTRING) == 0);
-	if((x = plua_pcall(state->L, state->module->file, 1, 1)) == 0) {
+	if(plua_pcall(state->L, state->module->file, 1, 1) == 0) {
 		if(lua_type(state->L, -1) == LUA_TNUMBER) {
 			(*ret).number_ = lua_tonumber(state->L, -1);
 			(*ret).type_ = LUA_TNUMBER;

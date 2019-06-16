@@ -22,6 +22,19 @@ end
 function M.run()
 	local event = pilight.async.event();
 
+	local data = event.getUserdata();
+	local a = {};
+	a[1] = {};
+	a[2] = 3;
+	a[1]['a'] = 4;
+	a[1]['b'] = 5;
+
+	data['foo'] = a;
+	data['status'] = "main";
+
+	print(6, 0, data['foo'][1]['b']);
+	print(7, 0, data['status']);
+
 	print(1, 0, event.setCallback("event"));
 	print(2, 0, event.register(10000));
 	print(3, 0, event.register(10001));

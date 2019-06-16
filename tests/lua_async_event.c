@@ -51,6 +51,21 @@ static int plua_print(lua_State* L) {
 					CuAssertIntEquals(gtc, 1, lua_toboolean(L, -1));
 					run++;
 				} break;
+				case 5: {
+					CuAssertIntEquals(gtc, LUA_TBOOLEAN, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 1, lua_toboolean(L, -1));
+					run++;
+				} break;
+				case 6: {
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 5, lua_tonumber(L, -1));
+					run++;
+				} break;
+				case 7: {
+					CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
+					CuAssertStrEquals(gtc, "main", lua_tostring(L, -1));
+					run++;
+				} break;
 			}
 		} break;
 		case 10000: {
@@ -162,9 +177,8 @@ static int call(struct lua_State *L, char *file, char *func) {
 		return -1;
 	}
 
-	if(lua_pcall(L, 0, 0, 0) == LUA_ERRRUN) {
-		logprintf(LOG_ERR, "%s", lua_tostring(L,  -1));
-		lua_pop(L, 1);
+	if(plua_pcall(L, file, 0, 0) == -1) {
+		assert(plua_check_stack(L, 0) == 0);
 		return -1;
 	}
 
@@ -223,7 +237,7 @@ static void test_lua_async_event_missing_parameters(CuTest *tc) {
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "local event = pilight.async.event(); event.trigger('a');"));
 	CuAssertIntEquals(tc, 1, luaL_dostring(state->L, "local event = pilight.async.event(); event.trigger(1);"));
 
-	uv_mutex_unlock(&state->lock);
+	plua_clear_state(state);
 
 	plua_pause_coverage(0);
 	plua_gc();
@@ -338,7 +352,7 @@ static void test_lua_async_event(CuTest *tc) {
 
 	eventpool_gc();
 
-	CuAssertTrue(tc, (run >= 24) && (run <= 25));
+	CuAssertTrue(tc, (run >= 25) && (run <= 28));
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
