@@ -1994,9 +1994,14 @@ int plua_pcall(struct lua_State *L, char *file, int args, int ret) {
 		}
 		if(lua_type(L, -1) == LUA_TSTRING) {
 			logprintf(LOG_ERR, "%s", lua_tostring(L, -1));
-			lua_remove(L, hpos);
-			lua_remove(L, -1);
-			lua_remove(L, -1);
+			if(ret == LUA_MULTRET) {
+				lua_remove(L, hpos);
+				lua_remove(L, -1);
+			} else {
+				while(lua_gettop(L) > ret) {
+					lua_remove(L, -1);
+				}
+			}
 			return -1;
 		}
 	}
