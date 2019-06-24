@@ -215,6 +215,12 @@ function createLabelElement(sTabId, sDevId, aValues) {
 		if('name' in aValues) {
 			oTab.append($('<li id="'+sDevId+'" class="label" data-icon="false"><div class="name">'+aValues['name']+'</div><div class="marquee"><div class="text">'+aValues['label']+'</div></div></li>'));
 			$('#'+sDevId+' div.marquee .text').css('color', aValues['color']);
+			if(aValues['blink'] == 'on') {
+				$('#'+sDevId+' div.marquee .text').css('animation-name', 'blink');
+			}
+			if(aValues['bgcolor']) {
+				$('#'+sDevId+' div.marquee').css('background-color', aValues['bgcolor']);
+			}
 			// var mar = $('#'+sDevId+' div.marquee .text');
 			// var left = -(mar.width()+3);
 			// var ori = left;
@@ -1133,6 +1139,14 @@ function parseValues(data) {
 						$('#'+dvalues+' div.marquee .text').text(vvalues);
 					} else if(vindex == 'color') {
 						$('#'+dvalues+' div.marquee .text').css('color', vvalues);
+					} else if(vindex == 'blink') {
+						if(vvalues == 'on') {
+							$('#'+dvalues+' div.marquee .text').css('animation-name', 'blink');
+						} else {
+							$('#'+dvalues+' div.marquee .text').css('animation-name', 'none');
+						}
+					} else if(vindex == 'bgcolor') {
+						$('#'+dvalues+' div.marquee').css('background-color', vvalues);						
 					}
 				}
 			});
