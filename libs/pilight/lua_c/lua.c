@@ -216,7 +216,6 @@ struct lua_state_t *plua_get_module(lua_State *L, char *namespace, char *module)
 
 	if((L = state->L) == NULL) {
 		assert(plua_check_stack(L, 0) == 0);
-		plua_clear_state(state);
 		return NULL;
 	}
 
@@ -229,7 +228,6 @@ struct lua_state_t *plua_get_module(lua_State *L, char *namespace, char *module)
 	if(lua_isnil(L, -1) != 0) {
 		lua_pop(L, -1);
 		assert(plua_check_stack(L, 0) == 0);
-		plua_clear_state(state);
 		return NULL;
 	}
 	if(lua_istable(L, -1) != 0) {
@@ -250,7 +248,6 @@ struct lua_state_t *plua_get_module(lua_State *L, char *namespace, char *module)
 	lua_pop(L, -1);
 
 	assert(plua_check_stack(L, 0) == 0);
-	plua_clear_state(state);
 
 	return NULL;
 }

@@ -131,7 +131,6 @@ int config_callback_read(lua_State *L, char *module, char *string) {
 	lua_pop(state->L, -1);
 
 	assert(plua_check_stack(state->L, 0) == 0);
-	plua_clear_state(state);
 
 	return x;
 }
@@ -171,7 +170,6 @@ char *config_callback_write(lua_State *L, char *module) {
 	}
 
 	assert(plua_check_stack(state->L, 0) == 0);
-	plua_clear_state(state);
 
 	return out;
 }

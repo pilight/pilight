@@ -62,7 +62,6 @@ int config_hardware_get_type(lua_State *L, char *module) {
 	}
 
 	assert(lua_gettop(state->L) == 0);
-	plua_clear_state(state);
 
 	return out;
 }
