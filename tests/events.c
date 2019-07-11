@@ -33,6 +33,7 @@
 #include "alltests.h"
 
 static int testnr = 0;
+static char *prevdev = NULL;
 static CuTest *gtc = NULL;
 
 static struct reason_code_received_t updates2[] = {
@@ -1076,7 +1077,21 @@ static void *control_device(int reason, void *param, void *userdata) {
 		}
 	}
 
-	CuAssertStrEquals(gtc, get_tests[testnr].receives[a]->dev, data->dev);
+	if(testnr == 51) {
+		if(strcmp(data->dev, "switch") == 0) {
+			if(prevdev != NULL) {
+				CuAssertTrue(gtc, strcmp(data->dev, prevdev) != 0);
+			}
+			prevdev = data->dev;
+		} else if(strcmp(data->dev, "dimmer") == 0) {
+			if(prevdev != NULL) {
+				CuAssertTrue(gtc, strcmp(data->dev, prevdev) != 0);
+			}
+			prevdev = data->dev;
+		}
+	} else {
+		CuAssertStrEquals(gtc, get_tests[testnr].receives[a]->dev, data->dev);
+	}
 	CuAssertStrEquals(gtc, get_tests[testnr].receives[a]->state, data->state);
 	if(data->values != NULL && get_tests[testnr].receives[a]->values != NULL) {
 		char *out = json_stringify(data->values, NULL);
