@@ -28,6 +28,7 @@
 #include "../core/dso.h"
 #include "../core/log.h"
 #include "../lua_c/lua.h"
+#include "../lua_c/table.h"
 
 #include "config.h"
 #include "settings.h"
@@ -91,10 +92,9 @@ void config_init(void) {
 	closedir(d);
 	FREE(f);
 
-	if((table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-		OUT_OF_MEMORY
+	if(table == NULL) {
+		plua_metatable_init(&table);
 	}
-	memset(table, 0, sizeof(struct plua_metatable_t));
 }
 
 int config_exists(char *module) {
@@ -410,6 +410,7 @@ int config_write(int level, char *media) {
 		json_delete(root);
 		return EXIT_FAILURE;
 	}
+
 	fseek(fp, 0L, SEEK_SET);
 	char *content = NULL;
 	if((content = json_stringify(root, "\t")) != NULL) {

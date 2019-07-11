@@ -55,6 +55,7 @@ int plua_metatable_get(struct plua_metatable_t *table, char *key, struct varcont
 
 	int x = 0, match = 0;
 	for(x=0;x<table->nrvar;x++) {
+		uv_mutex_lock(&table->table[x].lock);
 		if(table->table[x].key.type_ == var.type_) {
 			if(
 					(var.type_ == LUA_TSTRING && strcmp(table->table[x].key.string_, var.string_) == 0) ||
@@ -82,9 +83,11 @@ int plua_metatable_get(struct plua_metatable_t *table, char *key, struct varcont
 						val->type_ = -1;
 					} break;
 				}
+				uv_mutex_unlock(&table->table[x].lock);
 				break;
 			}
 		}
+		uv_mutex_unlock(&table->table[x].lock);
 	}
 
 	uv_mutex_unlock(&table->lock);
@@ -200,6 +203,7 @@ int plua_metatable_set(struct plua_metatable_t *table, char *key, struct varcont
 
 	int x = 0, match = 0;
 	for(x=0;x<table->nrvar;x++) {
+		uv_mutex_lock(&table->table[x].lock);
 		if(table->table[x].key.type_ == var.type_) {
 			if(
 					(var.type_ == LUA_TSTRING && strcmp(table->table[x].key.string_, var.string_) == 0) ||
@@ -245,16 +249,8 @@ int plua_metatable_set(struct plua_metatable_t *table, char *key, struct varcont
 						}
 
 						if(table->table[x].val.type_ != LUA_TTABLE) {
-							if((table->table[x].val.void_ = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-								OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-							}
-
-							memset(table->table[x].val.void_, 0, sizeof(struct plua_metatable_t));
+							plua_metatable_init((struct plua_metatable_t **)&table->table[x].val.void_);
 							table->table[x].val.type_ = LUA_TTABLE;
-							if((((struct plua_metatable_t *)table->table[x].val.void_)->ref = MALLOC(sizeof(uv_sem_t))) == NULL) {
-								OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-							}
-							uv_sem_init(((struct plua_metatable_t *)table->table[x].val.void_)->ref, 0);
 						}
 
 						if(ptr != NULL && len-(pos+1) > 0) {
@@ -268,15 +264,19 @@ int plua_metatable_set(struct plua_metatable_t *table, char *key, struct varcont
 						}
 					} break;
 				}
+				uv_mutex_unlock(&table->table[x].lock);
 				break;
 			}
 		}
+		uv_mutex_unlock(&table->table[x].lock);
 	}
+
 	if(match == 0) {
 		int idx = table->nrvar;
 		if((table->table = REALLOC(table->table, sizeof(*table->table)*(idx+1))) == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
+		uv_mutex_init(&table->table[idx].lock);
 		switch(var.type_) {
 			case LUA_TNUMBER: {
 				table->table[idx].key.number_ = var.number_;
@@ -305,14 +305,7 @@ int plua_metatable_set(struct plua_metatable_t *table, char *key, struct varcont
 				table->table[idx].val.type_ = LUA_TSTRING;
 			} break;
 			case LUA_TTABLE: {
-				if((table->table[idx].val.void_ = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-				}
-				memset(table->table[idx].val.void_, 0, sizeof(struct plua_metatable_t));
-				if((((struct plua_metatable_t *)table->table[idx].val.void_)->ref = MALLOC(sizeof(uv_sem_t))) == NULL) {
-					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-				}
-				uv_sem_init(((struct plua_metatable_t *)table->table[idx].val.void_)->ref, 0);
+				plua_metatable_init((struct plua_metatable_t **)&table->table[idx].val.void_);
 				table->table[idx].val.type_ = LUA_TTABLE;
 
 				if(ptr != NULL && len-(pos+1) > 0) {

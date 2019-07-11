@@ -610,6 +610,9 @@ static void *receiveAPI1(int reason, void *param, void *userdata) {
 		json_find_string(json, "origin", &origin) == 0) {
 		broadcast_queue(protocol, json, RECEIVER);
 	}
+	if(json != NULL) {
+		json_delete(json);
+	}
 	return NULL;
 }
 
@@ -741,13 +744,10 @@ void *send_code(void *param) {
 				}
 				logprintf(LOG_DEBUG, "**** RAW CODE ****");
 
-				struct plua_metatable_t *table = MALLOC(sizeof(struct plua_metatable_t));
-				if(table == NULL) {
-					OUT_OF_MEMORY
-				}
+				struct plua_metatable_t *table = NULL;
+				plua_metatable_init(&table);
 
 				char key[255];
-				memset(table, 0, sizeof(struct plua_metatable_t));
 				memset(&key, 0, 255);
 
 				plua_metatable_set_number(table, "rawlen", sendqueue->length);
