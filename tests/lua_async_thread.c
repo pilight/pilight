@@ -218,9 +218,6 @@ static void test_lua_async_thread(CuTest *tc) {
 	file = STRDUP(__FILE__);
 	CuAssertPtrNotNull(tc, file);
 
-	state = plua_get_free_state();
-	CuAssertPtrNotNull(tc, state);
-
 	str_replace("lua_async_thread.c", "", &file);
 
 	memset(p, 0, 1024);
@@ -231,8 +228,6 @@ static void test_lua_async_thread(CuTest *tc) {
 	plua_module_load(path, UNITTEST);
 
 	CuAssertIntEquals(tc, 0, plua_module_exists("thread", UNITTEST));
-
-	plua_clear_state(state);
 
 	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -304,8 +299,6 @@ static void test_lua_async_thread_nonexisting_callback(CuTest *tc) {
 	file = STRDUP(__FILE__);
 	CuAssertPtrNotNull(tc, file);
 
-	state = plua_get_free_state();
-	CuAssertPtrNotNull(tc, state);
 
 	str_replace("lua_async_thread.c", "", &file);
 
@@ -317,8 +310,6 @@ static void test_lua_async_thread_nonexisting_callback(CuTest *tc) {
 	plua_module_load(path, UNITTEST);
 
 	CuAssertIntEquals(tc, 0, plua_module_exists("thread", UNITTEST));
-
-	plua_clear_state(state);
 
 	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
