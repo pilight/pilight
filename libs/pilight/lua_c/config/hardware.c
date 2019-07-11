@@ -181,6 +181,7 @@ static int plua_config_hardware_validate(lua_State *L) {
 		assert(plua_check_stack(L, 3, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TSTRING | PLUA_TNIL) == 0);
 		if(plua_pcall(L, file, 1, 1) == -1) {
 			state->module = oldmod;
+			lua_remove(L, -1);
 			lua_pushboolean(L, 0);
 			assert(plua_check_stack(L, 1, PLUA_TBOOLEAN) == 0);
 

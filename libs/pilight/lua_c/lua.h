@@ -43,6 +43,7 @@ typedef struct plua_metatable_t {
 	struct {
 		struct varcont_t val;
 		struct varcont_t key;
+		uv_mutex_t lock;
 	} *table;
 	int nrvar;
 	int iter[NRLUASTATES];
