@@ -206,9 +206,6 @@ void test_lua_hardware_433nano_connection_lost(CuTest *tc) {
 	file = STRDUP(__FILE__);
 	CuAssertPtrNotNull(tc, file);
 
-	state = plua_get_free_state();
-	CuAssertPtrNotNull(tc, state);
-
 	str_replace("lua_hardware_433nano_connection_lost.c", "", &file);
 
 	config_init();
@@ -230,7 +227,10 @@ void test_lua_hardware_433nano_connection_lost(CuTest *tc) {
 	eventpool_init(EVENTPOOL_THREADED);
 	node = eventpool_callback(10006, listener, NULL);
 
+	state = plua_get_free_state();
+	CuAssertPtrNotNull(tc, state);
 	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433nano.json", CONFIG_SETTINGS));
+	plua_clear_state(state);
 
 	unlink("/tmp/usb0");
 	fd = open("/tmp/usb0", O_CREAT | O_RDWR, 0777);
@@ -243,8 +243,9 @@ void test_lua_hardware_433nano_connection_lost(CuTest *tc) {
 
 	hardware_init();
 
+	state = plua_get_free_state();
+	CuAssertPtrNotNull(tc, state);
 	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433nano.json", CONFIG_HARDWARE));
-
 	plua_clear_state(state);
 
 	state = plua_get_free_state();

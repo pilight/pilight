@@ -100,7 +100,9 @@ static void run(CuTest *tc, const char *func, char *config, int status) {
 	FREE(file);
 
 	struct lua_state_t *state = plua_get_free_state();
+	CuAssertPtrNotNull(tc, state);
 	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433nano.json", CONFIG_SETTINGS));
+	plua_clear_state(state);
 
 	hardware_init();
 
@@ -108,6 +110,8 @@ static void run(CuTest *tc, const char *func, char *config, int status) {
 	int fd = open("/tmp/usb0", O_CREAT | O_RDWR, 0777);
 	close(fd);
 
+	state = plua_get_free_state();
+	CuAssertPtrNotNull(tc, state);
 	CuAssertIntEquals(tc, status, config_read(state->L, "lua_hardware_433nano.json", CONFIG_HARDWARE));
 	plua_clear_state(state);
 

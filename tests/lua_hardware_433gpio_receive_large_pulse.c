@@ -235,9 +235,6 @@ void test_lua_hardware_433gpio_receive_large_pulse(CuTest *tc) {
 	file = STRDUP(__FILE__);
 	CuAssertPtrNotNull(tc, file);
 
-	state = plua_get_free_state();
-	CuAssertPtrNotNull(tc, state);
-
 	str_replace("lua_hardware_433gpio_receive_large_pulse.c", "", &file);
 
 	config_init();
@@ -260,7 +257,10 @@ void test_lua_hardware_433gpio_receive_large_pulse(CuTest *tc) {
 	eventpool_init(EVENTPOOL_THREADED);
 	node = eventpool_callback(REASON_RECEIVED_OOK+10000, listener, NULL);
 
+	state = plua_get_free_state();
+	CuAssertPtrNotNull(tc, state);
 	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433gpio.json", CONFIG_SETTINGS));
+	plua_clear_state(state);
 
 	int r = 0;
 
@@ -297,8 +297,9 @@ void test_lua_hardware_433gpio_receive_large_pulse(CuTest *tc) {
 
 	hardware_init();
 
+	state = plua_get_free_state();
+	CuAssertPtrNotNull(tc, state);
 	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433gpio.json", CONFIG_HARDWARE));
-
 	plua_clear_state(state);
 
 	state = plua_get_free_state();

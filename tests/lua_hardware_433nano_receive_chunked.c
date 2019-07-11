@@ -148,6 +148,7 @@ static void *listener(int reason, void *param, void *userdata) {
 	}
 
 	plua_metatable_free(table);
+
 	if(round >= 1) {
 		for(i=0;i<length-1;i++) {
 			if(!((int)(buffer[i]*0.75) <= pulses[i] && (int)(buffer[i]*1.25) >= pulses[i])) {
@@ -172,6 +173,7 @@ static void *thread(void *arg) {
 	int fd = *((int *)arg);
 	char *code1 = "c:1232323232323232323232323232323232323232";
 	char *code2 = "32323232323322332232323324;p:286,2825,210,1353,11302;r:1@";
+
 	while(run) {
 		if(chunk == 0) {
 			CuAssertIntEquals(gtc, strlen(code1), write(fd, code1, strlen(code1)));
@@ -179,7 +181,7 @@ static void *thread(void *arg) {
 			CuAssertIntEquals(gtc, strlen(code2), write(fd, code2, strlen(code2)));
 		}
 		chunk ^= 1;
-		usleep(10000);
+		usleep(25000);
 	}
 	return NULL;
 }
@@ -207,9 +209,6 @@ void test_lua_hardware_433nano_receive_chunked(CuTest *tc) {
 	file = STRDUP(__FILE__);
 	CuAssertPtrNotNull(tc, file);
 
-	state = plua_get_free_state();
-	CuAssertPtrNotNull(tc, state);
-
 	str_replace("lua_hardware_433nano_receive_chunked.c", "", &file);
 
 	config_init();
@@ -231,7 +230,10 @@ void test_lua_hardware_433nano_receive_chunked(CuTest *tc) {
 	eventpool_init(EVENTPOOL_THREADED);
 	node = eventpool_callback(10006, listener, NULL);
 
+	state = plua_get_free_state();
+	CuAssertPtrNotNull(tc, state);
 	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433nano.json", CONFIG_SETTINGS));
+	plua_clear_state(state);
 
 	unlink("/tmp/usb0");
 	fd = open("/tmp/usb0", O_CREAT | O_RDWR, 0777);
@@ -244,8 +246,9 @@ void test_lua_hardware_433nano_receive_chunked(CuTest *tc) {
 
 	hardware_init();
 
+	state = plua_get_free_state();
+	CuAssertPtrNotNull(tc, state);
 	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433nano.json", CONFIG_HARDWARE));
-
 	plua_clear_state(state);
 
 	state = plua_get_free_state();

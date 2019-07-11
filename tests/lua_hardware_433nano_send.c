@@ -159,10 +159,9 @@ static void callback(uv_fs_t *req) {
 static void timeout(uv_timer_t *req) {
 	int rawlen = sizeof(pulses)/sizeof(pulses[0]), i = 0;
 	char key[255];
-	struct plua_metatable_t *table = MALLOC(sizeof(struct plua_metatable_t));
+	struct plua_metatable_t *table = NULL;
+	plua_metatable_init(&table);
 	CuAssertPtrNotNull(gtc, table);
-
-	memset(table, 0, sizeof(struct plua_metatable_t));
 
 	memset(&key, 0, 255);
 
@@ -203,9 +202,6 @@ void test_lua_hardware_433nano_send(CuTest *tc) {
 	file = STRDUP(__FILE__);
 	CuAssertPtrNotNull(tc, file);
 
-	state = plua_get_free_state();
-	CuAssertPtrNotNull(tc, state);
-
 	str_replace("lua_hardware_433nano_send.c", "", &file);
 
 	config_init();
@@ -226,7 +222,10 @@ void test_lua_hardware_433nano_send(CuTest *tc) {
 
 	eventpool_init(EVENTPOOL_THREADED);
 
+	state = plua_get_free_state();
+	CuAssertPtrNotNull(tc, state);
 	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433nano.json", CONFIG_SETTINGS));
+	plua_clear_state(state);
 
 	unlink("/tmp/usb0");
 	fd = open("/tmp/usb0", O_CREAT | O_RDWR, 0777);
@@ -248,8 +247,9 @@ void test_lua_hardware_433nano_send(CuTest *tc) {
 
 	hardware_init();
 
+	state = plua_get_free_state();
+	CuAssertPtrNotNull(tc, state);
 	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433nano.json", CONFIG_HARDWARE));
-
 	plua_clear_state(state);
 
 	state = plua_get_free_state();
