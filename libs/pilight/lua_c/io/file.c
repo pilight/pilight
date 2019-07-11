@@ -31,7 +31,6 @@
 #include "../io.h"
 
 typedef struct lua_file_t {
-	struct plua_metatable_t *table;
 	struct plua_module_t *module;
 	lua_State *L;
 
@@ -43,8 +42,6 @@ typedef struct lua_file_t {
 
 void plua_io_file_gc(void *ptr) {
 	struct lua_file_t *data = ptr;
-
-	plua_metatable_free(data->table);
 
 	if(data->fp != NULL) {
 		if(fclose(data->fp) != 0) {
@@ -548,8 +545,6 @@ int plua_io_file(struct lua_State *L) {
 		OUT_OF_MEMORY
 	}
 	memset(lua_file, '\0', sizeof(struct lua_file_t));
-
-	plua_metatable_init(&lua_file->table);
 
 	if((lua_file->file = STRDUP(name)) == NULL) {
 		OUT_OF_MEMORY
