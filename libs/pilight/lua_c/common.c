@@ -110,7 +110,9 @@ int plua_common_explode(struct lua_State *L) {
 		lua_pushstring(L, array[i]);
 		lua_settable(L, -3);
 	}
-	array_free(&array, n);
+	if(n > 0) {
+		array_free(&array, n);
+	}
 
 	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
