@@ -28,6 +28,7 @@
 #include "../core/dso.h"
 #include "../core/log.h"
 #include "../lua_c/lua.h"
+#include "../lua_c/table.h"
 
 #include "config.h"
 #include "settings.h"
@@ -87,10 +88,9 @@ void config_init(void) {
 	closedir(d);
 	FREE(f);
 
-	if((table = MALLOC(sizeof(struct plua_metatable_t))) == NULL) {
-		OUT_OF_MEMORY
+	if(table == NULL) {
+		plua_metatable_init(&table);
 	}
-	memset(table, 0, sizeof(struct plua_metatable_t));
 }
 
 int config_exists(char *module) {
@@ -236,7 +236,7 @@ char *config_write(void) {
 		FREE(hardware);
 	}
 
-	char *registry = config_callback_write(state->L, "settings");
+	char *registry = config_callback_write(state->L, "registry");
 	if(registry != NULL) {
 		FREE(registry);
 	}

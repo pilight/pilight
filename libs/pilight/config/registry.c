@@ -84,13 +84,12 @@ static int config_callback_get(lua_State *L, char *module, char *key, struct var
 		} else {
 			x = 1;
 		}
-		lua_pop(state->L, -1);
 	}
 
 	lua_pop(state->L, -1);
+	lua_pop(state->L, -1);
 
 	assert(plua_check_stack(state->L, 0) == 0);
-	plua_clear_state(state);
 
 	return x;
 }
@@ -120,11 +119,10 @@ static int config_callback_set_string(lua_State *L, char *module, char *key, cha
 		} else {
 			x = -1;
 		}
-		lua_pop(state->L, -1);
 	}
+	lua_pop(state->L, -1);
 
 	assert(plua_check_stack(state->L, 0) == 0);
-	plua_clear_state(state);
 
 	return x;
 }
@@ -150,11 +148,10 @@ static int config_callback_set_number(lua_State *L, char *module, char *key, dou
 		} else {
 			x = -1;
 		}
-		lua_pop(state->L, -1);
 	}
+	lua_pop(state->L, -1);
 
 	assert(plua_check_stack(state->L, 0) == 0);
-	plua_clear_state(state);
 
 	return x;
 }
@@ -180,11 +177,10 @@ static int config_callback_set_boolean(lua_State *L, char *module, char *key, in
 		} else {
 			x = -1;
 		}
-		lua_pop(state->L, -1);
 	}
+	lua_pop(state->L, -1);
 
 	assert(plua_check_stack(state->L, 0) == 0);
-	plua_clear_state(state);
 
 	return x;
 }

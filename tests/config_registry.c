@@ -38,6 +38,10 @@ struct registry_t {
 	{ "a.b.c.d", { .string_ = "d.e" }, JSON_STRING },
 	{ "a.b.c.e", { .string_ = "1.2" }, JSON_STRING },
 	{ "a.b.c", { .number_ = 1.2 }, JSON_NUMBER },
+	{ "pilight.version", { .string_ = NULL }, JSON_NULL },
+	{ "pilight.version", { .string_ = "8.1.2" }, JSON_STRING },
+	{ "pilight.version", { .string_ = NULL }, JSON_NULL },
+	{ "pilight.version", { .string_ = "8.1.2" }, JSON_STRING },
 };
 
 void test_config_registry(CuTest *tc) {
@@ -87,6 +91,10 @@ void test_config_registry(CuTest *tc) {
 			CuAssertIntEquals(tc, 0, config_registry_get(state->L, registry[i].key, &out));
 			CuAssertIntEquals(tc, LUA_TBOOLEAN, out.type_);
 			CuAssertIntEquals(tc, registry[i].val.bool_, out.bool_);
+		} else if(registry[i].type_ == JSON_NULL) {
+			CuAssertIntEquals(tc, 0, config_registry_set_null(state->L, registry[i].key));
+			CuAssertIntEquals(tc, 1, config_registry_get(state->L, registry[i].key, &out));
+			CuAssertIntEquals(tc, LUA_TNIL, out.type_);
 		}
 		plua_clear_state(state);
 
@@ -95,6 +103,7 @@ void test_config_registry(CuTest *tc) {
 		plua_gc();
 		wiringXGC();
 	}
+
 	FREE(file);
 
 	CuAssertIntEquals(tc, 0, xfree());

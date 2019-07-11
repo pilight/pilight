@@ -21,6 +21,7 @@
 
 void test_config_settings(CuTest *tc);
 void test_config_registry(CuTest *tc);
+void test_config_registry_threaded(CuTest *tc);
 void test_config_hardware(CuTest *tc);
 
 void test_config_read(CuTest *tc) {
@@ -72,6 +73,7 @@ CuSuite *suite_config(void) {
 	SUITE_ADD_TEST(suite, test_config_read);
 	SUITE_ADD_TEST(suite, test_config_settings);
 	SUITE_ADD_TEST(suite, test_config_registry);
+	SUITE_ADD_TEST(suite, test_config_registry_threaded);
 	SUITE_ADD_TEST(suite, test_config_hardware);
 
 	return suite;

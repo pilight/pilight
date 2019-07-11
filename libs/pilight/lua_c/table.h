@@ -21,5 +21,6 @@ int plua_metatable_get_string(struct plua_metatable_t *table, char *a, char **b)
 int plua_metatable_set_number(struct plua_metatable_t *table, char *a, double b);
 int plua_metatable_set_boolean(struct plua_metatable_t *table, char *a, int b);
 int plua_metatable_set_string(struct plua_metatable_t *table, char *a, char *b);
+int plua_metatable_set_nil(struct plua_metatable_t *table, char *a);
 
 #endif

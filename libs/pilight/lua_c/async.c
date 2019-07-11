@@ -890,10 +890,10 @@ void *plua_async_event_callback(int reason, void *param, void *userdata) {
 	assert(plua_check_stack(state->L, 5, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE, PLUA_TNUMBER, PLUA_TTABLE) == 0);
 	if(plua_pcall(state->L, state->module->file, 3, 0) == -1) {
 		assert(plua_check_stack(state->L, 0) == 0);
+
 		plua_clear_state(state);
 		return NULL;
 	}
-
 	lua_remove(state->L, 1);
 	assert(plua_check_stack(state->L, 0) == 0);
 	plua_clear_state(state);
@@ -999,7 +999,6 @@ static int plua_async_event_trigger(struct lua_State *L) {
 	struct lua_event_t *event = (void *)lua_topointer(L, lua_upvalueindex(1));
 
 	struct plua_metatable_t *cpy = NULL;
-	struct plua_metatable_t *table = NULL;
 	int i = 0, is_table = 0;
 
 	if(lua_gettop(L) != 1) {
@@ -1038,9 +1037,8 @@ static int plua_async_event_trigger(struct lua_State *L) {
 	for(i=0;i<REASON_END+10000;i++) {
 		if(event->reasons[i].active == 1) {
 			if(is_table == 1) {
-				plua_metatable_init(&table);
+				struct plua_metatable_t *table = NULL;
 				plua_metatable_clone(&cpy, &table);
-
 				eventpool_trigger(i, plua_async_event_free, table);
 			} else {
 				eventpool_trigger(i, plua_async_event_free, cpy);

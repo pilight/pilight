@@ -373,7 +373,7 @@ static void test_lua_c_metatable(CuTest *tc) {
 
 	/*
 	 * After the print are a few tests that
-	 * check if old table are properly freed
+	 * check if old tables are properly freed
 	 */
 	CuAssertIntEquals(gtc, 0, luaL_dostring(state->L, " \
 		local thread = pilight.async.thread(); \
@@ -492,9 +492,9 @@ static void test_c_lua_metatable(CuTest *tc) {
 	CuAssertPtrNotNull(gtc, state);
 
 	{
-		struct plua_metatable_t *table = MALLOC(sizeof(struct plua_metatable_t));
+		struct plua_metatable_t *table = NULL;
+		plua_metatable_init(&table);
 		CuAssertPtrNotNull(tc, table);
-		memset(table, 0, sizeof(struct plua_metatable_t));
 
 		plua_metatable_set_string(table, "a", "a");
 		luaL_loadstring(state->L, " \
@@ -509,9 +509,9 @@ static void test_c_lua_metatable(CuTest *tc) {
 	}
 
 	{
-		struct plua_metatable_t *table = MALLOC(sizeof(struct plua_metatable_t));
+		struct plua_metatable_t *table = NULL;
+		plua_metatable_init(&table);
 		CuAssertPtrNotNull(tc, table);
-		memset(table, 0, sizeof(struct plua_metatable_t));
 
 		plua_metatable_set_number(table, "1", 2);
 		luaL_loadstring(state->L, " \
@@ -526,9 +526,9 @@ static void test_c_lua_metatable(CuTest *tc) {
 	}
 
 	{
-		struct plua_metatable_t *table = MALLOC(sizeof(struct plua_metatable_t));
+		struct plua_metatable_t *table = NULL;
+		plua_metatable_init(&table);
 		CuAssertPtrNotNull(tc, table);
-		memset(table, 0, sizeof(struct plua_metatable_t));
 
 		plua_metatable_set_boolean(table, "a", 1);
 		luaL_loadstring(state->L, " \
@@ -543,9 +543,9 @@ static void test_c_lua_metatable(CuTest *tc) {
 	}
 
 	{
-		struct plua_metatable_t *table = MALLOC(sizeof(struct plua_metatable_t));
+		struct plua_metatable_t *table = NULL;
+		plua_metatable_init(&table);
 		CuAssertPtrNotNull(tc, table);
-		memset(table, 0, sizeof(struct plua_metatable_t));
 
 		plua_metatable_set_string(table, "a.1.c.1.e", "a");
 		plua_metatable_set_string(table, "a.1.c.2.e", "b");
@@ -567,9 +567,9 @@ static void test_c_lua_metatable(CuTest *tc) {
 	}
 
 	{
-		struct plua_metatable_t *table = MALLOC(sizeof(struct plua_metatable_t));
+		struct plua_metatable_t *table = NULL;
+		plua_metatable_init(&table);
 		CuAssertPtrNotNull(tc, table);
-		memset(table, 0, sizeof(struct plua_metatable_t));
 
 		plua_metatable_set_string(table, "a", "a");
 		plua_metatable_set_number(table, "a", 1);

@@ -262,8 +262,8 @@ static void *listener(int reason, void *param, void *userdata) {
 	CuAssertIntEquals(gtc, 0, plua_metatable_get_boolean(table, "status", &_bool));
 	CuAssertIntEquals(gtc, 1, _bool);
 
-	struct plua_metatable_t *table1 = MALLOC(sizeof(struct plua_metatable_t));
-	memset(table1, 0, sizeof(struct plua_metatable_t));
+	struct plua_metatable_t *table1 = NULL;
+	plua_metatable_init(&table1);
 
 	plua_metatable_set_number(table1, "status", 2);
 	eventpool_trigger(10002, eventpool_trigger_free, table1);
@@ -290,9 +290,6 @@ static void test_lua_async_event(CuTest *tc) {
 	file = STRDUP(__FILE__);
 	CuAssertPtrNotNull(tc, file);
 
-	state = plua_get_free_state();
-	CuAssertPtrNotNull(tc, state);
-
 	str_replace("lua_async_event.c", "", &file);
 
 	memset(p, 0, 1024);
@@ -303,8 +300,6 @@ static void test_lua_async_event(CuTest *tc) {
 	plua_module_load(path, UNITTEST);
 
 	CuAssertIntEquals(tc, 0, plua_module_exists("event", UNITTEST));
-
-	plua_clear_state(state);
 
 	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
