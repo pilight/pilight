@@ -300,7 +300,6 @@ static void read_cb(const struct sockaddr *addr, struct coap_packet_t *pkt, void
 	}
 
 	if(plua_pcall(state->L, state->module->file, numargs, 0) == -1) {
-		assert(plua_check_stack(state->L, 0) == 0);
 		plua_clear_state(state);
 		return;
 	}

@@ -293,7 +293,6 @@ static void plua_network_http_callback(int code, char *content, int size, char *
 
 	assert(plua_check_stack(state->L, 3, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE) == 0);
 	if(plua_pcall(state->L, state->module->file, 1, 0) == -1) {
-		assert(plua_check_stack(state->L, 0) == 0);
 		plua_clear_state(state);
 		goto error;
 	}
