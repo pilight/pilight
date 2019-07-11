@@ -277,6 +277,7 @@ static int plua_action_module_call(struct lua_State *L, char *file, char *func, 
 
 	assert(plua_check_stack(L, 3, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE) == 0);
 	if(plua_pcall(L, file, 1, 1) == -1) {
+		lua_remove(L, -1);
 		assert(plua_check_stack(L, 0) == 0);
 		return -1;
 	}
