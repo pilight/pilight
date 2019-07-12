@@ -82,6 +82,7 @@ int main_gc(void) {
 	whitelist_free();
 	threads_gc();
 
+	plua_gc();
 #ifndef _WIN32
 	wiringXGC();
 #endif
@@ -472,17 +473,26 @@ int main(int argc, char **argv) {
 		FREE(ret);
 		goto clear;
 	}
+	if(ret != NULL) {
+		FREE(ret);
+	}
 
 	if((n = isrunning("pilight-daemon", &ret)) > 0) {
 		logprintf(LOG_NOTICE, "pilight-daemon instance found (%d)", ret[0]);
 		FREE(ret);
 		goto clear;
 	}
+	if(ret != NULL) {
+		FREE(ret);
+	}
 
 	if((n = isrunning("pilight-raw", &ret)) > 0) {
 		logprintf(LOG_NOTICE, "pilight-raw instance found (%d)", ret[0]);
 		FREE(ret);
 		goto clear;
+	}
+	if(ret != NULL) {
+		FREE(ret);
 	}
 
 	if(config_set_file(configtmp) == EXIT_FAILURE) {
@@ -515,6 +525,7 @@ int main(int argc, char **argv) {
 	if(config_hardware_run() == -1) {
 		logprintf(LOG_NOTICE, "there are no hardware modules configured");
 		uv_stop(uv_default_loop());
+		goto clear;
 	}
 
 	printf("Press and hold one of the buttons on your remote or wait until\n");
@@ -526,6 +537,7 @@ int main(int argc, char **argv) {
 	options_delete(options);
 
 	main_loop1(0);
+	main_gc();
 
 	return (EXIT_SUCCESS);
 clear:

@@ -344,6 +344,7 @@ close:
 	log_shell_disable();
 	socket_gc();
 	config_gc();
+	plua_gc();
 	protocol_gc();
 	options_gc();
 #ifdef EVENTS

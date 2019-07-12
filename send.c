@@ -172,6 +172,7 @@ int main(int argc, char **argv) {
 		options_get_string(options, "U", &uuid);
 	};
 
+	plua_init();
 	/* Initialize protocols */
 	protocol_init();
 
@@ -371,7 +372,11 @@ close:
 	if(recvBuff != NULL) {
 		FREE(recvBuff);
 	}
+	if(code != NULL) {
+		json_delete(code);
+	}
 
+	plua_gc();
 	protocol_gc();
 	options_delete(options);
 	options_gc();

@@ -67,6 +67,7 @@ int main_gc(void) {
 	whitelist_free();
 	threads_gc();
 
+	plua_gc();
 #ifndef _WIN32
 	wiringXGC();
 #endif
@@ -277,17 +278,26 @@ int main(int argc, char **argv) {
 		FREE(ret);
 		goto close;
 	}
+	if(ret != NULL) {
+		FREE(ret);
+	}
 
 	if((n = isrunning("pilight-daemon", &ret)) > 0) {
 		logprintf(LOG_NOTICE, "pilight-daemon instance found (%d)", ret[0]);
 		FREE(ret);
 		goto close;
 	}
+	if(ret != NULL) {
+		FREE(ret);
+	}
 
 	if((n = isrunning("pilight-debug", &ret)) > 0) {
 		logprintf(LOG_NOTICE, "pilight-debug instance found (%d)", ret[0]);
 		FREE(ret);
 		goto close;
+	}
+	if(ret != NULL) {
+		FREE(ret);
 	}
 
 	if(config_set_file(configtmp) == EXIT_FAILURE) {
@@ -298,6 +308,7 @@ int main(int argc, char **argv) {
 	eventpool_callback(REASON_RECEIVED_PULSETRAIN+10000, listener, NULL);
 	eventpool_callback(REASON_RECEIVED_OOK+10000, listener, NULL);
 
+	plua_init();
 	protocol_init();
 	hardware_init();
 	config_init();
@@ -328,6 +339,7 @@ int main(int argc, char **argv) {
 	if(args != NULL) {
 		FREE(args);
 	}
+	main_gc();
 	return EXIT_SUCCESS;
 
 close:
@@ -336,6 +348,8 @@ close:
 		FREE(args);
 	}
 
+	plua_gc();
+	protocol_gc();
 	main_loop1(1);
 	main_gc();
 

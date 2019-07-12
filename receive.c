@@ -126,6 +126,7 @@ int main(int argc, char **argv) {
 		m = explode(filter, ",", &filters);
 		int match = 0, j = 0;
 
+		plua_init();
 		protocol_init();
 
 		for(j=0;j<m;j++) {
@@ -237,6 +238,8 @@ close:
 	}
 	options_delete(options);
 	array_free(&filters, m);
+
+	plua_gc();
 	protocol_gc();
 	options_gc();
 	log_shell_disable();
