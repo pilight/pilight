@@ -11,6 +11,7 @@
 #include <string.h>
 #include <assert.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #ifndef _WIN32
 	#ifdef __mips__
 		#define __USE_UNIX98
@@ -85,7 +86,7 @@ void protocol_init(void) {
 	struct module_t module;
 	char pilight_version[strlen(PILIGHT_VERSION)+1];
 	char pilight_commit[3];
-	char *protocol_root = NULL;
+	char *protocol_root = PROTOCOL_ROOT;
 	int check1 = 0, check2 = 0, valid = 1;
 	strcpy(pilight_version, PILIGHT_VERSION);
 
@@ -96,18 +97,9 @@ void protocol_init(void) {
 	memset(pilight_commit, '\0', 3);
 
 	struct lua_state_t *state = plua_get_free_state();
-	if(config_setting_get_string(state->L, "protocol-root", 0, &protocol_root) != 0) {
-		/* If no protocol root was set, use the default protocol root */
-		if((protocol_root = MALLOC(strlen(PROTOCOL_ROOT)+1)) == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
-		strcpy(protocol_root, PROTOCOL_ROOT);
-		assert(plua_check_stack(state->L, 0) == 0);
-		plua_clear_state(state);
-	} else {
-		assert(plua_check_stack(state->L, 0) == 0);
-		plua_clear_state(state);
-	}
+	int ret = config_setting_get_string(state->L, "actions-root", 0, &protocol_root);
+	assert(plua_check_stack(state->L, 0) == 0);
+	plua_clear_state(state);
 
 	size_t len = strlen(protocol_root);
 	if(protocol_root[len-1] != '/') {
@@ -172,7 +164,7 @@ void protocol_init(void) {
 		}
 		closedir(d);
 	}
-	if(protocol_root != NULL) {
+	if(ret == 0 || protocol_root != (void *)PROTOCOL_ROOT) {
 		FREE(protocol_root);
 	}
 #endif

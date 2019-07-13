@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
+#include <assert.h>
 #include <sys/stat.h>
 #ifndef _WIN32
 	#include <unistd.h>
@@ -265,7 +266,7 @@ static int checkValues(struct JsonNode *code) {
 					logprintf(LOG_ERR, "no gpio-platform configured");
 					assert(plua_check_stack(state->L, 0) == 0);
 					plua_clear_state(state);
-					return NULL;
+					return -1;
 				} else {
 					assert(plua_check_stack(state->L, 0) == 0);
 					plua_clear_state(state);
@@ -273,16 +274,16 @@ static int checkValues(struct JsonNode *code) {
 				if(strcmp(platform, "none") == 0) {
 					FREE(platform);
 					logprintf(LOG_ERR, "no gpio-platform configured");
-					return NULL;
+					return -1;
 				}
 				if(wiringXSetup(platform, _logprintf) < 0) {
 					FREE(platform);
-					return NULL;
+					return 01;
 				}
 				if(wiringXValidGPIO(gpio) != 0) {
 					FREE(platform);
 					logprintf(LOG_ERR, "dht22: invalid gpio range");
-					return NULL;
+					return -1;
 				}
 				FREE(platform);
 #endif

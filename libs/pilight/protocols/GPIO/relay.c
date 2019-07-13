@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <math.h>
+#include <assert.h>
 
 #ifndef _WIN32
 	#include <unistd.h>
@@ -95,15 +96,15 @@ static int createCode(struct JsonNode *code, char **message) {
 			if(pilight.process == PROCESS_DAEMON) {
 				pinMode(gpio, PINMODE_OUTPUT);
 				if(strcmp(def, "off") == 0) {
-					if(state == 1) {
+					if(state1 == 1) {
 						digitalWrite(gpio, LOW);
-					} else if(state == 0) {
+					} else if(state1 == 0) {
 						digitalWrite(gpio, HIGH);
 					}
 				} else {
-					if(state == 0) {
+					if(state1 == 0) {
 						digitalWrite(gpio, LOW);
-					} else if(state == 1) {
+					} else if(state1 == 1) {
 						digitalWrite(gpio, HIGH);
 					}
 				}
