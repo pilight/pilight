@@ -30,6 +30,11 @@ if(${PROTOCOL_DAYCOM} MATCHES "OFF")
 	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/daycom.h")
 endif()
 
+if(${PROTOCOL_IWDS07} MATCHES "OFF")
+	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/iwds07.c")
+	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/iwds07.h")
+endif()
+
 if(${PROTOCOL_KAKU_SCREEN_OLD} MATCHES "OFF")
 	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/arctech_screen_old.c")
 	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/arctech_screen_old.h")
