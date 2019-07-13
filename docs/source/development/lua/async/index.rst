@@ -158,9 +158,17 @@ API
 
    Unregister the async object from a specific event
 
+.. c:function:: userdata getUserdata()
+
+   Returns a persistent userdata table for the lifetime of the thread object.
+
 .. c:function:: boolean setCallback(string callback)
 
    The name of the callback being trigger when the event occured
+
+.. c:function:: boolean setUserdata(userdata table)
+
+   Set a new persistent userdata table for the lifetime of the thread object. The userdata table cannot be of another type as returned from the getUserdata functions.
 
 .. c:function:: boolean trigger(userdata table)
 

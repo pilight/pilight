@@ -133,7 +133,7 @@ Further options are required, depending on the chosen protocol. Use ``pilight-se
 BUGS
 ====
 
-Please report all bugs on GitHub <https://github.com/pilight/pilight/>.
+Please report all bugs on the pilight forum <https://forum.pilight.org>.
 
 AUTHOR
 ======

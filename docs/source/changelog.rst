@@ -15,9 +15,15 @@ Changelog
 - Allow userdata in eventpool callbacks
 - Added C getters and setters for lua metatable
 - Added pilight event lua c to lua interface
-- Ported hardware module to lua
+- Ported hardware modules to lua
 - Ported config hardware parsing to lua
+- Added pilight io spi and serial interface to lua
+- Added pilight log to lua
 - Allow enforcing the old state in a switch action
+- Pass lua metatable by reference
+- Add support for the coap protocol
+- C handler for lua metatables
+- pilight lua metatables are now threadsafe
 
 .. rubric:: Fixes
 
@@ -26,6 +32,10 @@ Changelog
 - Fixed garbage collection in event module loaders
 - Fixed bug using boolean value in lua metatable
 - Fixed lua stack not fully cleared in certain cases
+- Fixed bug in which action execution wasn't logged
+- Fixed threadpool work creation outside main thread
+- Fixed buffer overflow in lua sync lib
+- Fixed unitialized values
 
 .. versionadded:: 8.1.4
 

@@ -77,7 +77,7 @@ Debugging options:
 BUGS
 ====
 
-Please report all bugs on GitHub <https://github.com/pilight/pilight/>.
+Please report all bugs on the pilight forum <https://forum.pilight.org>.
 
 AUTHOR
 ======

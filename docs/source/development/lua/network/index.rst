@@ -5,6 +5,7 @@ Various functions to do network communication
 
 - `Mail`_
 - `HTTP`_
+- `COAP`_
 
 Mail
 ----
@@ -223,6 +224,96 @@ Example
      httpobj.setUrl("http://127.0.0.1:10080/")
      httpobj.setCallback("callback");
      httpobj.get();
+
+     return 1;
+   end
+
+   return M;
+
+COAP
+----
+
+Send and/or receive COAP messages
+
+API
+^^^
+
+.. c:function:: userdata pilight.network.coap()
+
+   Creates a new coap object
+
+.. c:function:: userdata getUserdata()
+
+   Returns a persistent userdata table for the lifetime of the mail object.
+
+.. c:function:: boolean setCallback(string callback)
+
+   The name of the callback set for this coap object.
+
+.. c:function:: boolean listen(userdata table)
+
+   Listens to coap messages
+
+.. c:function:: boolean setCallback(string callback)
+
+   The name of the callback being triggered by the coap library. The parameters of the callback function are the coap object, received data object, ip and port of the sender.
+
+.. c:function:: boolean setUserdata(userdata table)
+
+   Set a new persistent userdata table for the lifetime of the http object. The userdata table cannot be of another type as returned from the getUserdata functions.
+
+.. c:function:: boolean send(userdata table)
+
+   Sends a coap message
+
+.. note:: COAP data specifications
+
+   The data the lua COAP interface parses has to be set in a low-level way. That means you have to construct a valid coap object yourself. The COAP responses are represented in the same low-level way. The COAP interface follows the same specification for it's data as the protocol description.
+
+   The allowed COAP data fields are
+
+   - **numeric** ``ver``
+   - **numeric** ``t``
+   - **numeric** ``token``
+   - **string** ``payload``
+   - **numeric** ``code``
+   - **numeric** ``msgid``
+   - **array** ``options``
+      - **numeric** ``num``
+      - **string** ``val``
+
+   The options field is in itself an array with ``num`` and ``val`` keys.
+
+Example
+^^^^^^^
+
+.. code-block:: lua
+
+   local M = {}
+
+   function M.discover(coap, data, ip, port)
+     return;
+   end
+
+   function M.run()
+      local coap = pilight.network.coap();
+
+      local send = {};
+      send['ver'] = 1;
+      send['t'] = 1;
+      send['code'] = 0001;
+      send['msgid'] = 0001;
+      send['options'] = {};
+      send['options'][0] = {};
+      send['options'][0]['val'] = 'cit';
+      send['options'][0]['num'] = 11;
+      send['options'][1] = {};
+      send['options'][1]['val'] = 'd';
+      send['options'][1]['num'] = 11;
+
+      coap.setCallback("discover");
+      coap.send(send);
+      coap.listen();
 
      return 1;
    end
