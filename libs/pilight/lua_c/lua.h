@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 - 2016 CurlyMo
+  Copyright (C) 2013 - 2016 CurlyMo
 
   This Source Code Form is subject to the terms of the Mozilla Public
   License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -17,7 +17,7 @@
 
 #include "../libs/pilight/core/common.h"
 
-#define NRLUASTATES	8
+#define NRLUASTATES	4
 
 #define UNITTEST	0
 #define OPERATOR	1
