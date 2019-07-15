@@ -43,6 +43,16 @@ Install pilight by using the apt repository in Debian / Ubuntu based distributio
 
       root@pilight:~# apt-get update
 
+.. note:: Debian Buster
+
+   .. code-block:: console
+
+      root@pilight:~# cd /tmp
+      root@pilight:~# wget http://apt.pilight.org/pool/stable/main/l/libmbedx509-0/libmbedx509-0_2.6.0-1_armhf.deb
+      root@pilight:~# wget http://apt.pilight.org/pool/stable/main/l/libmbedtls10/libmbedtls10_2.6.0-1_armhf.deb
+      root@pilight:~# wget http://apt.pilight.org/pool/stable/main/l/libmbedcrypto0/libmbedcrypto0_2.6.0-1_armhf.deb
+      root@pilight:~# dpkg -i libmbed*.deb
+
 #. And install pilight
 
    .. code-block:: console
