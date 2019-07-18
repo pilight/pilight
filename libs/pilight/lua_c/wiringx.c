@@ -274,6 +274,7 @@ int plua_wiringx_digital_write(struct lua_State *L) {
 	} else {
 		if(table != NULL) {
 			int i = 0, error = 0;
+			uv_mutex_lock(&table->lock);
 			for(i=0;i<table->nrvar;i++) {
 				if(table->table[i].key.type_ != LUA_TNUMBER || table->table[i].val.type_ != LUA_TNUMBER) {
 					pluaL_error(L, "wiringX digitalWrite pulses should be a numeric array with numbers", lua_gettop(L));
@@ -285,7 +286,7 @@ int plua_wiringx_digital_write(struct lua_State *L) {
 					break;
 				}
 				if(i < table->nrvar) {
-					usleep(table->table[i].val.number_);
+					usleep((int)table->table[i].val.number_);
 				}
 				mode ^= 1;
 			}
@@ -294,6 +295,7 @@ int plua_wiringx_digital_write(struct lua_State *L) {
 			} else {
 				lua_pushnumber(L, table->nrvar);
 			}
+			uv_mutex_unlock(&table->lock);
 		} else {
 			if(digitalWrite(gpio, mode) == -1) {
 				lua_pushnumber(L, 0);
