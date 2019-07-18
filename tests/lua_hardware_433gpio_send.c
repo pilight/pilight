@@ -39,6 +39,7 @@ typedef struct data_t {
 
 static struct data_t data;
 
+static uv_loop_t *gpio_loop = NULL;
 static CuTest *gtc = NULL;
 static uv_pipe_t *pipe_req0 = NULL;
 static uv_pipe_t *pipe_req1 = NULL;
@@ -190,6 +191,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 		timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
 		duration = (int)((int)timestamp.second-(int)timestamp.first);
+
 		if(duration > 0) {
 			data.rbuffer[data.rptr++] = duration;
 			if(data.rptr > MAXPULSESTREAMLENGTH-1) {
@@ -210,6 +212,7 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 						wiringXGC();
 						uv_poll_stop(poll_req);
 						uv_stop(uv_default_loop());
+						uv_stop(gpio_loop);
 						uv_timer_stop(timer_req);
 						return;
 					}
@@ -228,7 +231,7 @@ static void connect_cb(uv_stream_t *req, int status) {
 	uv_pipe_t *client_req = MALLOC(sizeof(uv_pipe_t));
 	CuAssertPtrNotNull(gtc, client_req);
 
-	int r = uv_pipe_init(uv_default_loop(), client_req, 0);
+	int r = uv_pipe_init(gpio_loop, client_req, 0);
 
 	r = uv_accept(req, (uv_stream_t *)client_req);
 	CuAssertIntEquals(gtc, 0, r);
@@ -242,7 +245,7 @@ static void connect_cb(uv_stream_t *req, int status) {
 		poll_req = MALLOC(sizeof(uv_poll_t));
 		CuAssertPtrNotNull(gtc, poll_req);
 
-		uv_poll_init(uv_default_loop(), poll_req, fd);
+		uv_poll_init(gpio_loop, poll_req, fd);
 		uv_poll_start(poll_req, UV_READABLE, poll_cb);
 
 		timer_req = MALLOC(sizeof(uv_timer_t));
@@ -254,6 +257,17 @@ static void connect_cb(uv_stream_t *req, int status) {
 	return;
 }
 
+static void *gpio_thread(void *data){
+	uv_run(gpio_loop, UV_RUN_DEFAULT);
+	uv_walk(gpio_loop, walk_cb, NULL);
+	uv_run(gpio_loop, UV_RUN_ONCE);
+
+	while(uv_loop_close(gpio_loop) == UV_EBUSY) {
+		uv_run(gpio_loop, UV_RUN_DEFAULT);
+	}
+	pthread_exit(NULL);
+}
+
 void test_lua_hardware_433gpio_send(CuTest *tc) {
 	if(wiringXSetup("test", foo) != -999) {
 		printf("[ %-31.31s (preload libgpio)]\n", __FUNCTION__);
@@ -262,6 +276,7 @@ void test_lua_hardware_433gpio_send(CuTest *tc) {
 		return;
 	}
 
+	pthread_t thread;
 	struct lua_state_t *state = NULL;
 	struct lua_State *L = NULL;
 	char name[255];
@@ -310,32 +325,37 @@ void test_lua_hardware_433gpio_send(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, config_read(state->L, "lua_hardware_433gpio.json", CONFIG_SETTINGS | CONFIG_REGISTRY));
 	plua_clear_state(state);
 
-	int r = 0;
+	{
+		int r = 0;
 
-	pipe_req1 = MALLOC(sizeof(uv_pipe_t));
-	pipe_req0 = MALLOC(sizeof(uv_pipe_t));
-	CuAssertPtrNotNull(gtc, pipe_req1);
-	CuAssertPtrNotNull(gtc, pipe_req0);
+		gpio_loop = uv_loop_new();
+		pipe_req1 = MALLOC(sizeof(uv_pipe_t));
+		pipe_req0 = MALLOC(sizeof(uv_pipe_t));
+		CuAssertPtrNotNull(gtc, pipe_req1);
+		CuAssertPtrNotNull(gtc, pipe_req0);
 
-	r = uv_pipe_init(uv_default_loop(), pipe_req0, 1);
-	CuAssertIntEquals(gtc, 0, r);
-	r = uv_pipe_init(uv_default_loop(), pipe_req1, 1);
-	CuAssertIntEquals(gtc, 0, r);
+		r = uv_pipe_init(gpio_loop, pipe_req0, 1);
+		CuAssertIntEquals(gtc, 0, r);
+		r = uv_pipe_init(gpio_loop, pipe_req1, 1);
+		CuAssertIntEquals(gtc, 0, r);
 
-	uv_fs_t file_req0;
-	uv_fs_t file_req1;
-	uv_fs_unlink(uv_default_loop(), &file_req0, "/dev/gpio0", NULL);
-	uv_fs_unlink(uv_default_loop(), &file_req1, "/dev/gpio1", NULL);
+		uv_fs_t file_req0;
+		uv_fs_t file_req1;
+		uv_fs_unlink(gpio_loop, &file_req0, "/dev/gpio0", NULL);
+		uv_fs_unlink(gpio_loop, &file_req1, "/dev/gpio1", NULL);
 
-	r = uv_pipe_bind(pipe_req0, "/dev/gpio0");
-	CuAssertIntEquals(gtc, 0, r);
-	r = uv_pipe_bind(pipe_req1, "/dev/gpio1");
-	CuAssertIntEquals(gtc, 0, r);
+		r = uv_pipe_bind(pipe_req0, "/dev/gpio0");
+		CuAssertIntEquals(gtc, 0, r);
+		r = uv_pipe_bind(pipe_req1, "/dev/gpio1");
+		CuAssertIntEquals(gtc, 0, r);
 
-	r = uv_listen((uv_stream_t *)pipe_req0, 128, connect_cb);
-	CuAssertIntEquals(gtc, 0, r);
-	r = uv_listen((uv_stream_t *)pipe_req1, 128, connect_cb);
-	CuAssertIntEquals(gtc, 0, r);
+		r = uv_listen((uv_stream_t *)pipe_req0, 128, connect_cb);
+		CuAssertIntEquals(gtc, 0, r);
+		r = uv_listen((uv_stream_t *)pipe_req1, 128, connect_cb);
+		CuAssertIntEquals(gtc, 0, r);
+
+		pthread_create(&thread, NULL, gpio_thread, NULL);
+	}
 
 	struct plua_metatable_t *table = config_get_metatable();
 	plua_metatable_set_number(table, "registry.hardware.433gpio.mingaplen", 5100);

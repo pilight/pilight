@@ -147,8 +147,6 @@ static void *listener(int reason, void *param, void *userdata) {
 		buffer[i-1] = (int)pulse;
 	}
 
-	plua_metatable_free(table);
-
 	if(round >= 1) {
 		for(i=0;i<length-1;i++) {
 			if(!((int)(buffer[i]*0.75) <= pulses[i] && (int)(buffer[i]*1.25) >= pulses[i])) {

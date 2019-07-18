@@ -166,7 +166,6 @@ static void *listener(int reason, void *param, void *userdata) {
 			uv_stop(uv_default_loop());
 		}
 	}
-	plua_metatable_free(table);
 	check = 1;
 	round++;
 	return NULL;
