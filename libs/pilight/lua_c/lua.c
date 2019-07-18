@@ -436,6 +436,9 @@ static int plua_metatable_metatable(lua_State *L, struct plua_metatable_t *node)
 	struct plua_metatable_t *tmp = NULL;
 
 	plua_metatable_clone(&node, &tmp);
+
+	plua_gc_reg(L, tmp, plua_table_unref);
+
 	lua_pushlightuserdata(L, tmp);
 
 	return 1;
@@ -912,7 +915,9 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 					}
 					if(node->table[x].val.type_ == LUA_TTABLE) {
 						plua_metatable_free(node->table[x].val.void_);
-						FREE(node->table);
+						if(node->nrvar == 0) {
+							FREE(node->table);
+						}
 					} else {
 						uv_mutex_unlock(&node->table[x].lock);
 
