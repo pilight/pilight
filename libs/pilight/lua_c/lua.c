@@ -311,21 +311,472 @@ static int plua_metatable___len(lua_State *L) {
 	return plua_metatable_len(L, node);
 }
 
-static void plua_table_unref(void *ptr) {
+static void plua_metatable_unref(void *ptr) {
 	struct plua_metatable_t *table = ptr;
 	plua_metatable_free(table);
 }
 
-void plua_metatable__push(lua_State *L, struct plua_interface_t *table) {
+static int plua_metatable_push(lua_State *L, struct plua_metatable_t *node) {
+	char buf[128] = { '\0' }, *p = buf;
+	char *error = "string, number, table, boolean or nil expected, got %s";
+
+	if(node == NULL) {
+		logprintf(LOG_ERR, "internal error: table object not passed or already freed");
+		return 0;
+	}
+
+	if(lua_gettop(L) != 1) {
+		pluaL_error(L, "metatable push requires 0 arguments, %d given", lua_gettop(L));
+	}
+
+	sprintf(p, error, lua_typename(L, lua_type(L, -1)));
+
+	luaL_argcheck(L,
+		((lua_type(L, -1) == LUA_TSTRING) || (lua_type(L, -1) == LUA_TNUMBER) ||
+		 (lua_type(L, -1) == LUA_TTABLE || (lua_type(L, -1) == LUA_TBOOLEAN))),
+		1, buf);
+
+	int max = 0, x = 0;
+
+	uv_mutex_lock(&node->lock);
+	for(x=0;x<node->nrvar;x++) {
+		uv_mutex_lock(&node->table[x].lock);
+		if(node->table[x].key.type_ == LUA_TSTRING) {
+			uv_mutex_unlock(&node->table[x].lock);
+			uv_mutex_unlock(&node->lock);
+			pluaL_error(L, "metatable push only works on numeric arrays");
+		} else {
+			if(node->table[x].key.number_ > max) {
+				max = node->table[x].key.number_;
+			}
+		}
+		uv_mutex_unlock(&node->table[x].lock);
+	}
+
+	int idx = node->nrvar;
+	if((node->table = REALLOC(node->table, sizeof(*node->table)*(idx+1))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	uv_mutex_init(&node->table[idx].lock);
+	switch(lua_type(L, -1)) {
+		case LUA_TBOOLEAN: {
+			node->table[idx].val.number_ = lua_toboolean(L, -1);
+			node->table[idx].val.type_ = LUA_TBOOLEAN;
+		} break;
+		case LUA_TNUMBER: {
+			node->table[idx].val.number_ = lua_tonumber(L, -1);
+			node->table[idx].val.type_ = LUA_TNUMBER;
+		} break;
+		case LUA_TSTRING: {
+			if((node->table[idx].val.string_ = STRDUP((char *)lua_tostring(L, -1))) == NULL) {
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+			};
+			node->table[idx].val.type_ = LUA_TSTRING;
+		} break;
+		case LUA_TTABLE: {
+			int is_metatable = 0;
+
+			node->table[idx].val.void_ = NULL;
+
+			node->table[idx].val.type_ = LUA_TTABLE;
+			if((is_metatable = lua_getmetatable(L, -1)) == 1) {
+				lua_remove(L, -1);
+				if(luaL_getmetafield(L, -1, "__call")) {
+					if(plua_pcall(L, __FILE__, 1, 1) == 0) {
+						if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
+							struct plua_metatable_t *table = lua_touserdata(L, -1);
+							plua_metatable_clone(&table, (struct plua_metatable_t **)&node->table[idx].val.void_);
+						} else {
+							logprintf(LOG_ERR, "metatable metafield __call does not return userdata");
+						}
+					}
+				} else {
+					logprintf(LOG_ERR, "metatable does not the call metafield");
+				}
+			} else {
+				plua_metatable_init((struct plua_metatable_t **)&node->table[idx].val.void_);
+				lua_pushnil(L);
+				while(lua_next(L, -2) != 0) {
+					plua_metatable_parse_set(L, node->table[idx].val.void_);
+					lua_pop(L, 1);
+				}
+			}
+		} break;
+	}
+
+	node->table[idx].key.number_ = max+1;
+	node->table[idx].key.type_ = LUA_TNUMBER;
+
+	node->nrvar++;
+	uv_mutex_unlock(&node->lock);
+
+	return 1;
+}
+
+static int plua_metatable__push(lua_State *L) {
+	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	return plua_metatable_push(L, node);
+}
+
+static int plua_metatable___push(lua_State *L) {
+	struct plua_interface_t *interface = (void *)lua_topointer(L, lua_upvalueindex(1));
+	struct plua_metatable_t *node = interface->table;
+
+	return plua_metatable_push(L, node);
+}
+
+static int plua_metatable_pop(lua_State *L, struct plua_metatable_t *node) {
+	if(node == NULL) {
+		logprintf(LOG_ERR, "internal error: table object not passed or already freed");
+		return 0;
+	}
+
+	if(lua_gettop(L) != 0) {
+		pluaL_error(L, "metatable pop requires 0 arguments, %d given", lua_gettop(L));
+	}
+
+	int max = 0, x = 0, maxidx = 0, i = 0;
+
+	uv_mutex_lock(&node->lock);
+	for(x=0;x<node->nrvar;x++) {
+		uv_mutex_lock(&node->table[x].lock);
+		if(node->table[x].key.type_ == LUA_TSTRING) {
+			uv_mutex_unlock(&node->table[x].lock);
+			uv_mutex_unlock(&node->lock);
+			pluaL_error(L, "metatable push only works on numeric arrays");
+		} else {
+			if(node->table[x].key.number_ >= max) {
+				max = (int)node->table[x].key.number_;
+				maxidx = x;
+			}
+		}
+		uv_mutex_unlock(&node->table[x].lock);
+	}
+
+	uv_mutex_lock(&node->table[maxidx].lock);
+	switch(node->table[maxidx].val.type_) {
+		case LUA_TBOOLEAN: {
+			lua_pushboolean(L, node->table[maxidx].val.number_);
+		} break;
+		case LUA_TNUMBER: {
+			lua_pushnumber(L, node->table[maxidx].val.number_);
+		} break;
+		case LUA_TSTRING: {
+			lua_pushstring(L, node->table[maxidx].val.string_);
+			FREE(node->table[maxidx].val.string_);
+		} break;
+		case LUA_TTABLE: {
+			push_plua_metatable(L, (struct plua_metatable_t *)node->table[maxidx].val.void_);
+			plua_gc_reg(L, node->table[maxidx].val.void_, plua_metatable_unref);
+		} break;
+		default: {
+			lua_pushnil(L);
+		} break;
+	}
+	uv_mutex_unlock(&node->table[maxidx].lock);
+
+	for(i=maxidx;i<node->nrvar-1;i++) {
+		uv_mutex_lock(&node->table[i].lock);
+		uv_mutex_lock(&node->table[i+1].lock);
+		switch(node->table[i+1].val.type_) {
+			case LUA_TNUMBER: {
+				node->table[i].val.number_ = node->table[i+1].val.number_;
+				node->table[i].val.type_ = node->table[i+1].val.type_;
+			} break;
+			case LUA_TSTRING: {
+				node->table[i].val.string_ = node->table[i+1].val.string_;
+				node->table[i].val.type_ = node->table[i+1].val.type_;
+			} break;
+			case LUA_TTABLE: {
+				node->table[i].val.void_ = node->table[i+1].val.void_;
+				node->table[i].val.type_ = node->table[i+1].val.type_;
+			} break;
+		}
+		switch(node->table[i+1].key.type_) {
+			case LUA_TNUMBER: {
+				node->table[i].key.number_ = (int)node->table[i+1].key.number_ - 1;
+				node->table[i].key.type_ = node->table[i+1].key.type_;
+			} break;
+			case LUA_TSTRING: {
+				node->table[i].key.string_ = node->table[i+1].key.string_;
+				node->table[i].key.type_ = node->table[i+1].key.type_;
+			}
+		}
+		uv_mutex_unlock(&node->table[i].lock);
+		uv_mutex_unlock(&node->table[i+1].lock);
+	}
+	node->nrvar--;
+	uv_mutex_unlock(&node->lock);
+
+	return 1;
+}
+
+static int plua_metatable__pop(lua_State *L) {
+	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	return plua_metatable_pop(L, node);
+}
+
+static int plua_metatable___pop(lua_State *L) {
+	struct plua_interface_t *interface = (void *)lua_topointer(L, lua_upvalueindex(1));
+	struct plua_metatable_t *node = interface->table;
+
+	return plua_metatable_pop(L, node);
+}
+
+static int plua_metatable_unshift(lua_State *L, struct plua_metatable_t *node) {
+	if(node == NULL) {
+		logprintf(LOG_ERR, "internal error: table object not passed");
+		return 0;
+	}
+
+	if(lua_gettop(L) != 0) {
+		pluaL_error(L, "metatable unshift requires 0 arguments, %d given", lua_gettop(L));
+	}
+
+	int x = 0, i = 0, minidx = 0;
+
+	uv_mutex_lock(&node->lock);
+	for(x=0;x<node->nrvar;x++) {
+		uv_mutex_lock(&node->table[x].lock);
+		if(node->table[x].key.type_ == LUA_TSTRING) {
+			uv_mutex_unlock(&node->table[x].lock);
+			uv_mutex_unlock(&node->lock);
+			pluaL_error(L, "metatable unshift only works on numeric arrays");
+		} else {
+			if(node->table[x].key.number_ == 1) {
+				minidx = x;
+			}
+		}
+		uv_mutex_unlock(&node->table[x].lock);
+	}
+
+	if(minidx >= 0) {
+		uv_mutex_lock(&node->table[minidx].lock);
+		switch(node->table[minidx].val.type_) {
+			case LUA_TBOOLEAN: {
+				lua_pushboolean(L, node->table[minidx].val.number_);
+			} break;
+			case LUA_TNUMBER: {
+				lua_pushnumber(L, node->table[minidx].val.number_);
+			} break;
+			case LUA_TSTRING: {
+				lua_pushstring(L, node->table[minidx].val.string_);
+				FREE(node->table[minidx].val.string_);
+			} break;
+			case LUA_TTABLE: {
+				push_plua_metatable(L, (struct plua_metatable_t *)node->table[minidx].val.void_);
+				plua_gc_reg(L, node->table[minidx].val.void_, plua_metatable_unref);
+			} break;
+			default: {
+				lua_pushnil(L);
+			} break;
+		}
+		uv_mutex_unlock(&node->table[minidx].lock);
+
+		for(i=minidx;i<node->nrvar-1;i++) {
+			uv_mutex_lock(&node->table[i].lock);
+			uv_mutex_lock(&node->table[i+1].lock);
+			switch(node->table[i+1].val.type_) {
+				case LUA_TNUMBER: {
+					node->table[i].val.number_ = node->table[i+1].val.number_;
+					node->table[i].val.type_ = node->table[i+1].val.type_;
+				} break;
+				case LUA_TSTRING: {
+					node->table[i].val.string_ = node->table[i+1].val.string_;
+					node->table[i].val.type_ = node->table[i+1].val.type_;
+				} break;
+				case LUA_TTABLE: {
+					node->table[i].val.void_ = node->table[i+1].val.void_;
+					node->table[i].val.type_ = node->table[i+1].val.type_;
+				} break;
+			}
+			switch(node->table[i+1].key.type_) {
+				case LUA_TNUMBER: {
+					node->table[i].key.number_ = (int)node->table[i+1].key.number_ - 1;
+					node->table[i].key.type_ = node->table[i+1].key.type_;
+				} break;
+				case LUA_TSTRING: {
+					node->table[i].key.string_ = node->table[i+1].key.string_;
+					node->table[i].key.type_ = node->table[i+1].key.type_;
+				}
+			}
+			uv_mutex_unlock(&node->table[i].lock);
+			uv_mutex_unlock(&node->table[i+1].lock);
+		}
+		node->nrvar--;
+		uv_mutex_unlock(&node->lock);
+		return 1;
+	}
+
+	lua_pushnil(L);
+
+	uv_mutex_unlock(&node->lock);
+
+	return 1;
+}
+
+static int plua_metatable__unshift(lua_State *L) {
+	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	return plua_metatable_unshift(L, node);
+}
+
+static int plua_metatable___unshift(lua_State *L) {
+	struct plua_interface_t *interface = (void *)lua_topointer(L, lua_upvalueindex(1));
+	struct plua_metatable_t *node = interface->table;
+
+	return plua_metatable_unshift(L, node);
+}
+
+static int plua_metatable_shift(lua_State *L, struct plua_metatable_t *node) {
+	char buf[128] = { '\0' }, *p = buf;
+	char *error = "string, number, table, boolean or nil expected, got %s";
+
+	if(node == NULL) {
+		logprintf(LOG_ERR, "internal error: table object not passed or already freed");
+		return 0;
+	}
+
+	if(lua_gettop(L) != 1) {
+		pluaL_error(L, "metatable shift requires 0 arguments, %d given", lua_gettop(L));
+	}
+
+	sprintf(p, error, lua_typename(L, lua_type(L, -1)));
+
+	luaL_argcheck(L,
+		((lua_type(L, -1) == LUA_TSTRING) || (lua_type(L, -1) == LUA_TNUMBER) ||
+		 (lua_type(L, -1) == LUA_TTABLE || (lua_type(L, -1) == LUA_TBOOLEAN))),
+		1, buf);
+
+	int x = 0, i = 0;
+
+	uv_mutex_lock(&node->lock);
+	for(x=0;x<node->nrvar;x++) {
+		uv_mutex_lock(&node->table[x].lock);
+		if(node->table[x].key.type_ == LUA_TSTRING) {
+			uv_mutex_unlock(&node->table[x].lock);
+			uv_mutex_unlock(&node->lock);
+			pluaL_error(L, "metatable shift only works on numeric arrays");
+		}
+		uv_mutex_unlock(&node->table[x].lock);
+	}
+
+	int idx = node->nrvar;
+	if((node->table = REALLOC(node->table, sizeof(*node->table)*(idx+1))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+
+	for(i=node->nrvar-1;i>=0;--i) {
+		uv_mutex_lock(&node->table[i].lock);
+		switch(node->table[i].key.type_) {
+			case LUA_TNUMBER: {
+				node->table[i].key.number_ = (int)node->table[i].key.number_ + 1;
+			} break;
+		}
+		uv_mutex_unlock(&node->table[i].lock);
+	}
+
+	uv_mutex_init(&node->table[idx].lock);
+	switch(lua_type(L, -1)) {
+		case LUA_TBOOLEAN: {
+			node->table[idx].val.number_ = lua_toboolean(L, -1);
+			node->table[idx].val.type_ = LUA_TBOOLEAN;
+		} break;
+		case LUA_TNUMBER: {
+			node->table[idx].val.number_ = lua_tonumber(L, -1);
+			node->table[idx].val.type_ = LUA_TNUMBER;
+		} break;
+		case LUA_TSTRING: {
+			if((node->table[idx].val.string_ = STRDUP((char *)lua_tostring(L, -1))) == NULL) {
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+			};
+			node->table[idx].val.type_ = LUA_TSTRING;
+		} break;
+		case LUA_TTABLE: {
+			int is_metatable = 0;
+
+			node->table[idx].val.void_ = NULL;
+
+			node->table[idx].val.type_ = LUA_TTABLE;
+			if((is_metatable = lua_getmetatable(L, -1)) == 1) {
+				lua_remove(L, -1);
+				if(luaL_getmetafield(L, -1, "__call")) {
+					if(plua_pcall(L, __FILE__, 1, 1) == 0) {
+						if(lua_type(L, -1) == LUA_TLIGHTUSERDATA) {
+							struct plua_metatable_t *table = lua_touserdata(L, -1);
+							plua_metatable_clone(&table, (struct plua_metatable_t **)&node->table[idx].val.void_);
+						} else {
+							logprintf(LOG_ERR, "metatable metafield __call does not return userdata");
+						}
+					}
+				} else {
+					logprintf(LOG_ERR, "metatable does not the call metafield");
+				}
+			} else {
+				plua_metatable_init((struct plua_metatable_t **)&node->table[idx].val.void_);
+				lua_pushnil(L);
+				while(lua_next(L, -2) != 0) {
+					plua_metatable_parse_set(L, node->table[idx].val.void_);
+					lua_pop(L, 1);
+				}
+			}
+		} break;
+	}
+
+	node->table[idx].key.number_ = 1;
+	node->table[idx].key.type_ = LUA_TNUMBER;
+	node->nrvar++;
+
+	uv_mutex_unlock(&node->lock);
+
+	return 1;
+}
+
+static int plua_metatable__shift(lua_State *L) {
+	struct plua_metatable_t *node = (void *)lua_topointer(L, lua_upvalueindex(1));
+
+	return plua_metatable_shift(L, node);
+}
+
+static int plua_metatable___shift(lua_State *L) {
+	struct plua_interface_t *interface = (void *)lua_topointer(L, lua_upvalueindex(1));
+	struct plua_metatable_t *node = interface->table;
+
+	return plua_metatable_shift(L, node);
+}
+
+void push__plua_metatable(lua_State *L, struct plua_interface_t *table) {
 	uv_sem_post(table->table->ref);
 
-	plua_gc_reg(L, table->table, plua_table_unref);
+	plua_gc_reg(L, table->table, plua_metatable_unref);
 
 	lua_newtable(L);
 
-	lua_pushstring(L, "__len");
+	lua_pushstring(L, "len");
 	lua_pushlightuserdata(L, table);
 	lua_pushcclosure(L, plua_metatable___len, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "push");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable___push, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "pop");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable___pop, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "unshift");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable___unshift, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "shift");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable___shift, 1);
 	lua_settable(L, -3);
 
 	lua_newtable(L);
@@ -373,16 +824,36 @@ void plua_metatable__push(lua_State *L, struct plua_interface_t *table) {
 	lua_setmetatable(L, -2);
 }
 
-void plua_metatable_push(lua_State *L, struct plua_metatable_t *table) {
+void push_plua_metatable(lua_State *L, struct plua_metatable_t *table) {
 	uv_sem_post(table->ref);
 
-	plua_gc_reg(L, table, plua_table_unref);
+	plua_gc_reg(L, table, plua_metatable_unref);
 
 	lua_newtable(L);
 
-	lua_pushstring(L, "__len");
+	lua_pushstring(L, "len");
 	lua_pushlightuserdata(L, table);
 	lua_pushcclosure(L, plua_metatable__len, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "push");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable__push, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "pop");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable__pop, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "unshift");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable__unshift, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "shift");
+	lua_pushlightuserdata(L, table);
+	lua_pushcclosure(L, plua_metatable__shift, 1);
 	lua_settable(L, -3);
 
 	lua_newtable(L);
@@ -440,7 +911,7 @@ static int plua_metatable_metatable(lua_State *L, struct plua_metatable_t *node)
 
 	plua_metatable_clone(&node, &tmp);
 
-	plua_gc_reg(L, tmp, plua_table_unref);
+	plua_gc_reg(L, tmp, plua_metatable_unref);
 
 	lua_pushlightuserdata(L, tmp);
 
@@ -605,7 +1076,7 @@ static int plua_metatable_next(lua_State *L, struct plua_metatable_t *node) {
 				lua_pushstring(L, node->table[iter].val.string_);
 			} break;
 			case LUA_TTABLE: {
-				plua_metatable_push(L, (struct plua_metatable_t *)node->table[iter].val.void_);
+				push_plua_metatable(L, (struct plua_metatable_t *)node->table[iter].val.void_);
 			} break;
 		}
 
@@ -749,7 +1220,7 @@ static int plua_metatable_index(lua_State *L, struct plua_metatable_t *node) {
 					lua_pushstring(L, node->table[x].val.string_);
 				} break;
 				case LUA_TTABLE: {
-					plua_metatable_push(L, (struct plua_metatable_t *)node->table[x].val.void_);
+					push_plua_metatable(L, (struct plua_metatable_t *)node->table[x].val.void_);
 				} break;
 				default: {
 					lua_pushnil(L);
@@ -787,7 +1258,8 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 	struct plua_metatable_t *node = data;
 
 	char buf[128] = { '\0' }, *p = buf;
-	char *error = "string or number expected, got %s";
+	char *error1 = "string, number, table, boolean or nil expected, got %s";
+	char *error2 = "string or number expected, got %s";
 	int match = 0, x = 0;
 
 	if(data == NULL) {
@@ -795,15 +1267,14 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 		return;
 	}
 
-
-	sprintf(p, error, lua_typename(L, lua_type(L, -1)));
+	sprintf(p, error1, lua_typename(L, lua_type(L, -1)));
 
 	luaL_argcheck(L,
 		((lua_type(L, -1) == LUA_TSTRING) || (lua_type(L, -1) == LUA_TNUMBER) ||
 		(lua_type(L, -1) == LUA_TNIL) || (lua_type(L, -1) == LUA_TBOOLEAN) || (lua_type(L, -1) == LUA_TTABLE)),
 		1, buf);
 
-	sprintf(p, error, lua_typename(L, lua_type(L, -2)));
+	sprintf(p, error2, lua_typename(L, lua_type(L, -2)));
 
 	luaL_argcheck(L,
 		((lua_type(L, -2) == LUA_TSTRING) || (lua_type(L, -2) == LUA_TNUMBER)),
@@ -925,6 +1396,8 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 						uv_mutex_unlock(&node->table[x].lock);
 
 						for(i=x;i<node->nrvar-1;i++) {
+							uv_mutex_lock(&node->table[i].lock);
+							uv_mutex_lock(&node->table[i+1].lock);
 							switch(node->table[i+1].val.type_) {
 								case LUA_TNUMBER: {
 									node->table[i].val.number_ = node->table[i+1].val.number_;
@@ -949,6 +1422,8 @@ void plua_metatable_parse_set(lua_State *L, void *data) {
 									node->table[i].key.type_ = node->table[i+1].key.type_;
 								}
 							}
+							uv_mutex_unlock(&node->table[i].lock);
+							uv_mutex_unlock(&node->table[i+1].lock);
 						}
 					}
 					node->nrvar--;

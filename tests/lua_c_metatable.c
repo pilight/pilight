@@ -210,6 +210,80 @@ static int plua_print(lua_State* L) {
 					CuAssertIntEquals(gtc, 1, lua_tonumber(L, -1));
 					run++;
 				break;
+				case 36:
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 1, lua_tonumber(L, -1));
+					run++;
+				break;
+				case 37:
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 10, lua_tonumber(L, -1));
+					run++;
+				break;
+				case 38:
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 10, lua_tonumber(L, -1));
+					run++;
+				break;
+				case 39:
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 11, lua_tonumber(L, -1));
+					run++;
+				break;
+				case 40:
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 11, lua_tonumber(L, -1));
+					run++;
+				break;
+				case 41:
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 10, lua_tonumber(L, -1));
+					run++;
+				break;
+				case 42:
+					CuAssertIntEquals(gtc, LUA_TNIL, lua_type(L, -1));
+					run++;
+				break;
+				case 43:
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 10, lua_tonumber(L, -1));
+					run++;
+				break;
+				case 44:
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 12, lua_tonumber(L, -1));
+					run++;
+				break;
+				case 45:
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 13, lua_tonumber(L, -1));
+					run++;
+				break;
+				case 46:
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 12, lua_tonumber(L, -1));
+					run++;
+				break;
+				case 47:
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 10, lua_tonumber(L, -1));
+					run++;
+				break;
+				case 48:
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 13, lua_tonumber(L, -1));
+					run++;
+				break;
+				case 49:
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 10, lua_tonumber(L, -1));
+					run++;
+				break;
+				case 50:
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 12, lua_tonumber(L, -1));
+					run++;
+				break;
 			}
 		} break;
 		case 1: {
@@ -403,9 +477,9 @@ static void test_lua_c_metatable(CuTest *tc) {
 		x['d'] = y; \
 		print(x['d']['c']['a']); \
 		print(x['d']['c']['b']); \
-		print(z.__len()); \
-		print(y.__len()); \
-		print(x.__len()); \
+		print(z.len()); \
+		print(y.len()); \
+		print(x.len()); \
 	"));
 
 	CuAssertIntEquals(gtc, 0, luaL_dostring(state->L, " \
@@ -453,6 +527,65 @@ static void test_lua_c_metatable(CuTest *tc) {
 		thread.setUserdata(thread1.getUserdata()()); \
 	"));
 
+	CuAssertIntEquals(gtc, 0, luaL_dostring(state->L, " \
+		local data = pilight.table(); \
+		data.push(10); \
+		print(data[1]); \
+		data.push(11); \
+		print(data[1]); \
+		print(data[2]); \
+		print(data.pop()); \
+		print(data.pop()); \
+		print(data[1]); \
+		data.push(10); \
+		print(data[1]); \
+		data.shift(12); \
+		print(data[1]); \
+		data.shift(13); \
+		print(data[1]); \
+		print(data[2]); \
+		print(data[3]); \
+		print(data.unshift()); \
+		print(data.pop()); \
+		print(data[1]); \
+	"));
+
+	lua_remove(state->L, -1);
+	CuAssertIntEquals(gtc, 1, luaL_dostring(state->L, " \
+		local data = pilight.table(); \
+		data.push(10); \
+		data['a'] = 1; \
+		data.push(11); \
+	"));
+
+	lua_remove(state->L, -1);
+
+	CuAssertIntEquals(gtc, 1, luaL_dostring(state->L, " \
+		local data = pilight.table(); \
+		data.push(); \
+	"));
+
+	lua_remove(state->L, -1);
+
+	CuAssertIntEquals(gtc, 1, luaL_dostring(state->L, " \
+		local data = pilight.table(); \
+		data.pop(1); \
+	"));
+
+	lua_remove(state->L, -1);
+
+	CuAssertIntEquals(gtc, 1, luaL_dostring(state->L, " \
+		local data = pilight.table(); \
+		data.unshift(1); \
+	"));
+
+	lua_remove(state->L, -1);
+
+	CuAssertIntEquals(gtc, 1, luaL_dostring(state->L, " \
+		local data = pilight.table(); \
+		data.shift(); \
+	"));
+
 	lua_remove(state->L, -1);
 	plua_clear_state(state);
 
@@ -467,7 +600,7 @@ static void test_lua_c_metatable(CuTest *tc) {
 	plua_pause_coverage(0);
 	plua_gc();
 
-	CuAssertIntEquals(tc, 36, run);
+	CuAssertIntEquals(tc, 51, run);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -502,7 +635,7 @@ static void test_c_lua_metatable(CuTest *tc) {
 			print(_table['b']);\
 		");
 
-		plua_metatable_push(state->L, table);
+		push_plua_metatable(state->L, table);
 		lua_setglobal(state->L, "_table");
 		plua_pcall(state->L, __FILE__, 0, LUA_MULTRET);
 		plua_metatable_free(table);
@@ -519,7 +652,7 @@ static void test_c_lua_metatable(CuTest *tc) {
 			print(_table[2]);\
 		");
 
-		plua_metatable_push(state->L, table);
+		push_plua_metatable(state->L, table);
 		lua_setglobal(state->L, "_table");
 		plua_pcall(state->L, __FILE__, 0, LUA_MULTRET);
 		plua_metatable_free(table);
@@ -536,7 +669,7 @@ static void test_c_lua_metatable(CuTest *tc) {
 			print(_table['b']);\
 		");
 
-		plua_metatable_push(state->L, table);
+		push_plua_metatable(state->L, table);
 		lua_setglobal(state->L, "_table");
 		plua_pcall(state->L, __FILE__, 0, LUA_MULTRET);
 		plua_metatable_free(table);
@@ -560,7 +693,7 @@ static void test_c_lua_metatable(CuTest *tc) {
 			print(_table['b']);\
 		");
 
-		plua_metatable_push(state->L, table);
+		push_plua_metatable(state->L, table);
 		lua_setglobal(state->L, "_table");
 		plua_pcall(state->L, __FILE__, 0, LUA_MULTRET);
 		plua_metatable_free(table);
@@ -598,7 +731,7 @@ static void test_c_lua_metatable(CuTest *tc) {
 			print(_table['f']);\
 		");
 
-		plua_metatable_push(state->L, table);
+		push_plua_metatable(state->L, table);
 		lua_setglobal(state->L, "_table");
 		plua_pcall(state->L, __FILE__, 0, LUA_MULTRET);
 		plua_metatable_free(table);

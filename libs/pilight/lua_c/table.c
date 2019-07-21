@@ -408,7 +408,7 @@ int plua_table(struct lua_State *L) {
 	struct plua_metatable_t *table = NULL;
 	plua_metatable_init(&table);
 
-	plua_metatable_push(L, table);
+	push_plua_metatable(L, table);
 
 	plua_gc_reg(L, table, plua_table_gc);
 

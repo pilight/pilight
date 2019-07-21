@@ -174,7 +174,7 @@ function M.read(f)
 
 	v = 'webserver-authentication';
 	if settings[v] ~= nil then
-		if type(settings[v]) ~= 'table' or settings[v].__len() ~= 2 then
+		if type(settings[v]) ~= 'table' or settings[v].len() ~= 2 then
 			error('config setting "' .. v .. '" must be in the format of [ "username", "password" ]');
 		end
 		if type(settings[v][1]) ~= 'string' or type(settings[v][2]) ~= 'string' then
@@ -189,7 +189,7 @@ function M.read(f)
 	--
 	v = 'ntp-servers';
 	if settings[v] ~= nil then
-		if type(settings[v]) ~= 'table' or settings[v].__len() == 0 then
+		if type(settings[v]) ~= 'table' or settings[v].len() == 0 then
 			error('config setting "' .. v .. '" must be in the format of [ \"0.eu.pool.ntp.org\", ... ]');
 		end
 		if type(settings[v]) == 'table' then

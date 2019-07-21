@@ -114,7 +114,7 @@ static int plua_network_coap_get_userdata(lua_State *L) {
 		return 0;
 	}
 
-	plua_metatable__push(L, (struct plua_interface_t *)coap);
+	push__plua_metatable(L, (struct plua_interface_t *)coap);
 
 	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 

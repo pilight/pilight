@@ -69,6 +69,7 @@ static void test_metatable_to_json(CuTest *tc) {
 
 	table = (void *)lua_topointer(state->L, -1);
 	plua_metatable_to_json(table, &json);
+	CuAssertPtrNotNull(tc, json);
 	char *out = json_stringify(json, NULL);
 	CuAssertStrEquals(tc, "{\"1\":\"a\",\"c\":1,\"b\":true,\"a\":[{\"c\":[{\"e\":\"a\"},{\"e\":\"b\"}]},{\"c\":[{\"e\":\"c\"},{\"e\":\"d\"}]}]}", out);
 	json_free(out);
