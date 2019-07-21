@@ -193,7 +193,7 @@ static int plua_async_thread_get_data(lua_State *L) {
 		pluaL_error(L, "internal error: thread object not passed");
 	}
 
-	plua_metatable__push(L, (struct plua_interface_t *)thread);
+	push__plua_metatable(L, (struct plua_interface_t *)thread);
 
 	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
@@ -677,7 +677,7 @@ static int plua_async_timer_get_data(lua_State *L) {
 		pluaL_error(L, "internal error: timer object not passed");
 	}
 
-	plua_metatable__push(L, (struct plua_interface_t *)timer);
+	push__plua_metatable(L, (struct plua_interface_t *)timer);
 
 	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
@@ -885,7 +885,7 @@ void *plua_async_event_callback(int reason, void *param, void *userdata) {
 
 	plua_async_event_object(state->L, event);
 	lua_pushnumber(state->L, reason);
-	plua_metatable_push(state->L, param);
+	push_plua_metatable(state->L, param);
 
 	assert(plua_check_stack(state->L, 5, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE, PLUA_TNUMBER, PLUA_TTABLE) == 0);
 	if(plua_pcall(state->L, state->module->file, 3, 0) == -1) {
@@ -1213,7 +1213,7 @@ static int plua_async_event_get_data(lua_State *L) {
 		return 0;
 	}
 
-	plua_metatable__push(L, (struct plua_interface_t *)event);
+	push__plua_metatable(L, (struct plua_interface_t *)event);
 
 	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 

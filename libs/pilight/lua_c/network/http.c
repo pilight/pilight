@@ -122,7 +122,7 @@ static int plua_network_http_get_userdata(lua_State *L) {
 		pluaL_error(L, "internal error: http object not passed");
 	}
 
-	plua_metatable__push(L, (struct plua_interface_t *)http);
+	push__plua_metatable(L, (struct plua_interface_t *)http);
 
 	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 

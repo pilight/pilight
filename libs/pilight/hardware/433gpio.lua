@@ -11,32 +11,35 @@ local lookup = require "lookup";
 
 local M = {}
 
-function M.send(obj, reason, data)
-	if reason ~= pilight.reason.SEND_CODE then
+function M.send(timer)
+	if timer == nil then
 		return;
 	end
 
-	if data['hwtype'] ~= pilight.hardware.RF433 then
-		return;
+	local data2 = timer.getUserdata();
+
+	local config = pilight.config();
+	local data1 = config.getData();
+	local platform = config.getSetting("gpio-platform");
+	local sender = lookup(data1, 'hardware', '433gpio', 'sender') or nil;
+
+	local wx = wiringX.setup(platform);
+
+	if sender == nil then
+		error("sender parameter missing");
 	end
 
-	if data['pulses'] ~= nil and type(data['pulses']) == 'table' then
-		local config = pilight.config();
-		local data1 = config.getData();
-		local platform = config.getSetting("gpio-platform");
-		local sender = lookup(data1, 'hardware', '433gpio', 'sender') or nil;
+	local data = data2.unshift();
 
-		if sender == nil then
-			error("sender parameter missing");
-		end
+	if data ~= nil then
 
-		local wx = wiringX.setup(platform);
-
-		local count = 0;
-		for _ in pairs(data['pulses']) do
-			count = count + 1
-		end
 		if sender >= 0 then
+			local count = 0;
+
+			for _ in pairs(data['pulses']) do
+				count = count + 1
+			end
+
 			for i = 1, data['txrpt'], 1 do
 				wx.digitalWrite(sender, 1, data['pulses']());
 			end
@@ -46,6 +49,38 @@ function M.send(obj, reason, data)
 			--
 			if (count % 2) == 0 then
 				wx.digitalWrite(sender, 0);
+			end
+		end
+	end
+
+	if data2.len() > 0 then
+		timer.start();
+	end
+end
+
+function M.pre_send(obj, reason, data)
+	if reason ~= pilight.reason.SEND_CODE then
+		return;
+	end
+
+	if data['hwtype'] ~= pilight.hardware.RF433 then
+		return;
+	end
+
+	if data['pulses'] ~= nil and type(data['pulses']) == 'table' then
+		local data2 = obj.getUserdata();
+
+		if data2.len() > 10 then
+			pilight.log(LOG_NOTICE, "433gpio send buffer full");
+		else
+			data2.push(data);
+			if data2.len() == 1 then
+				local timer = pilight.async.timer();
+				timer.setCallback("send");
+				timer.setUserdata(obj.getUserdata()());
+				timer.setTimeout(100);
+				timer.setRepeat(0);
+				timer.start();
 			end
 		end
 	end
@@ -206,7 +241,7 @@ function M.run()
 
 	local event = pilight.async.event();
 	event.register(pilight.reason.SEND_CODE);
-	event.setCallback("send");
+	event.setCallback("pre_send");
 
 	return 1;
 end

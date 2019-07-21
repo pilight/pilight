@@ -119,7 +119,7 @@ static int plua_network_mail_get_data(lua_State *L) {
 		return 0;
 	}
 
-	plua_metatable__push(L, (struct plua_interface_t *)mail);
+	push__plua_metatable(L, (struct plua_interface_t *)mail);
 
 	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 

@@ -1,7 +1,7 @@
 Development
 ===========
 
-There are several ways you can connect to or extend pilight. The eventing modules (operators, functions, and actions) are created in Lua based on a pilight <-> Lua interface. Developing new modules only requires Lua programming skills and the knowledge of the pilight Lua interface.
+There are several ways you can connect to or extend pilight. The eventing modules (operators, functions, and actions) are created in Lua based on a pilight <> Lua interface. Developing new modules only requires Lua programming skills and the knowledge of the pilight Lua interface.
 
 .. note:: Work in progress
 

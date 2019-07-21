@@ -654,7 +654,7 @@ static int plua_io_serial_get_data(lua_State *L) {
 		pluaL_error(L, "internal error: serial object not passed");
 	}
 
-	plua_metatable__push(L, (struct plua_interface_t *)serial);
+	push__plua_metatable(L, (struct plua_interface_t *)serial);
 
 	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 

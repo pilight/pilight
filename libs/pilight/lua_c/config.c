@@ -103,7 +103,7 @@ static int plua_config_get_data(lua_State *L) {
 		return 1;
 	}
 
-	plua_metatable_push(L, table);
+	push_plua_metatable(L, table);
 
 	assert(plua_check_stack(L, 1, PLUA_TTABLE) == 0);
 
