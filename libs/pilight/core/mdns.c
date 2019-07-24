@@ -609,7 +609,7 @@ void mdns_dump(struct mdns_packet_t *pkt) {
 			case 16: {
 				int i = 0;
 				for(i=0;i<pkt->answers[x]->data.text.nrvalues;i++) {
-					printf("answer[%d].text[%d].length: %lu\n", x, i, strlen(pkt->answers[x]->data.text.values[i]));
+					printf("answer[%d].text[%d].length: %u\n", x, i, strlen(pkt->answers[x]->data.text.values[i]));
 					printf("answer[%d].text[%d].value: %s\n", x, i, pkt->answers[x]->data.text.values[i]);
 				}
 			} break;
@@ -651,7 +651,7 @@ void mdns_dump(struct mdns_packet_t *pkt) {
 			case 16: {
 				int i = 0;
 				for(i=0;i<pkt->records[x]->data.text.nrvalues;i++) {
-					printf("record[%d].text[%d].length: %lu\n", x, i, strlen(pkt->records[x]->data.text.values[i]));
+					printf("record[%d].text[%d].length: %u\n", x, i, strlen(pkt->records[x]->data.text.values[i]));
 					printf("record[%d].text[%d].value: %s\n", x, i, pkt->records[x]->data.text.values[i]);
 				}
 			} break;
