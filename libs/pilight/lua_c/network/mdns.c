@@ -666,7 +666,7 @@ static int plua_network_mdns_send(lua_State *L) {
 			int x = 0;
 			pkt.nrqueries = ((struct plua_metatable_t *)var.void_)->nrvar;
 			for(x=0;x<pkt.nrqueries;x++) {
-				snprintf((char *)&key, 255, "%d", x);
+				snprintf((char *)&key, 255, "%d", x+1);
 				if(plua_metatable_get(var.void_, key, &var1) > 0) {
 					if(var1.type_ != LUA_TTABLE) {
 						plua_metatable_free(data);
@@ -716,7 +716,7 @@ static int plua_network_mdns_send(lua_State *L) {
 			int x = 0;
 			pkt.nranswers = ((struct plua_metatable_t *)var.void_)->nrvar;
 			for(x=0;x<pkt.nranswers;x++) {
-				snprintf((char *)&key, 255, "%d", x);
+				snprintf((char *)&key, 255, "%d", x+1);
 				if(plua_metatable_get(var.void_, key, &var1) > 0) {
 					if(var1.type_ != LUA_TTABLE) {
 						plua_metatable_free(data);
@@ -871,7 +871,7 @@ static int plua_network_mdns_send(lua_State *L) {
 			int x = 0;
 			pkt.rr_add = ((struct plua_metatable_t *)var.void_)->nrvar;
 			for(x=0;x<pkt.rr_add;x++) {
-				snprintf((char *)&key, 255, "%d", x);
+				snprintf((char *)&key, 255, "%d", x+1);
 				if(plua_metatable_get(var.void_, key, &var1) > 0) {
 					if(var1.type_ != LUA_TTABLE) {
 						plua_metatable_free(data);

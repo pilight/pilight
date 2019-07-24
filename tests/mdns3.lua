@@ -104,21 +104,21 @@ function M.run()
 	send['rcode'] = 1;
 	send['rr_auth'] = 0;
 	send['queries'] = {};
-	send['queries'][0] = {};
-	send['queries'][0]['name'] = "testname.local.foo";
-	send['queries'][0]['qu'] = 0;
-	send['queries'][0]['type'] = 33;
-	send['queries'][0]['class'] = 1;
 	send['queries'][1] = {};
-	send['queries'][1]['name'] = "testname1.local1.foo";
+	send['queries'][1]['name'] = "testname.local.foo";
 	send['queries'][1]['qu'] = 0;
 	send['queries'][1]['type'] = 33;
 	send['queries'][1]['class'] = 1;
 	send['queries'][2] = {};
-	send['queries'][2]['name'] = "testname.local1.foo";
+	send['queries'][2]['name'] = "testname1.local1.foo";
 	send['queries'][2]['qu'] = 0;
 	send['queries'][2]['type'] = 33;
 	send['queries'][2]['class'] = 1;
+	send['queries'][3] = {};
+	send['queries'][3]['name'] = "testname.local1.foo";
+	send['queries'][3]['qu'] = 0;
+	send['queries'][3]['type'] = 33;
+	send['queries'][3]['class'] = 1;
 
 	print(mdns);
 	print(mdns.setCallback("callback"));

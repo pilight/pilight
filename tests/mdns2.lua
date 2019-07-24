@@ -89,46 +89,46 @@ end
 
 
 function create_payload(obj)
-	obj[0] = {};
-	obj[0]['type'] = 12;
-	obj[0]['name'] = "testname.local.foo";
-	obj[0]['domain'] = "testname.local.foo";
-	obj[0]['flush'] = 1;
-	obj[0]['ttl'] = 2;
-	obj[0]['class'] = 3;
 	obj[1] = {};
-	obj[1]['type'] = 33;
+	obj[1]['type'] = 12;
 	obj[1]['name'] = "testname.local.foo";
 	obj[1]['domain'] = "testname.local.foo";
 	obj[1]['flush'] = 1;
 	obj[1]['ttl'] = 2;
 	obj[1]['class'] = 3;
-	obj[1]['weight'] = 1;
-	obj[1]['priority'] = 1;
-	obj[1]['port'] = 80;
 	obj[2] = {};
-	obj[2]['type'] = 1;
+	obj[2]['type'] = 33;
 	obj[2]['name'] = "testname.local.foo";
+	obj[2]['domain'] = "testname.local.foo";
 	obj[2]['flush'] = 1;
 	obj[2]['ttl'] = 2;
 	obj[2]['class'] = 3;
-	obj[2]['ip'] = '192.168.1.2';
+	obj[2]['weight'] = 1;
+	obj[2]['priority'] = 1;
+	obj[2]['port'] = 80;
 	obj[3] = {};
-	obj[3]['type'] = 28;
+	obj[3]['type'] = 1;
 	obj[3]['name'] = "testname.local.foo";
 	obj[3]['flush'] = 1;
 	obj[3]['ttl'] = 2;
 	obj[3]['class'] = 3;
-	obj[3]['ip'] = '0a:1b:2c:3d:4e:5f:70:81:92:a3:b4:c5:d6:e7:f8:09';
+	obj[3]['ip'] = '192.168.1.2';
 	obj[4] = {};
-	obj[4]['type'] = 16;
+	obj[4]['type'] = 28;
 	obj[4]['name'] = "testname.local.foo";
 	obj[4]['flush'] = 1;
 	obj[4]['ttl'] = 2;
 	obj[4]['class'] = 3;
-	obj[4]['options'] = {};
-	obj[4]['options'][0] = "foo";
-	obj[4]['options'][1] = "lorem";
+	obj[4]['ip'] = '0a:1b:2c:3d:4e:5f:70:81:92:a3:b4:c5:d6:e7:f8:09';
+	obj[5] = {};
+	obj[5]['type'] = 16;
+	obj[5]['name'] = "testname.local.foo";
+	obj[5]['flush'] = 1;
+	obj[5]['ttl'] = 2;
+	obj[5]['class'] = 3;
+	obj[5]['options'] = {};
+	obj[5]['options'][0] = "foo";
+	obj[5]['options'][1] = "lorem";
 end
 
 function M.run()
