@@ -70,6 +70,7 @@ CuSuite *suite_lua_async_event(void);
 CuSuite *suite_lua_network_mail(void);
 CuSuite *suite_lua_network_http(void);
 CuSuite *suite_lua_network_coap(void);
+CuSuite *suite_lua_network_mdns(void);
 CuSuite *suite_lua_io(void);
 CuSuite *suite_lua_config(void);
 CuSuite *suite_protocols_433(void);
@@ -221,6 +222,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_lua_network_mail(); // Ported
 	suites[nr++] = suite_lua_network_http();
 	suites[nr++] = suite_lua_network_coap();
+	suites[nr++] = suite_lua_network_mdns();
 	suites[nr++] = suite_lua_io();
 	suites[nr++] = suite_lua_config(); // Ported
 #ifdef WEBSERVER
