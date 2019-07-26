@@ -1013,6 +1013,8 @@ static int plua_network_mdns_send(lua_State *L) {
 	unsigned int len = 0;
 	unsigned char *buf = mdns_encode(&pkt, &len);
 	struct mdns_packet_t pkt1;
+	memset(&pkt1, 0, sizeof(struct mdns_packet_t));
+
 	if(mdns_decode(&pkt1, buf, len) == 0) {
 		mdns->type = SEND;
 		mdns_send(&pkt1, read_cb, mdns);
