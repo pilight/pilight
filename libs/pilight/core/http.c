@@ -393,7 +393,6 @@ static void process_chunk(char **buf, ssize_t *size, struct request_t *request) 
 			request->reading = 0;
 			break;
 		}
-
 		if(request->chunksize == request->chunkread) {
 			if((p = strstr(*buf, "\r\n")) != NULL) {
 				pos = p-*buf;
@@ -403,6 +402,15 @@ static void process_chunk(char **buf, ssize_t *size, struct request_t *request) 
 				toread -= (pos+2);
 				*size -= (pos+2);
 				(*buf)[toread] = '\0';
+			/*
+			 * When the header and data where communicated in
+			 * separate packets, the buffer from extracted from
+			 * the header is empty. Because the chunked data was
+			 * already announced we just have to wait a little
+			 * bit more. This behavior can be seen in Tasmota.
+			 */
+			} else if(strlen(*buf) == 0) {
+				break;
 			}
 		}
 
@@ -563,7 +571,6 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	if(*nread > 0) {
 		buf[*nread] = '\0';
 	}
-
 	/*
 	 * FIXME: Use io read buf instead of new buffer
 	 */
@@ -623,7 +630,15 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 				}
 			}
 			FREE(header);
-			if(*nread == 0) {
+			/*
+			 * 0 bytes left is not always an indication
+			 * there is no more data to be received.
+			 * In Tasmota packages the header is sent
+			 * separately from the chunked data. So
+			 * when chunked data is announced, we wait
+			 * for it.
+			 */
+			if(*nread == 0 && request->chunked == 0) {
 				uv_timer_stop(request->timer_req);
 				if(request->callback != NULL && request->called == 0) {
 					request->called = 1;
