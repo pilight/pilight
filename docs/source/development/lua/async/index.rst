@@ -6,7 +6,7 @@ The Async functions are used to asynchronously run code.
 - `Timer`_
 - `Thread`_
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.5
 
 - `Event`_
 
@@ -139,7 +139,7 @@ Example
 Event
 -----
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.5
 
 The event library implements an async consumer listener pattern
 

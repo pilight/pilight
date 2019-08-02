@@ -49,7 +49,7 @@ Disabled
 The default configuration to be used with the pilight PCB. When using custom wiring, refer to http://www.wiringx.org for the pin numbering of the various supported devices. If you want to disable the sender or receiver pin, set it to
 -1.
 
-.. deprecated:: nightly
+.. deprecated:: 8.1.5
 
 .. _433lirc:
 .. rubric:: Lirc Kernel Module

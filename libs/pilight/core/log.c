@@ -208,7 +208,11 @@ void _logprintf(int prio, char *file, int line, const char *str, ...) {
 			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
 			snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
 		}
+#ifdef DEBUG
 		pos += sprintf(buffer, "(%s #%d) [%s:%03u] ", file, line, fmt, (unsigned int)tv.tv_usec);
+#else
+		pos += sprintf(buffer, "[%s:%03u] ", fmt, (unsigned int)tv.tv_usec);
+#endif
 
 		switch(prio) {
 			case LOG_WARNING:

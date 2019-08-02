@@ -16,7 +16,7 @@ To get the length of a pilight lua table you need to use the special ``.__len()`
    table[0] = 'foo';
    print(table.__len());
 
-.. versionchanged:: nightly
+.. versionchanged:: 8.1.5
 
 .. note::
 

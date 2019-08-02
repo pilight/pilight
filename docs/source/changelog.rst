@@ -1,7 +1,7 @@
 Changelog
 =========
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.5
 
 .. rubric:: Changes
 
@@ -24,6 +24,7 @@ Changelog
 - Add support for the coap protocol
 - C handler for lua metatables
 - pilight lua metatables are now threadsafe
+- Added IWDS07 contact protocol
 
 .. rubric:: Fixes
 

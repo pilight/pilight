@@ -8,7 +8,7 @@ Various functions to do io
 - `File`_
 - `Dir`_
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.5
 
 - `Serial`_
 - `SPI`_

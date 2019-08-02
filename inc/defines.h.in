@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) CurlyMo
 
 	This file is part of pilight.
 
@@ -22,7 +22,7 @@
 #cmakedefine WEBSERVER
 #cmakedefine EVENTS
 
-#define PILIGHT_VERSION					"8.1.4"
+#define PILIGHT_VERSION					"8.1.5"
 #define PULSE_DIV								34
 #define MAXPULSESTREAMLENGTH		512
 #define EPSILON									0.00001

@@ -1,7 +1,7 @@
 WiringX
 =======
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.5
 
 .. c:function:: userdata wiringX.setup(string platform)
 

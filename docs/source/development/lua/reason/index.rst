@@ -1,12 +1,12 @@
 Reason
 ======
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.5
 
 The pilight reasons that can be used in the pilight lua event interface
 
-- **pilight.reason.REASON_RECEIVED_PULSETRAIN**
-  **pilight.reason.REASON_RECEIVED_OOK**
+- **pilight.reason.RECEIVED_PULSETRAIN**
+  **pilight.reason.RECEIVED_OOK**
 
    Tells pilight that a new pulsetrain of OOK pulses are received.
 
@@ -22,7 +22,7 @@ The pilight reasons that can be used in the pilight lua event interface
 
       The hardware module that received the pulses
 
-- **pilight.reason.REASON_SEND_CODE**
+- **pilight.reason.SEND_CODE**
 
    Tells the hardware module that pilight wants to sent pulses
 

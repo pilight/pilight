@@ -1,7 +1,7 @@
 Log
 ===
 
-.. versionadded:: nightly
+.. versionadded:: 8.1.5
 
 Log messages based on severeness and level of informativeness.
 
