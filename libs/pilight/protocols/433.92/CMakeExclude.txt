@@ -197,6 +197,11 @@ if(${PROTOCOL_KERUI} MATCHES "OFF")
 	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/kerui_d026.h")
 endif()
 
+if(${PROTOCOL_IWDS07} MATCHES "OFF")
+	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/iwds07.c")
+	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/iwds07.h")
+endif()
+
 if(${PROTOCOL_BEAMISH_SWITCH} MATCHES "OFF")
 	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/beamish_switch.c")
 	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/beamish_switch.h")
