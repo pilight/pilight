@@ -767,8 +767,8 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 	}
 #endif
 
-	memset(&addr4, 0, sizeof(addr4));
-	memset(&addr6, 0, sizeof(addr6));
+	memset(&addr4, '\0', sizeof(struct sockaddr_in));
+	memset(&addr6, '\0', sizeof(struct sockaddr_in6));
 	if(prepare_request(&request, type, url, conttype, post, callback, userdata) == 0) {
 		int inet = host2ip(request->host, &ip);
 		switch(inet) {
