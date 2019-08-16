@@ -49,6 +49,7 @@ CuSuite *suite_arp(void);
 CuSuite *suite_http(void);
 CuSuite *suite_ping(void);
 CuSuite *suite_mail(void);
+CuSuite *suite_mqtt(void);
 #ifdef WEBSERVER
 CuSuite *suite_webserver(void);
 CuSuite *suite_webserver_rest(void);
@@ -207,6 +208,7 @@ int RunAllTests(void) {
 	suites[nr++] = suite_arp();
 	suites[nr++] = suite_http(); // ipv4 ported / ipv6 not ported
 	suites[nr++] = suite_mail(); // ipv4 ported / ipv6 not ported
+	suites[nr++] = suite_mqtt(); // ipv4 ported / ipv6 not ported
 	suites[nr++] = suite_coap();
 	suites[nr++] = suite_mdns();
 	// suites[nr++] = suite_lua_panic(); // Ported
