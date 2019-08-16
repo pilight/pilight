@@ -322,7 +322,7 @@ static char *message = "test";
 static char *to = "info@pilight.org";
 
 static void test(void *param);
-uv_timer_t *timer_req = NULL;
+static uv_timer_t *timer_req = NULL;
 
 static void close_cb(uv_handle_t *handle) {
 	if(handle != NULL) {
