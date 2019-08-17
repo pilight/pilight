@@ -10,19 +10,19 @@ local M = {}
 
 function M.check(parameters)
 	if parameters['DEVICE'] == nil then
-		error("toggle action is missing a \"DEVICE\" statement");
+		pilight.log(LOG_ERR, "toggle action is missing a \"DEVICE\" statement");
 	end
 
 	if parameters['BETWEEN'] == nil then
-		error("toggle action is missing a \"BETWEEN ...\" statement");
+		pilight.log(LOG_ERR, "toggle action is missing a \"BETWEEN ...\" statement");
 	end
 
 	if parameters['DEVICE']['order'] ~= 1 or parameters['BETWEEN']['order'] ~= 2 then
-		error("toggle actions are formatted as \"toggle DEVICE ... BETWEEN ...\"");
+		pilight.log(LOG_ERR, "toggle actions are formatted as \"toggle DEVICE ... BETWEEN ...\"");
 	end
 
 	if #parameters['BETWEEN']['value'] ~= 2 or parameters['BETWEEN']['value'][3] ~= nil then
-		error("toggle action \"BETWEEN\" takes two arguments");
+		pilight.log(LOG_ERR, "toggle action \"BETWEEN\" takes two arguments");
 	end
 
 	local nrdev = #parameters['DEVICE']['value'];
@@ -30,12 +30,12 @@ function M.check(parameters)
 	for i = 1, nrdev, 1 do
 		local dev = config.getDevice(parameters['DEVICE']['value'][i]);
 		if dev == nil then
-			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" does not exist");
+			pilight.log(LOG_ERR, "device \"" .. parameters['DEVICE']['value'][i] .. "\" does not exist");
 		end
 		local nrstate = #parameters['BETWEEN']['value'];
 		for x = 1, nrstate, 1 do
 			if dev.hasState == nil or dev.setState == nil or dev.hasState(parameters['BETWEEN']['value'][x]) == false then
-				error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['BETWEEN']['value'][x] .. "\"");
+				pilight.log(LOG_ERR, "device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['BETWEEN']['value'][x] .. "\"");
 			end
 		end
 	end
@@ -50,7 +50,7 @@ function M.thread(thread)
 	local devobj = config.getDevice(devname);
 
 	if devobj.setState(data['new_state']) == false then
-		error("device \"" .. devname .. "\" could not be set to state \"" .. data['new_state'] .. "\"")
+		pilight.log(LOG_ERR, "device \"" .. devname .. "\" could not be set to state \"" .. data['new_state'] .. "\"")
 	end
 
 	devobj.send();

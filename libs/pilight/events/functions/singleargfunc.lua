@@ -8,7 +8,7 @@ local M = {}
 
 function M.run(a, b)
     if a == nil or b ~= nil then
-        error("SINGLEARGFUNC requires one argument")
+        pilight.log(LOG_ERR, "SINGLEARGFUNC requires one argument")
       end
     return a
 end

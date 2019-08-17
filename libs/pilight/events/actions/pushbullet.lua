@@ -14,26 +14,26 @@ function M.check(parameters)
 	end
 
 	if parameters['TITLE'] == nil then
-		error("pushbullet action is missing a \"TITLE\" statement");
+		pilight.log(LOG_ERR, "pushbullet action is missing a \"TITLE\" statement");
 	else
 		if (#parameters['TITLE']['value'] ~= 1 or parameters['TITLE']['value'][2] ~= nil) then
-			error("pushbullet action \"TITLE\" only takes one argument");
+			pilight.log(LOG_ERR, "pushbullet action \"TITLE\" only takes one argument");
 		end
 	end
 
 	if parameters['BODY'] == nil then
-		error("pushbullet action is missing a \"BODY\" statement");
+		pilight.log(LOG_ERR, "pushbullet action is missing a \"BODY\" statement");
 	else
 		if (#parameters['BODY']['value'] ~= 1 or parameters['BODY']['value'][2] ~= nil) then
-			error("pushbullet action \"BODY\" only takes one argument");
+			pilight.log(LOG_ERR, "pushbullet action \"BODY\" only takes one argument");
 		end
 	end
 
 	if parameters['TOKEN'] == nil then
-		error("pushbullet action is missing a \"TOKEN\" statement");
+		pilight.log(LOG_ERR, "pushbullet action is missing a \"TOKEN\" statement");
 	else
 		if (#parameters['TOKEN']['value'] ~= 1 or parameters['TOKEN']['value'][2] ~= nil) then
-			error("pushbullet action \"TOKEN\" only takes one argument");
+			pilight.log(LOG_ERR, "pushbullet action \"TOKEN\" only takes one argument");
 		end
 	end
 
@@ -43,9 +43,9 @@ end
 function M.callback(http)
 	if http ~= nil then
 		if http.getCode() == 200 then
-			error("pushbullet action succeeded with message \"" .. http.getData() .. "\"");
+			pilight.log(LOG_NOTICE, "pushbullet action succeeded with message \"" .. http.getData() .. "\"");
 		else
-			error("pushbullet action failed (" .. http.getCode() .. ") with message \" " .. http.getData() .. "\"");
+			pilight.log(LOG_NOTICE, "pushbullet action failed (" .. http.getCode() .. ") with message \" " .. http.getData() .. "\"");
 		end
 	end
 end

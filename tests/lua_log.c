@@ -20,6 +20,29 @@
 
 #include "alltests.h"
 
+static int _lua_pcall(struct lua_State *L, char *file, int args, int ret) {
+	struct lua_state_t *state = plua_get_current_state(L);
+
+	if(lua_pcall(L, 0, 0, 0) == LUA_ERRRUN) {
+		if(state->error.set == 1) {
+			FREE(state->error.file);
+		}
+		if(lua_type(L, -1) == LUA_TNIL) {
+			logprintf(LOG_ERR, "%s: syntax error", file);
+			lua_remove(L, -1);
+			lua_remove(L, -1);
+		} else if(lua_type(L, -1) == LUA_TSTRING) {
+			logprintf(state->error.level, "%s", lua_tostring(L, -1));
+		}
+		return -1;
+	}
+
+	return 0;
+}
+
+
+#define pluaL_dostring(L, str) (luaL_loadstring(L, str) || _lua_pcall(L, 0, LUA_MULTRET, 0))
+
 static CuTest *gtc = NULL;
 static uv_async_t *async_close_req = NULL;
 static uv_thread_t pth;
@@ -55,25 +78,67 @@ static void test(void *param) {
 	plua_pause_coverage(1);
 	struct lua_state_t *state = plua_get_free_state();
 
-	int ret = luaL_dostring(state->L, "\
-		print(LOG_EMERG);\
-		print(LOG_ALERT);\
-		print(LOG_CRIT);\
-		print(LOG_ERR);\
-		print(LOG_WARNING);\
-		print(LOG_NOTICE);\
-		print(LOG_INFO);\
-		print(LOG_DEBUG);\
-		pilight.log(LOG_EMERG, \"lua emergency\");\
-		pilight.log(LOG_ALERT, \"lua alert\");\
-		pilight.log(LOG_CRIT, \"lua critical\");\
-		pilight.log(LOG_ERR, \"lua test\");\
-		pilight.log(LOG_WARNING, \"lua test\");\
-		pilight.log(LOG_NOTICE, \"lua test\");\
-		pilight.log(LOG_INFO, \"lua test\");\
-		pilight.log(LOG_DEBUG, \"lua test\");\
-	");
-	CuAssertIntEquals(gtc, 0, ret);
+	{
+		int ret = pluaL_dostring(state->L, "\
+			print(LOG_EMERG);\
+			print(LOG_ALERT);\
+			print(LOG_CRIT);\
+			print(LOG_ERR);\
+			print(LOG_WARNING);\
+			print(LOG_NOTICE);\
+			print(LOG_INFO);\
+			print(LOG_DEBUG);\
+		");
+		CuAssertIntEquals(gtc, 0, ret);
+
+		ret = pluaL_dostring(state->L, "\
+			pilight.log(LOG_EMERG, \"lua emergency\");\
+		");
+		CuAssertIntEquals(gtc, 1, ret);
+		lua_remove(state->L, -1);
+
+		ret = pluaL_dostring(state->L, "\
+			pilight.log(LOG_ALERT, \"lua alert\");\
+		");
+		CuAssertIntEquals(gtc, 1, ret);
+		lua_remove(state->L, -1);
+
+		ret = pluaL_dostring(state->L, "\
+			pilight.log(LOG_CRIT, \"lua critical\");\
+		");
+		CuAssertIntEquals(gtc, 1, ret);
+		lua_remove(state->L, -1);
+
+		ret = pluaL_dostring(state->L, "\
+			pilight.log(LOG_ERR, \"lua test\");\
+		");
+		CuAssertIntEquals(gtc, 1, ret);
+		lua_remove(state->L, -1);
+
+		ret = pluaL_dostring(state->L, "\
+			pilight.log(LOG_WARNING, \"lua test\");\
+		");
+		lua_remove(state->L, -1);
+		CuAssertIntEquals(gtc, 1, ret);
+
+		ret = pluaL_dostring(state->L, "\
+			pilight.log(LOG_NOTICE, \"lua test\");\
+		");
+		lua_remove(state->L, -1);
+		CuAssertIntEquals(gtc, 1, ret);
+
+		ret = pluaL_dostring(state->L, "\
+			pilight.log(LOG_INFO, \"lua test\");\
+		");
+		lua_remove(state->L, -1);
+		CuAssertIntEquals(gtc, 1, ret);
+
+		ret = pluaL_dostring(state->L, "\
+			pilight.log(LOG_DEBUG, \"lua test\");\
+		");
+		lua_remove(state->L, -1);
+		CuAssertIntEquals(gtc, 1, ret);
+	}
 
 	plua_clear_state(state);
 
@@ -135,15 +200,15 @@ static void test_lua_log(CuTest *tc) {
 		} else if(i == 2) {
 			CuAssertPtrNotNull(tc, strstr(array[i], "lua critical"));
 		} else if(i == 3) {
-			CuAssertPtrNotNull(tc, strstr(array[i], "ERROR: lua test"));
+			CuAssertPtrNotNull(tc, strstr(array[i], "ERROR: [string \"...\"]:1: lua test"));
 		} else if(i == 4) {
-			CuAssertPtrNotNull(tc, strstr(array[i], "WARNING: lua test"));
+			CuAssertPtrNotNull(tc, strstr(array[i], "WARNING: [string \"...\"]:1: lua test"));
 		} else if(i == 5) {
-			CuAssertPtrNotNull(tc, strstr(array[i], "NOTICE: lua test"));
+			CuAssertPtrNotNull(tc, strstr(array[i], "NOTICE: [string \"...\"]:1: lua test"));
 		} else if(i == 6) {
-			CuAssertPtrNotNull(tc, strstr(array[i], "INFO: lua test"));
+			CuAssertPtrNotNull(tc, strstr(array[i], "INFO: [string \"...\"]:1: lua test"));
 		} else if(i == 7) {
-			CuAssertPtrNotNull(tc, strstr(array[i], "DEBUG: lua test"));
+			CuAssertPtrNotNull(tc, strstr(array[i], "DEBUG: [string \"...\"]:1: lua test"));
 		}
 	}
 	FREE(tmp);

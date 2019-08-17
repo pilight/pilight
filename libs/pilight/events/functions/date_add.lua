@@ -25,7 +25,7 @@ function M.run(a, b, c)
 	local e = nil;
 
 	if c ~= nil then
-		error("DATE_ADD requires two arguments");
+		pilight.log(LOG_ERR, "DATE_ADD requires two arguments");
 	elseif a ~= nil and b ~= nil then
 		local config = pilight.config();
 		local dev = config.getDevice(a);
@@ -41,7 +41,7 @@ function M.run(a, b, c)
 				end
 			end
 			if match == 0 then
-				error(string.format("DATE_FORMAT device \"%s\" is not a datetime protocol", a));
+				pilight.log(LOG_ERR, string.format("DATE_FORMAT device \"%s\" is not a datetime protocol", a));
 			end
 			local datetime = dev.getTable();
 			tm = pilight.datetime.strptime(
@@ -55,16 +55,16 @@ function M.run(a, b, c)
 		end
 		array = split(b, ' ');
 		if tablelength(array) ~= 2 then
-			error(string.format("DATE_ADD got an invalid unit \"%s\"", b));
+			pilight.log(LOG_ERR, string.format("DATE_ADD got an invalid unit \"%s\"", b));
 		end
 		number = array[1];
 		unit = array[2];
 	else
-		error("DATE_ADD requires two arguments");
+		pilight.log(LOG_ERR, "DATE_ADD requires two arguments");
 	end
 
 	if tonumber(number) == nil then
-		error(string.format("DATE_ADD unit parameter must be numeric, \"%s\" given", type(number)));
+		pilight.log(LOG_ERR, string.format("DATE_ADD unit parameter must be numeric, \"%s\" given", type(number)));
 	end
 
 	if unit == 'YEAR' then
@@ -80,7 +80,7 @@ function M.run(a, b, c)
 	elseif unit == 'SECOND' then
 		tm['sec'] = tm['sec'] + number;
 	else
-		error(string.format("DATE_ADD does not accept \"%s\" as a unit", unit));
+		pilight.log(LOG_ERR, string.format("DATE_ADD does not accept \"%s\" as a unit", unit));
 	end
 	local t = os.time(tm);
 	return os.date("%Y-%m-%d %H:%M:%S", t);

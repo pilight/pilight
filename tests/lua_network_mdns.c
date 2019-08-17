@@ -560,32 +560,6 @@ static int call(struct lua_State *L, char *file, char *func) {
 	return 1;
 }
 
-static void plua_overwrite_print(void) {
-	struct lua_state_t *state[NRLUASTATES];
-	struct lua_State *L = NULL;
-	int i = 0;
-
-	for(i=0;i<NRLUASTATES;i++) {
-		state[i] = plua_get_free_state();
-
-		if(state[i] == NULL) {
-			return;
-		}
-		if((L = state[i]->L) == NULL) {
-			uv_mutex_unlock(&state[i]->lock);
-			return;
-		}
-
-		lua_getglobal(L, "_G");
-		lua_pushcfunction(L, plua_print);
-		lua_setfield(L, -2, "print");
-		lua_pop(L, 1);
-	}
-	for(i=0;i<NRLUASTATES;i++) {
-		uv_mutex_unlock(&state[i]->lock);
-	}
-}
-
 static void mdns_wait(void *param) {
 	struct timeval tv;
 	struct sockaddr_in addr;
@@ -960,7 +934,7 @@ static void test_lua_network_mdns_tx(CuTest *tc, int bar) {
 	memtrack();
 
 	plua_init();
-	plua_overwrite_print();
+	plua_override_global("print", plua_print);
 	plua_pause_coverage(1);
 
 	mdns_server_tx();
@@ -1078,7 +1052,7 @@ static void test_lua_network_mdns_rx(CuTest *tc) {
 	test = 1;
 
 	plua_init();
-	plua_overwrite_print();
+	plua_override_global("print", plua_print);
 	plua_pause_coverage(1);
 
 	file = STRDUP(__FILE__);

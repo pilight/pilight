@@ -396,7 +396,31 @@ static void test_event_actions_pushbullet_run(CuTest *tc) {
 	gtc = tc;
 
 	plua_init();
-	plua_override_global("error", plua_error);
+	{
+		struct lua_state_t *state[NRLUASTATES];
+		struct lua_State *L = NULL;
+		int i = 0;
+
+		for(i=0;i<NRLUASTATES;i++) {
+			state[i] = plua_get_free_state();
+
+			if(state[i] == NULL) {
+				return;
+			}
+			if((L = state[i]->L) == NULL) {
+				uv_mutex_unlock(&state[i]->lock);
+				return;
+			}
+
+			lua_getglobal(state[i]->L, "pilight");
+			lua_pushcfunction(L, plua_error);
+			lua_setfield(L, -2, "log");
+			lua_pop(L, 1);
+		}
+		for(i=0;i<NRLUASTATES;i++) {
+			uv_mutex_unlock(&state[i]->lock);
+		}
+	}
 
 	test_set_plua_path(tc, __FILE__, "event_actions_pushbullet.c");
 

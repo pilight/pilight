@@ -18,61 +18,61 @@ local units = {
 
 function M.check(parameters)
 	if parameters['DEVICE'] == nil then
-		error("switch action is missing a \"DEVICE\" statement");
+		pilight.log(LOG_ERR, "switch action is missing a \"DEVICE\" statement");
 	end
 
 	if parameters['TO'] == nil then
-		error("switch action is missing a \"TO ...\" statement");
+		pilight.log(LOG_ERR, "switch action is missing a \"TO ...\" statement");
 	end
 
 	if parameters['DEVICE']['order'] ~= 1 or parameters['TO']['order'] ~= 2 then
-		error("switch actions are formatted as \"switch DEVICE ... TO ...\"");
+		pilight.log(LOG_ERR, "switch actions are formatted as \"switch DEVICE ... TO ...\"");
 	end
 
 	if #parameters['TO']['value'] ~= 1 or parameters['TO']['value'][2] ~= nil then
-		error("switch action \"TO\" only takes one argument");
+		pilight.log(LOG_ERR, "switch action \"TO\" only takes one argument");
 	end
 
 	if parameters['FROM'] ~= nil and (#parameters['FROM']['value'] ~= 1 or parameters['FROM']['value'][2] ~= nil) then
-		error("switch action \"FROM\" only takes one argument");
+		pilight.log(LOG_ERR, "switch action \"FROM\" only takes one argument");
 	end
 
 	if parameters['FOR'] ~= nil then
 		if #parameters['FOR']['value'] ~= 1 or parameters['FOR']['value'][2] ~= nil or parameters['FOR']['value'][1] == nil then
-			error("switch action \"FOR\" only takes one argument");
+			pilight.log(LOG_ERR, "switch action \"FOR\" only takes one argument");
 		else
 			local array = pilight.common.explode(parameters['FOR']['value'][1], " ");
 			if #array ~= 2 then
-				error("switch action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
+				pilight.log(LOG_ERR, "switch action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 			end
 			if units[array[2]] ~= true then
-				error("switch action \"" .. array[2] .. "\" is not a valid unit");
+				pilight.log(LOG_ERR, "switch action \"" .. array[2] .. "\" is not a valid unit");
 			end
 			if tonumber(array[1]) <= 0 then
-				error("switch action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
+				pilight.log(LOG_ERR, "switch action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 			end
 		end
 	end
 
 	if parameters['AFTER'] ~= nil then
 		if #parameters['AFTER']['value'] ~= 1 or parameters['AFTER']['value'][2] ~= nil or parameters['AFTER']['value'][1] == nil then
-			error("switch action \"AFTER\" only takes one argument");
+			pilight.log(LOG_ERR, "switch action \"AFTER\" only takes one argument");
 		else
 			local array = pilight.common.explode(parameters['AFTER']['value'][1], " ");
 			if #array ~= 2 then
-				error("switch action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
+				pilight.log(LOG_ERR, "switch action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 			end
 			if units[array[2]] ~= true then
-				error("switch action \"" .. array[2] .. "\" is not a valid unit");
+				pilight.log(LOG_ERR, "switch action \"" .. array[2] .. "\" is not a valid unit");
 			end
 			if tonumber(array[1]) <= 0 then
-				error("switch action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
+				pilight.log(LOG_ERR, "switch action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 			end
 		end
 	end
 
 	if (parameters['FROM'] ~= nil and parameters['FOR'] == nil) then
-		error("switch action \"FROM\" can only be combined with the \"FOR\" parameter");
+		pilight.log(LOG_ERR, "switch action \"FROM\" can only be combined with the \"FOR\" parameter");
 	end
 
 	local config = pilight.config();
@@ -80,17 +80,17 @@ function M.check(parameters)
 	for i = 1, nrdev, 1 do
 		local dev = config.getDevice(parameters['DEVICE']['value'][i]);
 		if dev == nil then
-			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" does not exist");
+			pilight.log(LOG_ERR, "device \"" .. parameters['DEVICE']['value'][i] .. "\" does not exist");
 		end
 		if dev.hasState ~= nil and dev.setState ~= nil then
 			if dev.hasState(parameters['TO']['value'][1]) == false then
-				error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['TO']['value'][1] .. "\"");
+				pilight.log(LOG_ERR, "device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['TO']['value'][1] .. "\"");
 			end
 			if parameters['FROM'] ~= nil and dev.hasState(parameters['FROM']['value'][1]) == false then
-				error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['FROM']['value'][1] .. "\"");
+				pilight.log(LOG_ERR, "device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['FROM']['value'][1] .. "\"");
 			end
 		else
-			error("device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['TO']['value'][1] .. "\"");
+			pilight.log(LOG_ERR, "device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['TO']['value'][1] .. "\"");
 		end
 	end
 
@@ -104,11 +104,11 @@ function M.timer_for(timer)
 	local devobj = config.getDevice(devname);
 
 	if(devobj.getActionId() ~= data['action_id']) then
-		error("skipping overridden action switch for device " .. devname);
+		pilight.log(LOG_NOTICE, "skipping overridden action switch for device " .. devname);
 	end
 
 	if devobj.setState(data['old_state']) == false then
-		error("device \"" .. devname .. "\" could not be set to state \"" .. data['old_state'] .. "\"")
+		pilight.log(LOG_ERR, "device \"" .. devname .. "\" could not be set to state \"" .. data['old_state'] .. "\"")
 	end
 
 	devobj.send();
@@ -143,11 +143,11 @@ function M.thread(thread)
 	local devobj = config.getDevice(devname);
 
 	if(devobj.getActionId() ~= data['action_id']) then
-		error("skipping overridden action switch for device " .. devname);
+		pilight.log(LOG_NOTICE, "skipping overridden action switch for device " .. devname);
 	end
 
 	if devobj.setState(data['new_state']) == false then
-		error("device \"" .. devname .. "\" could not be set to state \"" .. data['new_state'] .. "\"")
+		pilight.log(LOG_ERR, "device \"" .. devname .. "\" could not be set to state \"" .. data['new_state'] .. "\"")
 	end
 
 	devobj.send();
@@ -164,11 +164,11 @@ function M.timer_after(timer)
 	local devobj = config.getDevice(devname);
 
 	if(devobj.getActionId() ~= data['action_id']) then
-		error("skipping overridden action switch for device " .. devname);
+		pilight.log(LOG_NOTICE, "skipping overridden action switch for device " .. devname);
 	end
 
 	if devobj.setState(data['new_state']) == false then
-		error("device \"" .. devname .. "\" could not be set to state \"" .. data['new_state'] .. "\"")
+		pilight.log(LOG_ERR, "device \"" .. devname .. "\" could not be set to state \"" .. data['new_state'] .. "\"")
 	end
 
 	devobj.send();

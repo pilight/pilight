@@ -9,6 +9,8 @@
 #ifndef _LUA_H_
 #define _LUA_H_
 
+#include <setjmp.h>
+
 #include <luajit-2.0/lua.h>
 #include <luajit-2.0/lualib.h>
 #include <luajit-2.0/lauxlib.h>
@@ -87,6 +89,14 @@ typedef struct lua_state_t {
 		int size;
 		uv_mutex_t lock;
 	} gc;
+
+	struct {
+		int set;
+		int level;
+		char *file;
+		int line;
+	} error;
+	jmp_buf jmp;
 
 	char *file;
 	int line;

@@ -22,7 +22,7 @@ function M.timer(timer)
 
 	local serial = pilight.io.serial(port);
 	if serial.open() == false then
-		error("could not connect to device \"" .. port .. "\"");
+		pilight.log(LOG_ERR, "could not connect to device \"" .. port .. "\"");
 	end
 	serial.read();
 	timer.stop();
@@ -223,24 +223,24 @@ function M.validate()
 
 	for x in pairs(settings) do
 		if x ~= 'comport' then
-			error(x .. "is an unknown parameter")
+			pilight.log(LOG_ERR, x .. "is an unknown parameter")
 		end
 	end
 
 	local port = lookup(data, 'hardware', '433nano', 'comport') or nil;
 
 	if port == nil then
-		error("comport parameter is missing");
+		pilight.log(LOG_ERR, "comport parameter is missing");
 	end
 
 	file = pilight.io.file(port);
 
 	if file.exists() == false then
-		error(port .. " does not exist");
+		pilight.log(LOG_ERR, port .. " does not exist");
 	end
 
 	if file.open("a+") == false then
-		error(port .. " cannot be opened for reading and/or writing");
+		pilight.log(LOG_ERR, port .. " cannot be opened for reading and/or writing");
 	end
 	file.close();
 end
@@ -252,7 +252,7 @@ function M.run()
 	local port = lookup(data, 'hardware', '433nano', 'comport') or nil;
 
 	if port == nil then
-		error("comport parameter is missing");
+		pilight.log(LOG_ERR, "comport parameter is missing");
 	end
 
 	local serial = pilight.io.serial(port);
@@ -260,7 +260,7 @@ function M.run()
 	serial.setParity('n');
 	serial.setCallback("callback");
 	if serial.open() == false then
-		error("could not connect to device \"" .. port .. "\"");
+		pilight.log(LOG_ERR, "could not connect to device \"" .. port .. "\"");
 	end
 	serial.read();
 

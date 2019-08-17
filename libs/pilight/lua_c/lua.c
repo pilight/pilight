@@ -1596,6 +1596,14 @@ void _plua_clear_state(struct lua_state_t *state, char *file, int line) {
 		assert(plua_check_stack(state->L, 0) == 0);
 	}
 
+	state->error.set = 0;
+	state->error.level = 0;
+	state->error.line = -1;
+	if(state->error.file != NULL) {
+		FREE(state->error.file);
+	}
+	state->error.file = NULL;
+
 	uv_mutex_unlock(&state->lock);
 	uv_sem_post(&sem_used_states);
 }
@@ -2253,13 +2261,24 @@ static int plua_atpanic(lua_State *L) {
 	struct lua_state_t *state = plua_get_current_state(L);
 
 	if(state != NULL) {
-		if(state->file != NULL && state->line != -1) {
-			logprintf(LOG_ERR, "(%s #%d) Lua panic (#%d): %s", state->file, state->line, state->idx, lua_tostring(L, -1));
+		if(state->error.set == 1) {
+			/*
+			 * No need to panic :)
+			 */
+			while(lua_gettop(L) > 0) {
+				lua_remove(L, -1);
+			}
+			longjmp(state->jmp, state->idx);
+			return 0;
 		} else {
-			logprintf(LOG_ERR, "Lua panic (#%d): %s", state->idx, lua_tostring(L, -1));
+			if(state->file != NULL && state->line != -1) {
+				logprintf(LOG_ERR, "(%s #%d) Lua panic (#%d): %s", state->file, state->line, state->idx, lua_tostring(L, -1));
+			} else {
+				logprintf(LOG_ERR, "Lua panic (#%d): %s", state->idx, lua_tostring(L, -1));
+			}
+			state->file = NULL;
+			state->line = -1;
 		}
-		state->file = NULL;
-		state->line = -1;
 	} else {
 		logprintf(LOG_ERR, "Lua panic: %s", lua_tostring(L, -1));
 	}
@@ -2302,6 +2321,11 @@ void plua_init(void) {
 		lua_state[i].line = -1;
 
 		lua_atpanic(L, &plua_atpanic);
+		int jmp = setjmp(lua_state[i].jmp);
+		if(jmp > 0) {
+			plua_clear_state(&lua_state[jmp]);
+			return;
+		}
 #ifdef PILIGHT_UNITTEST
 		lua_sethook(L, hook, LUA_MASKLINE, 0);
 #endif
@@ -2517,81 +2541,92 @@ int plua_get_method(struct lua_State *L, char *file, char *method) {
 static int plua_error_handler(lua_State* L) {
 	struct lua_state_t *state = plua_get_current_state(L);
 
-	lua_Debug ar;
-	int level = 0, p = 0;
-	int buffer = 4096;
-	char msg[buffer];
-	memset(&msg, 0, buffer);
-
 	const char *err = lua_tostring(L, -1);
-	p += snprintf(&msg[p], buffer-p, "\n---- LUA STACKTRACE ----\n");
-	p += snprintf(&msg[p], buffer-p, " error: %s\n", err);
-	lua_pop(L, 1);
+	if(state->error.set == 0 || state->error.level <= LOG_CRIT) {
+		lua_Debug ar;
+		int level = 0, p = 0;
+		int buffer = 4096;
+		char msg[buffer];
+		memset(&msg, 0, buffer);
 
-	if(state != NULL) {
-		if(state->file != NULL) {
-			p += snprintf(&msg[p], buffer-p, " file: %s #%d\n", state->file, state->line);
-		}
-		if(state->module != NULL && state->module->btfile != NULL) {
-			p += snprintf(&msg[p], buffer-p, " module: %s #%d\n", state->module->btfile, state->module->btline);
-		}
-	}
-	p += snprintf(&msg[p], buffer-p, "\n");
-	while(lua_getstack(L, level, &ar) == 1) {
-		lua_getinfo(L, "nSfLl", &ar);
+		p += snprintf(&msg[p], buffer-p, "\n---- LUA STACKTRACE ----\n");
+		p += snprintf(&msg[p], buffer-p, " error: %s\n", err);
 		lua_pop(L, 1);
-		p += snprintf(&msg[p], buffer-p, " [#%.3d] %s:%d ", level, ar.short_src, ar.currentline);
 
-		if(ar.name != 0) {
-			p += snprintf(&msg[p], buffer-p, " (%s %s)\n", ar.namewhat, ar.name);
-		} else {
-			p += snprintf(&msg[p], buffer-p, "\n");
-		}
-		level++;
-	}
-
-	p += snprintf(&msg[p], buffer-p, "\n");
-	p += snprintf(&msg[p], buffer-p, " number of element on stack: %d\n", lua_gettop(L));
-	p += snprintf(&msg[p], buffer-p, "\n");
-	int top = lua_gettop(L), i = 0;
-
-	for(i = 1; i <= top; i++) {
-		int t = lua_type(L, i);
-		switch(t) {
-			case LUA_TSTRING:
-				p += snprintf(&msg[p], buffer-p, " %d: '%s'", i, lua_tostring(L, i));
-			break;
-			case LUA_TBOOLEAN:
-				p += snprintf(&msg[p], buffer-p, " %d: %s", i, lua_toboolean(L, i) ? "true" : "false");
-			break;
-			case LUA_TNUMBER:
-				p += snprintf(&msg[p], buffer-p, " %d: %g", i, lua_tonumber(L, i));
-			break;
-			default:
-				p += snprintf(&msg[p], buffer-p, " %d: %s", i, lua_typename(L, t));
-			break;
+		if(state != NULL) {
+			if(state->file != NULL) {
+				p += snprintf(&msg[p], buffer-p, " file: %s #%d\n", state->file, state->line);
+			}
+			if(state->module != NULL && state->module->btfile != NULL) {
+				p += snprintf(&msg[p], buffer-p, " module: %s #%d\n", state->module->btfile, state->module->btline);
+			}
 		}
 		p += snprintf(&msg[p], buffer-p, "\n");
+
+		while(lua_getstack(L, level, &ar) == 1) {
+			lua_getinfo(L, "nSfLl", &ar);
+			lua_pop(L, 1);
+			p += snprintf(&msg[p], buffer-p, " [#%.3d] %s:%d ", level, ar.short_src, ar.currentline);
+
+			if(ar.name != 0) {
+				p += snprintf(&msg[p], buffer-p, " (%s %s)\n", ar.namewhat, ar.name);
+			} else {
+				p += snprintf(&msg[p], buffer-p, "\n");
+			}
+			level++;
+		}
+
+		p += snprintf(&msg[p], buffer-p, "\n");
+		p += snprintf(&msg[p], buffer-p, " number of element on stack: %d\n", lua_gettop(L));
+		p += snprintf(&msg[p], buffer-p, "\n");
+		int top = lua_gettop(L), i = 0;
+
+		for(i = 1; i <= top; i++) {
+			int t = lua_type(L, i);
+			switch(t) {
+				case LUA_TSTRING:
+					p += snprintf(&msg[p], buffer-p, " %d: '%s'", i, lua_tostring(L, i));
+				break;
+				case LUA_TBOOLEAN:
+					p += snprintf(&msg[p], buffer-p, " %d: %s", i, lua_toboolean(L, i) ? "true" : "false");
+				break;
+				case LUA_TNUMBER:
+					p += snprintf(&msg[p], buffer-p, " %d: %g", i, lua_tonumber(L, i));
+				break;
+				default:
+					p += snprintf(&msg[p], buffer-p, " %d: %s", i, lua_typename(L, t));
+				break;
+			}
+			p += snprintf(&msg[p], buffer-p, "\n");
+		}
+		p += snprintf(&msg[p], buffer-p, "\n---- LUA STACKTRACE ----");
+		lua_pushstring(L, msg);
+	} else {
+		lua_pushstring(L, err);
 	}
-	p += snprintf(&msg[p], buffer-p, "\n---- LUA STACKTRACE ----");
-	lua_pushstring(L, msg);
 	return 1;
 }
 
 int plua_pcall(struct lua_State *L, char *file, int args, int ret) {
+	struct lua_state_t *state = plua_get_current_state(L);
 	int hpos = lua_gettop(L) - args;
+
 	lua_pushcfunction(L, plua_error_handler);
 	lua_insert(L, hpos);
-
 	if(lua_pcall(L, args, ret, hpos) == LUA_ERRRUN) {
 		if(lua_type(L, -1) == LUA_TNIL) {
 			logprintf(LOG_ERR, "%s: syntax error", file);
 			lua_remove(L, -1);
 			lua_remove(L, -1);
-			return -1;
-		}
-		if(lua_type(L, -1) == LUA_TSTRING) {
-			logprintf(LOG_ERR, "%s", lua_tostring(L, -1));
+		} else if(lua_type(L, -1) == LUA_TSTRING) {
+			if(state->error.line == -1 || state->error.file == NULL || state->error.set == 0) {
+				logprintf(state->error.level, "%s", lua_tostring(L, -1));
+			} else {
+				_logprintf(state->error.level, (char *)state->error.file, state->error.line, lua_tostring(L, -1));
+			}
+			if(state->error.file != NULL) {
+				FREE(state->error.file);
+			}
 			if(ret == LUA_MULTRET) {
 				lua_remove(L, hpos);
 				lua_remove(L, -1);
@@ -2600,8 +2635,9 @@ int plua_pcall(struct lua_State *L, char *file, int args, int ret) {
 					lua_remove(L, -1);
 				}
 			}
-			return -1;
 		}
+		state->error.set = 0;
+		return -1;
 	}
 
 	lua_remove(L, hpos);
