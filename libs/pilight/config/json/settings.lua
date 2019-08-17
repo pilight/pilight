@@ -35,11 +35,11 @@ function M.read(f)
 	local settings = jobject['settings'];
 
 	if data == nil then
-		error("config data table not properly initialized");
+		pilight.log(LOG_ERR, "config data table not properly initialized");
 	end
 
 	if settings == nil then
-		error('no config settings were given');
+		pilight.log(LOG_ERR, 'no config settings were given');
 	end
 
 	local keys = {
@@ -84,7 +84,7 @@ function M.read(f)
 		end
 
 		if valid == false then
-			error('"' .. k .. '" is not a valid config setting');
+			pilight.log(LOG_ERR, '"' .. k .. '" is not a valid config setting');
 		end
 	end
 
@@ -103,7 +103,7 @@ function M.read(f)
 				local dir = pilight.io.dir(s:match("(.*[\\/])"));
 				if dir.exists() == false then
 					dir.close();
-					error('config setting "' .. v .. '" must contain a valid path');
+					pilight.log(LOG_ERR, 'config setting "' .. v .. '" must contain a valid path');
 				end
 				dir.close();
 			end
@@ -118,7 +118,7 @@ function M.read(f)
 		if settings[v] ~= nil then
 			s = settings[v];
 			if type(tonumber(s)) ~= 'number' or tonumber(s) < 0 then
-				error('config setting "' .. v .. '" must contain a number larger than 0');
+				pilight.log(LOG_ERR, 'config setting "' .. v .. '" must contain a number larger than 0');
 			end
 		end
 	end
@@ -131,7 +131,7 @@ function M.read(f)
 		if settings[v] ~= nil then
 			s = settings[v];
 			if type(s) ~= 'string' or #settings[v] <= 0 then
-				error('config setting "' .. v .. '" must contain a valid string');
+				pilight.log(LOG_ERR, 'config setting "' .. v .. '" must contain a valid string');
 			end
 		end
 	end
@@ -139,7 +139,7 @@ function M.read(f)
 	keys = { 'name', 'adhoc-master' }
 	for k, v in pairs(keys) do
 		if settings[v] ~= nil and #settings[v] > 16 then
-			error('config setting "' .. v .. '" can not contain more than 16 characters');
+			pilight.log(LOG_ERR, 'config setting "' .. v .. '" can not contain more than 16 characters');
 		end
 	end
 
@@ -147,7 +147,7 @@ function M.read(f)
 	if settings[v] ~= nil then
 		s = settings[v];
 		if type(s) ~= 'string' or (s ~= 'server' and s ~= 'client') then
-			error('config setting "' .. v .. ' must be either "server" or "client"');
+			pilight.log(LOG_ERR, 'config setting "' .. v .. ' must be either "server" or "client"');
 		end
 	end
 
@@ -161,7 +161,7 @@ function M.read(f)
 		if settings[v] ~= nil then
 			s = settings[v];
 			if type(tonumber(s)) ~= 'number' or (tonumber(s) ~= 0 and tonumber(s) ~= 1) then
-				error('config setting "' .. v .. '" must be either 0 or 1');
+				pilight.log(LOG_ERR, 'config setting "' .. v .. '" must be either 0 or 1');
 			end
 		end
 	end
@@ -170,17 +170,17 @@ function M.read(f)
 	if settings[v] ~= nil then
 		s = settings[v];
 		if type(tonumber(s)) ~= 'number' or tonumber(s) < 0 or tonumber(s) > 6 then
-			error('config setting "' .. v .. '" must be from 0 till 6');
+			pilight.log(LOG_ERR, 'config setting "' .. v .. '" must be from 0 till 6');
 		end
 	end
 
 	v = 'webserver-authentication';
 	if settings[v] ~= nil then
 		if type(settings[v]) ~= 'table' or settings[v].len() ~= 2 then
-			error('config setting "' .. v .. '" must be in the format of [ "username", "password" ]');
+			pilight.log(LOG_ERR, 'config setting "' .. v .. '" must be in the format of [ "username", "password" ]');
 		end
 		if type(settings[v][1]) ~= 'string' or type(settings[v][2]) ~= 'string' then
-			error('config setting "' .. v .. '" must be in the format of [ "username", "password" ]');
+			pilight.log(LOG_ERR, 'config setting "' .. v .. '" must be in the format of [ "username", "password" ]');
 		end
 	end
 
@@ -192,16 +192,16 @@ function M.read(f)
 	v = 'ntp-servers';
 	if settings[v] ~= nil then
 		if type(settings[v]) ~= 'table' or settings[v].len() == 0 then
-			error('config setting "' .. v .. '" must be in the format of [ \"0.eu.pool.ntp.org\", ... ]');
+			pilight.log(LOG_ERR, 'config setting "' .. v .. '" must be in the format of [ \"0.eu.pool.ntp.org\", ... ]');
 		end
 		if type(settings[v]) == 'table' then
 			for k, x in pairs(settings[v]) do
 				if type(x) ~= 'string' or type(x) ~= 'string' then
-					error('config setting "' .. v .. '" must be in the format of [ \"0.eu.pool.ntp.org\", ... ]');
+					pilight.log(LOG_ERR, 'config setting "' .. v .. '" must be in the format of [ \"0.eu.pool.ntp.org\", ... ]');
 				end
 			end
 		else
-			error('config setting "' .. v .. '" must be in the format of [ \"0.eu.pool.ntp.org\", ... ]');
+			pilight.log(LOG_ERR, 'config setting "' .. v .. '" must be in the format of [ \"0.eu.pool.ntp.org\", ... ]');
 		end
 	end
 
@@ -209,7 +209,7 @@ function M.read(f)
 	if settings[v] ~= nil then
 		s = settings[v];
 		if type(s) ~= 'string' then
-			error('config setting "' .. v .. '" must contain a valid string');
+			pilight.log(LOG_ERR, 'config setting "' .. v .. '" must contain a valid string');
 		end
 	end
 
@@ -228,38 +228,38 @@ function M.read(f)
 					if ip4 ~= nil and #ip4 == 4 then
 						for _, y in pairs(ip4) do
 							if y ~= '*' and (tonumber(y) > 255 or tonumber(y) < 0) then
-								error('config setting "' .. v .. '" must contain a valid ip address');
+								pilight.log(LOG_ERR, 'config setting "' .. v .. '" must contain a valid ip address');
 							end
 						end
 					elseif ip6 ~= nil and #ip6 > 0 then
 						local nc, dc = 0, false;
 						for chunk, colons in ip6:gmatch("([^:]*)(:*)") do
 							if nc > (dc and 7 or 8) then
-								error('config setting "' .. v .. '" must contain a valid ip address');
+								pilight.log(LOG_ERR, 'config setting "' .. v .. '" must contain a valid ip address');
 							end
 							if #chunk > 0 and tonumber(chunk, 16) > 65535 then
-								error('config setting "' .. v .. '" must contain a valid ip address');
+								pilight.log(LOG_ERR, 'config setting "' .. v .. '" must contain a valid ip address');
 							end
 							if #colons > 0 then
 								if #colons > 2 then
-									error('config setting "' .. v .. '" must contain a valid ip address');
+									pilight.log(LOG_ERR, 'config setting "' .. v .. '" must contain a valid ip address');
 								end
 								if #colons == 2 and dc == true then
-									error('config setting "' .. v .. '" must contain a valid ip address');
+									pilight.log(LOG_ERR, 'config setting "' .. v .. '" must contain a valid ip address');
 								end
 								if #colons == 2 and dc == false then dc = true end
 							end
 							nc = nc + 1
 						end
 					else
-						error('config setting "' .. v .. '" must contain a valid ip address');
+						pilight.log(LOG_ERR, 'config setting "' .. v .. '" must contain a valid ip address');
 					end
 				else
-					error('config setting "' .. v .. '" must contain a valid ip address');
+					pilight.log(LOG_ERR, 'config setting "' .. v .. '" must contain a valid ip address');
 				end
 			end
 		else
-			error('config setting "' .. v .. '" must contain a valid ip address');
+			pilight.log(LOG_ERR, 'config setting "' .. v .. '" must contain a valid ip address');
 		end
 	end
 
@@ -269,9 +269,9 @@ function M.read(f)
 	v = 'smtp-sender';
 	if settings[v] ~= nil then
 		if type(settings[v]) ~= 'string' then
-			error('config setting "' .. v .. '" must contain a valid e-mail address');
+			pilight.log(LOG_ERR, 'config setting "' .. v .. '" must contain a valid e-mail address');
 		elseif string.match(settings[v], "^[%w.]+@[%w]+[.][%w]+[%w]?[%w]?$") ~= settings[v] then
-			error('config setting "' .. v .. '" must contain a valid e-mail address');
+			pilight.log(LOG_ERR, 'config setting "' .. v .. '" must contain a valid e-mail address');
 		end
 	end
 
@@ -288,15 +288,15 @@ function M.read(f)
 	end
 
 	if http_port ~= nil and http_port == port then
-		error("config setting \"webserver-http-port\" and \"port\" cannot be the same");
+		pilight.log(LOG_ERR, "config setting \"webserver-http-port\" and \"port\" cannot be the same");
 	end
 
 	if https_port ~= nil and https_port == port then
-		error("config setting \"webserver-https-port\" and \"port\" cannot be the same");
+		pilight.log(LOG_ERR, "config setting \"webserver-https-port\" and \"port\" cannot be the same");
 	end
 
-	if https_port ~= nil and http_port ~= nil and https_port == http_port then
-		error("config setting \"webserver-http-port\" and \"webserver-https-port\" cannot be the same");
+        if https_port ~= nil and http_port ~= nil and https_port == http_port then
+		pilight.log(LOG_ERR, "config setting \"webserver-http-port\" and \"webserver-https-port\" cannot be the same");
 	end
 
 	--
@@ -316,7 +316,7 @@ function M.read(f)
 	end
 
 	if nrkeys > 0 and nrkeys ~= 5 then
-		error('config setting "' .. v .. '" must be set in combination with the smtp-host, smtp-port, smtp-user, smtp-password and smtp-sender settings');
+		pilight.log(LOG_ERR, 'config setting "' .. v .. '" must be set in combination with the smtp-host, smtp-port, smtp-user, smtp-password and smtp-sender settings');
 	end
 
 	local wx = nil;
@@ -328,7 +328,7 @@ function M.read(f)
 		if s ~= "none" then
 			wx = wiringX.setup(s);
 			if type(wx) ~= 'table' then
-				error('config setting "' .. v .. '" must contain a supported gpio platform');
+				pilight.log(LOG_ERR, 'config setting "' .. v .. '" must contain a supported gpio platform');
 			end
 		end
 	end
@@ -340,14 +340,14 @@ function M.read(f)
 	for k, v in pairs(keys) do
 		if settings[v] ~= nil then
 			if settings['gpio-platform'] == nil then
-				error('config setting "' .. v .. '" must contain a supported gpio platform before the firmware gpio can be changed');
+				pilight.log(LOG_ERR, 'config setting "' .. v .. '" must contain a supported gpio platform before the firmware gpio can be changed');
 			end
 			s = settings[v];
 			if type(s) ~= 'number' or s < 0 then
-				error('config setting "' .. v .. '" must contain a number larger than 0');
+				pilight.log(LOG_ERR, 'config setting "' .. v .. '" must contain a number larger than 0');
 			end
 			if wx.hasGPIO(s) == false then
-				error('config setting "' .. v .. '" must contain a valid GPIO number');
+				pilight.log(LOG_ERR, 'config setting "' .. v .. '" must contain a valid GPIO number');
 			end
 		end
 	end
@@ -359,12 +359,12 @@ function M.read(f)
 				s1 = settings[v1];
 				if s1 ~= nil then
 					if v1 ~= v and s1 == s then
-						error('config setting "' .. v .. '" and "' .. v1 ..'" cannot be the same');
+						pilight.log(LOG_ERR, 'config setting "' .. v .. '" and "' .. v1 ..'" cannot be the same');
 					end
 				end
 			end
 			if v1 ~= v and s == pilight.default[v1:upper():gsub('-', '_')] then
-				error('config setting "' .. v .. '" value is already the default gpio of "' .. v1 ..'"');
+				pilight.log(LOG_ERR, 'config setting "' .. v .. '" value is already the default gpio of "' .. v1 ..'"');
 			end
 		end
 	end
@@ -383,15 +383,15 @@ function M.set(key, idx, val)
 	end
 
 	if data == nil then
-		error("config data table not properly initialized");
+		pilight.log(LOG_ERR, "config data table not properly initialized");
 	end
 
 	if data['settings'] == nil then
-		error("config data table not properly initialized");
+		pilight.log(LOG_ERR, "config data table not properly initialized");
 	end
 
 	if data['settings'][key] == nil then
-		error("config data table not properly initialized");
+		pilight.log(LOG_ERR, "config data table not properly initialized");
 	end
 
 	data['settings'][key] = val;
@@ -408,7 +408,7 @@ function M.get(key, idx)
 	end
 
 	if data == nil or data['settings'] == nil then
-		error("config data table not properly initialized");
+		pilight.log(LOG_ERR, "config data table not properly initialized");
 	end
 
 	if type(data['settings'][key]) == 'table' then

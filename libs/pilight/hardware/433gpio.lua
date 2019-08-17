@@ -26,7 +26,7 @@ function M.send(timer)
 	local wx = wiringX.setup(platform);
 
 	if sender == nil then
-		error("sender parameter missing");
+		pilight.log(LOG_ERR, "sender parameter missing");
 	end
 
 	local data = data2.unshift();
@@ -155,7 +155,7 @@ function M.validate()
 
 	for x in pairs(settings) do
 		if x ~= 'sender' and x ~= 'receiver' then
-			error(x .. "is an unknown parameter")
+			pilight.log(LOG_ERR, x .. "is an unknown parameter")
 		end
 	end
 
@@ -163,60 +163,60 @@ function M.validate()
 	local sender = data['hardware']['433gpio']['sender'];
 
 	if receiver == nil then
-		error("receiver parameter missing");
+		pilight.log(LOG_ERR, "receiver parameter missing");
 	end
 
 	if receiver == nil then
-		error("sender parameter missing");
+		pilight.log(LOG_ERR, "sender parameter missing");
 	end
 
 	if platform == nil or platform == 'none' then
-		error("no gpio-platform configured");
+		pilight.log(LOG_ERR, "no gpio-platform configured");
 	end
 
 	obj = wiringX.setup(platform);
 
 	if obj == nil then
-		error(platform .. " is an invalid gpio-platform");
+		pilight.log(LOG_ERR, platform .. " is an invalid gpio-platform");
 	end
 	if receiver == nil then
-		error("no receiver parameter set");
+		pilight.log(LOG_ERR, "no receiver parameter set");
 	end
 	if sender == nil then
-		error("no sender parameter set");
+		pilight.log(LOG_ERR, "no sender parameter set");
 	end
 	if type(sender) ~= 'number' then
-		error("the sender parameter must be a number, but a " .. type(sender) .. " was given");
+		pilight.log(LOG_ERR, "the sender parameter must be a number, but a " .. type(sender) .. " was given");
 	end
 	if type(receiver) ~= 'number' then
-		error("the receiver parameter must be a number, but a " .. type(receiver) .. " was given");
+		pilight.log(LOG_ERR, "the receiver parameter must be a number, but a " .. type(receiver) .. " was given");
 	end
 	if sender < -1 then
-		error("the sender parameter cannot be " .. tostring(sender));
+		pilight.log(LOG_ERR, "the sender parameter cannot be " .. tostring(sender));
 	end
 	if receiver < -1 then
-		error("the receiver parameter cannot be " .. tostring(receiver));
+		pilight.log(LOG_ERR, "the receiver parameter cannot be " .. tostring(receiver));
 	end
 	if receiver == sender then
-		error("sender and receiver cannot be the same GPIO");
+		pilight.log(LOG_ERR, "sender and receiver cannot be the same GPIO");
 	end
 	if sender > -1 then
 		if obj.hasGPIO(sender) == false then
-			error(sender .. " is an invalid sender GPIO");
+			pilight.log(LOG_ERR, sender .. " is an invalid sender GPIO");
 		end
 		if obj.pinMode(sender, wiringX.PINMODE_OUTPUT) == false then
-			error("GPIO #" .. sender .. " cannot be set to output mode");
+			pilight.log(LOG_ERR, "GPIO #" .. sender .. " cannot be set to output mode");
 		end
 	end
 	if receiver > -1 then
 		if obj.hasGPIO(receiver) == false then
-			error(receiver .. " is an invalid receiver GPIO");
+			pilight.log(LOG_ERR, receiver .. " is an invalid receiver GPIO");
 		end
 		if obj.pinMode(receiver, wiringX.PINMODE_INPUT) == false then
-			error("GPIO #" .. receiver .. " cannot be set to input mode");
+			pilight.log(LOG_ERR, "GPIO #" .. receiver .. " cannot be set to input mode");
 		end
 		if obj.ISR(receiver, wiringX.ISR_MODE_BOTH, "callback", 250) == false then
-			error("GPIO #" .. receiver .. " cannot be configured as interrupt");
+			pilight.log(LOG_ERR, "GPIO #" .. receiver .. " cannot be configured as interrupt");
 		end
 	end
 end

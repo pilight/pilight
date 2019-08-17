@@ -8,13 +8,13 @@ local M = {}
 
 function M.run(a, b, c)
 	if (a == nil or b == nil) or c ~= nil then
-		error("RANDOM requires two arguments");
+		pilight.log(LOG_ERR, "RANDOM requires two arguments");
 	end
 	if tonumber(a) == nil then
-		error(string.format("RANDOM argument #1 expected number, \"%s\" given", type(a)));
+		pilight.log(LOG_ERR, string.format("RANDOM argument #1 expected number, \"%s\" given", type(a)));
 	end
 	if tonumber(b) == nil then
-		error(string.format("RANDOM argument #2 expected number, \"%s\" given", type(b)));
+		pilight.log(LOG_ERR, string.format("RANDOM argument #2 expected number, \"%s\" given", type(b)));
 	end
 
 	return pilight.common.random(tonumber(a), tonumber(b));

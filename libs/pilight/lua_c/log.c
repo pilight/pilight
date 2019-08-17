@@ -70,7 +70,14 @@ int plua_log(struct lua_State *L) {
 		pluaL_error(L, "%d is an invalid loglevel", loglevel);
 	}
 
-	logprintf(loglevel, msg);
+	struct lua_state_t *state = plua_get_current_state(L);
+	state->error.set = 1;
+	state->error.level = loglevel;
+	state->error.line = line;
+	if((state->error.file = STRDUP((char *)file)) == NULL) {
+		OUT_OF_MEMORY
+	}
+	luaL_error(L, msg);
 
 	assert(lua_gettop(L) == 0);
 
