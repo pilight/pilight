@@ -33,8 +33,8 @@ int plua_log(struct lua_State *L) {
 		pluaL_error(L, "log requires 2 arguments, %d given", lua_gettop(L));
 	}
 
-	int loglevel = 0;
-	const char *msg = NULL;
+	int loglevel = 0, line = -1;
+	const char *msg = NULL, *file = NULL;
 
 	{
 		char buf[128] = { '\0' }, *p = buf;
@@ -66,20 +66,37 @@ int plua_log(struct lua_State *L) {
 		}
 	}
 
+	lua_Debug ar;
+	if(lua_getstack(L, 1, &ar)) {
+		lua_getinfo(L, "Sl", &ar);
+		if(ar.currentline > 0) {  /* is there info? */
+			file = ar.short_src;
+			line = ar.currentline;
+		}
+	}
+
 	if(loglevel < 0 || loglevel > LOG_DEBUG) {
 		pluaL_error(L, "%d is an invalid loglevel", loglevel);
 	}
 
-	struct lua_state_t *state = plua_get_current_state(L);
-	state->error.set = 1;
-	state->error.level = loglevel;
-	state->error.line = line;
-	if((state->error.file = STRDUP((char *)file)) == NULL) {
-		OUT_OF_MEMORY
+	if(loglevel <= LOG_ERR) {
+		struct lua_state_t *state = plua_get_current_state(L);
+		state->error.set = 1;
+		state->error.level = loglevel;
+		state->error.line = line;
+		if((state->error.file = STRDUP((char *)file)) == NULL) {
+			OUT_OF_MEMORY
+		}
+		luaL_error(L, msg);
+	} else {
+		if(line == -1 || file == NULL) {
+			logprintf(loglevel, "%s", msg);
+		} else {
+			_logprintf(loglevel, (char *)file, line, msg);
+		}
 	}
-	luaL_error(L, msg);
 
-	assert(lua_gettop(L) == 0);
+	assert(plua_check_stack(L, 0) == 0);
 
 	return 0;
 }
