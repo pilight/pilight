@@ -164,6 +164,7 @@ function M.thread(thread)
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		pilight.log(LOG_NOTICE, "skipping overridden action label for device " .. devname);
+		return;
 	end
 
 	if data['new_color'] ~= nil then
@@ -193,6 +194,7 @@ function M.timer_after(timer)
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		pilight.log(LOG_NOTICE, "skipping overridden action label for device " .. devname);
+		return;
 	end
 
 	if data['new_color'] ~= nil then

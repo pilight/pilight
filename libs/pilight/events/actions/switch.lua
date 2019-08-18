@@ -105,6 +105,7 @@ function M.timer_for(timer)
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		pilight.log(LOG_NOTICE, "skipping overridden action switch for device " .. devname);
+		return;
 	end
 
 	if devobj.setState(data['old_state']) == false then
@@ -144,6 +145,7 @@ function M.thread(thread)
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		pilight.log(LOG_NOTICE, "skipping overridden action switch for device " .. devname);
+		return;
 	end
 
 	if devobj.setState(data['new_state']) == false then
@@ -165,6 +167,7 @@ function M.timer_after(timer)
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		pilight.log(LOG_NOTICE, "skipping overridden action switch for device " .. devname);
+		return;
 	end
 
 	if devobj.setState(data['new_state']) == false then

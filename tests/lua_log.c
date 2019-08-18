@@ -117,27 +117,11 @@ static void test(void *param) {
 
 		ret = pluaL_dostring(state->L, "\
 			pilight.log(LOG_WARNING, \"lua test\");\
-		");
-		lua_remove(state->L, -1);
-		CuAssertIntEquals(gtc, 1, ret);
-
-		ret = pluaL_dostring(state->L, "\
 			pilight.log(LOG_NOTICE, \"lua test\");\
-		");
-		lua_remove(state->L, -1);
-		CuAssertIntEquals(gtc, 1, ret);
-
-		ret = pluaL_dostring(state->L, "\
 			pilight.log(LOG_INFO, \"lua test\");\
-		");
-		lua_remove(state->L, -1);
-		CuAssertIntEquals(gtc, 1, ret);
-
-		ret = pluaL_dostring(state->L, "\
 			pilight.log(LOG_DEBUG, \"lua test\");\
 		");
-		lua_remove(state->L, -1);
-		CuAssertIntEquals(gtc, 1, ret);
+		CuAssertIntEquals(gtc, 0, ret);
 	}
 
 	plua_clear_state(state);
@@ -202,13 +186,13 @@ static void test_lua_log(CuTest *tc) {
 		} else if(i == 3) {
 			CuAssertPtrNotNull(tc, strstr(array[i], "ERROR: [string \"...\"]:1: lua test"));
 		} else if(i == 4) {
-			CuAssertPtrNotNull(tc, strstr(array[i], "WARNING: [string \"...\"]:1: lua test"));
+			CuAssertPtrNotNull(tc, strstr(array[i], "WARNING: lua test"));
 		} else if(i == 5) {
-			CuAssertPtrNotNull(tc, strstr(array[i], "NOTICE: [string \"...\"]:1: lua test"));
+			CuAssertPtrNotNull(tc, strstr(array[i], "NOTICE: lua test"));
 		} else if(i == 6) {
-			CuAssertPtrNotNull(tc, strstr(array[i], "INFO: [string \"...\"]:1: lua test"));
+			CuAssertPtrNotNull(tc, strstr(array[i], "INFO: lua test"));
 		} else if(i == 7) {
-			CuAssertPtrNotNull(tc, strstr(array[i], "DEBUG: [string \"...\"]:1: lua test"));
+			CuAssertPtrNotNull(tc, strstr(array[i], "DEBUG: lua test"));
 		}
 	}
 	FREE(tmp);

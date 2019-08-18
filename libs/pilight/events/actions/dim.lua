@@ -279,6 +279,7 @@ function M.thread(thread)
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		pilight.log(LOG_NOTICE, "skipping overridden action dim for device " .. devname);
+		return;
 	end
 
 	if devobj.setState("on") == false then
@@ -304,6 +305,7 @@ function M.timer_after(timer)
 
 	if(devobj.getActionId() ~= data['action_id']) then
 		pilight.log(LOG_NOTICE, "skipping overridden action dim for device " .. devname);
+		return;
 	end
 
 	if devobj.setState("on") == false then

@@ -79,14 +79,22 @@ int plua_log(struct lua_State *L) {
 		pluaL_error(L, "%d is an invalid loglevel", loglevel);
 	}
 
-	struct lua_state_t *state = plua_get_current_state(L);
-	state->error.set = 1;
-	state->error.level = loglevel;
-	state->error.line = line;
-	if((state->error.file = STRDUP((char *)file)) == NULL) {
-		OUT_OF_MEMORY
+	if(loglevel <= LOG_ERR) {
+		struct lua_state_t *state = plua_get_current_state(L);
+		state->error.set = 1;
+		state->error.level = loglevel;
+		state->error.line = line;
+		if((state->error.file = STRDUP((char *)file)) == NULL) {
+			OUT_OF_MEMORY
+		}
+		luaL_error(L, msg);
+	} else {
+		if(line == -1 || file == NULL) {
+			logprintf(loglevel, "%s", msg);
+		} else {
+			_logprintf(loglevel, (char *)file, line, msg);
+		}
 	}
-	luaL_error(L, msg);
 
 	assert(plua_check_stack(L, 0) == 0);
 
