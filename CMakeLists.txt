@@ -158,6 +158,9 @@ else()
 	add_definitions(-DHASH="${git_ver}-nightly-${git_hash}")
 endif()
 
+string(TOUPPER ${CMAKE_BUILD_TYPE} BUILD_TYPE)
+add_definitions(-D${BUILD_TYPE})
+
 file(MD5 ${PROJECT_SOURCE_DIR}/res/pilight.pem md5sum)
 add_definitions(-DPILIGHT_PEM_MD5="${md5sum}")
 
