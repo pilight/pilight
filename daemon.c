@@ -1206,6 +1206,12 @@ static void socket_parse_data(int i, char *buffer) {
 					}
 					tmp_clients = tmp_clients->next;
 				}
+				/*
+				 * Client did not identify itself first.
+				 */
+				if(client == NULL && strcmp(action, "identify") != 0) {
+					goto error;
+				}
 				if(strcmp(action, "identify") == 0) {
 					/* Check if client doesn't already exist */
 					if(exists == 0) {
@@ -1510,6 +1516,7 @@ static void socket_parse_data(int i, char *buffer) {
 		}
 	}
 	if(error == 1) {
+error:
 		client_remove(sd);
 		socket_close(sd);
 	}
