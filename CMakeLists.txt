@@ -6,7 +6,9 @@ project(pilight)
 set(VERSION 8.1.5)
 
 set(MODULESPACK OFF)
-set(CMAKE_BUILD_TYPE Debug)
+if(NOT CMAKE_BUILD_TYPE MATCHES "(Release|Debug)")
+	set(CMAKE_BUILD_TYPE Release)
+endif()
 
 set(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
 set(CPACK_DEB_COMPONENT_INSTALL TRUE)
