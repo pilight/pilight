@@ -15,6 +15,8 @@ function M.timer(timer)
 	local config = pilight.config();
 	local data = config.getData();
 	local port = lookup(data , 'hardware', '433nano', 'comport') or nil;
+	local data1 = timer.getUserdata();
+	data1['write'] = 0;
 
 	if port == nil then
 		return;
@@ -23,6 +25,7 @@ function M.timer(timer)
 	local serial = pilight.io.serial(port);
 	if serial.open() == false then
 		pilight.log(LOG_ERR, "could not connect to device \"" .. port .. "\"");
+		return;
 	end
 	serial.read();
 	timer.stop();
@@ -204,6 +207,7 @@ function M.callback(rw, serial, line)
 		serial.read();
 	elseif rw == 'disconnect' then
 		local timer = pilight.async.timer();
+		timer.setUserdata(serial.getUserdata()());
 		timer.setCallback("timer");
 		timer.setTimeout(1000);
 		timer.setRepeat(1000);
