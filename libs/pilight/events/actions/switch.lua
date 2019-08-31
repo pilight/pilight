@@ -89,8 +89,6 @@ function M.check(parameters)
 			if parameters['FROM'] ~= nil and dev.hasState(parameters['FROM']['value'][1]) == false then
 				pilight.log(LOG_ERR, "device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['FROM']['value'][1] .. "\"");
 			end
-		else
-			pilight.log(LOG_ERR, "device \"" .. parameters['DEVICE']['value'][i] .. "\" can't be set to state \"" .. parameters['TO']['value'][1] .. "\"");
 		end
 	end
 
