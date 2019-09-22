@@ -285,15 +285,15 @@ function M.read(f)
 		https_port = settings['webserver-https-port'];
 	end
 
-	if http_port == port then
+	if http_port ~= nil and http_port == port then
 		pilight.log(LOG_ERR, "config setting \"webserver-http-port\" and \"port\" cannot be the same");
 	end
 
-	if https_port == port then
+	if https_port ~= nil and https_port == port then
 		pilight.log(LOG_ERR, "config setting \"webserver-https-port\" and \"port\" cannot be the same");
 	end
 
-	if https_port == http_port then
+	if http_port ~= nil and https_port ~= nil and https_port == http_port then
 		pilight.log(LOG_ERR, "config setting \"webserver-http-port\" and \"webserver-https-port\" cannot be the same");
 	end
 
