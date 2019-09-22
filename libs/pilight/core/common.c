@@ -478,6 +478,7 @@ void alpha_random(char *s, const int len) {
 			"abcdefghijklmnopqrstuvwxyz";
 	int i = 0;
 
+	srand(time(NULL));
 	for(i = 0; i < len; ++i) {
 			s[i] = alphanum[(unsigned int)rand() % (sizeof(alphanum) - 1)];
 	}
