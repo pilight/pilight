@@ -106,7 +106,7 @@ int config_callback_read(lua_State *L, char *module, char *string) {
 	int x = 0;
 
 	if(state == NULL) {
-		logprintf(LOG_ERR, "could not lua storage settings module");
+		logprintf(LOG_ERR, "could not lua storage %s module", module);
 		return -1;
 	}
 
