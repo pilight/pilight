@@ -10,6 +10,9 @@
 #define _LUA_ASYNC_H_
 
 #include "lua.h"
+#include "async/timer.h"
+#include "async/thread.h"
+#include "async/event.h"
 
 extern int plua_async_thread(struct lua_State *L);
 extern int plua_async_timer(struct lua_State *L);

@@ -102,7 +102,9 @@ typedef struct mqtt_client_t {
 	int side;
 	int step;
 
-	void (*callback)(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt);
+	void *userdata;
+
+	void (*callback)(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, void *userdata);
 
 	uv_timer_t *timer_req;
 
@@ -135,6 +137,11 @@ enum mqtt_connection_t {
 #define MQTT_CONNECTED     15
 #define MQTT_DISCONNECTED  16
 
+#define MQTT_QOS1						101
+#define MQTT_QOS2						102
+#define MQTT_DUB						103
+#define MQTT_RETAIN					104
+
 int mqtt_encode(struct mqtt_pkt_t *pkt, unsigned char **buf, unsigned int *len);
 int mqtt_decode(struct mqtt_pkt_t ***pkt, unsigned char *buf, unsigned int len, unsigned int *nr);
 
@@ -163,7 +170,7 @@ int mqtt_disconnect(struct mqtt_client_t *client);
 void mqtt_free(struct mqtt_pkt_t *pkt);
 void mqtt_dump(struct mqtt_pkt_t *pkt);
 
-int mqtt_client(char *server, int port, char *clientid, char *willtopic, char *willmsg, void (*callback)(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt));
+int mqtt_client(char *server, int port, char *clientid, char *willtopic, char *willmsg, void (*callback)(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, void *userdata), void *userdata);
 void mqtt_client_remove(uv_poll_t *req, int disconnect);
 int mqtt_server(int port);
 void mqtt_gc(void);
