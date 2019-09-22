@@ -28,6 +28,7 @@
 #include "../core/common.h"
 #include "../core/dso.h"
 #include "../core/log.h"
+#include "../core/mqtt.h"
 #include "../protocols/protocol.h"
 #include "../config/config.h"
 
@@ -112,6 +113,31 @@ static const struct {
 	{ "REASON_ARP_CHANGED_DEVICE", REASON_ARP_CHANGED_DEVICE },
 	{ "REASON_LOG", REASON_LOG },
 	{ "REASON_END", REASON_END },
+};
+
+static const struct {
+	char *name;
+	int number;
+} pilight_mqtt[] = {
+	{ "MQTT_CONNECT", MQTT_CONNECT },
+	{ "MQTT_CONNACK", MQTT_CONNACK },
+	{ "MQTT_PUBLISH", MQTT_PUBLISH },
+	{ "MQTT_PUBACK", MQTT_PUBACK },
+	{ "MQTT_PUBREC", MQTT_PUBREC },
+	{ "MQTT_PUBREL", MQTT_PUBREL },
+	{ "MQTT_PUBACK", MQTT_PUBACK },
+	{ "MQTT_PUBCOMP", MQTT_PUBCOMP },
+	{ "MQTT_SUBSCRIBE", MQTT_SUBSCRIBE },
+	{ "MQTT_UNSUBSCRIBE", MQTT_UNSUBSCRIBE },
+	{ "MQTT_UNSUBACK", MQTT_UNSUBACK },
+	{ "MQTT_PINGREQ", MQTT_PINGREQ },
+	{ "MQTT_PINGRESP", MQTT_PINGRESP },
+	{ "MQTT_DISCONNECT", MQTT_DISCONNECT },
+	{ "MQTT_CONNECTED", MQTT_CONNECTED },
+	{ "MQTT_RETAIN", MQTT_RETAIN },
+	{ "MQTT_DUB", MQTT_DUB },
+	{ "MQTT_QOS1", MQTT_QOS1 },
+	{ "MQTT_QOS2", MQTT_QOS2 },
 };
 
 static const struct {
@@ -236,6 +262,12 @@ void plua_register_library(struct lua_State *L) {
 	for(i=0;i<len;i++) {
 		lua_pushnumber(L, pilight_log[i].number);
 		lua_setglobal(L, pilight_log[i].name);
+	}
+
+	len = sizeof(pilight_mqtt)/sizeof(pilight_mqtt[0]);
+	for(i=0;i<len;i++) {
+		lua_pushnumber(L, pilight_mqtt[i].number);
+		lua_setglobal(L, pilight_mqtt[i].name);
 	}
 
 	/*
