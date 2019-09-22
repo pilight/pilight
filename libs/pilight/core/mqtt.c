@@ -123,7 +123,7 @@ void mqtt_gc(void) {
 		struct mqtt_client_t *node = NULL;
 		while(mqtt_clients) {
 			node = mqtt_clients->next;
-			mqtt_client_remove(mqtt_clients->poll_req, 0);
+			poll_close_cb(mqtt_clients->poll_req);
 			mqtt_clients = node;
 		}
 	}
@@ -133,7 +133,11 @@ void mqtt_gc(void) {
 		poll_server_req = NULL;
 	}
 
+#ifdef _WIN32
 	uv_mutex_unlock(&mqtt_lock);
+#else
+	pthread_mutex_unlock(&mqtt_lock);
+#endif
 	return;
 }
 
@@ -331,14 +335,11 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 					logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
 					/*LCOV_EXCL_STOP*/
 				}
-
 				uv_custom_poll_free(custom_poll_data);
 				currP->poll_req->data = NULL;
 			}
 
-			if(currP->side == SERVER_SIDE) {
-				uv_timer_stop(currP->timer_req);
-			}
+			uv_timer_stop(currP->timer_req);
 			FREE(currP);
 			break;
 		}
@@ -356,7 +357,6 @@ void mqtt_dump(struct mqtt_pkt_t *pkt) {
 	printf("-------------------\n");
 	printf("type: %d\n", pkt->type);
 	if(pkt->type == MQTT_PUBLISH ||
-		 pkt->type == MQTT_PUBCOMP ||
 		 pkt->type == MQTT_SUBACK) {
 		printf("dub: %d\n", pkt->dub);
 		printf("qos: %d\n", pkt->qos);
@@ -986,6 +986,10 @@ static void mqtt_client_timeout(uv_timer_t *handle) {
 	struct mqtt_client_t *client = handle->data;
 	uv_poll_t *poll_req = client->poll_req;
 
+	if(client->timer_req != NULL) {
+		uv_timer_stop(client->timer_req);
+	}
+
 	uv_custom_close(poll_req);
 #ifdef _WIN32
 	uv_mutex_unlock(&mqtt_lock);
@@ -1124,7 +1128,11 @@ struct mqtt_client_t *mqtt_client_add(uv_poll_t *req, int side, struct mqtt_pkt_
 		}
 
 		if(node->keepalive > 0) {
+#ifdef PILIGHT_UNITTEST
+			uv_timer_start(node->timer_req , mqtt_client_timeout, (node->keepalive*1.5)*100, 0);
+#else
 			uv_timer_start(node->timer_req , mqtt_client_timeout, (node->keepalive*1.5)*1000, 0);
+#endif
 		}
 	}
 
@@ -1231,7 +1239,7 @@ static void client_close_cb(uv_poll_t *req) {
 	struct mqtt_client_t *client = custom_poll_data->data;
 
 	client->step = MQTT_DISCONNECTED;
-	client->callback(client, NULL);
+	client->callback(client, NULL, client->userdata);
 
 	if(started == 1) {
 		mqtt_client_remove(client->poll_req, 1);
@@ -1389,7 +1397,7 @@ static void mqtt_process_publish(uv_poll_t *req, struct mqtt_pkt_t *pkt) {
 									uv_timer_init(uv_default_loop(), message->timer_req);
 									if(node->keepalive > 0) {
 #ifdef PILIGHT_UNITTEST
-										uv_timer_start(message->timer_req, mqtt_message_resend, 500, 500);
+										uv_timer_start(message->timer_req, mqtt_message_resend, 100, 100);
 #else
 										uv_timer_start(message->timer_req, mqtt_message_resend, 3000, 3000);
 #endif
@@ -1915,14 +1923,15 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 					switch(pkt[i]->type) {
 						case MQTT_CONNACK: {
 							if(client->step == MQTT_CONNACK) {
+								uv_timer_stop(client->timer_req);
 								client->step = MQTT_CONNECTED;
-								client->callback(client, pkt[i]);
+								client->callback(client, pkt[i], client->userdata);
 							} else {
 								// error
 							}
 						} break;
 						default: {
-							client->callback(client, pkt[i]);
+							client->callback(client, pkt[i], client->userdata);
 						} break;
 					}
 				}
@@ -1947,7 +1956,11 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			}
 			if(node->poll_req == req) {
 				if(node->keepalive > 0) {
+#ifdef PILIGHT_UNITTEST
+					uv_timer_start(node->timer_req , mqtt_client_timeout, (node->keepalive*1.5)*100, 0);
+#else
 					uv_timer_start(node->timer_req , mqtt_client_timeout, (node->keepalive*1.5)*1000, 0);
+#endif
 				}
 			}
 		}
@@ -2184,7 +2197,7 @@ free:
 	/*LCOV_EXCL_STOP*/
 }
 
-int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willmsg, void (*callback)(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt)) {
+int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willmsg, void (*callback)(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, void *userdata), void *userdata) {
 	if(willtopic != NULL && willmsg == NULL) {
 		return -1;
 	} else if(willmsg != NULL && willtopic == NULL) {
@@ -2194,6 +2207,7 @@ int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willm
 		return -1;
 	}
 
+	struct mqtt_client_t *client = NULL;
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct sockaddr_in addr4;
 	int sockfd = 0, r = 0;
@@ -2244,7 +2258,6 @@ int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willm
 		}
 	}
 
-	struct mqtt_client_t *client = NULL;
 	uv_poll_t *poll_req = NULL;
 	if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -2263,12 +2276,19 @@ int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willm
 	client->side = CLIENT_SIDE;
 	client->step = MQTT_CONNECT;
 	client->callback = callback;
+	client->userdata = userdata;
+
+	if((client->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
 
 	uv_custom_poll_init(&custom_poll_data, poll_req, client);
 	custom_poll_data->is_ssl = 0;
 	custom_poll_data->write_cb = client_write_cb;
 	custom_poll_data->read_cb = client_read_cb;
 	custom_poll_data->close_cb = client_close_cb;
+
+	client->timer_req->data = client;
 
 	r = uv_poll_init_socket(uv_default_loop(), client->poll_req, sockfd);
 	if(r != 0) {
@@ -2279,6 +2299,12 @@ int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willm
 		/*LCOV_EXCL_STOP*/
 	}
 
+	uv_timer_init(uv_default_loop(), client->timer_req);
+#ifdef PILIGHT_UNITTEST
+	uv_timer_start(client->timer_req, (void (*)(uv_timer_t *))mqtt_client_timeout, 100, 0);
+#else
+	uv_timer_start(client->timer_req, (void (*)(uv_timer_t *))mqtt_client_timeout, 3000, 0);
+#endif
 
 	uv_custom_write(client->poll_req);
 
@@ -2286,6 +2312,11 @@ int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willm
 
 /*LCOV_EXCL_START*/
 free:
+	if(client != NULL) {
+		if(client->timer_req != NULL) {
+			uv_timer_stop(client->timer_req);
+		}
+	}
 	if(custom_poll_data != NULL) {
 		uv_custom_poll_free(custom_poll_data);
 	}
