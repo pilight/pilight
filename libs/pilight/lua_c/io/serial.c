@@ -383,15 +383,20 @@ static void plua_io_serial_read_callback(uv_fs_t *req) {
 		return;
 	}
 	serial->rrunning = 1;
+
 	if((int)len < 0) {
 		memset(serial->rbuffer, 0, BUFFER_SIZE);
 		logprintf(LOG_ERR, "read error: %s", uv_strerror(req->result));
+		if(access(serial->file, F_OK) == -1) {
+			plua_io_serial_callback("disconnect", req);
+			goto stop;
+		}
 	} else if((int)len == 0) {
 		memset(serial->rbuffer, 0, BUFFER_SIZE);
 		memcpy(&serial->timestamp.first, &serial->timestamp.second, sizeof(struct timespec));
 		clock_gettime(CLOCK_MONOTONIC, &serial->timestamp.second);
 		if((((double)serial->timestamp.second.tv_sec + 1.0e-9*serial->timestamp.second.tv_nsec) -
-			((double)serial->timestamp.first.tv_sec + 1.0e-9*serial->timestamp.first.tv_nsec)) < 0.0001) {
+			((double)serial->timestamp.first.tv_sec + 1.0e-9*serial->timestamp.first.tv_nsec)) < 0.0005) {
 			if(access(serial->file, F_OK) == -1) {
 				plua_io_serial_callback("disconnect", req);
 				goto stop;
@@ -413,7 +418,6 @@ static void plua_io_serial_read_callback(uv_fs_t *req) {
 	} else if(len > 0) {
 		serial->rbuffer[req->result] = '\0';
 		plua_io_serial_callback("read", req);
-		memset(serial->rbuffer, 0, BUFFER_SIZE);
 	}
 
 stop:
@@ -517,7 +521,9 @@ static int plua_io_serial__open(struct lua_serial_t *serial, lua_State *L) {
 		pluaL_error(L, "internal error: serial object not passed");
 	}
 
-	if((serial->fd = open(serial->file, O_RDWR | O_NOCTTY | O_NDELAY | O_NONBLOCK)) == -1) {
+	uv_fs_t open_req;
+
+	if((serial->fd = uv_fs_open(uv_default_loop(), &open_req, serial->file, O_RDWR, 0, NULL)) < 0) {
 		logprintf(LOG_ERR, "serial.open: could not open serial device \"%s\"", serial->file);
 		lua_pushboolean(L, 0);
 	} else if(plua_io_serial_change_attributes(serial) == 0) {
@@ -729,6 +735,7 @@ static int plua_io_serial_read(lua_State *L) {
 
 	clock_gettime(CLOCK_MONOTONIC, &serial->timestamp.second);
 
+	memset(serial->rbuffer, 0, BUFFER_SIZE);
 	uv_buf_t buffer = uv_buf_init(serial->rbuffer, BUFFER_SIZE);
 	uv_fs_read(uv_default_loop(), read_req, serial->fd, &buffer, 1, -1, plua_io_serial_read_callback);
 
@@ -766,9 +773,7 @@ static int plua_io_serial_set_data(lua_State *L) {
 		}
 		serial->table = (void *)lua_topointer(L, -1);
 
-		if(serial->table->ref != NULL) {
-			uv_sem_post(serial->table->ref);
-		}
+		atomic_inc(serial->table->ref);
 
 		lua_pushboolean(L, 1);
 
