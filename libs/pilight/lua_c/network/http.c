@@ -43,7 +43,7 @@ typedef struct lua_http_t {
 
 	int code;
 	int size;
-	int type;
+	int reqtype;
 } lua_http_t;
 
 static void plua_network_http_object(lua_State *L, struct lua_http_t *http);
@@ -75,9 +75,7 @@ static int plua_network_http_set_userdata(lua_State *L) {
 		}
 		http->table = (void *)lua_topointer(L, -1);
 
-		if(http->table->ref != NULL) {
-			uv_sem_post(http->table->ref);
-		}
+		atomic_inc(http->table->ref);
 
 		lua_remove(L, -1);
 
@@ -384,7 +382,7 @@ static int plua_network_http_get(lua_State *L) {
 		pluaL_error(L, "internal error: http object not passed");
 	}
 
-	http->type = GET;
+	http->reqtype = GET;
 
 	if(http->url == NULL) {
 		pluaL_error(L, "http server url not set");
@@ -425,7 +423,7 @@ static int plua_network_http_post(lua_State *L) {
 		pluaL_error(L, "internal error: http object not passed");
 	}
 
-	http->type = POST;
+	http->reqtype = POST;
 
 	if(http->url == NULL) {
 		pluaL_error(L, "http server url not set");
