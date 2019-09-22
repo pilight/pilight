@@ -30,13 +30,9 @@
 #include "../table.h"
 #include "../network.h"
 
-#define LISTEN	0
-#define	SEND		1
-
 typedef struct lua_coap_t {
 	PLUA_INTERFACE_FIELDS
 
-	int type;
 	char *callback;
 } lua_coap_t;
 
@@ -69,9 +65,7 @@ static int plua_network_coap_set_userdata(lua_State *L) {
 		}
 		coap->table = (void *)lua_topointer(L, -1);
 
-		if(coap->table->ref != NULL) {
-			uv_sem_post(coap->table->ref);
-		}
+		atomic_inc(coap->table->ref);
 
 		lua_pushboolean(L, 1);
 
@@ -478,7 +472,6 @@ static int plua_network_coap_send(lua_State *L) {
 		}
 	}
 
-	coap->type = SEND;
 	coap_send(&pkt, read_cb, coap);
 	coap_free(&pkt);
 
@@ -501,7 +494,6 @@ static int plua_network_coap_listen(lua_State *L) {
 		pluaL_error(L, "internal error: coap object not passed");
 	}
 
-	coap->type = LISTEN;
 	coap_listen(read_cb, coap);
 
 	lua_pushboolean(L, 1);
@@ -578,7 +570,7 @@ static void plua_network_coap_object(lua_State *L, struct lua_coap_t *coap) {
 
 int plua_network_coap(struct lua_State *L) {
 	if(lua_gettop(L) != 0) {
-		pluaL_error(L, "timer requires 0 arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "mqtt requires 0 arguments, %d given", lua_gettop(L));
 		return 0;
 	}
 
