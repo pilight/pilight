@@ -773,9 +773,7 @@ static int plua_io_serial_set_data(lua_State *L) {
 		}
 		serial->table = (void *)lua_topointer(L, -1);
 
-		if(serial->table->ref != NULL) {
-			uv_sem_post(serial->table->ref);
-		}
+		atomic_inc(serial->table->ref);
 
 		lua_pushboolean(L, 1);
 
