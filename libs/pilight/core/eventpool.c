@@ -397,13 +397,14 @@ static void eventpool_execute(uv_async_t *handle) {
 			struct eventqueue_data_t *data = node[i]->userdata;
 			if(threads == EVENTPOOL_NO_THREADS) {
 				nrlisteners1[node[i]->reason]++;
+#ifdef _WIN32
+				int nr = InterlockedExchangeAdd(&nrlisteners[node[i]->reason]);
+#else
+				int nr = __sync_add_and_fetch(&nrlisteners[node[i]->reason], 0);
+#endif
 				node[i]->func(node[i]->reason, data->data, data->userdata);
 
-#ifdef _WIN32
-				if(nrlisteners1[node[i]->reason] == InterlockedExchangeAdd(&nrlisteners[node[i]->reason], 0)) {
-#else
-				if(nrlisteners1[node[i]->reason] == __sync_add_and_fetch(&nrlisteners[node[i]->reason], 0)) {
-#endif
+				if(nrlisteners1[node[i]->reason] == nr) {
 					if(node[i]->done != NULL) {
 						node[i]->done((void *)data->data);
 					}
