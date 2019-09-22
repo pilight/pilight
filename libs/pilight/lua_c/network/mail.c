@@ -74,9 +74,7 @@ static int plua_network_mail_set_data(lua_State *L) {
 		}
 		mail->table = (void *)lua_topointer(L, -1);
 
-		if(mail->table->ref != NULL) {
-			uv_sem_post(mail->table->ref);
-		}
+		atomic_inc(mail->table->ref);
 
 		lua_pushboolean(L, 1);
 

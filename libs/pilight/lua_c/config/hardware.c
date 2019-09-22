@@ -86,9 +86,7 @@ static int plua_config_hardware_set_data(lua_State *L) {
 		}
 		hw->table = (void *)lua_topointer(L, -1);
 
-		if(hw->table->ref != NULL) {
-			uv_sem_post(hw->table->ref);
-		}
+		atomic_inc(hw->table->ref);
 
 		lua_pushboolean(L, 1);
 

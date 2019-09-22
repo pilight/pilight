@@ -142,9 +142,7 @@ static int plua_wiringx_set_userdata(lua_State *L) {
 		}
 
 		wiringx->table = (void *)lua_topointer(L, -1);
-		if(wiringx->table->ref != NULL) {
-			uv_sem_post(wiringx->table->ref);
-		}
+		atomic_inc(wiringx->table->ref);
 
 		lua_pushboolean(L, 1);
 
