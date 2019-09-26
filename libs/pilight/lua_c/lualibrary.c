@@ -55,6 +55,11 @@ static const struct {
 } pilight_defaults[] = {
 	{ "PILIGHT_VERSION", { .string_ = PILIGHT_VERSION }, LUA_TSTRING },
 	{ "PILIGHT_V", { .number_ = PILIGHT_V }, LUA_TNUMBER },
+#ifdef MQTT
+#ifdef MQTT_ENABLE
+	{ "MQTT_PORT", { .number_ = MQTT_PORT }, LUA_TNUMBER },
+#endif
+#endif
 #ifdef WEBSERVER_ENABLE
 	{ "WEBSERVER_HTTP_PORT", { .number_ = WEBSERVER_HTTP_PORT }, LUA_TNUMBER },
 #ifdef WEBSERVER_HTTPS
@@ -147,6 +152,7 @@ static const struct {
 	{ "RF433", RF433 },
 	{ "RF868", RF868 },
 	{ "SHELLY", SHELLY },
+	{ "TASMOTA", TASMOTA },
 	{ "NONE", RFNONE }
 };
 
