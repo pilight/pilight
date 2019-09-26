@@ -30,6 +30,7 @@
 #include "../lua.h"
 #include "../table.h"
 #include "../network.h"
+#include "../../config/settings.h"
 
 static void plua_network_mqtt_object(lua_State *L, struct lua_mqtt_t *mqtt);
 
@@ -479,7 +480,12 @@ static int plua_network_mqtt_connect(lua_State *L) {
 	struct lua_mqtt_t *mqtt = (void *)lua_topointer(L, lua_upvalueindex(1));
 	char *ip = "127.0.0.1", *willmsg = NULL, *willtopic = NULL;
 	char suffix[4] = { 0 }, *id = NULL;
-	int port = 1883, args = lua_gettop(L), freeid = 0;
+	int port = MQTT_PORT, args = lua_gettop(L), freeid = 0;
+
+	struct lua_state_t *state1 = plua_get_free_state();
+	config_setting_get_number(state1->L, "mqtt-port", 0, &port);
+	assert(plua_check_stack(state1->L, 0) == 0);
+	plua_clear_state(state1);
 
 	if(args != 0 && args != 2 && args != 3 && args != 5) {
 		pluaL_error(L, "mqtt.connect requires 0, 2, 3 or 5 arguments, %d given", lua_gettop(L));
@@ -568,7 +574,6 @@ static int plua_network_mqtt_connect(lua_State *L) {
 	}
 
 	alpha_random(suffix, 4);
-
 	if(id == NULL) {
 		if((id = MALLOC(strlen("pilight-")+5)) == NULL) {
 			OUT_OF_MEMORY
