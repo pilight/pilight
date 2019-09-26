@@ -58,6 +58,7 @@
 #include "libs/pilight/core/firmware.h"
 #include "libs/pilight/core/proc.h"
 #include "libs/pilight/core/ntp.h"
+#include "libs/pilight/core/mqtt.h"
 #include "libs/pilight/config/config.h"
 #include "libs/pilight/config/hardware.h"
 #include "libs/pilight/lua_c/lua.h"
@@ -207,6 +208,10 @@ struct socket_callback_t socket_callback;
 
 static struct options_t *options = NULL;
 
+#ifdef MQTT
+static int mqtt_enable = MQTT_ENABLE;
+static int mqtt_port = MQTT_PORT;
+#endif
 
 #ifdef WEBSERVER
 /* Do we enable the webserver */
@@ -3045,6 +3050,16 @@ int start_pilight(int argc, char **argv) {
 	}
 #endif
 
+#ifdef MQTT
+	{
+		struct lua_state_t *state = plua_get_free_state();
+		config_setting_get_number(state->L, "mqtt-enable", 0, &mqtt_enable);
+		config_setting_get_number(state->L, "mqtt-port", 0, &mqtt_port);
+		assert(plua_check_stack(state->L, 0) == 0);
+		plua_clear_state(state);
+	}
+#endif
+
 #ifndef _WIN32
 
 	{
@@ -3232,6 +3247,14 @@ int start_pilight(int argc, char **argv) {
 	}
 	threads_register("sender", &send_code, (void *)NULL, 0);
 	threads_register("broadcaster", &broadcast, (void *)NULL, 0);
+
+#ifdef MQTT
+	{
+		if(mqtt_enable == 1) {
+			mqtt_server(mqtt_port);
+		}
+	}
+#endif
 
 	if(config_hardware_run() == -1) {
 		logprintf(LOG_NOTICE, "there are no hardware modules configured");

@@ -31,6 +31,7 @@ function M.read(f)
 	local port = -1;
 	local http_port = pilight.default.WEBSERVER_HTTP_PORT;
 	local https_port = pilight.default.WEBSERVER_HTTPS_PORT;
+	local mqtt_port = pilight.default.MQTT_PORT;
 	local jobject = json.parse(content);
 	local settings = jobject['settings'];
 
@@ -61,6 +62,8 @@ function M.read(f)
 		'webserver-authentication', 'webserver-http-port', 'webserver-https-port',
 		'webserver-enable', 'webserver-cache', 'watchdog-enable', 'webgui-websockets',
 		'webserver-root',
+
+		'mqtt-port', 'mqtt-enable',
 
 		'pid-file', 'pem-file', 'log-file',
 
@@ -156,7 +159,8 @@ function M.read(f)
 	--
 	keys = {
 		'standalone', 'watchdog-enable', 'stats-enable', 'loopback',
-		'webserver-enable', 'webserver-cache', 'webgui-websockets', 'smtp-ssl' }
+		'webserver-enable', 'webserver-cache', 'webgui-websockets', 'smtp-ssl',
+		'mqtt-enable' }
 	for k, v in pairs(keys) do
 		if settings[v] ~= nil then
 			s = settings[v];
@@ -287,8 +291,16 @@ function M.read(f)
 		https_port = settings['webserver-https-port'];
 	end
 
+	if settings['mqtt-port'] ~= nil then
+		mqtt_port = settings['mqtt-port'];
+	end
+
 	if http_port ~= nil and http_port == port then
 		pilight.log(LOG_ERR, "config setting \"webserver-http-port\" and \"port\" cannot be the same");
+	end
+
+	if mqtt_port ~= nil and mqtt_port == port then
+		pilight.log(LOG_ERR, "config setting \"mqtt-port\" and \"port\" cannot be the same");
 	end
 
 	if https_port ~= nil and https_port == port then
@@ -297,6 +309,14 @@ function M.read(f)
 
 	if http_port ~= nil and https_port ~= nil and https_port == http_port then
 		pilight.log(LOG_ERR, "config setting \"webserver-http-port\" and \"webserver-https-port\" cannot be the same");
+	end
+
+	if mqtt_port ~= nil and https_port ~= nil and mqtt_port == https_port then
+		pilight.log(LOG_ERR, "config setting \"mqtt-port\" and \"webserver-https-port\" cannot be the same");
+	end
+
+	if mqtt_port ~= nil and http_port ~= nil and mqtt_port == http_port then
+		pilight.log(LOG_ERR, "config setting \"mqtt-port\" and \"webserver-http-port\" cannot be the same");
 	end
 
 	--
