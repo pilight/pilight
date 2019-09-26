@@ -308,13 +308,17 @@ const char *rstrstr(const char* haystack, const char* needle) {
 }
 
 void alpha_random(char *s, const int len) {
+	struct timeval tv;
 	static const char alphanum[] =
 			"0123456789"
 			"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 			"abcdefghijklmnopqrstuvwxyz";
 	int i = 0;
 
-	srand(time(NULL));
+	gettimeofday(&tv, NULL);
+	unsigned long ms = 1000000 * tv.tv_sec + tv.tv_usec;
+
+	srand(ms);
 	for(i = 0; i < len; ++i) {
 			s[i] = alphanum[(unsigned int)rand() % (sizeof(alphanum) - 1)];
 	}
