@@ -172,7 +172,9 @@ void mqtt_dump(struct mqtt_pkt_t *pkt);
 
 int mqtt_client(char *server, int port, char *clientid, char *willtopic, char *willmsg, void (*callback)(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, void *userdata), void *userdata);
 void mqtt_client_remove(uv_poll_t *req, int disconnect);
+#ifdef MQTT
 int mqtt_server(int port);
+#endif
 void mqtt_gc(void);
 
 #endif

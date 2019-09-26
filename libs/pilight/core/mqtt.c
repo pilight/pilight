@@ -1241,9 +1241,7 @@ static void client_close_cb(uv_poll_t *req) {
 	client->step = MQTT_DISCONNECTED;
 	client->callback(client, NULL, client->userdata);
 
-	if(started == 1) {
-		mqtt_client_remove(client->poll_req, 1);
-	}
+	mqtt_client_remove(client->poll_req, 1);
 }
 
 static void poll_close_cb(uv_poll_t *req) {
@@ -2063,6 +2061,7 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	uv_custom_read(poll_req);
 }
 
+#ifdef MQTT
 int mqtt_server(int port) {
 	if(started == 1) {
 		return 0;
@@ -2181,6 +2180,8 @@ int mqtt_server(int port) {
 
 	uv_custom_read(poll_server_req);
 
+	logprintf(LOG_DEBUG, "started MQTT broker on port %d", port);
+
 	return 0;
 
 free:
@@ -2196,6 +2197,7 @@ free:
 	return -1;
 	/*LCOV_EXCL_STOP*/
 }
+#endif
 
 int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willmsg, void (*callback)(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, void *userdata), void *userdata) {
 	if(willtopic != NULL && willmsg == NULL) {
