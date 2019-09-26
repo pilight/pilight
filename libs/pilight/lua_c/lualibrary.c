@@ -55,6 +55,7 @@ static const struct {
 } pilight_defaults[] = {
 	{ "PILIGHT_VERSION", { .string_ = PILIGHT_VERSION }, LUA_TSTRING },
 	{ "PILIGHT_V", { .number_ = PILIGHT_V }, LUA_TNUMBER },
+	{ "MQTT_PORT", { .number_ = MQTT_PORT }, LUA_TNUMBER },
 	{ "WEBSERVER_HTTP_PORT", { .number_ = WEBSERVER_HTTP_PORT }, LUA_TNUMBER },
 	{ "WEBSERVER_HTTPS_PORT", { .number_ = WEBSERVER_HTTPS_PORT }, LUA_TNUMBER },
 	{ "WEBSERVER_ENABLE", { .number_ = WEBSERVER_ENABLE }, LUA_TNUMBER },
@@ -139,6 +140,8 @@ static const struct {
 } pilight_hardware[] = {
 	{ "RF433", RF433 },
 	{ "RF868", RF868 },
+	{ "SHELLY", SHELLY },
+	{ "TASMOTA", TASMOTA },
 	{ "NONE", RFNONE }
 };
 
