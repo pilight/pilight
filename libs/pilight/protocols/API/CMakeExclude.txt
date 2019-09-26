@@ -39,3 +39,13 @@ if(${PROTOCOL_LIRC} MATCHES "OFF")
 	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/lirc.c")
 	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/lirc.h")
 endif()
+
+if(${PROTOCOL_SHELLY} MATCHES "OFF" OR ${MQTT} MATCHES "OFF")
+	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/shelly*.c")
+	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/shelly*.h")
+endif()
+
+if(${PROTOCOL_TASMOTA} MATCHES "OFF" OR ${MQTT} MATCHES "OFF")
+	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/tasmota*.c")
+	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/tasmota*.h")
+endif()
