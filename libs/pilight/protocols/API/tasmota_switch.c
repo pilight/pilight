@@ -76,6 +76,12 @@ static int createCode(struct JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
+static void printHelp(void) {
+	printf("\t -t --on\t\t\tsend an on signal\n");
+	printf("\t -f --off\t\t\tsend an off signal\n");
+	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
+}
+
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
@@ -93,6 +99,7 @@ void tasmotaSwitchInit(void) {
 	options_add(&tasmotaSwitch->options, "0", "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	tasmotaSwitch->createCode=&createCode;
+	tasmotaSwitch->printHelp=&printHelp;
 }
 
 #if defined(MODULE) && !defined(_WIN32)

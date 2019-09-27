@@ -41,6 +41,12 @@ static void *reason_send_code_free(void *param) {
 	return NULL;
 }
 
+static void printHelp(void) {
+	printf("\t -t --on\t\t\tsend an on signal\n");
+	printf("\t -f --off\t\t\tsend an off signal\n");
+	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
+}
+
 static int createCode(struct JsonNode *code) {
 	char *id = NULL;
 	int state = -1;
@@ -93,6 +99,7 @@ void shellySwitchInit(void) {
 	options_add(&shellySwitch->options, "0", "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	shellySwitch->createCode=&createCode;
+	shellySwitch->printHelp=&printHelp;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
