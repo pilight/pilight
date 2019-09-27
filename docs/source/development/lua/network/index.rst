@@ -464,7 +464,7 @@ API
 
    Returns the mqtt instance as lightuserdata so it can be stored in a pilight metatable.
 
-.. c:function:: nil connect(string ip, number port, string id, string willtopic, string willmessage)
+.. c:function:: nil connect([string ip, number port][, string id][, string willtopic, string willmessage])
 
    Connect to a mqtt broken. This function either takes 2, 3, or 5 arguments.
 
@@ -476,7 +476,7 @@ API
 
    Returns a persistent userdata table for the lifetime of the mqtt object.
 
-.. c:function:: nil publish(string topic, string message, table options)
+.. c:function:: nil publish(string topic, string message[, table options])
 
    Publish to a certain message to topic. The optional options table gives the possibility to set the duplicate message, retained message, and/or QoS options like this: ``{MQTT_DUB, MQTT_RETAIN, MQTT_QOS1}``
 
@@ -496,7 +496,7 @@ API
 
    Send a ping message.
 
-.. c:function:: nil subscribe(string topic, table options)
+.. c:function:: nil subscribe(string topic[, table options])
 
    Subscribes to a topic with a certain QoS. The QoS parameter can be set using the optional options table ``{MQTT_QOS1}`` or ``{MQTT_QOS2}``.
 
@@ -547,7 +547,7 @@ Example
 
    function M.run()
      mqtt.setCallback("callback");
-     mqtt.connect("127.0.0.1", 11883);
+     mqtt.connect("127.0.0.1", 1883);
 
      return 1;
    end

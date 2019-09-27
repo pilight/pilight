@@ -35,8 +35,8 @@ WiringX
 
    The pulses parameter is optional. Due to the lag of the lua interface, digitalWrite can sends pulses buffered. Therefor, when the GPIO needs to be toggled superfast, this lag is not an option. As an alternative you can pass an array with milliseconds (counted from 1). The GPIO will be toggled between high and low delayed by these milliseconds. The initial mode of the toggling will be the mode passed as the second parameter.
 
-Example triggering
-^^^^^^^^^^^^^^^^^^
+Example
+^^^^^^^
 
 .. code-block:: lua
 
@@ -58,7 +58,7 @@ Example triggering
      pulses[2] = 500;
      pulses[3] = 250;
      pulses[4] = 1000;
-			wiringx.digitalWrite(1, 1, pulses);
+     wiringx.digitalWrite(1, 1, pulses);
      return 1;
    end
 
