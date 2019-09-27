@@ -44,6 +44,12 @@ Settings
    - `operator-root`_
    - `protocol-root`_
 
+.. versionadded:: nightly
+
+- `MQTT`_
+   - `mqtt-enable`_
+   - `mqtt-port`_
+
 Introduction
 ------------
 
@@ -706,3 +712,36 @@ pilight event actions are loaded from the operator-root folder. The operator-roo
    { "protocol-root": "/usr/local/lib/pilight/protocol" }
 
 pilight event actions are loaded from the protocol-root folder. The protocol-root setting must contain a valid path.
+
+MQTT
+----
+
+The following settings change the way the internal MQTT broker work or it can be disabled altogether. The MQTT client will not be affected by any of these settings. These can still be used to connect to an external broker.
+
+.. _mqtt-enable:
+.. rubric:: mqtt-enable
+
+.. note::
+
+   Linux, \*BSD, and Windows
+
+.. code-block:: json
+   :linenos:
+
+   { "mqtt-enable": 1 }
+
+The pilight MQTT broker can be turned off as a whole. This could be useful if you do not want to use the MQTT broker at all or if you want to use your own MQTT broken implementation. This setting can be either 0 or 1.
+
+.. _mqtt-port:
+.. rubric:: mqtt-port
+
+.. note::
+
+   Linux, \*BSD, and Windows
+
+.. code-block:: json
+   :linenos:
+
+   { "mqtt-port": 1883 }
+
+The pilight MQTT broker runs by default on the standard 1883 port. If you do want to run the MQTT broker any other port, you can change this setting. The port specified must be a valid and unused port.

@@ -1,6 +1,33 @@
 Changelog
 =========
 
+.. versionadded:: nightly
+
+.. rubric:: Improvements
+
+- pilight now contains a MQTT broker
+- Support for Shelly and Tasmota
+- Generic MQTT hardware module
+- pilight lua MQTT interface
+- pilight lua MDNS interface
+- Lua pilight.log properly interacts with luaL_error
+- Don't abort lua scripts on all log levels
+- Less verbose logging in release version
+- Added atomic increment and decrement functions
+- Allow storing lightuserdata in pilight lua metatables
+
+.. rubric:: Bugfixes
+
+- Fixed memset bug in http lib
+- Disconnect clients that don't identify first
+- Fixed in 433nano and pilight lua serial interface
+- Fixed log message in switch action
+- Add error when an unsupported hardware module is configured
+- Fixed http and https port validation
+- Fixed random character generator
+- Small fix in eventpool
+- Small improvements in coap lib
+
 .. versionadded:: 8.1.5
 
 .. rubric:: Changes
@@ -8,7 +35,7 @@ Changelog
 - Lua pilight.defaults are renamed to pilight.default
 - Removed 433lirc hardware module
 
-.. rubric:: Improvment
+.. rubric:: Improvements
 
 - Add warning when other protocol options besides the id are defined as an array
 - Added Kerui an TFA2017 protocol

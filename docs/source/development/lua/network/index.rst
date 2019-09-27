@@ -5,7 +5,12 @@ Various functions to do network communication
 
 - `Mail`_
 - `HTTP`_
+
+.. versionadded:: nightly
+
 - `COAP`_
+- `MDNS`_
+- `MQTT`_
 
 Mail
 ----
@@ -148,7 +153,7 @@ API
 
 .. c:function:: userdata getUserdata()
 
-   Returns a persistent userdata table for the lifetime of the mail object.
+   Returns a persistent userdata table for the lifetime of the http object.
 
 .. c:function:: string getMimetype()
 
@@ -244,11 +249,7 @@ API
 
 .. c:function:: userdata getUserdata()
 
-   Returns a persistent userdata table for the lifetime of the mail object.
-
-.. c:function:: boolean setCallback(string callback)
-
-   The name of the callback set for this coap object.
+   Returns a persistent userdata table for the lifetime of the coap object.
 
 .. c:function:: boolean listen(userdata table)
 
@@ -282,8 +283,6 @@ API
       - **numeric** ``num``
       - **string** ``val``
 
-   The options field is in itself an array with ``num`` and ``val`` keys.
-
 Example
 ^^^^^^^
 
@@ -314,6 +313,241 @@ Example
       coap.setCallback("discover");
       coap.send(send);
       coap.listen();
+
+     return 1;
+   end
+
+   return M;
+
+MDNS
+----
+
+Send and/or receive MDNS messages
+
+API
+^^^
+
+.. c:function:: userdata pilight.network.mdns()
+
+   Creates a new mdns object
+
+.. c:function:: userdata getUserdata()
+
+   Returns a persistent userdata table for the lifetime of the mdns object.
+
+.. c:function:: boolean listen(userdata table)
+
+   Listens to mdns messages
+
+.. c:function:: boolean setCallback(string callback)
+
+   The name of the callback being triggered by the mdns library. The parameters of the callback function are the mdns object, received data object, ip and port of the sender.
+
+.. c:function:: boolean setUserdata(userdata table)
+
+   Set a new persistent userdata table for the lifetime of the http object. The userdata table cannot be of another type as returned from the getUserdata functions.
+
+.. c:function:: boolean send(userdata table)
+
+   Sends a mdns message
+
+.. note:: MDNS data specifications
+
+   The data the lua MDNS interface parses has to be set in a low-level way. That means you have to construct a valid mdns object yourself. The MDNS responses are represented in the same low-level way. The MDNS interface follows the same specification for it's data as the protocol description.
+
+   The allowed MDNS data fields are
+
+   - **numeric** ``id``
+   - **numeric** ``qr``
+   - **numeric** ``opcode``
+   - **numeric** ``aa``
+   - **numeric** ``tc``
+   - **numeric** ``rd``
+   - **numeric** ``ra``
+   - **numeric** ``z``
+   - **numeric** ``ad``
+   - **numeric** ``cd``
+   - **numeric** ``rcode``
+   - **numeric** ``rr_auth``
+   - **numeric** ``queries``
+      - **string** ``name``
+      - **numeric** ``qu``
+      - **numeric** ``type``
+      - **numeric** ``class``
+   - **numeric** ``answers``
+   - **numeric** ``records``
+      - **string** ``type``
+      - **numeric** ``name``
+      - **numeric** ``length``
+      - **numeric** ``ttl``
+      - **numeric** ``class``
+      - **numeric** ``flush``
+      - **numeric** ``domain``
+      - **numeric** ``weight``
+      - **numeric** ``priority``
+      - **numeric** ``port``
+      - **numeric** ``ip``
+      - **array** ``options``
+         - **string** ``values``
+
+   The ``answers`` and ``records`` fields share the same fields. The combination of fields that are allowed depends on the
+   on the answer or record type. The ``options`` array contains numeric keys with values.
+
+Example
+^^^^^^^
+
+.. code-block:: lua
+
+   local M = {}
+
+   function M.discover(mdns, data, ip, port)
+     return;
+   end
+
+   function M.run()
+      local mdns = pilight.network.mdns();
+
+      local send = {};
+      send['id'] = tonumber("AABB", 16);
+      send['qr'] = 0;
+      send['opcode'] = 2;
+      send['aa'] = 0;
+      send['tc'] = 1;
+      send['rd'] = 0;
+      send['ra'] = 1;
+      send['z'] = 0;
+      send['ad'] = 1;
+      send['cd'] = 0;
+      send['rcode'] = 1;
+      send['rr_auth'] = 0;
+      send['queries'] = {};
+      send['queries'][1] = {};
+      send['queries'][1]['name'] = "testname.local.foo";
+      send['queries'][1]['qu'] = 0;
+      send['queries'][1]['type'] = 33;
+      send['queries'][1]['class'] = 1;
+      send['queries'][2] = {};
+      send['queries'][2]['name'] = "testname1.local1.foo";
+      send['queries'][2]['qu'] = 0;
+      send['queries'][2]['type'] = 33;
+      send['queries'][2]['class'] = 1;
+      send['queries'][3] = {};
+      send['queries'][3]['name'] = "testname.local1.foo";
+      send['queries'][3]['qu'] = 0;
+      send['queries'][3]['type'] = 33;
+      send['queries'][3]['class'] = 1;
+
+      mdns.setCallback("discover");
+      mdns.send(send);
+      mdns.listen();
+
+     return 1;
+   end
+
+   return M;
+
+MQTT
+----
+
+Send and/or receive MQTT messages
+
+API
+^^^
+
+.. c:function:: userdata pilight.network.mqtt([userdata mqtt instance])
+
+   Creates a new mqtt object or restore the saved instance when passing the instance parameter.
+
+.. versionadded:: nightly
+
+.. c:function:: userdata pilight.network.mqtt()()
+
+   Returns the mqtt instance as lightuserdata so it can be stored in a pilight metatable.
+
+.. c:function:: nil connect(string ip, number port, string id, string willtopic, string willmessage)
+
+   Connect to a mqtt broken. This function either takes 2, 3, or 5 arguments.
+
+   - The ``ip`` and ``port``
+   - The ``ip``, ``port``, and ``id``
+   - The ``ip``, ``port``, ``id``, ``willtopic``, and ``willmessage``
+
+.. c:function:: userdata getUserdata()
+
+   Returns a persistent userdata table for the lifetime of the mqtt object.
+
+.. c:function:: nil publish(string topic, string message, table options)
+
+   Publish to a certain message to topic. The optional options table gives the possibility to set the duplicate message, retained message, and/or QoS options like this: ``{MQTT_DUB, MQTT_RETAIN, MQTT_QOS1}``
+
+.. c:function:: nil pubrec(number msgid)
+
+   Send a pubrec message.
+
+.. c:function:: nil pubrel(number msgid)
+
+   Send a pubrel message.
+
+.. c:function:: nil pubcomp(number msgid)
+
+   Send a pubcomp message.
+
+.. c:function:: nil ping()
+
+   Send a ping message.
+
+.. c:function:: nil subscribe(string topic, table options)
+
+   Subscribes to a topic with a certain QoS. The QoS parameter can be set using the optional options table ``{MQTT_QOS1}`` or ``{MQTT_QOS2}``.
+
+.. c:function:: boolean setUserdata(userdata table)
+
+   Set a new persistent userdata table for the lifetime of the http object. The userdata table cannot be of another type as returned from the getUserdata functions.
+
+.. note:: MQTT packets
+
+   The MQTT packets are either ``MQTT_CONNECT``, ``MQTT_CONNACK``, ``MQTT_PUBLISH``, ``MQTT_PUBACK``, ``MQTT_PUBREC``, ``MQTT_PUBREL``, ``MQTT_PUBCOMP``, ``MQTT_SUBSCRIBE``, ``MQTT_UNSUBSCRIBE``, ``MQTT_UNSUBACK``,  ``MQTT_PINGREQ``, ``MQTT_PINGRESP``, ``MQTT_DISCONNECT``, ``MQTT_CONNECTED``
+
+Example
+^^^^^^^
+
+.. code-block:: lua
+
+   local M = {}
+
+   function M.timer(timer)
+      local data = timer.getUserdata();
+      local mqtt = pilight.network.mqtt(data['mqtt']);
+
+      mqtt.ping();
+   end
+
+   function M.callback(mqtt, data)
+      if data['type'] == MQTT_CONNACK then
+         local timer = pilight.async.timer();
+         timer.setCallback("timer");
+         timer.setTimeout(3000);
+         timer.setRepeat(3000);
+         timer.setUserdata({['mqtt']=mqtt()});
+         timer.start();
+
+         mqtt.subscribe("#", {MQTT_QOS2});
+      end
+      if data['type'] == MQTT_PUBACK then
+      end
+      if data['type'] == MQTT_PUBLISH then
+         mqtt.pubrec(data['msgid']);
+      end
+      if data['type'] == MQTT_PUBREL then
+         mqtt.pubcomp(data['msgid']);
+      end
+      if data['type'] == MQTT_PINGRESP then
+      end
+   end
+
+   function M.run()
+     mqtt.setCallback("callback");
+     mqtt.connect("127.0.0.1", 11883);
 
      return 1;
    end
