@@ -479,7 +479,7 @@ static void mqtt_callback(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, 
 static int plua_network_mqtt_connect(lua_State *L) {
 	struct lua_mqtt_t *mqtt = (void *)lua_topointer(L, lua_upvalueindex(1));
 	char *ip = "127.0.0.1", *willmsg = NULL, *willtopic = NULL;
-	char suffix[4] = { 0 }, *id = NULL;
+	char suffix[5] = { 0 }, *id = NULL;
 	int port = MQTT_PORT, args = lua_gettop(L), freeid = 0;
 
 	struct lua_state_t *state1 = plua_get_free_state();
