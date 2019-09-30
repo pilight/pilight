@@ -60,6 +60,14 @@ static void plua_async_event_gc(void *ptr) {
 }
 #endif
 
+#ifdef PILIGHT_UNITTEST
+extern void plua_async_event_global_gc(void *ptr);
+#else
+static void plua_async_event_global_gc(void *ptr) {
+	plua_async_event_gc(ptr);
+}
+#endif
+
 void *plua_async_event_callback(int reason, void *param, void *userdata) {
 	struct lua_event_t *event = userdata;
 	char name[512], *p = name;
@@ -155,6 +163,7 @@ static int plua_async_event_register(struct lua_State *L) {
 
 	if(is_active == 0) {
 		atomic_inc(event->ref);
+		plua_gc_reg(NULL, event, plua_async_event_global_gc);
 	}
 
 	event->reasons[reason].active = 1;
@@ -215,7 +224,8 @@ static int plua_async_event_unregister(struct lua_State *L) {
 	}
 
 	if(is_active == 0) {
-		atomic_dec(event->ref);
+		plua_gc_reg(L, event, plua_async_event_gc);
+		plua_gc_unreg(NULL, event);
 	}
 
 	if(event->reasons[reason].node != NULL) {
@@ -298,7 +308,7 @@ static int plua_async_event_set_callback(lua_State *L) {
 	}
 
 	if(event == NULL) {
-		pluaL_error(L, "internal error: timer object not passed");
+		pluaL_error(L, "internal error: event object not passed");
 	}
 
 	if(event->module == NULL) {
@@ -492,8 +502,6 @@ int plua_async_event(struct lua_State *L) {
 
 		lua_event->module = state->module;
 		lua_event->L = L;
-
-		plua_gc_reg(NULL, lua_event, plua_async_event_gc);
 	}
 	plua_gc_reg(L, lua_event, plua_async_event_gc);
 

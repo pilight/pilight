@@ -36,7 +36,7 @@ static int plua_async_timer_start(lua_State *L);
 #ifdef PILIGHT_UNITTEST
 extern void plua_async_timer_gc(void *ptr);
 #else
-void plua_async_timer_gc(void *ptr) {
+static void plua_async_timer_gc(void *ptr) {
 	struct lua_timer_t *lua_timer = ptr;
 
 	if(lua_timer != NULL) {
@@ -54,6 +54,14 @@ void plua_async_timer_gc(void *ptr) {
 		}
 		assert(x >= 0);
 	}
+}
+#endif
+
+#ifdef PILIGHT_UNITTEST
+extern void plua_async_timer_global_gc(void *ptr);
+#else
+static void plua_async_timer_global_gc(void *ptr) {
+	plua_async_timer_gc(ptr);
 }
 #endif
 
@@ -455,7 +463,7 @@ int plua_async_timer(struct lua_State *L) {
 		timer_req->data = lua_timer;
 
 		uv_timer_init(uv_default_loop(), timer_req);
-		plua_gc_reg(NULL, lua_timer, plua_async_timer_gc);
+		plua_gc_reg(NULL, lua_timer, plua_async_timer_global_gc);
 	}
 	plua_gc_reg(L, lua_timer, plua_async_timer_gc);
 

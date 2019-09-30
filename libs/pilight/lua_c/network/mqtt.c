@@ -50,10 +50,15 @@ static void plua_network_mqtt_gc(void *ptr) {
 			plua_gc_unreg(NULL, lua_mqtt);
 			FREE(lua_mqtt);
 		}
+
 		assert(x >= 0);
 	}
 }
 #endif
+
+static void plua_network_mqtt_global_gc(void *ptr) {
+	plua_network_mqtt_gc(ptr);
+}
 
 static void get_options(char *func, lua_State *L, int *dub, int *qos, int *retain) {
 	char buf[128] = { '\0' }, *p = buf;
@@ -750,8 +755,7 @@ int plua_network_mqtt(struct lua_State *L) {
 
 		lua_mqtt->module = state->module;
 		lua_mqtt->L = L;
-
-		plua_gc_reg(NULL, lua_mqtt, plua_network_mqtt_gc);
+		plua_gc_reg(NULL, lua_mqtt, plua_network_mqtt_global_gc);
 	}
 	plua_gc_reg(L, lua_mqtt, plua_network_mqtt_gc);
 

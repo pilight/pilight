@@ -36,6 +36,7 @@ static void *ptr2 = NULL;
 static int plua_print(lua_State* L) {
 	// printf("%d= ", run);
 	// plua_stack_dump(L);
+
 	CuAssertIntEquals(gtc, stopped, 0);
 	switch(test) {
 		case 1:
@@ -145,11 +146,11 @@ static int plua_print(lua_State* L) {
 				} break;
 				case 5: {
 					CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
-					CuAssertStrEquals(gtc, "event1", lua_tostring(L, -1));
+					CuAssertStrEquals(gtc, "event", lua_tostring(L, -1));
 				} break;
 				case 6: {
 					CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
-					CuAssertStrEquals(gtc, "event1", lua_tostring(L, -1));
+					CuAssertStrEquals(gtc, "event", lua_tostring(L, -1));
 				} break;
 				case 8: {
 					CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
@@ -301,12 +302,17 @@ void plua_network_mqtt_gc(void *ptr) {
 			if(lua_mqtt->callback != NULL) {
 				FREE(lua_mqtt->callback);
 			}
+			lua_mqtt->gc = NULL;
 			plua_gc_unreg(NULL, lua_mqtt);
 			FREE(lua_mqtt);
 			lua_mqtt = NULL;
 		}
 		assert(x >= 0);
 	}
+}
+
+void plua_network_mqtt_global_gc(void *ptr) {
+	plua_network_mqtt_gc(ptr);
 }
 
 void plua_async_event_gc(void *ptr) {
@@ -335,14 +341,22 @@ void plua_async_event_gc(void *ptr) {
 					case 2: {
 						CuAssertTrue(gtc, ptr1 == lua_event);
 						CuAssertIntEquals(gtc, lua_event->ref, 2);
+						CuAssertIntEquals(gtc, stopped, 0);
 					} break;
 					case 3: {
 						CuAssertTrue(gtc, ptr2 == lua_event);
 						CuAssertIntEquals(gtc, lua_event->ref, 1);
+						CuAssertIntEquals(gtc, stopped, 0);
 					} break;
-					case 4: {
+					case 5: {
+						CuAssertTrue(gtc, ptr1 == lua_event);
+						CuAssertIntEquals(gtc, lua_event->ref, 2);
+						CuAssertIntEquals(gtc, stopped, 0);
+					} break;
+					case 6: {
 						CuAssertTrue(gtc, ptr1 == lua_event);
 						CuAssertIntEquals(gtc, lua_event->ref, 1);
+						CuAssertIntEquals(gtc, stopped, 1);
 					} break;
 				};
 			} break;
@@ -358,17 +372,25 @@ void plua_async_event_gc(void *ptr) {
 					} break;
 					case 5: {
 						CuAssertTrue(gtc, ptr1 == lua_event);
-						CuAssertIntEquals(gtc, lua_event->ref, 1);
+						CuAssertIntEquals(gtc, lua_event->ref, 2);
 					} break;
 					case 6: {
-						CuAssertTrue(gtc, ptr2 == lua_event);
-						CuAssertIntEquals(gtc, lua_event->ref, 3);
+						CuAssertTrue(gtc, ptr1 == lua_event);
+						CuAssertIntEquals(gtc, lua_event->ref, 1);
 					} break;
 					case 7: {
 						CuAssertTrue(gtc, ptr2 == lua_event);
+						CuAssertIntEquals(gtc, lua_event->ref, 3);
+					} break;
+					case 8: {
+						CuAssertTrue(gtc, ptr2 == lua_event);
 						CuAssertIntEquals(gtc, lua_event->ref, 2);
 					} break;
-					case 9: {
+					case 10: {
+						CuAssertTrue(gtc, ptr2 == lua_event);
+						CuAssertIntEquals(gtc, lua_event->ref, 2);
+					} break;
+					case 11: {
 						CuAssertTrue(gtc, ptr2 == lua_event);
 						CuAssertIntEquals(gtc, lua_event->ref, 1);
 					} break;
@@ -379,30 +401,42 @@ void plua_async_event_gc(void *ptr) {
 					case 2: {
 						CuAssertTrue(gtc, ptr1 == lua_event || ptr2 == lua_event);
 						CuAssertIntEquals(gtc, lua_event->ref, 2);
+						CuAssertIntEquals(gtc, stopped, 0);
 					} break;
 					case 3: {
 						CuAssertTrue(gtc, ptr2 == lua_event || ptr1 == lua_event);
 						CuAssertIntEquals(gtc, lua_event->ref, 3);
+						CuAssertIntEquals(gtc, stopped, 0);
 					} break;
 					case 5: {
 						CuAssertTrue(gtc, ptr1 == lua_event);
 						CuAssertIntEquals(gtc, lua_event->ref, 2);
+						CuAssertIntEquals(gtc, stopped, 0);
 					} break;
-					case 7: {
+					case 6: {
 						CuAssertTrue(gtc, ptr2 == lua_event);
-						CuAssertIntEquals(gtc, lua_event->ref, 2);
+						CuAssertIntEquals(gtc, lua_event->ref, 3);
+						CuAssertIntEquals(gtc, stopped, 0);
 					} break;
 					case 8: {
 						CuAssertTrue(gtc, ptr2 == lua_event);
-						CuAssertIntEquals(gtc, lua_event->ref, 2);
+						CuAssertIntEquals(gtc, lua_event->ref, 3);
+						CuAssertIntEquals(gtc, stopped, 0);
 					} break;
 					case 9: {
-						CuAssertTrue(gtc, ptr1 == lua_event);
-						CuAssertIntEquals(gtc, lua_event->ref, 1);
+						CuAssertTrue(gtc, ptr2 == lua_event);
+						CuAssertIntEquals(gtc, lua_event->ref, 2);
+						CuAssertIntEquals(gtc, stopped, 0);
 					} break;
 					case 10: {
+						CuAssertTrue(gtc, ptr1 == lua_event);
+						CuAssertIntEquals(gtc, lua_event->ref, 1);
+						CuAssertIntEquals(gtc, stopped, 1);
+					} break;
+					case 11: {
 						CuAssertTrue(gtc, ptr2 == lua_event);
 						CuAssertIntEquals(gtc, lua_event->ref, 1);
+						CuAssertIntEquals(gtc, stopped, 1);
 					} break;
 				}
 			} break;
@@ -421,14 +455,18 @@ void plua_async_event_gc(void *ptr) {
 						CuAssertIntEquals(gtc, lua_event->ref, 3);
 					} break;
 					case 7: {
-						CuAssertTrue(gtc, ptr2 == lua_event);
-						CuAssertIntEquals(gtc, lua_event->ref, 2);
+						CuAssertTrue(gtc, ptr1 == lua_event);
+						CuAssertIntEquals(gtc, lua_event->ref, 1);
 					} break;
 					case 8: {
 						CuAssertTrue(gtc, ptr2 == lua_event);
-						CuAssertIntEquals(gtc, lua_event->ref, 1);
+						CuAssertIntEquals(gtc, lua_event->ref, 2);
 					} break;
-					case 9: {
+					case 10: {
+						CuAssertTrue(gtc, ptr2 == lua_event);
+						CuAssertIntEquals(gtc, lua_event->ref, 2);
+					} break;
+					case 11: {
 						CuAssertTrue(gtc, ptr2 == lua_event);
 						CuAssertIntEquals(gtc, lua_event->ref, 1);
 					} break;
@@ -447,6 +485,10 @@ void plua_async_event_gc(void *ptr) {
 		}
 		assert(x >= 0);
 	}
+}
+
+void plua_async_event_global_gc(void *ptr) {
+	plua_async_event_gc(ptr);
 }
 
 void plua_async_timer_gc(void *ptr) {
@@ -553,12 +595,17 @@ void plua_async_timer_gc(void *ptr) {
 			if(lua_timer->table != NULL) {
 				plua_metatable_free(lua_timer->table);
 			}
+			lua_timer->gc = NULL;
 			plua_gc_unreg(NULL, lua_timer);
 			FREE(lua_timer);
 			lua_timer = NULL;
 		}
 		assert(x >= 0);
 	}
+}
+
+void plua_async_timer_global_gc(void *ptr) {
+	plua_async_timer_gc(ptr);
 }
 
 void thread_free(uv_work_t *req, int status) {
@@ -675,12 +722,17 @@ void thread_free(uv_work_t *req, int status) {
 			if(lua_thread->callback != NULL) {
 				FREE(lua_thread->callback);
 			}
+			lua_thread->gc = NULL;
 			plua_gc_unreg(NULL, lua_thread);
 			FREE(lua_thread);
 			lua_thread = NULL;
 		}
 		assert(x >= 0);
 	}
+}
+
+void plua_async_thread_global_gc(void *ptr) {
+	thread_free(ptr, -99);
 }
 
 static int call(struct lua_State *L, char *file, char *func) {
@@ -924,7 +976,7 @@ static void test_lua_reference_count_event3(CuTest *tc) {
 
 	test_lua_reference_count(tc, "event3", 500);
 
-	CuAssertIntEquals(tc, 10, run);
+	CuAssertIntEquals(tc, 12, run);
 }
 
 static void test_lua_reference_count_event4(CuTest *tc) {
@@ -936,7 +988,7 @@ static void test_lua_reference_count_event4(CuTest *tc) {
 
 	test_lua_reference_count(tc, "event4", 500);
 
-	CuAssertIntEquals(tc, 11, run);
+	CuAssertIntEquals(tc, 12, run);
 }
 
 static void test_lua_reference_count_event5(CuTest *tc) {
@@ -948,7 +1000,7 @@ static void test_lua_reference_count_event5(CuTest *tc) {
 
 	test_lua_reference_count(tc, "event5", 500);
 
-	CuAssertIntEquals(tc, 10, run);
+	CuAssertIntEquals(tc, 12, run);
 }
 
 static void test_lua_reference_count_mqtt1(CuTest *tc) {

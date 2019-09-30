@@ -1,6 +1,6 @@
 --
 -- Used inside lua_reference_count.c
--- - test_lua_pass_interface_event2
+-- - test_lua_pass_interface_event3
 --
 
 local M = {};
