@@ -246,6 +246,7 @@ struct lua_state_t *plua_get_module(lua_State *L, char *namespace, char *module)
 
 	if((L = state->L) == NULL) {
 		assert(plua_check_stack(L, 0) == 0);
+		plua_clear_state(state);
 		return NULL;
 	}
 
@@ -258,6 +259,7 @@ struct lua_state_t *plua_get_module(lua_State *L, char *namespace, char *module)
 	if(lua_isnil(L, -1) != 0) {
 		lua_pop(L, -1);
 		assert(plua_check_stack(L, 0) == 0);
+		plua_clear_state(state);
 		return NULL;
 	}
 	if(lua_istable(L, -1) != 0) {
@@ -278,6 +280,7 @@ struct lua_state_t *plua_get_module(lua_State *L, char *namespace, char *module)
 	lua_pop(L, -1);
 
 	assert(plua_check_stack(L, 0) == 0);
+	plua_clear_state(state);
 
 	return NULL;
 }
@@ -2940,7 +2943,7 @@ int plua_gc(void) {
 	int i = 0, x = 0, _free = 1;
 	while(_free) {
 		_free = 0;
-		for(i=0;i<NRLUASTATES+1;i++) {
+		for(i=0;i<NRLUASTATES;i++) {
 			if(uv_mutex_trylock(&lua_state[i].lock) == 0) {
 				for(x=0;x<lua_state[i].gc.nr;x++) {
 					if(lua_state[i].gc.list[x]->free == 0) {
@@ -2965,6 +2968,35 @@ int plua_gc(void) {
 			} else {
 				_free = 1;
 			}
+		}
+	}
+
+	i = NRLUASTATES, x = 0, _free = 1;
+	while(_free) {
+		_free = 0;
+		if(uv_mutex_trylock(&lua_state[i].lock) == 0) {
+			for(x=0;x<lua_state[i].gc.nr;x++) {
+				if(lua_state[i].gc.list[x]->free == 0) {
+					while(atomic_dec(lua_state[i].gc.list[x]->ref) >= 0) {
+						lua_state[i].gc.list[x]->callback(lua_state[i].gc.list[x]->ptr);
+					}
+				}
+				FREE(lua_state[i].gc.list[x]);
+			}
+			if(lua_state[i].gc.size > 0) {
+				FREE(lua_state[i].gc.list);
+			}
+			lua_state[i].gc.nr = 0;
+			lua_state[i].gc.size = 0;
+
+			if(lua_state[i].L != NULL) {
+				lua_gc(lua_state[i].L, LUA_GCCOLLECT, 0);
+				lua_close(lua_state[i].L);
+				lua_state[i].L = NULL;
+			}
+			uv_mutex_unlock(&lua_state[i].lock);
+		} else {
+			_free = 1;
 		}
 	}
 
