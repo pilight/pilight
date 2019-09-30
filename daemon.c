@@ -2430,13 +2430,13 @@ int main_gc(void) {
 	dso_gc();
 	log_gc();
 	ssl_gc();
+	mqtt_gc();
 	plua_gc();
 
 	uv_stop(uv_default_loop());
 	options_delete(options);
 	gc_clear();
 	FREE(progname);
-	xfree();
 
 #ifdef _WIN32
 	WSACleanup();
@@ -2445,7 +2445,9 @@ int main_gc(void) {
 	}
 #endif
 
-	FREE(signal_req);
+	if(signal_req != NULL) {
+		FREE(signal_req);
+	}
 
 	running = 0;
 
@@ -2607,10 +2609,15 @@ static void signal_cb(uv_signal_t *handle, int signum) {
 
 	main_gc();	
 	uv_stop(uv_default_loop());
-	FREE(signal_req);
+	if(signal_req != NULL) {
+		FREE(signal_req);
+	}
 }
 
 int start_pilight(int argc, char **argv) {
+	// memtrack();
+	// uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
+
 	const uv_thread_t pth_cur_id = uv_thread_self();
 	memcpy((void *)&pth_main_id, &pth_cur_id, sizeof(uv_thread_t));
 
