@@ -36,7 +36,6 @@ extern void thread_free(uv_work_t *req, int status);
 #else
 static void thread_free(uv_work_t *req, int status) {
 	struct lua_thread_t *lua_thread = req->data;
-	int y = 0;
 
 	if(lua_thread != NULL) {
 		int x = 0;
@@ -65,6 +64,16 @@ static void plua_async_thread_gc(void *ptr) {
 
 	thread_free(lua_thread->work_req, -99);
 }
+
+#ifdef PILIGHT_UNITTEST
+extern void plua_async_thread_global_gc(void *ptr);
+#else
+static void plua_async_thread_global_gc(void *ptr) {
+	struct lua_thread_t *lua_thread = ptr;
+	atomic_inc(lua_thread->ref);
+	plua_async_thread_gc(ptr);
+}
+#endif
 
 static int plua_async_thread_trigger(lua_State *L) {
 	/*
@@ -320,7 +329,7 @@ int plua_async_thread(struct lua_State *L) {
 		tp_work_req->data = lua_thread;
 		lua_thread->L = L;
 
-		plua_gc_reg(NULL, lua_thread, plua_async_thread_gc);
+		plua_gc_reg(NULL, lua_thread, plua_async_thread_global_gc);
 	}
 	plua_gc_reg(L, lua_thread, plua_async_thread_gc);
 
