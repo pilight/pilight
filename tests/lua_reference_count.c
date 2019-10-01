@@ -123,7 +123,9 @@ static int plua_print(lua_State* L) {
 		case 22:
 		case 23:
 		case 24:
-		case 25: {
+		case 25:
+		case 26:
+		case 27: {
 			switch(run++) {
 				case 0: {
 					CuAssertIntEquals(gtc, LUA_TLIGHTUSERDATA, lua_type(L, -1));
@@ -317,7 +319,7 @@ void plua_network_mqtt_global_gc(void *ptr) {
 }
 
 void plua_async_event_gc(void *ptr) {
-	if(test != 21 && test != 23) {
+	if(test != 21 && test != 23 && test != 26 && test != 27) {
 		CuAssertIntEquals(gtc, stopped, 0);
 	}
 
@@ -486,6 +488,31 @@ void plua_async_event_gc(void *ptr) {
 					case 4: {
 						CuAssertTrue(gtc, ptr2 == lua_event);
 						CuAssertIntEquals(gtc, lua_event->ref, 1);
+					} break;
+				}
+			} break;
+			case 26:
+			case 27: {
+				switch(run++) {
+					case 2: {
+						CuAssertTrue(gtc, ptr1 == lua_event);
+						CuAssertIntEquals(gtc, lua_event->ref, 2);
+						CuAssertIntEquals(gtc, stopped, 0);
+					} break;
+					case 3: {
+						CuAssertTrue(gtc, ptr2 == lua_event);
+						CuAssertIntEquals(gtc, lua_event->ref, 1);
+						CuAssertIntEquals(gtc, stopped, 0);
+					} break;
+					case 5: {
+						CuAssertTrue(gtc, ptr1 == lua_event);
+						CuAssertIntEquals(gtc, lua_event->ref, 2);
+						CuAssertIntEquals(gtc, stopped, 0);
+					} break;
+					case 6: {
+						CuAssertTrue(gtc, ptr1 == lua_event);
+						CuAssertIntEquals(gtc, lua_event->ref, 1);
+						CuAssertIntEquals(gtc, stopped, 1);
 					} break;
 				}
 			} break;
@@ -1032,6 +1059,30 @@ static void test_lua_reference_count_event6(CuTest *tc) {
 	CuAssertIntEquals(tc, 5, run);
 }
 
+static void test_lua_reference_count_event7(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+	memtrack();
+
+	test = 26;
+
+	test_lua_reference_count(tc, "event7", 500);
+
+	CuAssertIntEquals(tc, 7, run);
+}
+
+static void test_lua_reference_count_event8(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+	memtrack();
+
+	test = 27;
+
+	test_lua_reference_count(tc, "event8", 500);
+
+	CuAssertIntEquals(tc, 7, run);
+}
+
 static void test_lua_reference_count_mqtt1(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
@@ -1103,6 +1154,8 @@ CuSuite *suite_lua_reference_count(void) {
 	SUITE_ADD_TEST(suite, test_lua_reference_count_event4);
 	SUITE_ADD_TEST(suite, test_lua_reference_count_event5);
 	SUITE_ADD_TEST(suite, test_lua_reference_count_event6);
+	SUITE_ADD_TEST(suite, test_lua_reference_count_event7);
+	SUITE_ADD_TEST(suite, test_lua_reference_count_event8);
 	SUITE_ADD_TEST(suite, test_lua_reference_count_mqtt1);
 	SUITE_ADD_TEST(suite, test_lua_reference_count_mqtt2);
 	SUITE_ADD_TEST(suite, test_lua_reference_count_mqtt3);
