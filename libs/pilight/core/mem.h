@@ -45,10 +45,10 @@ char *___strdup(char *, const char *, int);
 #define STRDUP strdup
 #define FREE(a) free((void *)(a)),(a)=NULL
 
-#define _MALLOC malloc
-#define _REALLOC realloc
-#define _CALLOC calloc
-#define _STRDUP strdup
-#define _FREE free
+// #define _MALLOC malloc
+// #define _REALLOC realloc
+// #define _CALLOC calloc
+// #define _STRDUP strdup
+// #define _FREE free
 
 #endif

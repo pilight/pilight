@@ -137,6 +137,8 @@ function M.callback(mqtt, data)
 	end
 	if data['type'] == MQTT_SUBACK then
 	end
+	if data['type'] == MQTT_DISCONNECT then
+	end
 end
 
 function M.run(a)

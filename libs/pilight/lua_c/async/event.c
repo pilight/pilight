@@ -164,7 +164,9 @@ static int plua_async_event_register(struct lua_State *L) {
 	if(is_active == 0) {
 		atomic_inc(event->ref);
 		plua_gc_reg(NULL, event, plua_async_event_global_gc);
-		plua_gc_reg(L, event, plua_async_event_gc);
+		if(event->callback == NULL) {
+			plua_gc_reg(L, event, plua_async_event_gc);
+		}
 	}
 
 	event->reasons[reason].active = 1;
@@ -364,7 +366,15 @@ static int plua_async_event_set_callback(lua_State *L) {
 		OUT_OF_MEMORY
 	}
 
-	if(had_callback == 0) {
+	int is_active = 0, i = 0;
+	for(i=0;i<REASON_END+10000;i++) {
+		if(event->reasons[i].active == 1) {
+			is_active = 1;
+			break;
+		}
+	}
+
+	if(had_callback == 0 && is_active == 1) {
 		int i = 0;
 		plua_gc_unreg(L, event);
 		for(i=0;i<REASON_END+10000;i++) {
