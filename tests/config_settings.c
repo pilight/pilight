@@ -49,6 +49,51 @@ struct settings_t {
 	},
 	{
 		{
+			{ "webserver-http-port", "5001", 0, JSON_NUMBER },
+		}, 1, 0
+	},
+	{
+		{
+			{ "webserver-http-port", "-1", 0, JSON_NUMBER },
+		}, 1, -1
+	},
+	{
+		{
+			{ "webserver-http-port", "a", 0, JSON_STRING },
+		}, 1, -1
+	},
+	{
+		{
+			{ "webserver-https-port", "5002", 0, JSON_NUMBER },
+		}, 1, 0
+	},
+	{
+		{
+			{ "webserver-https-port", "-1", 0, JSON_NUMBER },
+		}, 1, -1
+	},
+	{
+		{
+			{ "webserver-https-port", "a", 0, JSON_STRING },
+		}, 1, -1
+	},
+	{
+		{
+			{ "mqtt-port", "1883", 0, JSON_NUMBER },
+		}, 1, 0
+	},
+	{
+		{
+			{ "mqtt-port", "-1", 0, JSON_NUMBER },
+		}, 1, -1
+	},
+	{
+		{
+			{ "mqtt-port", "a", 0, JSON_STRING },
+		}, 1, -1
+	},
+	{
+		{
 			{ "port", "5001", 0, JSON_NUMBER },
 			{ "webserver-http-port", "5001", 0, JSON_NUMBER },
 		}, 2, -1
@@ -71,6 +116,32 @@ struct settings_t {
 			{ "webserver-http-port", "80", 0, JSON_NUMBER },
 			{ "webserver-https-port", "443", 0, JSON_NUMBER },
 		}, 3, 0
+	},
+	{
+		{
+			{ "port", "5000", 0, JSON_NUMBER },
+			{ "mqtt-port", "1883", 0, JSON_NUMBER }
+		}, 2, 0
+	},
+	{
+		{
+			{ "port", "5000", 0, JSON_NUMBER },
+			{ "mqtt-port", "5000", 0, JSON_NUMBER }
+		}, 2, -1
+	},
+	{
+		{
+			{ "mqtt-port", "80", 0, JSON_NUMBER },
+			{ "webserver-http-port", "80", 0, JSON_NUMBER },
+			{ "webserver-https-port", "443", 0, JSON_NUMBER },
+		}, 3, -1
+	},
+	{
+		{
+			{ "mqtt-port", "443", 0, JSON_NUMBER },
+			{ "webserver-http-port", "80", 0, JSON_NUMBER },
+			{ "webserver-https-port", "443", 0, JSON_NUMBER },
+		}, 3, -1
 	},
 	{
 		{
@@ -185,6 +256,31 @@ struct settings_t {
 	{
 		{
 			{ "stats-enable", "a", 0, JSON_STRING }
+		}, 1, -1
+	},
+	{
+		{
+			{ "mqtt-enable", "1", 0, JSON_NUMBER }
+		}, 1, 0
+	},
+	{
+		{
+			{ "mqtt-enable", "0", 0, JSON_NUMBER }
+		}, 1, 0
+	},
+	{
+		{
+			{ "mqtt-enable", "-1", 0, JSON_NUMBER }
+		}, 1, -1
+	},
+	{
+		{
+			{ "mqtt-enable", "2", 0, JSON_NUMBER }
+		}, 1, -1
+	},
+	{
+		{
+			{ "mqtt-enable", "a", 0, JSON_STRING }
 		}, 1, -1
 	},
 	{

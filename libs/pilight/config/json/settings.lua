@@ -114,7 +114,8 @@ function M.read(f)
 	--
 	-- These settings should be a valid positive number
 	--
-	keys = { 'port', 'arp-timeout', 'arp-interval', 'smtp-port' }
+	keys = { 'port', 'webserver-http-port', 'webserver-https-port', 'mqtt-port',
+		'arp-timeout', 'arp-interval', 'smtp-port' }
 	for k, v in pairs(keys) do
 		if settings[v] ~= nil then
 			s = settings[v];
