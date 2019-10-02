@@ -241,7 +241,7 @@ int isrunning(const char *program, int **ret) {
 		if(psutil_proc_name(i, &p, sizeof(name)) == 0) {
 			if(strcmp(name, program) == 0) {
 				if(((*ret) = REALLOC((*ret), (nr+1)*sizeof(int *))) == NULL) {
-					OUT_OF_MEMORY
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 				}
 				(*ret)[nr] = (int)i;
 				nr++;
@@ -948,62 +948,4 @@ void calc_time_interval(int type, int seconds, int diff, struct timeval *tv) {
 		tv->tv_sec += tv->tv_usec / 1000;
 		tv->tv_usec = tv->tv_usec % 1000;
 	}
-}
-
-/* Copyright (c) 2015-2016 Nuxi, https://nuxi.nl/ */
-char *_dirname(char *path) {
-	const char *in, *prev, *begin, *end;
-	char *out;
-	size_t prevlen;
-	bool skipslash;
-
-	/*
-	 * If path is a null pointer or points to an empty string,
-	 * dirname() shall return a pointer to the string ".".
-	 */
-	if(path == NULL || *path == '\0')
-		return ((char *)".");
-
-	/* Retain at least one leading slash character. */
-	in = out = *path == '/' ? path + 1 : path;
-
-	skipslash = true;
-	prev = ".";
-	prevlen = 1;
-	for(;;) {
-		/* Extract the next pathname component. */
-		while (*in == '/')
-			++in;
-		begin = in;
-		while(*in != '/' && *in != '\0')
-			++in;
-		end = in;
-		if(begin == end)
-			break;
-
-		/*
-		 * Copy over the previous pathname component, except if
-		 * it's dot. There is no point in retaining those.
-		 */
-		if(prevlen != 1 || *prev != '.') {
-			if(!skipslash)
-				*out++ = '/';
-			skipslash = false;
-			memmove(out, prev, prevlen);
-			out += prevlen;
-		}
-
-		/* Preserve the pathname component for the next iteration. */
-		prev = begin;
-		prevlen = end - begin;
-	}
-
-	/*
-	 * If path does not contain a '/', then dirname() shall return a
-	 * pointer to the string ".".
-	 */
-	if(out == path)
-		*out++ = '.';
-	*out = '\0';
-	return (path);
 }
