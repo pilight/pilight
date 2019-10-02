@@ -745,6 +745,30 @@ static void test_calc_time_interval(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
+static void test_alpha_random(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	memtrack();
+
+	int i = 0, x = 0;
+	char suffix[10][5];
+	for(i=0;i<10;i++) {
+		memset(&suffix[i], 0, 5);
+		alpha_random(suffix[i], 4);
+	}
+	for(i=0;i<10;i++) {
+		for(x=0;x<10;x++) {
+			if(x != i) {
+				CuAssertTrue(tc, strcmp(suffix[i], suffix[x]) != 0);
+			}
+		}
+	}
+
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
+
 CuSuite *suite_common(void) {
 	CuSuite *suite = CuSuiteNew();
 
@@ -771,6 +795,7 @@ CuSuite *suite_common(void) {
 	SUITE_ADD_TEST(suite, test_strtolower);
 	SUITE_ADD_TEST(suite, test_file_get_contents);
 	SUITE_ADD_TEST(suite, test_calc_time_interval);
+	SUITE_ADD_TEST(suite, test_alpha_random);
 
 	return suite;
 }
