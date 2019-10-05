@@ -280,7 +280,7 @@ void test_lua_hardware_433nano_connection_lost(CuTest *tc) {
 	}
 
 	storage_gc();
-	plua_gc();
+	// plua_gc();
 	hardware_gc();
 	eventpool_gc();
 
