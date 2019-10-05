@@ -30,6 +30,7 @@ static uv_timer_t *timer_req2 = NULL;
 static uv_timer_t *stop_timer_req = NULL;
 static uv_thread_t pth;
 
+static int running = 1;
 static int test = 0;
 static int step1[17] = { 0 };
 static int step2[17] = { 0 };
@@ -47,10 +48,14 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 }
 
 static void ping(uv_timer_t *handle) {
-	mqtt_ping(handle->data);
+	if(running == 1) {
+		mqtt_ping(handle->data);
+	}
 }
 
 static void stop(uv_timer_t *handle) {
+	running = 0;
+	usleep(1000);
 	mqtt_gc();
 	uv_stop(uv_default_loop());
 }
@@ -732,6 +737,7 @@ void test_mqtt_server_client(CuTest *tc) {
 		timer_req1 = NULL;
 		timer_req2 = NULL;
 
+		running = 1;
 		test = i;
 
 		for(x=0;x<17;x++) {
