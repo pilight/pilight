@@ -56,8 +56,14 @@ end
 function M.run(a)
 	local mqtt = pilight.network.mqtt();
 
+	local config = pilight.config();
+	local data = config.getData();
+	local port = lookup(data, 'settings', 'mqtt-port') or 1883;
+
+	local mqtt = pilight.network.mqtt();
+
 	mqtt.setCallback("callback");
-	mqtt.connect("127.0.0.1", 1883);
+	mqtt.connect("127.0.0.1", port);
 end
 
 function M.implements()
