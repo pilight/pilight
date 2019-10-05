@@ -322,9 +322,12 @@ void plua_network_mqtt_global_gc(void *ptr) {
 }
 
 void plua_async_event_gc(void *ptr) {
-	if(test != 21 && test != 23 && test != 26 && test != 27) {
-		CuAssertIntEquals(gtc, stopped, 0);
+	if(testing_plua_reference_count == 1) {
+		if(test != 21 && test != 23 && test != 26 && test != 27) {
+			CuAssertIntEquals(gtc, stopped, 0);
+		}
 	}
+
 	struct lua_event_t *lua_event = ptr;
 
 	if(lua_event != NULL) {
