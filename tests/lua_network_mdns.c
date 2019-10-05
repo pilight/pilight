@@ -1003,12 +1003,12 @@ static void test_lua_network_mdns_tx(CuTest *tc, int bar) {
 	uv_walk(uv_default_loop(), walk_cb, NULL);
 	uv_run(uv_default_loop(), UV_RUN_ONCE);
 
-	mdns_loop = 0;
-	uv_thread_join(&pth);
-
 	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
+
+	mdns_loop = 0;
+	uv_thread_join(&pth);
 
 	plua_pause_coverage(0);
 	plua_gc();
