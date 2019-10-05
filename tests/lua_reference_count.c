@@ -27,6 +27,7 @@
 static int run = 0;
 static int test = 0;
 static int stopped = 0;
+static int testing_plua_reference_count = 0;
 static CuTest *gtc = NULL;
 static uv_timer_t *timer_req = NULL;
 
@@ -236,7 +237,9 @@ static int plua_print(lua_State* L) {
 }
 
 void plua_network_mqtt_gc(void *ptr) {
-	CuAssertIntEquals(gtc, stopped, 0);
+	if(testing_plua_reference_count == 1) {
+		CuAssertIntEquals(gtc, stopped, 0);
+	}
 	struct lua_mqtt_t *lua_mqtt = ptr;
 
 	if(lua_mqtt != NULL) {
@@ -322,7 +325,6 @@ void plua_async_event_gc(void *ptr) {
 	if(test != 21 && test != 23 && test != 26 && test != 27) {
 		CuAssertIntEquals(gtc, stopped, 0);
 	}
-
 	struct lua_event_t *lua_event = ptr;
 
 	if(lua_event != NULL) {
@@ -536,7 +538,9 @@ void plua_async_event_global_gc(void *ptr) {
 }
 
 void plua_async_timer_gc(void *ptr) {
-	CuAssertIntEquals(gtc, stopped, 0);
+	if(testing_plua_reference_count == 1) {
+		CuAssertIntEquals(gtc, stopped, 0);
+	}
 
 	struct lua_timer_t *lua_timer = ptr;
 	if(lua_timer != NULL) {
@@ -653,7 +657,9 @@ void plua_async_timer_global_gc(void *ptr) {
 }
 
 void thread_free(uv_work_t *req, int status) {
-	CuAssertIntEquals(gtc, stopped, 0);
+	if(testing_plua_reference_count == 1) {
+		CuAssertIntEquals(gtc, stopped, 0);
+	}
 
 	struct lua_thread_t *lua_thread = req->data;
 
@@ -815,6 +821,7 @@ static void stop(uv_timer_t *req) {
 }
 
 static void test_lua_reference_count(CuTest *tc, char *mod, int time) {
+	testing_plua_reference_count = 1;
 	struct lua_state_t *state = NULL;
 	struct lua_State *L = NULL;
 	char path[1024], *p = path, name[255];
@@ -872,7 +879,6 @@ static void test_lua_reference_count(CuTest *tc, char *mod, int time) {
 	}
 	CuAssertPtrNotNull(tc, file);
 	CuAssertIntEquals(tc, 1, call(L, file, "run"));
-
 	lua_pop(L, -1);
 
 	plua_clear_state(state);
@@ -889,6 +895,7 @@ static void test_lua_reference_count(CuTest *tc, char *mod, int time) {
 	eventpool_gc();
 	plua_gc();
 	CuAssertIntEquals(tc, 0, xfree());
+	testing_plua_reference_count = 0;
 }
 
 static void test_lua_reference_count_timer1(CuTest *tc) {
