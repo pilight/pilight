@@ -51,6 +51,8 @@ static void plua_async_timer_gc(void *ptr) {
 			plua_gc_unreg(NULL, lua_timer);
 			FREE(lua_timer);
 			lua_timer = NULL;
+		} else {
+			lua_timer->running = 0;
 		}
 		assert(x >= 0);
 	}
@@ -278,7 +280,6 @@ static int plua_async_timer_start(lua_State *L) {
 	if(timer->running == 0) {
 		atomic_inc(timer->ref);
 	}
-
 	timer->running = 1;
 
 	uv_timer_start(timer_req, timer_callback, timer->timeout, timer->repeat);
