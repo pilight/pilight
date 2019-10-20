@@ -83,6 +83,24 @@ static int plua_print(lua_State* L) {
 				} break;
 			}
 		} break;
+		case 5: {
+			switch(run++) {
+				case 0: {
+					CuAssertIntEquals(gtc, LUA_TLIGHTUSERDATA, lua_type(L, -1));
+					if(strcmp("timer", lua_tostring(L, -2)) == 0) {
+						ptr1 = lua_touserdata(L, -1);
+					}
+				} break;
+				case 2: {
+					CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
+					CuAssertStrEquals(gtc, "timer", lua_tostring(L, -1));
+				} break;
+				case 4: {
+					CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
+					CuAssertStrEquals(gtc, "timer", lua_tostring(L, -1));
+				} break;
+			}
+		} break;
 		case 10:
 		case 11:
 		case 12:
@@ -636,6 +654,22 @@ void plua_async_timer_gc(void *ptr) {
 					} break;
 				}
 			} break;
+			case 5: {
+				switch(run++) {
+					case 1: {
+						CuAssertTrue(gtc, ptr1 == lua_timer);
+						CuAssertIntEquals(gtc, lua_timer->ref, 2);
+					} break;
+					case 3: {
+						CuAssertTrue(gtc, ptr1 == lua_timer);
+						CuAssertIntEquals(gtc, lua_timer->ref, 2);
+					} break;
+					case 5: {
+						CuAssertTrue(gtc, ptr1 == lua_timer);
+						CuAssertIntEquals(gtc, lua_timer->ref, 1);
+					} break;
+				}
+			} break;
 		}
 		// printf("%s: %d %d\n", ((lua_timer == ptr1) ? "timer" : "timer1"), lua_timer->ref-1, run-1);
 		int x = 0;
@@ -650,6 +684,8 @@ void plua_async_timer_gc(void *ptr) {
 			plua_gc_unreg(NULL, lua_timer);
 			FREE(lua_timer);
 			lua_timer = NULL;
+		} else {
+			lua_timer->running = 0;
 		}
 		assert(x >= 0);
 	}
@@ -949,6 +985,18 @@ static void test_lua_reference_count_timer4(CuTest *tc) {
 	CuAssertIntEquals(tc, 11, run);
 }
 
+static void test_lua_reference_count_timer5(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+	memtrack();
+
+	test = 5;
+
+	test_lua_reference_count(tc, "timer5", 1000);
+
+	CuAssertIntEquals(tc, 6, run);
+}
+
 static void test_lua_reference_count_thread1(CuTest *tc) {
 	printf("[ %-48s ]\n", __FUNCTION__);
 	fflush(stdout);
@@ -1154,6 +1202,7 @@ CuSuite *suite_lua_reference_count(void) {
 	SUITE_ADD_TEST(suite, test_lua_reference_count_timer2);
 	SUITE_ADD_TEST(suite, test_lua_reference_count_timer3);
 	SUITE_ADD_TEST(suite, test_lua_reference_count_timer4);
+	SUITE_ADD_TEST(suite, test_lua_reference_count_timer5);
 	SUITE_ADD_TEST(suite, test_lua_reference_count_thread1);
 	SUITE_ADD_TEST(suite, test_lua_reference_count_thread2);
 	SUITE_ADD_TEST(suite, test_lua_reference_count_thread3);
