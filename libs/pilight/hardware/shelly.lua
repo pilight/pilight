@@ -38,7 +38,9 @@ function M.send(obj, reason, data)
 		return
 	end
 
-	if data['protocol'] == 'shelly1pm' or data['protocol'] == 'shelly1' then
+	if data['protocol'] == 'shelly1pm' or
+	   data['protocol'] == 'shelly1' or
+		 data['protocol'] == 'shellyplug' then
 		mqtt.publish("shellies/" .. devs[data['id']]['type'] .. "-" .. data['id'] .. "/relay/0/command", data['state']);
 	end
 end
@@ -56,7 +58,9 @@ function M.createMessage(data, id)
 	if data[id]['type'] ~= nil then
 		broadcast['origin'] = 'receiver';
 		broadcast['message'] = {};
-		if data[id]['type'] == 'shelly1pm' or data[id]['type'] == 'shelly1' then
+		if data[id]['type'] == 'shelly1pm' or
+		   data[id]['type'] == 'shelly1' or
+			 data[id]['type'] == 'shellyplug' then
 			broadcast['protocol'] = data[id]['type'];
 			broadcast['message']['state'] = lookup(data[id], 'relay', 0, 'state') or nil;
 			broadcast['message']['power'] = lookup(data[id], 'relay', 0, 'power') or nil;
@@ -71,7 +75,8 @@ function M.createMessage(data, id)
 		 broadcast['message'] ~= nil and
 		 broadcast['message']['id'] ~= nil then
 		 if (broadcast['protocol'] == 'shelly1pm' or
-		     broadcast['protocol'] == 'shelly1')
+		     broadcast['protocol'] == 'shelly1' or
+		     broadcast['protocol'] == 'shellyplug')
 				and
 					broadcast['message']['state'] ~= nil then
 			local event = pilight.async.event();
@@ -97,42 +102,47 @@ function M.callback(mqtt, data)
 	if data['type'] == MQTT_PUBLISH then
 		local substr = pilight.common.explode(data['topic'], "/");
 		if #substr >= 3 then
-			local id = pilight.common.explode(substr[2], "-");
-			if #id == 2 then
-				if tmp[id[2]] == nil then
-					tmp[id[2]] = {};
+			local foo = pilight.common.explode(substr[2], "-");
+			local id = nil;
+			local type_ = nil;
+			if #foo >= 2 then
+				id = foo[#foo];
+				type_ = foo[1];
+
+				if tmp[id] == nil then
+					tmp[id] = {};
 				end
-				tmp[id[2]]['type'] = id[1];
+				tmp[id]['type'] = type_;
 				if substr[3] == 'temperature' then
-					tmp[id[2]]['temperature'] = tonumber(data['message']);
+					tmp[id]['temperature'] = tonumber(data['message']);
 				end
 				if substr[3] == 'overtemperature' then
-					tmp[id[2]]['overtemperature'] = tonumber(data['message']);
+					tmp[id]['overtemperature'] = tonumber(data['message']);
 				end
 				if substr[3] == 'relay' then
-					if tmp[id[2]]['relay'] == nil then
-						tmp[id[2]]['relay'] = {};
+					if tmp[id]['relay'] == nil then
+						tmp[id]['relay'] = {};
 					end
 					if #substr >= 4 then
-						if tmp[id[2]]['relay'][tonumber(substr[4])] == nil then
-							tmp[id[2]]['relay'][tonumber(substr[4])] = {};
+						if tmp[id]['relay'][tonumber(substr[4])] == nil then
+							tmp[id]['relay'][tonumber(substr[4])] = {};
 						end
 						if #substr == 4 then
-							tmp[id[2]]['relay'][tonumber(substr[4])]['state'] = data['message'];
+							tmp[id]['relay'][tonumber(substr[4])]['state'] = data['message'];
 						end
 						if #substr == 5 then
 							if substr[5] == 'power' then
-								tmp[id[2]]['relay'][tonumber(substr[4])]['power'] = tonumber(data['message']);
+								tmp[id]['relay'][tonumber(substr[4])]['power'] = tonumber(data['message']);
 							end
 							if substr[5] == 'energy' then
-								tmp[id[2]]['relay'][tonumber(substr[4])]['energy'] = tonumber(data['message']);
+								tmp[id]['relay'][tonumber(substr[4])]['energy'] = tonumber(data['message']);
 							end
 						end
 					end
 				end
-				M.createMessage(tmp, id[2]);
+				M.createMessage(tmp, id);
 			end
-			tmp[id[2]]['lastseen'] = os.time();
+			tmp[id]['lastseen'] = os.time();
 		end
 	end
 	if data['type'] == MQTT_SUBACK then
