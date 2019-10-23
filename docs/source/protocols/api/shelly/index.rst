@@ -7,3 +7,4 @@ Shelly
    shelly1
    shelly1pm
    shellyplug
+   shellyplug_s
