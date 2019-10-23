@@ -32,17 +32,11 @@
 #include "../../core/binary.h"
 #include "../../core/json.h"
 #include "../../lua_c/table.h"
-#include "shelly1.h"
+#include "shellyplug_s.h"
 
 static void *reason_send_code_free(void *param) {
 	plua_metatable_free(param);
 	return NULL;
-}
-
-static void printHelp(void) {
-	printf("\t -t --on\t\t\tsend an on signal\n");
-	printf("\t -f --off\t\t\tsend an off signal\n");
-	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
 static int createCode(struct JsonNode *code) {
@@ -57,10 +51,10 @@ static int createCode(struct JsonNode *code) {
 		state=1;
 
 	if(id == NULL || state == -1) {
-		logprintf(LOG_ERR, "shelly1: insufficient number of arguments");
+		logprintf(LOG_ERR, "shellyPlugS: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else if(id == NULL) {
-		logprintf(LOG_ERR, "shelly1: invalid id");
+		logprintf(LOG_ERR, "shellyPlugS: invalid id");
 		return EXIT_FAILURE;
 	} else {
 		struct plua_metatable_t *table = NULL;
@@ -71,7 +65,7 @@ static int createCode(struct JsonNode *code) {
 		} else {
 			plua_metatable_set_string(table, "state", "off");
 		}
-		plua_metatable_set_string(table, "protocol", shellySwitch->id);
+		plua_metatable_set_string(table, "protocol", shellyPlugS->id);
 		plua_metatable_set_number(table, "hwtype", SHELLY);
 		plua_metatable_set_string(table, "uuid", "0");
 
@@ -80,35 +74,45 @@ static int createCode(struct JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
+static void printHelp(void) {
+	printf("\t -t --on\t\t\tsend an on signal\n");
+	printf("\t -f --off\t\t\tsend an off signal\n");
+	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
+}
+
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
-void shellySwitchInit(void) {
-	protocol_register(&shellySwitch);
-	protocol_set_id(shellySwitch, "shelly1");
-	protocol_device_add(shellySwitch, "shelly1", "Shelly Switch");
-	shellySwitch->devtype = SWITCH;
-	shellySwitch->hwtype = SHELLY;
+void shellyPlugSInit(void) {
+	protocol_register(&shellyPlugS);
+	protocol_set_id(shellyPlugS, "shellyplug-s");
+	protocol_device_add(shellyPlugS, "shellyplug-s", "Shelly Plug S");
+	shellyPlugS->devtype = SWITCH;
+	shellyPlugS->hwtype = SHELLY;
 
-	options_add(&shellySwitch->options, "i", "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "[A-Z0-9]");
-	options_add(&shellySwitch->options, "t", "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&shellySwitch->options, "f", "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&shellyPlugS->options, "i", "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "[A-Z0-9]");
+	options_add(&shellyPlugS->options, "t", "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&shellyPlugS->options, "f", "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&shellyPlugS->options, "energy", "energy", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&shellyPlugS->options, "power", "power", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&shellyPlugS->options, "overtemperature", "overtemperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&shellyPlugS->options, "temperature", "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 
-	options_add(&shellySwitch->options, "0", "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&shellyPlugS->options, "0", "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	shellySwitch->createCode=&createCode;
-	shellySwitch->printHelp=&printHelp;
+	shellyPlugS->createCode=&createCode;
+	shellyPlugS->printHelp=&printHelp;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
-	module->name = "shelly1";
+	module->name = "shellyplug-s";
 	module->version = "1.6";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 
 void init(void) {
-	shellySwitchInit();
+	shellyPlugSInit();
 }
 #endif

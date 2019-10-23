@@ -33,7 +33,7 @@ static uv_timer_t *timer_req1 = NULL;
 static uv_timer_t *timer_req2 = NULL;
 static int running = 1;
 static struct eventpool_listener_t *node = NULL;
-static int test[5] = { 0 };
+static int test[6] = { 0 };
 
 static void close_cb(uv_handle_t *handle) {
 	FREE(handle);
@@ -79,8 +79,10 @@ static void *receiveAPI1(int reason, void *param, void *userdata) {
 				test[1]++;
 			} else if(strcmp("{\"origin\":\"receiver\",\"message\":{\"state\":\"on\",\"id\":\"A123D4\"},\"protocol\":\"shelly1\"}", foo) == 0) {
 				test[3]++;
-			} else if(strcmp("{\"origin\":\"receiver\",\"message\":{\"state\":\"off\",\"power\":0,\"energy\":4,\"id\":\"A123E4\"},\"protocol\":\"shellyplug\"}", foo) == 0) {
+			} else if(strcmp("{\"origin\":\"receiver\",\"message\":{\"state\":\"off\",\"power\":0,\"energy\":4,\"id\":\"A123E4\"},\"protocol\":\"shellyplug-s\"}", foo) == 0) {
 				test[4]++;
+			} else if(strcmp("{\"origin\":\"receiver\",\"message\":{\"state\":\"off\",\"power\":0,\"energy\":4,\"id\":\"A123F4\"},\"protocol\":\"shellyplug\"}", foo) == 0) {
+				test[5]++;
 			}
 
 			json_free(foo);
@@ -130,6 +132,9 @@ static void mqtt_callback2(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt,
 			mqtt_publish(client, 0, 0, 0, "shellies/shellyplug-s-A123E4/relay/0", "off");
 			mqtt_publish(client, 0, 0, 0, "shellies/shellyplug-s-A123E4/relay/0/power", "0.00");
 			mqtt_publish(client, 0, 0, 0, "shellies/shellyplug-s-A123E4/relay/0/energy", "4");
+			mqtt_publish(client, 0, 0, 0, "shellies/shellyplug-A123F4/relay/0", "off");
+			mqtt_publish(client, 0, 0, 0, "shellies/shellyplug-A123F4/relay/0/power", "0.00");
+			mqtt_publish(client, 0, 0, 0, "shellies/shellyplug-A123F4/relay/0/energy", "4");
 		}
 		if(pkt->type == MQTT_PUBLISH) {
 			if(strcmp("shellies/shelly1-A123D4/relay/0/command", pkt->payload.publish.topic) == 0 &&
@@ -274,5 +279,6 @@ void test_lua_hardware_shelly_send_receive(CuTest *tc) {
 	CuAssertIntEquals(tc, test[2], 1);
 	CuAssertIntEquals(tc, test[3], 1);
 	CuAssertIntEquals(tc, test[4], 1);
+	CuAssertIntEquals(tc, test[5], 1);
 	CuAssertIntEquals(tc, 0, xfree());
 }
