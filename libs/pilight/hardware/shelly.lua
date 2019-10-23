@@ -40,7 +40,8 @@ function M.send(obj, reason, data)
 
 	if data['protocol'] == 'shelly1pm' or
 	   data['protocol'] == 'shelly1' or
-		 data['protocol'] == 'shellyplug' then
+		 data['protocol'] == 'shellyplug' or
+		 data['protocol'] == 'shellyplug-s' then
 		mqtt.publish("shellies/" .. devs[data['id']]['type'] .. "-" .. data['id'] .. "/relay/0/command", data['state']);
 	end
 end
@@ -60,7 +61,8 @@ function M.createMessage(data, id)
 		broadcast['message'] = {};
 		if data[id]['type'] == 'shelly1pm' or
 		   data[id]['type'] == 'shelly1' or
-			 data[id]['type'] == 'shellyplug' then
+			 data[id]['type'] == 'shellyplug' or
+			 data[id]['type'] == 'shellyplug-s' then
 			broadcast['protocol'] = data[id]['type'];
 			broadcast['message']['state'] = lookup(data[id], 'relay', 0, 'state') or nil;
 			broadcast['message']['power'] = lookup(data[id], 'relay', 0, 'power') or nil;
@@ -76,7 +78,8 @@ function M.createMessage(data, id)
 		 broadcast['message']['id'] ~= nil then
 		 if (broadcast['protocol'] == 'shelly1pm' or
 		     broadcast['protocol'] == 'shelly1' or
-		     broadcast['protocol'] == 'shellyplug')
+		     broadcast['protocol'] == 'shellyplug' or
+		     broadcast['protocol'] == 'shellyplug-s')
 				and
 					broadcast['message']['state'] ~= nil then
 			local event = pilight.async.event();
@@ -108,7 +111,9 @@ function M.callback(mqtt, data)
 			if #foo >= 2 then
 				id = foo[#foo];
 				type_ = foo[1];
-
+				for i = 2, #foo-1, 1 do
+					type_ = type_ .. '-' .. foo[i];
+				end
 				if tmp[id] == nil then
 					tmp[id] = {};
 				end
