@@ -573,7 +573,7 @@ static void firmware_init_pgm(PROGRAMMER **pgm) {
 		(*pgm)->pinno[4] = FIRMWARE_GPIO_SCK;
 		(*pgm)->pinno[5] = FIRMWARE_GPIO_MOSI;
 		(*pgm)->pinno[6] = FIRMWARE_GPIO_MISO;
-		// (*pgm)->ispdelay = 50;
+		(*pgm)->ispdelay = 2;
 
 		struct lua_state_t *state = plua_get_free_state();
 		if(config_setting_get_number(state->L, "firmware-gpio-reset", 0, &itmp) == 0) { (*pgm)->pinno[3] = itmp; }
