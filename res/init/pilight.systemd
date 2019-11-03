@@ -5,6 +5,7 @@ After=network-online.target
 [Service]
 ExecStart=/usr/local/sbin/pilight-daemon
 Type=forking
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
