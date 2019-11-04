@@ -33,7 +33,7 @@ static uv_timer_t *timer_req1 = NULL;
 static uv_timer_t *timer_req2 = NULL;
 static int running = 1;
 static struct eventpool_listener_t *node = NULL;
-static int test[6] = { 0 };
+static int test[10] = { 0 };
 
 static void close_cb(uv_handle_t *handle) {
 	FREE(handle);
@@ -142,6 +142,21 @@ static void mqtt_callback2(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt,
 				mqtt_publish(client, 0, 0, 0, "shellies/shelly1-A123D4/relay/0", "on");
 				test[2]++;
 			}
+			if(strcmp("shellies/shelly1pm-A123B4/relay/0/command", pkt->payload.publish.topic) == 0 &&
+				strcmp("on", pkt->payload.publish.message) == 0) {
+				mqtt_publish(client, 0, 0, 0, "shellies/shelly1pm-A123B4/relay/0", "on");
+				test[6]++;
+			}
+			if(strcmp("shellies/shellyplug-s-A123E4/relay/0/command", pkt->payload.publish.topic) == 0 &&
+				strcmp("on", pkt->payload.publish.message) == 0) {
+				mqtt_publish(client, 0, 0, 0, "shellies/shellyplug-s-A123E4/relay/0", "on");
+				test[7]++;
+			}
+			if(strcmp("shellies/shellyplug-A123F4/relay/0/command", pkt->payload.publish.topic) == 0 &&
+				strcmp("on", pkt->payload.publish.message) == 0) {
+				mqtt_publish(client, 0, 0, 0, "shellies/shellyplug-A123F4/relay/0", "on");
+				test[8]++;
+			}
 		}
 	}
 }
@@ -156,16 +171,57 @@ static void *reason_send_code_free(void *param) {
 }
 
 static void timeout(uv_timer_t *req) {
-	struct plua_metatable_t *table = NULL;
-	plua_metatable_init(&table);
+	{
+		struct plua_metatable_t *table = NULL;
+		plua_metatable_init(&table);
 
-	plua_metatable_set_string(table, "protocol", "shelly1");
-	plua_metatable_set_number(table, "hwtype", SHELLY);
-	plua_metatable_set_string(table, "id", "A123D4");
-	plua_metatable_set_string(table, "state", "on");
-	plua_metatable_set_string(table, "uuid", "0");
+		plua_metatable_set_string(table, "protocol", "shelly1");
+		plua_metatable_set_number(table, "hwtype", SHELLY);
+		plua_metatable_set_string(table, "id", "A123D4");
+		plua_metatable_set_string(table, "state", "on");
+		plua_metatable_set_string(table, "uuid", "0");
 
-	eventpool_trigger(REASON_SEND_CODE+10000, reason_send_code_free, table);
+		eventpool_trigger(REASON_SEND_CODE+10000, reason_send_code_free, table);
+	}
+
+	{
+		struct plua_metatable_t *table = NULL;
+		plua_metatable_init(&table);
+
+		plua_metatable_set_string(table, "protocol", "shelly1pm");
+		plua_metatable_set_number(table, "hwtype", SHELLY);
+		plua_metatable_set_string(table, "id", "A123B4");
+		plua_metatable_set_string(table, "state", "on");
+		plua_metatable_set_string(table, "uuid", "0");
+
+		eventpool_trigger(REASON_SEND_CODE+10000, reason_send_code_free, table);
+	}
+
+	{
+		struct plua_metatable_t *table = NULL;
+		plua_metatable_init(&table);
+
+		plua_metatable_set_string(table, "protocol", "shellyplug-s");
+		plua_metatable_set_number(table, "hwtype", SHELLY);
+		plua_metatable_set_string(table, "id", "A123E4");
+		plua_metatable_set_string(table, "state", "on");
+		plua_metatable_set_string(table, "uuid", "0");
+
+		eventpool_trigger(REASON_SEND_CODE+10000, reason_send_code_free, table);
+	}
+
+	{
+		struct plua_metatable_t *table = NULL;
+		plua_metatable_init(&table);
+
+		plua_metatable_set_string(table, "protocol", "shellyplug");
+		plua_metatable_set_number(table, "hwtype", SHELLY);
+		plua_metatable_set_string(table, "id", "A123F4");
+		plua_metatable_set_string(table, "state", "on");
+		plua_metatable_set_string(table, "uuid", "0");
+
+		eventpool_trigger(REASON_SEND_CODE+10000, reason_send_code_free, table);
+	}
 }
 
 void test_lua_hardware_shelly_send_receive(CuTest *tc) {
@@ -219,7 +275,7 @@ void test_lua_hardware_shelly_send_receive(CuTest *tc) {
 	timer_req = MALLOC(sizeof(uv_timer_t));
 	CuAssertPtrNotNull(gtc, timer_req);
 	uv_timer_init(uv_default_loop(), timer_req);
-	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 1000);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 3000, 3000);
 
 	timer_req1 = MALLOC(sizeof(uv_timer_t));
 	CuAssertPtrNotNull(gtc, timer_req1);
@@ -280,5 +336,8 @@ void test_lua_hardware_shelly_send_receive(CuTest *tc) {
 	CuAssertIntEquals(tc, test[3], 1);
 	CuAssertIntEquals(tc, test[4], 1);
 	CuAssertIntEquals(tc, test[5], 1);
+	CuAssertIntEquals(tc, test[6], 1);
+	CuAssertIntEquals(tc, test[7], 1);
+	CuAssertIntEquals(tc, test[8], 1);
 	CuAssertIntEquals(tc, 0, xfree());
 }
