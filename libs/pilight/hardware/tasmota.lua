@@ -75,8 +75,8 @@ function M.callback(mqtt, data)
 	if data['type'] == MQTT_CONNACK then
 		local timer = pilight.async.timer();
 		timer.setCallback("timer");
-		timer.setTimeout(3000);
-		timer.setRepeat(3000);
+		timer.setTimeout(100);
+		timer.setRepeat(100);
 		timer.setUserdata({['mqtt']=mqtt()});
 		timer.start();
 

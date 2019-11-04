@@ -677,7 +677,8 @@ int mqtt_decode(struct mqtt_pkt_t ***pkt, unsigned char *buf, unsigned int len, 
 			/*
 			 * Packet too short for full message
 			 */
-			return -1;
+			(*nr)++;
+			return 1;
 		}
 
 		switch((*pkt)[*nr]->type) {
@@ -1845,12 +1846,19 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	struct mqtt_pkt_t **pkt = NULL;
 	unsigned int nr = 0, len = 0;
 	unsigned char *buf1 = NULL;
-	int i = 0;
+	int i = 0, ret = 0;
 
 	if(*nread > 0) {
 		buf[*nread] = '\0';
 
-		if(mqtt_decode(&pkt, (unsigned char *)buf, *nread, &nr) == 0) {
+		ret = mqtt_decode(&pkt, (unsigned char *)buf, *nread, &nr);
+		if(ret == 1) {
+			for(i=0;i<nr;i++) {
+				mqtt_free(pkt[i]);
+				FREE(pkt[i]);
+			}
+			FREE(pkt);
+		} else if(ret == 0) {
 			for(i=0;i<nr;i++) {
 				struct mqtt_pkt_t pkt1;
 				memset(&pkt1, 0, sizeof(struct mqtt_pkt_t));
@@ -1971,7 +1979,9 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	pthread_mutex_unlock(&mqtt_lock);
 #endif
 
-	*nread = 0;
+	if(ret <= 0) {
+		*nread = 0;
+	}
 	uv_custom_write(req);
 	uv_custom_read(req);
 }
