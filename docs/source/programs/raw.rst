@@ -44,6 +44,12 @@ Mandatory arguments to long options are mandatory for short options too.
 | ``-L``, ``--linefeed``
 |  Structure raw printout with newlines between (probably) separate pulsetrains
 |
+| ``-m``, ``--minpulses``
+|  Print nothing if not at least # pulses (implies --linefeed)
+|
+| ``-p``, ``--pulsesperline``
+|  Pulses to print per line (10 by default; implies --linefeed)
+|
 | ``-Ls``, ``--storage-root``
 |  Location of storage lua modules
 
