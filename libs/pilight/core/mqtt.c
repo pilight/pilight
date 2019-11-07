@@ -453,7 +453,6 @@ void mqtt_dump(struct mqtt_pkt_t *pkt) {
 /*LCOV_EXCL_STOP*/
 
 static void read_value(unsigned char *buf, unsigned int len, char **val) {
-	printf("%lu\n", len);
 	if((*val = MALLOC(len+1)) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
@@ -629,12 +628,6 @@ int mqtt_encode(struct mqtt_pkt_t *pkt, unsigned char **buf, unsigned int *len) 
 
 int mqtt_decode(struct mqtt_pkt_t ***pkt, unsigned char *buf, unsigned int len, unsigned int *nr) {
 	unsigned int i = 0, length = 0, startpos = 0;
-
-	for(i=0;i<len;i++) {
-		printf("0x%02x, ", buf[i]);
-	}
-	printf("\n");
-	i = 0;
 
 	if(len < 2) {
 		/*
@@ -1246,8 +1239,12 @@ static void client_close_cb(uv_poll_t *req) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct mqtt_client_t *client = custom_poll_data->data;
 
-	client->step = MQTT_DISCONNECTED;
-	client->callback(client, NULL, client->userdata);
+	if(custom_poll_data->started == 1) {
+		client->step = MQTT_DISCONNECTED;
+		client->callback(client, NULL, client->userdata);
+	} else {
+		client->callback(NULL, NULL, client->userdata);
+	}
 
 	mqtt_client_remove(client->poll_req, 1);
 }
