@@ -1239,8 +1239,12 @@ static void client_close_cb(uv_poll_t *req) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct mqtt_client_t *client = custom_poll_data->data;
 
-	client->step = MQTT_DISCONNECTED;
-	client->callback(client, NULL, client->userdata);
+	if(custom_poll_data->started == 1) {
+		client->step = MQTT_DISCONNECTED;
+		client->callback(client, NULL, client->userdata);
+	} else {
+		client->callback(NULL, NULL, client->userdata);
+	}
 
 	mqtt_client_remove(client->poll_req, 1);
 }
