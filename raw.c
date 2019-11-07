@@ -45,6 +45,11 @@ static uv_signal_t *signal_req = NULL;
 
 static unsigned short main_loop = 1;
 static unsigned short linefeed = 0;
+static int min_pulses = 0;
+static int pulses_per_line = 0;
+
+static const char pulse_fmt[] = " %5d";
+static const char line_fmt[] = "\n%*d:";
 
 static char *lua_root = LUA_ROOT;
 
@@ -94,6 +99,8 @@ static void *listener(int reason, void *param, void *userdata) {
 	double length = 0.0;
 	double pulse = 0.0;
 	int buffer[WIRINGX_BUFFER];
+	int pulses[min_pulses < 1 ? 1 : min_pulses], len = 0;
+	unsigned int lines = 0;
 	memset(&buffer, 0, WIRINGX_BUFFER*sizeof(int));
 
 	memset(&nr, 0, 255);
@@ -110,9 +117,40 @@ static void *listener(int reason, void *param, void *userdata) {
 
 	if((int)length > 0) {
 		for(i=0;i<(int)length;i++) {
-			if(linefeed == 1) {
+			iter++;
+			if(min_pulses > 0) {
+				if(iter < min_pulses) {
+					pulses[iter] = buffer[i];
+				} else if(iter == min_pulses) {
+					len = printf("%6u %s:", ++lines, hardware) - 1; // don't count the ':' - is added by line_fmt.
+					for(iter = 1; iter < min_pulses; iter++) {
+						if(iter > 1 && (iter-1) % pulses_per_line == 0) {
+							printf(line_fmt, len, (iter-1));
+						}
+						printf(pulse_fmt, pulses[iter]);
+					}
+					if(iter > 1 && (iter-1) % pulses_per_line == 0) {
+						printf(line_fmt, len, (iter-1));
+					}
+					printf(pulse_fmt, buffer[i]);
+				} else {
+					if(iter > 1 && (iter-1) % pulses_per_line == 0) {
+						len = snprintf(NULL, 0, "%6u %s:", lines, hardware) - 1;
+						printf(line_fmt, len, (iter-1));
+					}
+					printf(pulse_fmt, buffer[i]);
+				}
+
+				if(buffer[i] > 5100) {
+					if(iter >= min_pulses) {
+						if(iter >= pulses_per_line) {
+							printf("\n\n");	// space line after large reports.
+						}
+					}
+					iter = 0;
+				}
+			} else if(linefeed == 1) {
 				printf(" %d", buffer[i]);
-				iter++;
 				if(buffer[i] > 5100) {
 					printf(" -# %d\n %s:", iter, hardware);
 					iter = 0;
@@ -203,6 +241,8 @@ int main(int argc, char **argv) {
 	options_add(&options, "L", "linefeed", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, "Ls", "storage-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, "Ll", "lua-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "m", "minpulses", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, "p", "pulsesperline", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	if(options_parse(options, argc, argv, 1) == -1) {
 		help = 1;
@@ -214,6 +254,9 @@ int main(int argc, char **argv) {
 		printf("\t -V  --version\t\t\tdisplay version\n");
 		printf("\t -L  --linefeed\t\t\tstructure raw printout\n");
 		printf("\t -C  --config\t\t\tconfig file\n");
+		printf("\t -L  --linefeed\t\t\tstructure raw printout\n");
+		printf("\t -m  --minpulses\t\tprint nothing if not at least # pulses (implies --linefeed).\n");
+		printf("\t -p  --pulsesperline\t\tpulses to print per line (10 by default; implies --linefeed).\n");
 		printf("\t -Ls --storage-root=xxxx\tlocation of the storage lua modules\n");
 		printf("\t -Ll --lua-root=xxxx\t\tlocation of the plain lua modules\n");
 		goto close;
@@ -221,6 +264,35 @@ int main(int argc, char **argv) {
 
 	if(options_exists(options, "L") == 0) {
 		linefeed = 1;
+	}
+
+	if(options_exists(options, "m") == 0) {
+		options_get_number(options, "m", &min_pulses);
+		if(min_pulses < 1) {
+			logprintf(LOG_ERR, "%s: --minpulses must be 1 or more.", progname);
+			goto close;
+		}
+	}
+
+	if(options_exists(options, "p") == 0) {
+		options_get_number(options, "p", &pulses_per_line);
+		if(pulses_per_line < 1) {
+			logprintf(LOG_ERR, "%s: --pulses_per_line must be 1 or more.", progname);
+			goto close;
+		}
+	}
+
+	if(pulses_per_line > 0 || min_pulses > 0) {
+		linefeed = 1;
+	}
+	if(linefeed == 1) {
+		if(pulses_per_line > 0) {
+			if(min_pulses < 1) {
+				min_pulses = 1;
+			}
+		} else if(min_pulses > 0) {
+			pulses_per_line = 10;
+		}
 	}
 
 	if(options_exists(options, "V") == 0) {
@@ -328,7 +400,10 @@ int main(int argc, char **argv) {
 	plua_metatable_set_number(table, "registry.hardware.RF433.minrawlen", 0);
 	plua_metatable_set_number(table, "registry.hardware.RF433.maxrawlen", WIRINGX_BUFFER);
 
+	log_shell_disable();
+	
 	if(config_hardware_run() == -1) {
+		log_shell_enable();
 		logprintf(LOG_NOTICE, "there are no hardware modules configured");
 		uv_stop(uv_default_loop());
 	}
@@ -355,3 +430,4 @@ close:
 
 	return (EXIT_FAILURE);
 }
+
