@@ -396,7 +396,9 @@ static void mqtt_callback(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, 
 
 	plua_network_mqtt_object(state->L, data);
 
-	data->client = client;
+	if(client != NULL) {
+		data->client = client;
+	}
 
 	lua_newtable(state->L);
 
@@ -467,7 +469,9 @@ static void mqtt_callback(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, 
 		lua_pushstring(state->L, "type");
 		lua_pushnumber(state->L, MQTT_DISCONNECT);
 		lua_settable(state->L, -3);
-		plua_gc_reg(state->L, data, plua_network_mqtt_gc);
+		if(client != NULL) {
+			plua_gc_reg(state->L, data, plua_network_mqtt_gc);
+		}
 	}
 
 	assert(plua_check_stack(state->L, 4, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE, PLUA_TTABLE) == 0);
