@@ -746,6 +746,10 @@ int mqtt_decode(struct mqtt_pkt_t ***pkt, unsigned char *buf, unsigned int len, 
 			case MQTT_PUBLISH: {
 				{
 					length = (buf[i]) | buf[i+1]; i+=2;
+					if((int)length < 0) {
+						logprintf(LOG_ERR, "received incomplete message");
+						return -1;
+					}
 					read_value(&buf[i], length, &(*pkt)[*nr]->payload.publish.topic);
 					i+=length;
 				}
@@ -756,6 +760,10 @@ int mqtt_decode(struct mqtt_pkt_t ***pkt, unsigned char *buf, unsigned int len, 
 
 				{
 					length = msglength-(i-startpos);
+					if((int)length < 0) {
+						logprintf(LOG_ERR, "received incomplete message");
+						return -1;
+					}
 					read_value(&buf[i], length, &(*pkt)[*nr]->payload.publish.message);
 					i+=length;
 				}

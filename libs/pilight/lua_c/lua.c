@@ -2929,6 +2929,7 @@ int plua_gc(void) {
 	if(init == 0) {
 		return -1;
 	}
+	init = 0;
 	struct plua_module_t *tmp = NULL;
 	while(modules) {
 		tmp = modules;
@@ -2971,7 +2972,6 @@ int plua_gc(void) {
 		}
 	}
 
-	init = 0;
 	logprintf(LOG_DEBUG, "garbage collected lua library");
 	return 0;
 }

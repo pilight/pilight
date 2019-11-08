@@ -47,6 +47,9 @@ static void plua_network_mqtt_gc(void *ptr) {
 			if(lua_mqtt->callback != NULL) {
 				FREE(lua_mqtt->callback);
 			}
+			if(lua_mqtt->sigterm == 1) {
+				lua_mqtt->gc = NULL;
+			}
 			plua_gc_unreg(NULL, lua_mqtt);
 			FREE(lua_mqtt);
 		}
@@ -57,6 +60,8 @@ static void plua_network_mqtt_gc(void *ptr) {
 #endif
 
 static void plua_network_mqtt_global_gc(void *ptr) {
+	struct lua_mqtt_t *lua_mqtt = ptr;
+	lua_mqtt->sigterm = 1;
 	plua_network_mqtt_gc(ptr);
 }
 
@@ -403,6 +408,7 @@ static void mqtt_callback(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, 
 	lua_newtable(state->L);
 
 	if(pkt != NULL) {
+		atomic_inc(data->ref);
 		if(pkt->type == MQTT_PUBLISH ||
 			 pkt->type == MQTT_SUBACK) {
 			lua_pushstring(state->L, "dub");
@@ -469,10 +475,9 @@ static void mqtt_callback(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, 
 		lua_pushstring(state->L, "type");
 		lua_pushnumber(state->L, MQTT_DISCONNECT);
 		lua_settable(state->L, -3);
-		if(client != NULL) {
-			plua_gc_reg(state->L, data, plua_network_mqtt_gc);
-		}
 	}
+
+	plua_gc_reg(state->L, data, plua_network_mqtt_gc);
 
 	assert(plua_check_stack(state->L, 4, PLUA_TTABLE, PLUA_TFUNCTION, PLUA_TTABLE, PLUA_TTABLE) == 0);
 	if(plua_pcall(state->L, state->module->file, 2, 0) == -1) {
@@ -602,7 +607,6 @@ static int plua_network_mqtt_connect(lua_State *L) {
 	}
 
 	mqtt_client(ip, port, id, willtopic, willmsg, mqtt_callback, mqtt);
-
 	atomic_inc(mqtt->ref);
 	if(freeid == 1) {
 		FREE(id);
@@ -716,7 +720,6 @@ static void plua_network_mqtt_object(lua_State *L, struct lua_mqtt_t *mqtt) {
 
 int plua_network_mqtt(struct lua_State *L) {
 	struct lua_mqtt_t *lua_mqtt = NULL;
-
 	if(lua_gettop(L) < 0 || lua_gettop(L) > 1) {
 		pluaL_error(L, "mqtt requires 0 or 1 arguments, %d given", lua_gettop(L));
 		return 0;
