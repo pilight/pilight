@@ -49,6 +49,9 @@ static void plua_async_timer_gc(void *ptr) {
 				plua_metatable_free(lua_timer->table);
 			}
 			plua_gc_unreg(NULL, lua_timer);
+			if(lua_timer->sigterm == 1) {
+				lua_timer->gc = NULL;
+			}
 			FREE(lua_timer);
 			lua_timer = NULL;
 		} else {
@@ -63,6 +66,8 @@ static void plua_async_timer_gc(void *ptr) {
 extern void plua_async_timer_global_gc(void *ptr);
 #else
 static void plua_async_timer_global_gc(void *ptr) {
+	struct lua_timer_t *lua_timer = ptr;
+	lua_timer->sigterm = 1;
 	plua_async_timer_gc(ptr);
 }
 #endif

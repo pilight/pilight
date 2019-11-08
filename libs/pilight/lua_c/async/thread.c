@@ -50,6 +50,9 @@ static void thread_free(uv_work_t *req, int status) {
 				FREE(lua_thread->callback);
 			}
 			lua_thread->running = 0;
+			if(lua_thread->sigterm == 1) {
+				lua_thread->gc = NULL;
+			}
 			plua_gc_unreg(NULL, lua_thread);
 			FREE(lua_thread);
 			lua_thread = NULL;
@@ -71,6 +74,7 @@ extern void plua_async_thread_global_gc(void *ptr);
 static void plua_async_thread_global_gc(void *ptr) {
 	struct lua_thread_t *lua_thread = ptr;
 	atomic_inc(lua_thread->ref);
+	lua_thread->sigterm = 1;
 	plua_async_thread_gc(ptr);
 }
 #endif

@@ -52,6 +52,9 @@ static void plua_async_event_gc(void *ptr) {
 			if(lua_event->callback != NULL) {
 				FREE(lua_event->callback);
 			}
+			if(lua_event->sigterm == 1) {
+				lua_event->gc = NULL;
+			}
 			plua_gc_unreg(NULL, lua_event);
 			FREE(lua_event);
 		}
@@ -64,6 +67,9 @@ static void plua_async_event_gc(void *ptr) {
 extern void plua_async_event_global_gc(void *ptr);
 #else
 static void plua_async_event_global_gc(void *ptr) {
+	struct lua_event_t *lua_event = ptr;
+	lua_event->sigterm = 1;
+
 	plua_async_event_gc(ptr);
 }
 #endif
@@ -163,7 +169,7 @@ static int plua_async_event_register(struct lua_State *L) {
 
 	if(is_active == 0) {
 		atomic_inc(event->ref);
-		plua_gc_reg(NULL, event, plua_async_event_global_gc);
+
 		if(event->callback == NULL) {
 			plua_gc_reg(L, event, plua_async_event_gc);
 		}
@@ -228,7 +234,6 @@ static int plua_async_event_unregister(struct lua_State *L) {
 
 	if(is_active == 0) {
 		plua_gc_reg(L, event, plua_async_event_gc);
-		plua_gc_unreg(NULL, event);
 	}
 
 	if(event->reasons[reason].node != NULL) {
@@ -501,7 +506,6 @@ int plua_async_event(struct lua_State *L) {
 		memset(lua_event, 0, sizeof(struct lua_event_t));
 		lua_event->type = PLUA_EVENT;
 		lua_event->ref = 1;
-
 		lua_event->callback = NULL;
 		lua_event->gc = plua_async_event_gc;
 
@@ -514,6 +518,7 @@ int plua_async_event(struct lua_State *L) {
 
 		lua_event->module = state->module;
 		lua_event->L = L;
+		plua_gc_reg(NULL, lua_event, plua_async_event_global_gc);
 	}
 	plua_gc_reg(L, lua_event, plua_async_event_gc);
 

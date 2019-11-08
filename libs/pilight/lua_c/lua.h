@@ -121,6 +121,7 @@ typedef struct lua_state_t {
 	volatile int ref;               \
 	uv_mutex_t lock;                \
 	void (*gc)(void *data);         \
+	int sigterm;                    \
 
 typedef struct plua_interface_t {
   PLUA_INTERFACE_FIELDS

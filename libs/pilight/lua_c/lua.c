@@ -2929,6 +2929,7 @@ int plua_gc(void) {
 	if(init == 0) {
 		return -1;
 	}
+	init = 0;
 	struct plua_module_t *tmp = NULL;
 	while(modules) {
 		tmp = modules;
@@ -2943,7 +2944,7 @@ int plua_gc(void) {
 	int i = 0, x = 0, _free = 1;
 	while(_free) {
 		_free = 0;
-		for(i=0;i<NRLUASTATES;i++) {
+		for(i=0;i<NRLUASTATES+1;i++) {
 			if(uv_mutex_trylock(&lua_state[i].lock) == 0) {
 				for(x=0;x<lua_state[i].gc.nr;x++) {
 					if(lua_state[i].gc.list[x]->free == 0) {
@@ -2971,36 +2972,6 @@ int plua_gc(void) {
 		}
 	}
 
-	i = NRLUASTATES, x = 0, _free = 1;
-	while(_free) {
-		_free = 0;
-		if(uv_mutex_trylock(&lua_state[i].lock) == 0) {
-			for(x=0;x<lua_state[i].gc.nr;x++) {
-				if(lua_state[i].gc.list[x]->free == 0) {
-					while(atomic_dec(lua_state[i].gc.list[x]->ref) >= 0) {
-						lua_state[i].gc.list[x]->callback(lua_state[i].gc.list[x]->ptr);
-					}
-				}
-				FREE(lua_state[i].gc.list[x]);
-			}
-			if(lua_state[i].gc.size > 0) {
-				FREE(lua_state[i].gc.list);
-			}
-			lua_state[i].gc.nr = 0;
-			lua_state[i].gc.size = 0;
-
-			if(lua_state[i].L != NULL) {
-				lua_gc(lua_state[i].L, LUA_GCCOLLECT, 0);
-				lua_close(lua_state[i].L);
-				lua_state[i].L = NULL;
-			}
-			uv_mutex_unlock(&lua_state[i].lock);
-		} else {
-			_free = 1;
-		}
-	}
-
-	init = 0;
 	logprintf(LOG_DEBUG, "garbage collected lua library");
 	return 0;
 }
