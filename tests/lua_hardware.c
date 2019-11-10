@@ -32,6 +32,7 @@ void test_lua_hardware_433nano_param3(CuTest *tc);
 void test_lua_hardware_433nano_param4(CuTest *tc);
 void test_lua_hardware_433nano_receive(CuTest *tc);
 void test_lua_hardware_433nano_receive_chunked(CuTest *tc);
+void test_lua_hardware_433nano_receive_invalid(CuTest *tc);
 void test_lua_hardware_433nano_connection_lost(CuTest *tc);
 void test_lua_hardware_433nano_send(CuTest *tc);
 void test_lua_hardware_mqtt_receive(CuTest *tc);
@@ -58,6 +59,7 @@ CuSuite *suite_lua_hardware(void) {
 	SUITE_ADD_TEST(suite, test_lua_hardware_433nano_param4);
 	SUITE_ADD_TEST(suite, test_lua_hardware_433nano_receive);
 	SUITE_ADD_TEST(suite, test_lua_hardware_433nano_receive_chunked);
+	SUITE_ADD_TEST(suite, test_lua_hardware_433nano_receive_invalid);
 	SUITE_ADD_TEST(suite, test_lua_hardware_433nano_connection_lost);
 	SUITE_ADD_TEST(suite, test_lua_hardware_433nano_send);
 	SUITE_ADD_TEST(suite, test_lua_hardware_mqtt_receive);
