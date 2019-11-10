@@ -150,7 +150,7 @@ function M.callback(rw, serial, line)
 										i = x + 2;
 										break;
 									end
-									if tonumber(c) ~= 'number' then
+									if type(tonumber(c)) ~= 'number' then
 										invalid_stream(data);
 										return;
 									end
@@ -166,18 +166,25 @@ function M.callback(rw, serial, line)
 								i = i + 1;
 								for x = i, l, 1 do
 									c = string.sub(content, x+1, x+1);
+
+									if c == ';' then
+										i = x + 2;
+										break;
+									end
+
 									if c == ',' or c == '@' then
 										c = string.sub(content, i+1, x);
+
 										i = x + 1;
-										if tonumber(c) ~= 'number' then
+										if c == '@' or c == ';' then
+											i = x + 1;
+											break;
+										end
+										if type(tonumber(c)) ~= 'number' then
 											invalid_stream(data);
 											return;
 										end
 										pulses[#pulses+1] = tonumber(c);
-										if c == '@' then
-											i = x + 1;
-											break;
-										end
 									end
 								end
 							else
