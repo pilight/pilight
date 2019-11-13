@@ -685,6 +685,10 @@ int mqtt_decode(struct mqtt_pkt_t ***pkt, unsigned char *buf, unsigned int len, 
 			case MQTT_CONNECT: {
 				{
 					length = (buf[i] << 8) | buf[i+1]; i+=2;
+					if((int)length < 0) {
+						(*nr)++;
+						return 1;
+					}
 					read_value(&buf[i], length, &(*pkt)[*nr]->header.connect.protocol);
 					i+=length;
 				}
@@ -702,6 +706,10 @@ int mqtt_decode(struct mqtt_pkt_t ***pkt, unsigned char *buf, unsigned int len, 
 
 				{
 					length = (buf[i]) | buf[i+1]; i+=2;
+					if((int)length < 0) {
+						(*nr)++;
+						return 1;
+					}
 					read_value(&buf[i], length, &(*pkt)[*nr]->payload.connect.clientid);
 					i+=length;
 				}
@@ -709,6 +717,10 @@ int mqtt_decode(struct mqtt_pkt_t ***pkt, unsigned char *buf, unsigned int len, 
 				{
 					if(i < msglength) {
 						length = (buf[i]) | buf[i+1]; i+=2;
+						if((int)length < 0) {
+							(*nr)++;
+							return 1;
+						}
 						read_value(&buf[i], length, &(*pkt)[*nr]->payload.connect.willtopic);
 						i+=length;
 					}
@@ -717,6 +729,10 @@ int mqtt_decode(struct mqtt_pkt_t ***pkt, unsigned char *buf, unsigned int len, 
 				{
 					if(i < msglength) {
 						length = (buf[i]) | buf[i+1]; i+=2;
+						if((int)length < 0) {
+							(*nr)++;
+							return 1;
+						}
 						read_value(&buf[i], length, &(*pkt)[*nr]->payload.connect.willmessage);
 						i+=length;
 					}
@@ -725,6 +741,10 @@ int mqtt_decode(struct mqtt_pkt_t ***pkt, unsigned char *buf, unsigned int len, 
 				{
 					if((*pkt)[*nr]->header.connect.username == 1) {
 						length = (buf[i]) | buf[i+1]; i+=2;
+						if((int)length < 0) {
+							(*nr)++;
+							return 1;
+						}
 						read_value(&buf[i], length, &(*pkt)[*nr]->payload.connect.username);
 						i+=length;
 					}
@@ -733,6 +753,10 @@ int mqtt_decode(struct mqtt_pkt_t ***pkt, unsigned char *buf, unsigned int len, 
 				{
 					if((*pkt)[*nr]->header.connect.password == 1) {
 						length = (buf[i]) | buf[i+1]; i+=2;
+						if((int)length < 0) {
+							(*nr)++;
+							return 1;
+						}
 						read_value(&buf[i], length, &(*pkt)[*nr]->payload.connect.password);
 						i+=length;
 					}
@@ -747,8 +771,8 @@ int mqtt_decode(struct mqtt_pkt_t ***pkt, unsigned char *buf, unsigned int len, 
 				{
 					length = (buf[i]) | buf[i+1]; i+=2;
 					if((int)length < 0) {
-						logprintf(LOG_ERR, "received incomplete message");
-						return -1;
+						(*nr)++;
+						return 1;
 					}
 					read_value(&buf[i], length, &(*pkt)[*nr]->payload.publish.topic);
 					i+=length;
@@ -761,8 +785,8 @@ int mqtt_decode(struct mqtt_pkt_t ***pkt, unsigned char *buf, unsigned int len, 
 				{
 					length = msglength-(i-startpos);
 					if((int)length < 0) {
-						logprintf(LOG_ERR, "received incomplete message");
-						return -1;
+						(*nr)++;
+						return 1;
 					}
 					read_value(&buf[i], length, &(*pkt)[*nr]->payload.publish.message);
 					i+=length;
@@ -785,6 +809,10 @@ int mqtt_decode(struct mqtt_pkt_t ***pkt, unsigned char *buf, unsigned int len, 
 
 				{
 					length = (buf[i]) | buf[i+1]; i+=2;
+					if((int)length < 0) {
+						(*nr)++;
+						return 1;
+					}
 					read_value(&buf[i], length, &(*pkt)[*nr]->payload.subscribe.topic);
 					i+=length;
 				}
@@ -1991,7 +2019,7 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	pthread_mutex_unlock(&mqtt_lock);
 #endif
 
-	if(ret <= 0) {
+	if(ret <= 0 && (int)(*nread % BUFFER_SIZE) != 0) {
 		*nread = 0;
 	}
 	uv_custom_write(req);
