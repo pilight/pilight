@@ -41,6 +41,7 @@
 #include <wiringx.h>
 #endif
 #include <assert.h>
+#include <float.h>
 
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/threads.h"
@@ -63,6 +64,10 @@
 #include "libs/pilight/config/hardware.h"
 #include "libs/pilight/lua_c/lua.h"
 #include "libs/pilight/lua_c/table.h"
+
+#ifndef DBL_DECIMAL_DIG
+	#define DBL_DECIMAL_DIG 11
+#endif
 
 #ifdef EVENTS
 	#include "libs/pilight/events/events.h"
@@ -165,6 +170,8 @@ static pthread_mutexattr_t bcqueue_attr;
 static unsigned short bcqueue_init = 0;
 
 static int bcqueue_number = 0;
+
+static struct mqtt_client_t *mqtt_global_client = NULL;
 
 static struct protocol_t *procProtocol;
 
@@ -405,6 +412,77 @@ void *broadcast(void *param) {
 									}
 								}
 								if(match1 == 1) {
+									/*
+									 * START MQTT BROADCAST
+									 */
+									if(mqtt_global_client != NULL) {
+										char *topicfmt = "pilight/device/%s/%s";
+										// printf("%s\n", json_stringify(jtmp, "\t"));
+										struct JsonNode *jdevices = json_find_member(jtmp, "devices");
+										struct JsonNode *jchilds = json_first_child(jdevices);
+										while(jchilds) {
+											struct JsonNode *jvalues = json_find_member(jtmp, "values");
+											if(jvalues != NULL) {
+												struct JsonNode *jchilds1 = json_first_child(jvalues);
+												int len = 0;
+												while(jchilds1) {
+													len = snprintf(NULL, 0, topicfmt, jchilds->string_, jchilds1->key);
+													char *topic = MALLOC(len+1);
+													if(topic == NULL) {
+														OUT_OF_MEMORY
+													}
+													memset(topic, '\0', len);
+													snprintf(topic, len+1, topicfmt, jchilds->string_, jchilds1->key);
+
+													if(jchilds1->tag == JSON_NUMBER) {
+														len = snprintf(NULL, 0, "%.*g", DBL_DECIMAL_DIG - 1, jchilds1->number_);
+													} else if(jchilds1->tag == JSON_STRING) {
+														len = strlen(jchilds1->string_);
+													}
+
+													char *payload = NULL;
+													if((payload = MALLOC(len+1)) == NULL) {
+														OUT_OF_MEMORY
+													}
+													memset(payload, '\0', len+1);
+
+													if(jchilds1->tag == JSON_NUMBER) {
+														len = snprintf(payload, len+1, "%.*g", DBL_DECIMAL_DIG - 1, jchilds1->number_);
+													} else if(jchilds1->tag == JSON_STRING) {
+														strcpy(payload, jchilds1->string_);
+													}
+													mqtt_publish(mqtt_global_client, 0, 0, 0, topic, payload);
+													jchilds1 = jchilds1->next;
+												}
+												struct JsonNode *jstate = json_find_member(jtmp, "state");
+												if(jstate != NULL) {
+													if(jstate->tag == JSON_NUMBER) {
+														len = snprintf(NULL, 0, "%.*g", DBL_DECIMAL_DIG - 1, jstate->number_);
+													} else if(jstate->tag == JSON_STRING) {
+														len = strlen(jstate->string_);
+													}
+
+													char *payload = NULL;
+													if((payload = MALLOC(len+1)) == NULL) {
+														OUT_OF_MEMORY
+													}
+													memset(payload, '\0', len+1);
+
+													if(jstate->tag == JSON_NUMBER) {
+														len = snprintf(payload, len+1, "%.*g", DBL_DECIMAL_DIG - 1, jstate->number_);
+													} else if(jstate->tag == JSON_STRING) {
+														strcpy(payload, jstate->string_);
+													}
+													mqtt_publish(mqtt_global_client, 0, 0, 0, "state", payload);
+												}
+											}
+											jchilds = jchilds->next;
+										}
+									}
+									/*
+									 * END MQTT BROADCAST
+									 */
+
 									char *conf = json_stringify(jtmp, NULL);
 									socket_write(tmp_clients->id, conf);
 									logprintf(LOG_DEBUG, "broadcasted: %s", conf);
@@ -2531,6 +2609,35 @@ static void pilight_abort(uv_timer_t *timer_req) {
 	exit(EXIT_FAILURE);
 }
 
+static void ping(uv_timer_t *handle) {
+	mqtt_ping(handle->data);
+}
+
+static void mqtt_callback(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, void *userdata) {
+	if(pkt != NULL) {
+		switch(pkt->type) {
+			case MQTT_CONNACK: {
+				mqtt_global_client = client;
+
+				uv_timer_t *timer = client->userdata;
+				if((timer = MALLOC(sizeof(uv_timer_t))) == NULL) {
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+				}
+
+				timer->data = client;
+				uv_timer_init(uv_default_loop(), timer);
+				uv_timer_start(timer, (void (*)(uv_timer_t *))ping, 3000, 3000);
+			} break;
+			case MQTT_DISCONNECTED: {
+				mqtt_global_client = NULL;
+
+				uv_timer_stop(client->userdata);
+				uv_close((uv_handle_t *)client->userdata, close_cb);
+			} break;
+		}
+	}
+}
+
 static void pilight_stats(uv_timer_t *timer_req) {
 	int watchdog = 1, stats = 1;
 	// double itmp = 0.0;
@@ -3259,6 +3366,7 @@ int start_pilight(int argc, char **argv) {
 	{
 		if(mqtt_enable == 1) {
 			mqtt_server(mqtt_port);
+			mqtt_client("127.0.0.1", mqtt_port, "pilight-daemon", NULL, NULL, mqtt_callback, NULL);
 		}
 	}
 #endif
