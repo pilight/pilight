@@ -13,6 +13,9 @@
 #ifndef _WIN32
 	#include <unistd.h>
 #endif
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/ioctl.h>
 
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
@@ -456,7 +459,7 @@ static void mqtt_callback1(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt,
 					step1[pkt->type]++;
 				}
 			} else {
-				uv_timer_stop(timer_req1);
+				// uv_timer_stop(timer_req1);
 				mqtt_client_remove(client->poll_req, 0);
 				step1[MQTT_DISCONNECTED]++;
 			}
@@ -696,6 +699,15 @@ static void mqtt_callback2(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt,
 	}
 }
 
+int isclosed(int sock) {
+  fd_set rfd;
+  FD_ZERO(&rfd);
+  FD_SET(sock, &rfd);
+  struct timeval tv = { 0 };
+  select(sock+1, &rfd, 0, 0, &tv);
+  return FD_ISSET(sock, &rfd);
+}
+
 static void start_clients(void *param) {
 	usleep(1000);
 	if(test == 9) {
@@ -706,12 +718,37 @@ static void start_clients(void *param) {
 		mqtt_client("127.0.0.1", 11883, "pilight", NULL, NULL, mqtt_callback1, NULL);
 	} else if(test == 11) {
 		mqtt_client("127.0.0.1", 11883, "pilight1", "pilight/status", "offline", mqtt_callback2, NULL);
-		usleep(2000);
+		usleep(1000);
 		mqtt_client("127.0.0.1", 11883, "pilight", NULL, NULL, mqtt_callback1, NULL);
 	} else if(test == 12) {
 		mqtt_client("127.0.0.1", 11883, "pilight", NULL, NULL, mqtt_callback1, NULL);
-		usleep(1000);
+		usleep(5000);
 		mqtt_client("127.0.0.1", 11883, "pilight", NULL, NULL, mqtt_callback2, NULL);
+	} else if(test == 13) {
+		struct sockaddr_in addr4;
+		int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+		CuAssertTrue(gtc, sockfd > 0);
+
+		unsigned long on = 1;
+		CuAssertIntEquals(gtc, 0, setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(int)));
+
+		memset(&addr4, '\0', sizeof(struct sockaddr_in));
+		CuAssertIntEquals(gtc, 0, uv_ip4_addr("127.0.0.1", 11883, &addr4));
+		CuAssertIntEquals(gtc, 0, connect(sockfd, (struct sockaddr *)&addr4, sizeof(addr4)));
+		CuAssertIntEquals(gtc, 0, fcntl(sockfd, F_SETFL, O_NONBLOCK));
+		char buf;
+
+		usleep(1000);
+
+		CuAssertIntEquals(gtc, 0, isclosed(sockfd));
+		CuAssertIntEquals(gtc, -1, recv(sockfd, &buf, 1, 0));
+		CuAssertIntEquals(gtc, 11, errno);
+
+		sleep(1);
+
+		CuAssertIntEquals(gtc, 1, isclosed(sockfd));
+		CuAssertIntEquals(gtc, 0, recv(sockfd, &buf, 1, 0));
+		CuAssertIntEquals(gtc, 11, errno);
 	} else {
 		mqtt_client("127.0.0.1", 11883, "pilight", NULL, NULL, mqtt_callback1, NULL);
 		usleep(1000);
@@ -733,7 +770,7 @@ void test_mqtt_server_client(CuTest *tc) {
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
-	for(i=0;i<13;i++) {
+	for(i=0;i<14;i++) {
 		timer_req1 = NULL;
 		timer_req2 = NULL;
 
@@ -784,6 +821,9 @@ void test_mqtt_server_client(CuTest *tc) {
 			} break;
 			case 12: {
 				printf("[ %-48s ]\n", "- identical client id");
+			} break;
+			case 13: {
+				printf("[ %-48s ]\n", "- client connecting but not identifying");
 			} break;
 		}
 
@@ -1043,6 +1083,14 @@ void test_mqtt_server_client(CuTest *tc) {
 					if(x != MQTT_CONNACK && x != MQTT_DISCONNECTED) {
 						CuAssertIntEquals(tc, 0, step2[x]);
 					}
+				}
+			} break;
+			case 13: {
+				for(x=0;x<17;x++) {
+					CuAssertIntEquals(tc, 0, step1[x]);
+				}
+				for(x=0;x<17;x++) {
+					CuAssertIntEquals(tc, 0, step2[x]);
 				}
 			} break;
 		}

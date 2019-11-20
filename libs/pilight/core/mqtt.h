@@ -101,6 +101,7 @@ typedef struct mqtt_client_t {
 
 	int side;
 	int step;
+	int fd;
 
 	void *userdata;
 
