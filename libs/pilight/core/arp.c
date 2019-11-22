@@ -554,12 +554,11 @@ int arp_resolv(char *if_name, char *srcmac, char *dstmac, char **ip) {
 			goto close;
 		}
 	}
-
 	for(i=0;i<num_hosts;i++) {
 		if(helist[i]->found == 1) {
-			char fmac[ETH_ALEN];
-			memset(fmac, '\0', ETH_ALEN);
-			sprintf(fmac, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
+			char fmac[18];
+			memset(fmac, '\0', 18);
+			snprintf(fmac, 18, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
 													helist[i]->mac[0], helist[i]->mac[1],
 													helist[i]->mac[2], helist[i]->mac[3],
 													helist[i]->mac[4], helist[i]->mac[5]);
