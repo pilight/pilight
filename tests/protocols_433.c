@@ -25,6 +25,7 @@
 #include "../libs/pilight/protocols/433.92/iwds07.h"
 #include "../libs/pilight/protocols/433.92/kerui_d026.h"
 #include "../libs/pilight/protocols/433.92/tfa2017.h"
+#include "../libs/pilight/protocols/433.92/xiron.h"
 
 #include "alltests.h"
 
@@ -51,6 +52,7 @@ const struct test_t {
 #include "protocols/iwds07.h"
 #include "protocols/kerui_d026.h"
 #include "protocols/tfa2017.h"
+#include "protocols/xiron.h"
 
 static const struct test_t tests[] = {
 	{ &alectoWS1700Init, &alecto_ws1700, alecto_ws1700_tests, &alecto_ws1700_nrtests },
@@ -62,6 +64,7 @@ static const struct test_t tests[] = {
 	{ &livoloSwitchInit, &livolo_switch, livolo_switch_tests, &livolo_switch_nrtests },
 	{ &keruiD026Init, &kerui_D026, kerui_d026_tests, &kerui_d026_nrtests },
 	{ &tfa2017Init, &tfa2017, tfa2017_tests, &tfa2017_nrtests },
+	{ &xironInit, &xiron, xiron_tests, &xiron_nrtests },
 };
 
 static void test_protocols_433(CuTest *tc) {
