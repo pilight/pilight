@@ -631,8 +631,8 @@ int mqtt_encode(struct mqtt_pkt_t *pkt, unsigned char **buf, unsigned int *len) 
 	return 0;
 }
 
-int mqtt_decode(struct mqtt_pkt_t ***pkt, unsigned char *buf, unsigned int len, unsigned int *nr) {
-	unsigned int i = 0, length = 0, startpos = 0;
+int mqtt_decode(struct mqtt_pkt_t **pkt, unsigned char *buf, unsigned int len, unsigned int *pos) {
+	unsigned int length = 0, startpos = 0;
 
 	if(len < 2) {
 		/*
@@ -641,200 +641,168 @@ int mqtt_decode(struct mqtt_pkt_t ***pkt, unsigned char *buf, unsigned int len, 
 		return -1;
 	}
 
-	while(i < len) {
-		if((*pkt = REALLOC(*pkt, sizeof(struct mqtt_pkt_t *)*(*nr+1))) == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
-		if(((*pkt)[*nr] = MALLOC(sizeof(struct mqtt_pkt_t))) == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
-		memset((*pkt)[*nr], 0, sizeof(struct mqtt_pkt_t));
+	if(((*pkt) = MALLOC(sizeof(struct mqtt_pkt_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	memset((*pkt), 0, sizeof(struct mqtt_pkt_t));
 
-		(*pkt)[*nr]->type = (buf[i] & 0xF0) >> 4;
-		if((*pkt)[*nr]->type == MQTT_PUBLISH ||
-			 (*pkt)[*nr]->type == MQTT_PUBCOMP ||
-			 (*pkt)[*nr]->type == MQTT_SUBACK) {
-			(*pkt)[*nr]->dub = (buf[i] & 0x08) >> 3;
-			(*pkt)[*nr]->qos = (buf[i] & 0x06) >> 1;
-			(*pkt)[*nr]->retain = (buf[i++] & 0x01);
-		}
-		if((*pkt)[*nr]->type == MQTT_SUBSCRIBE ||
-			 (*pkt)[*nr]->type == MQTT_CONNECT ||
-			 (*pkt)[*nr]->type == MQTT_CONNACK ||
-			 (*pkt)[*nr]->type == MQTT_PUBACK ||
-			 (*pkt)[*nr]->type == MQTT_PUBREC ||
-			 (*pkt)[*nr]->type == MQTT_PUBREL ||
-			 (*pkt)[*nr]->type == MQTT_PINGREQ ||
-			 (*pkt)[*nr]->type == MQTT_PINGRESP ||
-			 (*pkt)[*nr]->type == MQTT_DISCONNECT) {
-			(*pkt)[*nr]->reserved = buf[i++] & 0x0F;
-		}
-
-		unsigned int multiplier = 1, msglength = 0;
-		do {
-			msglength += (buf[i] & 0x7F) * multiplier;
-			multiplier *= 128;
-		} while(buf[i++] > 128);
-
-		startpos = i;
-
-		if(len < msglength+(i-1)) {
-			/*
-			 * Packet too short for full message
-			 */
-			(*nr)++;
-			return 1;
-		}
-
-		switch((*pkt)[*nr]->type) {
-			case MQTT_CONNECT: {
-				{
-					length = (buf[i] << 8) | buf[i+1]; i+=2;
-					if((int)length < 0) {
-						(*nr)++;
-						return 1;
-					}
-					read_value(&buf[i], length, &(*pkt)[*nr]->header.connect.protocol);
-					i+=length;
-				}
-
-				(*pkt)[*nr]->header.connect.version = buf[i++];
-				(*pkt)[*nr]->header.connect.username = (buf[i] >> 7) & 0x01;
-				(*pkt)[*nr]->header.connect.password = (buf[i] >> 6) & 0x01;
-				(*pkt)[*nr]->header.connect.willretain = (buf[i] >> 5) & 0x01;
-				(*pkt)[*nr]->header.connect.qos = (buf[i] >> 3) & 0x03;
-				(*pkt)[*nr]->header.connect.willflag = (buf[i] >> 2) & 0x01;
-				(*pkt)[*nr]->header.connect.cleansession = (buf[i] >> 1) & 0x01;
-				(*pkt)[*nr]->header.connect.reserved = (buf[i++]) & 0x01;
-
-				(*pkt)[*nr]->payload.connect.keepalive = buf[i] << 8 | buf[i+1]; i+=2;
-
-				{
-					length = (buf[i]) | buf[i+1]; i+=2;
-					if((int)length < 0) {
-						(*nr)++;
-						return 1;
-					}
-					read_value(&buf[i], length, &(*pkt)[*nr]->payload.connect.clientid);
-					i+=length;
-				}
-
-				{
-					if(i < msglength) {
-						length = (buf[i]) | buf[i+1]; i+=2;
-						if((int)length < 0) {
-							(*nr)++;
-							return 1;
-						}
-						read_value(&buf[i], length, &(*pkt)[*nr]->payload.connect.willtopic);
-						i+=length;
-					}
-				}
-
-				{
-					if(i < msglength) {
-						length = (buf[i]) | buf[i+1]; i+=2;
-						if((int)length < 0) {
-							(*nr)++;
-							return 1;
-						}
-						read_value(&buf[i], length, &(*pkt)[*nr]->payload.connect.willmessage);
-						i+=length;
-					}
-				}
-
-				{
-					if((*pkt)[*nr]->header.connect.username == 1) {
-						length = (buf[i]) | buf[i+1]; i+=2;
-						if((int)length < 0) {
-							(*nr)++;
-							return 1;
-						}
-						read_value(&buf[i], length, &(*pkt)[*nr]->payload.connect.username);
-						i+=length;
-					}
-				}
-
-				{
-					if((*pkt)[*nr]->header.connect.password == 1) {
-						length = (buf[i]) | buf[i+1]; i+=2;
-						if((int)length < 0) {
-							(*nr)++;
-							return 1;
-						}
-						read_value(&buf[i], length, &(*pkt)[*nr]->payload.connect.password);
-						i+=length;
-					}
-				}
-			} break;
-			case MQTT_CONNACK: {
-				(*pkt)[*nr]->header.connack.reserved = buf[i] >> 1;
-				(*pkt)[*nr]->header.connack.session = buf[i++] & 0x01;
-				(*pkt)[*nr]->payload.connack.code = buf[i++];
-			} break;
-			case MQTT_PUBLISH: {
-				{
-					length = (buf[i]) | buf[i+1]; i+=2;
-					if((int)length < 0) {
-						(*nr)++;
-						return 1;
-					}
-					read_value(&buf[i], length, &(*pkt)[*nr]->payload.publish.topic);
-					i+=length;
-				}
-
-				if((*pkt)[*nr]->qos > 0) {
-					(*pkt)[*nr]->payload.publish.msgid = (buf[i] << 8) | buf[i+1]; i+=2;
-				}
-
-				{
-					length = msglength-(i-startpos);
-					if((int)length < 0) {
-						(*nr)++;
-						return 1;
-					}
-					read_value(&buf[i], length, &(*pkt)[*nr]->payload.publish.message);
-					i+=length;
-				}
-			} break;
-			case MQTT_PUBACK: {
-				(*pkt)[*nr]->payload.puback.msgid = (buf[i] << 8) | buf[i+1]; i += 2;
-			} break;
-			case MQTT_PUBREC: {
-				(*pkt)[*nr]->payload.pubrec.msgid = (buf[i] << 8) | buf[i+1]; i += 2;
-			} break;
-			case MQTT_PUBREL: {
-				(*pkt)[*nr]->payload.pubrel.msgid = (buf[i] << 8) | buf[i+1]; i += 2;
-			} break;
-			case MQTT_PUBCOMP: {
-				(*pkt)[*nr]->payload.pubcomp.msgid = (buf[i] << 8) | buf[i+1]; i += 2;
-			} break;
-			case MQTT_SUBSCRIBE: {
-				(*pkt)[*nr]->payload.subscribe.msgid = buf[i] | buf[i+1]; i+=2;
-
-				{
-					length = (buf[i]) | buf[i+1]; i+=2;
-					if((int)length < 0) {
-						(*nr)++;
-						return 1;
-					}
-					read_value(&buf[i], length, &(*pkt)[*nr]->payload.subscribe.topic);
-					i+=length;
-				}
-
-				(*pkt)[*nr]->payload.subscribe.qos = buf[i++];
-			} break;
-			case MQTT_SUBACK: {
-				(*pkt)[*nr]->payload.suback.msgid = buf[i] | buf[i+1]; i+=2;
-				(*pkt)[*nr]->payload.suback.qos = buf[i++];
-			} break;
-		}
-		(*nr)++;
+	(*pkt)->type = (buf[(*pos)] & 0xF0) >> 4;
+	if((*pkt)->type == MQTT_PUBLISH ||
+		 (*pkt)->type == MQTT_PUBCOMP ||
+		 (*pkt)->type == MQTT_SUBACK) {
+		(*pkt)->dub = (buf[(*pos)] & 0x08) >> 3;
+		(*pkt)->qos = (buf[(*pos)] & 0x06) >> 1;
+		(*pkt)->retain = (buf[(*pos)++] & 0x01);
+	}
+	if((*pkt)->type == MQTT_SUBSCRIBE ||
+		 (*pkt)->type == MQTT_CONNECT ||
+		 (*pkt)->type == MQTT_CONNACK ||
+		 (*pkt)->type == MQTT_PUBACK ||
+		 (*pkt)->type == MQTT_PUBREC ||
+		 (*pkt)->type == MQTT_PUBREL ||
+		 (*pkt)->type == MQTT_PINGREQ ||
+		 (*pkt)->type == MQTT_PINGRESP ||
+		 (*pkt)->type == MQTT_DISCONNECT) {
+		(*pkt)->reserved = buf[(*pos)++] & 0x0F;
 	}
 
-	if(i != len) {
-		return -1;
+	unsigned int multiplier = 1, msglength = 0;
+	do {
+		msglength += (buf[(*pos)] & 0x7F) * multiplier;
+		multiplier *= 128;
+	} while(buf[(*pos)++] > 128);
+
+	startpos = (*pos);
+
+	if(len < msglength+((*pos)-1)) {
+		/*
+		 * Packet too short for full message
+		 */
+		mqtt_free((*pkt));
+		FREE((*pkt));
+		return 1;
 	}
+
+	switch((*pkt)->type) {
+		case MQTT_CONNECT: {
+			{
+				length = (buf[(*pos)] << 8) | buf[(*pos)+1]; (*pos)+=2;
+				read_value(&buf[(*pos)], length, &(*pkt)->header.connect.protocol);
+				(*pos)+=length;
+			}
+
+			(*pkt)->header.connect.version = buf[(*pos)++];
+			(*pkt)->header.connect.username = (buf[(*pos)] >> 7) & 0x01;
+			(*pkt)->header.connect.password = (buf[(*pos)] >> 6) & 0x01;
+			(*pkt)->header.connect.willretain = (buf[(*pos)] >> 5) & 0x01;
+			(*pkt)->header.connect.qos = (buf[(*pos)] >> 3) & 0x03;
+			(*pkt)->header.connect.willflag = (buf[(*pos)] >> 2) & 0x01;
+			(*pkt)->header.connect.cleansession = (buf[(*pos)] >> 1) & 0x01;
+			(*pkt)->header.connect.reserved = (buf[(*pos)++]) & 0x01;
+
+			(*pkt)->payload.connect.keepalive = buf[(*pos)] << 8 | buf[(*pos)+1]; (*pos)+=2;
+
+			{
+				length = (buf[(*pos)]) | buf[(*pos)+1]; (*pos)+=2;
+				read_value(&buf[(*pos)], length, &(*pkt)->payload.connect.clientid);
+				(*pos)+=length;
+			}
+
+			{
+				if((*pos) < msglength) {
+					length = (buf[(*pos)]) | buf[(*pos)+1]; (*pos)+=2;
+					read_value(&buf[(*pos)], length, &(*pkt)->payload.connect.willtopic);
+					(*pos)+=length;
+				}
+			}
+
+			{
+				if((*pos) < msglength) {
+					length = (buf[(*pos)]) | buf[(*pos)+1]; (*pos)+=2;
+					read_value(&buf[(*pos)], length, &(*pkt)->payload.connect.willmessage);
+					(*pos)+=length;
+				}
+			}
+
+			{
+				if((*pkt)->header.connect.username == 1) {
+					length = (buf[(*pos)]) | buf[(*pos)+1]; (*pos)+=2;
+					read_value(&buf[(*pos)], length, &(*pkt)->payload.connect.username);
+					(*pos)+=length;
+				}
+			}
+
+			{
+				if((*pkt)->header.connect.password == 1) {
+					length = (buf[(*pos)]) | buf[(*pos)+1]; (*pos)+=2;
+					read_value(&buf[(*pos)], length, &(*pkt)->payload.connect.password);
+					(*pos)+=length;
+				}
+			}
+		} break;
+		case MQTT_CONNACK: {
+			(*pkt)->header.connack.reserved = buf[(*pos)] >> 1;
+			(*pkt)->header.connack.session = buf[(*pos)++] & 0x01;
+			(*pkt)->payload.connack.code = buf[(*pos)++];
+		} break;
+		case MQTT_PUBLISH: {
+			{
+				length = (buf[(*pos)]) | buf[(*pos)+1]; (*pos)+=2;
+				if((int)length < 0) {
+					logprintf(LOG_ERR, "received incomplete message");
+					mqtt_free((*pkt));
+					FREE((*pkt));
+					return -1;
+				}
+				read_value(&buf[(*pos)], length, &(*pkt)->payload.publish.topic);
+				(*pos)+=length;
+			}
+
+			if((*pkt)->qos > 0) {
+				(*pkt)->payload.publish.msgid = (buf[(*pos)] << 8) | buf[(*pos)+1]; (*pos)+=2;
+			}
+
+			{
+				length = msglength-((*pos)-startpos);
+				if((int)length < 0) {
+					logprintf(LOG_ERR, "received incomplete message");
+					mqtt_free((*pkt));
+					FREE((*pkt));
+					return -1;
+				}
+				read_value(&buf[(*pos)], length, &(*pkt)->payload.publish.message);
+				(*pos)+=length;
+			}
+		} break;
+		case MQTT_PUBACK: {
+			(*pkt)->payload.puback.msgid = (buf[(*pos)] << 8) | buf[(*pos)+1]; (*pos)+=2;
+		} break;
+		case MQTT_PUBREC: {
+			(*pkt)->payload.pubrec.msgid = (buf[(*pos)] << 8) | buf[(*pos)+1]; (*pos)+=2;
+		} break;
+		case MQTT_PUBREL: {
+			(*pkt)->payload.pubrel.msgid = (buf[(*pos)] << 8) | buf[(*pos)+1]; (*pos)+=2;
+		} break;
+		case MQTT_PUBCOMP: {
+			(*pkt)->payload.pubcomp.msgid = (buf[(*pos)] << 8) | buf[(*pos)+1]; (*pos)+=2;
+		} break;
+		case MQTT_SUBSCRIBE: {
+			(*pkt)->payload.subscribe.msgid = buf[(*pos)] | buf[(*pos)+1]; (*pos)+=2;
+
+			{
+				length = (buf[(*pos)]) | buf[(*pos)+1]; (*pos)+=2;
+				read_value(&buf[(*pos)], length, &(*pkt)->payload.subscribe.topic);
+				(*pos)+=length;
+			}
+
+			(*pkt)->payload.subscribe.qos = buf[(*pos)++];
+		} break;
+		case MQTT_SUBACK: {
+			(*pkt)->payload.suback.msgid = buf[(*pos)] | buf[(*pos)+1]; (*pos)+=2;
+			(*pkt)->payload.suback.qos = buf[(*pos)++];
+		} break;
+	}
+
 	return 0;
 }
 
@@ -1887,109 +1855,103 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct mqtt_client_t *client = custom_poll_data->data;
 
-	struct mqtt_pkt_t **pkt = NULL;
-	unsigned int nr = 0, len = 0;
+	struct mqtt_pkt_t *pkt = NULL;
+	unsigned int pos = 0, len = 0;
 	unsigned char *buf1 = NULL;
-	int i = 0, ret = 0;
+	int ret = 0;
 
 	if(*nread > 0) {
 		buf[*nread] = '\0';
 
-		ret = mqtt_decode(&pkt, (unsigned char *)buf, *nread, &nr);
-		if(ret == 1) {
-			for(i=0;i<nr;i++) {
-				mqtt_free(pkt[i]);
-				FREE(pkt[i]);
+		while(*nread > 0 && (ret = mqtt_decode(&pkt, (unsigned char *)buf, *nread, &pos)) == 0) {
+			memmove(&buf[0], &buf[pos], *nread-pos);
+			*nread -= pos;
+			pos = 0;
+
+			struct mqtt_pkt_t pkt1;
+			memset(&pkt1, 0, sizeof(struct mqtt_pkt_t));
+			len = 0;
+
+			int fd = -1, r = 0;
+
+			if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
+				/*LCOV_EXCL_START*/
+				logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
+				/*LCOV_EXCL_STOP*/
 			}
-			FREE(pkt);
-		} else if(ret == 0) {
-			for(i=0;i<nr;i++) {
-				struct mqtt_pkt_t pkt1;
-				memset(&pkt1, 0, sizeof(struct mqtt_pkt_t));
-				len = 0;
+			// mqtt_dump(pkt);
 
-				int fd = -1, r = 0;
-
-				if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
-					/*LCOV_EXCL_START*/
-					logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
-					/*LCOV_EXCL_STOP*/
-				}
-				// mqtt_dump(pkt[i]);
-
-				if(client == NULL) {
-					switch(pkt[i]->type) {
-						case MQTT_CONNECT: {
-							if(pkt[i]->header.connect.cleansession == 0) {
-								mqtt_pkt_connack(&pkt1, MQTT_CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION);
-								mqtt_client_remove(req, 1);
-							} else {
-								mqtt_client_register(req, pkt[i]);
-								mqtt_pkt_connack(&pkt1, MQTT_CONNECTION_ACCEPTED);
-							}
-							if(mqtt_encode(&pkt1, &buf1, &len) == 0) {
-								iobuf_append(&custom_poll_data->send_iobuf, (void *)buf1, len);
-								FREE(buf1);
-							}
-						} break;
-						case MQTT_DISCONNECT: {
+			if(client == NULL) {
+				switch(pkt->type) {
+					case MQTT_CONNECT: {
+						if(pkt->header.connect.cleansession == 0) {
+							mqtt_pkt_connack(&pkt1, MQTT_CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION);
 							mqtt_client_remove(req, 1);
-						} break;
-						case MQTT_SUBSCRIBE: {
-							mqtt_pkt_suback(&pkt1, pkt[i]->payload.subscribe.msgid, pkt[i]->payload.subscribe.qos);
-							if(mqtt_encode(&pkt1, &buf1, &len) == 0) {
-								iobuf_append(&custom_poll_data->send_iobuf, (void *)buf1, len);
-								FREE(buf1);
-							}
-							mqtt_subscribtion_add(req, pkt[i]->payload.subscribe.topic, pkt[i]->payload.subscribe.qos);
-						} break;
-						case MQTT_PINGREQ: {
-							mqtt_pkt_pingresp(&pkt1);
-							if(mqtt_encode(&pkt1, &buf1, &len) == 0) {
-								iobuf_append(&custom_poll_data->send_iobuf, (void *)buf1, len);
-								FREE(buf1);
-							}
-						} break;
-						case MQTT_PUBACK: {
-							mqtt_process_publish(req, pkt[i]);
-						} break;
-						case MQTT_PUBREC: {
-							mqtt_process_publish(req, pkt[i]);
-						} break;
-						case MQTT_PUBCOMP: {
-							mqtt_process_publish(req, pkt[i]);
-						} break;
-						case MQTT_PUBLISH: {
-							mqtt_topic_add(pkt[i]->retain, pkt[i]->payload.publish.topic, pkt[i]->payload.publish.message);
+						} else {
+							mqtt_client_register(req, pkt);
+							mqtt_pkt_connack(&pkt1, MQTT_CONNECTION_ACCEPTED);
+						}
+						if(mqtt_encode(&pkt1, &buf1, &len) == 0) {
+							iobuf_append(&custom_poll_data->send_iobuf, (void *)buf1, len);
+							FREE(buf1);
+						}
+					} break;
+					case MQTT_DISCONNECT: {
+						mqtt_client_remove(req, 1);
+					} break;
+					case MQTT_SUBSCRIBE: {
+						mqtt_pkt_suback(&pkt1, pkt->payload.subscribe.msgid, pkt->payload.subscribe.qos);
+						if(mqtt_encode(&pkt1, &buf1, &len) == 0) {
+							iobuf_append(&custom_poll_data->send_iobuf, (void *)buf1, len);
+							FREE(buf1);
+						}
+						mqtt_subscribtion_add(req, pkt->payload.subscribe.topic, pkt->payload.subscribe.qos);
+					} break;
+					case MQTT_PINGREQ: {
+						mqtt_pkt_pingresp(&pkt1);
+						if(mqtt_encode(&pkt1, &buf1, &len) == 0) {
+							iobuf_append(&custom_poll_data->send_iobuf, (void *)buf1, len);
+							FREE(buf1);
+						}
+					} break;
+					case MQTT_PUBACK: {
+						mqtt_process_publish(req, pkt);
+					} break;
+					case MQTT_PUBREC: {
+						mqtt_process_publish(req, pkt);
+					} break;
+					case MQTT_PUBCOMP: {
+						mqtt_process_publish(req, pkt);
+					} break;
+					case MQTT_PUBLISH: {
+						mqtt_topic_add(pkt->retain, pkt->payload.publish.topic, pkt->payload.publish.message);
 
-							mqtt_process_publish(req, pkt[i]);
+						mqtt_process_publish(req, pkt);
 
-							if(pkt[i]->qos == 1) {
-								mqtt_pkt_puback(&pkt1, pkt[i]->payload.publish.msgid);
-							}
-						} break;
-					}
+						if(pkt->qos == 1) {
+							mqtt_pkt_puback(&pkt1, pkt->payload.publish.msgid);
+						}
+					} break;
 				}
-
-				if(client != NULL && client->side == CLIENT_SIDE) {
-					switch(pkt[i]->type) {
-						case MQTT_CONNACK: {
-							if(client->step == MQTT_CONNACK) {
-								uv_timer_stop(client->timer_req);
-								client->step = MQTT_CONNECTED;
-								client->callback(client, pkt[i], client->userdata);
-							} else {
-								// error
-							}
-						} break;
-						default: {
-							client->callback(client, pkt[i], client->userdata);
-						} break;
-					}
-				}
-				mqtt_free(pkt[i]);
-				FREE(pkt[i]);
 			}
+
+			if(client != NULL && client->side == CLIENT_SIDE) {
+				switch(pkt->type) {
+					case MQTT_CONNACK: {
+						if(client->step == MQTT_CONNACK) {
+							uv_timer_stop(client->timer_req);
+							client->step = MQTT_CONNECTED;
+							client->callback(client, pkt, client->userdata);
+						} else {
+							// error
+						}
+					} break;
+					default: {
+						client->callback(client, pkt, client->userdata);
+					} break;
+				}
+			}
+			mqtt_free(pkt);
 			FREE(pkt);
 		}
 	}
@@ -2025,9 +1987,6 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	pthread_mutex_unlock(&mqtt_lock);
 #endif
 
-	if(ret <= 0 && (int)(*nread % BUFFER_SIZE) != 0) {
-		*nread = 0;
-	}
 	uv_custom_write(req);
 	uv_custom_read(req);
 }
