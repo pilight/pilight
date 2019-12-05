@@ -171,8 +171,6 @@ static unsigned short bcqueue_init = 0;
 
 static int bcqueue_number = 0;
 
-static struct mqtt_client_t *mqtt_global_client = NULL;
-
 static struct protocol_t *procProtocol;
 
 /* The pid_file and pid of this daemon */
@@ -218,6 +216,7 @@ static struct options_t *options = NULL;
 #ifdef MQTT
 static int mqtt_enable = MQTT_ENABLE;
 static int mqtt_port = MQTT_PORT;
+static struct mqtt_client_t *mqtt_global_client = NULL;
 #endif
 
 #ifdef WEBSERVER
@@ -412,19 +411,33 @@ void *broadcast(void *param) {
 									}
 								}
 								if(match1 == 1) {
+#ifdef MQTT
 									/*
 									 * START MQTT BROADCAST
 									 */
 									if(mqtt_global_client != NULL) {
 										char *topicfmt = "pilight/device/%s/%s";
-										// printf("%s\n", json_stringify(jtmp, "\t"));
+										char *topicfmt1 = "pilight/device/%s";
 										struct JsonNode *jdevices = json_find_member(jtmp, "devices");
 										struct JsonNode *jchilds = json_first_child(jdevices);
 										while(jchilds) {
+											int len = 0;
 											struct JsonNode *jvalues = json_find_member(jtmp, "values");
 											if(jvalues != NULL) {
+												len = snprintf(NULL, 0, topicfmt1, jchilds->string_);
+												char *topic = MALLOC(len+1);
+												if(topic == NULL) {
+													OUT_OF_MEMORY
+												}
+												memset(topic, '\0', len);
+												snprintf(topic, len+1, topicfmt, jchilds->string_);
+
+												char *out = json_stringify(jvalues, NULL);
+												mqtt_publish(mqtt_global_client, 0, 0, 0, topic, out);
+												json_free(out);
+												FREE(topic);
+
 												struct JsonNode *jchilds1 = json_first_child(jvalues);
-												int len = 0;
 												while(jchilds1) {
 													len = snprintf(NULL, 0, topicfmt, jchilds->string_, jchilds1->key);
 													char *topic = MALLOC(len+1);
@@ -453,6 +466,8 @@ void *broadcast(void *param) {
 													}
 													mqtt_publish(mqtt_global_client, 0, 0, 0, topic, payload);
 													jchilds1 = jchilds1->next;
+													FREE(payload);
+													FREE(topic);
 												}
 												struct JsonNode *jstate = json_find_member(jtmp, "state");
 												if(jstate != NULL) {
@@ -474,6 +489,7 @@ void *broadcast(void *param) {
 														strcpy(payload, jstate->string_);
 													}
 													mqtt_publish(mqtt_global_client, 0, 0, 0, "state", payload);
+													FREE(payload);
 												}
 											}
 											jchilds = jchilds->next;
@@ -482,7 +498,7 @@ void *broadcast(void *param) {
 									/*
 									 * END MQTT BROADCAST
 									 */
-
+#endif
 									char *conf = json_stringify(jtmp, NULL);
 									socket_write(tmp_clients->id, conf);
 									logprintf(LOG_DEBUG, "broadcasted: %s", conf);
@@ -1127,8 +1143,6 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 #endif
 
 static int control_device(struct devices_t *dev, char *state, struct JsonNode *values, enum origin_t origin) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	struct devices_settings_t *sett = NULL;
 	struct devices_values_t *val = NULL;
 	struct options_t *opt = NULL;
@@ -2508,8 +2522,19 @@ int main_gc(void) {
 	dso_gc();
 	log_gc();
 	ssl_gc();
-	mqtt_gc();
 	plua_gc();
+
+#ifdef MQTT
+	if(mqtt_global_client != NULL) {
+		int i = 0;
+		mqtt_publish(mqtt_global_client, 0, 0, 0, "pilight/status", "offline");
+		for(i=0;i<3;i++) {
+			uv_run(uv_default_loop(), UV_RUN_ONCE);
+		}
+	}
+
+	mqtt_gc();
+#endif
 
 	uv_stop(uv_default_loop());
 	options_delete(options);
@@ -2609,6 +2634,7 @@ static void pilight_abort(uv_timer_t *timer_req) {
 	exit(EXIT_FAILURE);
 }
 
+#ifdef MQTT
 static void ping(uv_timer_t *handle) {
 	mqtt_ping(handle->data);
 }
@@ -2627,16 +2653,105 @@ static void mqtt_callback(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, 
 				timer->data = client;
 				uv_timer_init(uv_default_loop(), timer);
 				uv_timer_start(timer, (void (*)(uv_timer_t *))ping, 3000, 3000);
+
+				mqtt_publish(client, 0, 0, 1, "pilight/sys/version", PILIGHT_VERSION);
+
+				{
+					char **devs = NULL, host[INET_ADDRSTRLEN+1], *p = host;
+					int nrdevs = 0, x = 0;
+					if((nrdevs = inetdevs(&devs)) > 0) {
+						for(x=0;x<nrdevs;x++) {
+							if(dev2ip(devs[x], &p, AF_INET) == 0) {
+								mqtt_publish(client, 0, 0, 1, "pilight/sys/ip", host);
+							}
+						}
+					}
+					array_free(&devs, nrdevs);
+				}
+
+				{
+					int len = snprintf(NULL, 0, "%d", socket_get_port());
+					char *output = MALLOC(len+1);
+					if(output == NULL) {
+						OUT_OF_MEMORY
+					}
+					memset(output, '\0', len+1);
+					snprintf(output, len+1, "%d", socket_get_port());
+					mqtt_publish(client, 0, 0, 1, "pilight/sys/port", output);
+					FREE(output);
+				}
+
+				mqtt_subscribe(client, "pilight/device/#", 0);
+			} break;
+			case MQTT_PUBLISH: {
+				if(pkt->payload.publish.message == NULL) {
+					logprintf(LOG_ERR, "pilight/device/+ mqtt messages require a json payload");
+				} else {
+					char **array = NULL;
+					int n = explode(pkt->payload.publish.topic, "/", &array);
+					if(n == 3) {
+						if(strcmp(array[0], "pilight") == 0 && strcmp(array[1], "device") == 0) {
+							struct JsonNode *json = json_decode(pkt->payload.publish.message);
+							if(json != NULL) {
+								struct JsonNode *jchild = NULL;
+
+								char *state = NULL;
+								if((jchild = json_find_member(json, "state")) != NULL) {
+									if(jchild->tag == JSON_STRING) {
+										state = jchild->string_;
+									}
+									json_remove_from_parent(jchild);
+								}
+
+								struct devices_t *dev = NULL;
+
+								if(devices_get(array[2], &dev) == 0) {
+									control_device(dev, state, json_first_child(json), ORIGIN_SENDER);
+								}
+								if(jchild != NULL) {
+									json_delete(jchild);
+								}
+
+								json_delete(json);
+							} else {
+								logprintf(LOG_ERR, "pilight/device/+ mqtt messages require a json payload");
+							}
+						}
+					} else if(n == 4) {
+						if(strcmp(array[0], "pilight") == 0 && strcmp(array[1], "device") == 0) {
+							struct devices_t *dev = NULL;
+							if(devices_get(array[2], &dev) == 0) {
+								if(strcmp(array[3], "state") == 0) {
+									control_device(dev, pkt->payload.publish.message, NULL, ORIGIN_SENDER);
+								} else {
+									struct JsonNode *json = json_mkobject();
+									if(isNumeric(pkt->payload.publish.message) == 0) {
+										json_append_member(json, array[3], json_mknumber(atof(pkt->payload.publish.message), nrDecimals(pkt->payload.publish.message)));
+									} else {
+										json_append_member(json, array[3], json_mkstring(pkt->payload.publish.message));
+									}
+									control_device(dev, pkt->payload.publish.message, json_first_child(json), ORIGIN_SENDER);
+									json_delete(json);
+								}
+							}
+						}
+					}
+					array_free(&array, n);
+				}
 			} break;
 			case MQTT_DISCONNECTED: {
 				mqtt_global_client = NULL;
 
+				printf("======== disconnected ========\n");
 				uv_timer_stop(client->userdata);
 				uv_close((uv_handle_t *)client->userdata, close_cb);
+
+				mqtt_client("127.0.0.1", mqtt_port, "pilight-daemon", NULL, NULL, mqtt_callback, NULL);
 			} break;
 		}
 	}
 }
+#endif
 
 static void pilight_stats(uv_timer_t *timer_req) {
 	int watchdog = 1, stats = 1;
@@ -2679,6 +2794,25 @@ static void pilight_stats(uv_timer_t *timer_req) {
 				}
 				tmp_clients = tmp_clients->next;
 			}
+
+#ifdef MQTT
+			{
+				if(cpu > 0.000001) {
+					int len = snprintf(NULL, 0, "%.*g", 6, cpu);
+					char *output = MALLOC(len+1);
+					if(output == NULL) {
+						OUT_OF_MEMORY
+					}
+					memset(output, '\0', len+1);
+					snprintf(output, len+1, "%.*g", 6, cpu);
+					if(mqtt_global_client != NULL) {
+						mqtt_publish(mqtt_global_client, 0, 0, 0, "pilight/sys/cpu", output);
+					}
+					FREE(output);
+				}
+			}
+#endif
+
 			pilight.broadcast(procProtocol->id, procProtocol->message, STATS);
 			json_delete(procProtocol->message);
 			procProtocol->message = NULL;
