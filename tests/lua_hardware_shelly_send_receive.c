@@ -331,7 +331,7 @@ void test_lua_hardware_shelly_send_receive(CuTest *tc) {
 	eventpool_gc();
 
 	CuAssertIntEquals(tc, test[0], 1);
-	CuAssertIntEquals(tc, test[1], 2);
+	CuAssertIntEquals(tc, test[1], 1);
 	CuAssertIntEquals(tc, test[2], 1);
 	CuAssertIntEquals(tc, test[3], 1);
 	CuAssertIntEquals(tc, test[4], 1);
