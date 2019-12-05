@@ -144,7 +144,7 @@ enum mqtt_connection_t {
 #define MQTT_RETAIN					104
 
 int mqtt_encode(struct mqtt_pkt_t *pkt, unsigned char **buf, unsigned int *len);
-int mqtt_decode(struct mqtt_pkt_t ***pkt, unsigned char *buf, unsigned int len, unsigned int *nr);
+int mqtt_decode(struct mqtt_pkt_t **pkt, unsigned char *buf, unsigned int len, unsigned int *pos);
 
 int mqtt_pkt_connect(struct mqtt_pkt_t *pkt, int dub, int qos, int retain, char *clientid, char *protocol, int version, char *username, char *password, int willretain, int willflag, int cleansession, int keepalive, char *topic, char *message);
 int mqtt_pkt_connack(struct mqtt_pkt_t *pkt, enum mqtt_connection_t status);
