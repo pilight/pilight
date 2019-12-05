@@ -82,9 +82,13 @@ function M.createMessage(data, id)
 		     broadcast['protocol'] == 'shellyplug-s')
 				and
 					broadcast['message']['state'] ~= nil then
-			local event = pilight.async.event();
-			event.register(pilight.reason.RECEIVED_API);
-			event.trigger(broadcast());
+			local tmp = json.stringify(broadcast);
+			if data[id]['lastmsg'] == nil or data[id]['lastmsg'] ~= tmp then
+				local event = pilight.async.event();
+				event.register(pilight.reason.RECEIVED_API);
+				event.trigger(broadcast());
+				data[id]['lastmsg'] = tmp;
+			end
 		end
 	end
 end
