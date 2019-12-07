@@ -670,7 +670,7 @@ int mqtt_decode(struct mqtt_pkt_t **pkt, unsigned char *buf, unsigned int len, u
 	do {
 		msglength += (buf[(*pos)] & 0x7F) * multiplier;
 		multiplier *= 128;
-	} while(buf[(*pos)++] > 128);
+	} while(buf[(*pos)++] >= 128);
 
 	startpos = (*pos);
 
@@ -1145,7 +1145,7 @@ void mqtt_client_add(struct mqtt_client_t **node, uv_poll_t *req, int side) {
 #ifdef PILIGHT_UNITTEST
 	uv_timer_start((*node)->timer_req, mqtt_client_timeout, 150, 0);
 #else
-	uv_timer_start((*node)->timer_req, mqtt_client_timeout, 1500, 0);
+	uv_timer_start((*node)->timer_req, mqtt_client_timeout, 3000, 0);
 #endif
 
 	(*node)->next = mqtt_clients;
