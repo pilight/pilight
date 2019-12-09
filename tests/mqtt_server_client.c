@@ -31,6 +31,7 @@ static CuTest *gtc = NULL;
 static uv_timer_t *timer_req1 = NULL;
 static uv_timer_t *timer_req2 = NULL;
 static uv_timer_t *stop_timer_req = NULL;
+static uv_async_t *async_req = NULL;
 static uv_thread_t pth;
 
 static int running = 1;
@@ -57,6 +58,16 @@ static void ping(uv_timer_t *handle) {
 }
 
 static void stop(uv_timer_t *handle) {
+	running = 0;
+	usleep(1000);
+	mqtt_gc();
+	uv_stop(uv_default_loop());
+}
+
+static void async_close_cb(uv_async_t *handle) {
+	if(!uv_is_closing((uv_handle_t *)handle)) {
+		uv_close((uv_handle_t *)handle, close_cb);
+	}
 	running = 0;
 	usleep(1000);
 	mqtt_gc();
@@ -440,6 +451,7 @@ static void mqtt_callback1(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt,
 					step1[pkt->type]++;
 				}
 			} else {
+				uv_timer_stop(timer_req1);
 				CuAssertIntEquals(gtc, step1[MQTT_DISCONNECTED]++, 0);
 			}
 		} break;
@@ -459,8 +471,9 @@ static void mqtt_callback1(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt,
 					step1[pkt->type]++;
 				}
 			} else {
-				// uv_timer_stop(timer_req1);
-				mqtt_client_remove(client->poll_req, 0);
+				running = 0;
+				uv_timer_stop(timer_req1);
+				// mqtt_client_remove(client->poll_req, 0);
 				step1[MQTT_DISCONNECTED]++;
 			}
 		} break;
@@ -480,8 +493,7 @@ static void mqtt_callback2(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt,
 				}
 			} else {
 				CuAssertIntEquals(gtc, step2[MQTT_DISCONNECTED]++, 0);
-				mqtt_gc();
-				uv_stop(uv_default_loop());
+				uv_async_send(async_req);
 			}
 		} break;
 		case 1: {
@@ -495,8 +507,7 @@ static void mqtt_callback2(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt,
 				}
 			} else {
 				CuAssertIntEquals(gtc, step2[MQTT_DISCONNECTED]++, 0);
-				mqtt_gc();
-				uv_stop(uv_default_loop());
+				uv_async_send(async_req);
 			}
 		} break;
 		case 2: {
@@ -510,8 +521,7 @@ static void mqtt_callback2(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt,
 				}
 			} else {
 				CuAssertIntEquals(gtc, step2[MQTT_DISCONNECTED]++, 0);
-				mqtt_gc();
-				uv_stop(uv_default_loop());
+				uv_async_send(async_req);
 			}
 		} break;
 		case 3: {
@@ -525,8 +535,7 @@ static void mqtt_callback2(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt,
 				}
 			} else {
 				CuAssertIntEquals(gtc, step2[MQTT_DISCONNECTED]++, 0);
-				mqtt_gc();
-				uv_stop(uv_default_loop());
+				uv_async_send(async_req);
 			}
 		} break;
 		case 4: {
@@ -828,6 +837,13 @@ void test_mqtt_server_client(CuTest *tc) {
 		}
 
 		eventpool_init(EVENTPOOL_NO_THREADS);
+
+		async_req = MALLOC(sizeof(uv_async_t));
+		if(async_req == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		uv_async_init(uv_default_loop(), async_req, async_close_cb);
+
 
 		if((stop_timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
