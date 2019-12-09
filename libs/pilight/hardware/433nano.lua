@@ -181,11 +181,13 @@ function M.callback(rw, serial, line)
 
 					if #stream > 0 then
 						local b = 1;
-						for i = 1, #stream, 1 do
-							data['pulses'][b] = pulses[1];
-							b = b + 1;
-							data['pulses'][b] = pulses[stream[i] + 1];
-							b = b + 1;
+						if tonumber(stream[i]) ~= nil then
+							for i = 1, #stream, 1 do
+								data['pulses'][b] = pulses[1];
+								b = b + 1;
+								data['pulses'][b] = pulses[stream[i] + 1];
+								b = b + 1;
+							end
 						end
 
 						data['length'] = b-1;
