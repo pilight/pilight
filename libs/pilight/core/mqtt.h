@@ -159,6 +159,8 @@ int mqtt_pkt_pingreq(struct mqtt_pkt_t *pkt);
 int mqtt_pkt_pingresp(struct mqtt_pkt_t *pkt);
 int mqtt_pkt_disconnect(struct mqtt_pkt_t *pkt);
 
+int mosquitto_sub_topic_check(const char *str);
+
 int mqtt_subscribe(struct mqtt_client_t *client, char *topic, int qos);
 int mqtt_publish(struct mqtt_client_t *client, int dub, int qos, int retain, char *topic, char *message);
 int mqtt_puback(struct mqtt_client_t *client, int msgid);

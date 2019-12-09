@@ -180,6 +180,32 @@ void mqtt_free(struct mqtt_pkt_t *pkt) {
 	}
 }
 
+int mosquitto_sub_topic_check(const char *str) {
+	char c = '\0';
+	int len = 0;
+
+	while(str && str[0]) {
+		if(str[0] == '+') {
+			if((c != '\0' && c != '/') || (str[1] != '\0' && str[1] != '/')) {
+				return -1;
+			}
+		} else if(str[0] == '#') {
+			if((c != '\0' && c != '/') || str[1] != '\0') {
+				return -1;
+			}
+		}
+		len++;
+		c = str[0];
+		str = &str[1];
+	}
+
+	if(len > 65535) {
+		return -1;
+	}
+
+	return 0;
+}
+
 /* Does a topic match a subscription? */
 int mosquitto_topic_matches_sub(const char *sub, const char *topic, int *result) {
 	int slen, tlen;
@@ -1074,7 +1100,6 @@ void mqtt_client_register(uv_poll_t *req, struct mqtt_pkt_t *pkt) {
 		uv_timer_stop(node->timer_req);
 
 		uv_custom_close(node->poll_req);
-		mqtt_client_remove(node->poll_req, 1);
 
 #ifdef _WIN32
 		uv_mutex_unlock(&mqtt_lock);
@@ -1898,6 +1923,9 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 					} break;
 					case MQTT_DISCONNECT: {
 						mqtt_client_remove(req, 1);
+						mqtt_free(pkt);
+						FREE(pkt);
+						return;
 					} break;
 					case MQTT_SUBSCRIBE: {
 						mqtt_pkt_suback(&pkt1, pkt->payload.subscribe.msgid, pkt->payload.subscribe.qos);
