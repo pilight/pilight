@@ -2654,7 +2654,11 @@ static void mqtt_callback(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, 
 				uv_timer_init(uv_default_loop(), timer);
 				uv_timer_start(timer, (void (*)(uv_timer_t *))ping, 3000, 3000);
 
+#ifdef HASH
+				mqtt_publish(client, 0, 0, 1, "pilight/sys/version", HASH);
+#else
 				mqtt_publish(client, 0, 0, 1, "pilight/sys/version", PILIGHT_VERSION);
+#endif
 
 				{
 					char **devs = NULL, host[INET_ADDRSTRLEN+1], *p = host;
@@ -2742,7 +2746,6 @@ static void mqtt_callback(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, 
 			case MQTT_DISCONNECTED: {
 				mqtt_global_client = NULL;
 
-				printf("======== disconnected ========\n");
 				uv_timer_stop(client->userdata);
 				uv_close((uv_handle_t *)client->userdata, close_cb);
 
@@ -3500,7 +3503,6 @@ int start_pilight(int argc, char **argv) {
 	{
 		if(mqtt_enable == 1) {
 			mqtt_server(mqtt_port);
-			mqtt_client("127.0.0.1", mqtt_port, "pilight-daemon", NULL, NULL, mqtt_callback, NULL);
 		}
 	}
 #endif
@@ -3573,6 +3575,15 @@ int start_pilight(int argc, char **argv) {
 	}
 	uv_timer_init(uv_default_loop(), timer_stats_req);
 	uv_timer_start(timer_stats_req, pilight_stats, 1000, 3000);
+
+#ifdef MQTT
+	{
+		if(mqtt_enable == 1) {
+			mqtt_client("127.0.0.1", mqtt_port, "pilight-daemon", NULL, NULL, mqtt_callback, NULL);
+		}
+	}
+#endif
+
 	return EXIT_SUCCESS;
 
 clear:
