@@ -262,3 +262,9 @@ if(${PROTOCOL_TCM} MATCHES "OFF")
 	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/tcm.c")
 	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/tcm.h")
 endif()
+
+if(${PROTOCOL_GW_IWDS07} MATCHES "OFF")
+        list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/iwds07.c")
+        list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/iwds07.h")
+endif()
+
