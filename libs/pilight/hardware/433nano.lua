@@ -155,6 +155,11 @@ function M.callback(rw, serial, line)
 										c = string.sub(content, i+1, x);
 										i = x + 1;
 										pulses[#pulses+1] = tonumber(c);
+										if #pulses >= 9 or x >= a then
+											pilight.log(LOG_NOTICE, "433nano: discarded invalid pulse train");
+											serial.read();
+											return;
+										end
 										if c == '@' then
 											i = x + 1;
 											break;
