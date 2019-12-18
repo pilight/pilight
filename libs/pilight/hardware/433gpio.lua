@@ -47,9 +47,7 @@ function M.send(timer)
 			-- Make sure we don't leave the GPIO dangling
 			-- in HIGH position.
 			--
-			if (count % 2) ~= 0 then
-				wx.digitalWrite(sender, 0);
-			end
+			wx.digitalWrite(sender, 0);
 		end
 	end
 
