@@ -1632,6 +1632,10 @@ struct lua_state_t *plua_get_free_state(void) {
 	int i = 0;
 	int error = 0;
 
+	if(init == 0) {
+		return NULL;
+	}
+
 	while(1) {
 		for(i=0;i<NRLUASTATES;i++) {
 			if(uv_mutex_trylock(&lua_state[i].lock) == 0) {
