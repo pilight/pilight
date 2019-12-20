@@ -16,6 +16,8 @@
 
 #include "../libs/pilight/core/log.h"
 #include "../libs/pilight/core/mem.h"
+#include "../libs/pilight/config/settings.h"
+#include "../libs/pilight/lua_c/lua.h"
 #include "mqtt.h"
 #include "network.h"
 
@@ -72,6 +74,9 @@ static struct mqtt_client_t *mqtt_clients = NULL;
 static struct mqtt_topic_t *mqtt_topics = NULL;
 static struct mqtt_messages_t *mqtt_messages = NULL;
 
+static char **mqtt_blacklist = NULL;
+static int mqtt_blacklist_nr = 0;
+
 static void poll_close_cb(uv_poll_t *req);
 
 static void close_cb(uv_handle_t *handle) {
@@ -87,6 +92,15 @@ void mqtt_gc(void) {
 	pthread_mutex_lock(&mqtt_lock);
 #endif
 	started = 0;
+
+	int i = 0;
+	for(i=0;i<mqtt_blacklist_nr;i++) {
+		FREE(mqtt_blacklist[i]);
+	}
+	if(mqtt_blacklist_nr > 0) {
+		FREE(mqtt_blacklist);
+	}
+	mqtt_blacklist_nr = 0;
 
 	{
 		struct mqtt_topic_t *node = NULL;
@@ -1380,6 +1394,18 @@ static void mqtt_process_publish(uv_poll_t *req, struct mqtt_pkt_t *pkt) {
 	int ret = 0, x = 0, match = 0;
 
 	if(pkt->type == MQTT_PUBLISH) {
+		for(x=0;x<mqtt_blacklist_nr;x++) {
+			if(mosquitto_topic_matches_sub(mqtt_blacklist[x], pkt->payload.publish.topic, &ret) == 0) {
+				if(ret == 1) {
+#ifdef _WIN32
+	uv_mutex_unlock(&mqtt_lock);
+#else
+	pthread_mutex_unlock(&mqtt_lock);
+#endif
+					return;
+				}
+			}
+		}
 		while(node) {
 			if(node->side == SERVER_SIDE && (req == NULL || node->poll_req != req)) {
 				for(x=0;x<node->nrsubs;x++) {
@@ -2228,6 +2254,19 @@ int mqtt_server(int port) {
 	uv_custom_read(poll_server_req);
 
 	logprintf(LOG_DEBUG, "started MQTT broker on port %d", port);
+
+	struct lua_state_t *state = plua_get_free_state();
+	if(state != NULL) {
+		char *out = NULL;
+		while(config_setting_get_string(state->L, "mqtt-blacklist", mqtt_blacklist_nr, &out) == 0) {
+			if((mqtt_blacklist = REALLOC(mqtt_blacklist, (mqtt_blacklist_nr+1)*sizeof(char *))) == NULL) {
+				OUT_OF_MEMORY
+			}
+			mqtt_blacklist[mqtt_blacklist_nr] = out;
+			mqtt_blacklist_nr++;
+		}
+		plua_clear_state(state);
+	}
 
 	return 0;
 

@@ -27,6 +27,7 @@
 void test_mqtt_decode(CuTest *tc);
 void test_mqtt_encode(CuTest *tc);
 void test_mqtt_server_client(CuTest *tc);
+void test_mqtt_blacklist(CuTest *tc);
 
 CuSuite *suite_mqtt(void) {
 	CuSuite *suite = CuSuiteNew();
@@ -34,6 +35,7 @@ CuSuite *suite_mqtt(void) {
 	SUITE_ADD_TEST(suite, test_mqtt_decode);
 	SUITE_ADD_TEST(suite, test_mqtt_encode);
 	SUITE_ADD_TEST(suite, test_mqtt_server_client);
+	SUITE_ADD_TEST(suite, test_mqtt_blacklist);
 
 	return suite;
 }

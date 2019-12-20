@@ -877,6 +877,26 @@ struct settings_t {
 	},
 	{
 		{
+			{ "mqtt-blacklist", "[\"#\"]", 0, JSON_ARRAY },
+		}, 1, 0
+	},
+	{
+		{
+			{ "mqtt-blacklist", "[\"#/#\"]", 0, JSON_ARRAY },
+		}, 1, -1
+	},
+	{
+		{
+			{ "mqtt-blacklist", "[\"#\",\"pilight/+/+\"]", 0, JSON_ARRAY },
+		}, 1, 0
+	},
+	{
+		{
+			{ "mqtt-blacklist", "[\"#/#\",\"pilight/+/+\"]", 0, JSON_ARRAY },
+		}, 1, -1
+	},
+	{
+		{
 			{ "foo", "bar", 0, JSON_STRING },
 		}, 1, -1
 	}
