@@ -650,6 +650,32 @@ static int plua_network_mqtt_call(lua_State *L) {
 	return 1;
 }
 
+static int plua_network_mqtt_valid_topic(lua_State *L) {
+	int args = lua_gettop(L);
+	if(args == 0) {
+		pluaL_error(L, "mqtt.validTopic requires 1 arguments, %d given", lua_gettop(L));
+	}
+
+	const char *topic = NULL;
+	{
+		char buf[128] = { '\0' }, *p = buf;
+		char *error = "string expected, got %s";
+
+		sprintf(p, error, lua_typename(L, lua_type(L, 1)));
+
+		luaL_argcheck(L,
+			(lua_type(L, 1) == LUA_TSTRING),
+			1, buf);
+
+		topic = lua_tostring(L, 1);
+		lua_remove(L, 1);
+	}
+
+	lua_pushboolean(L, mosquitto_sub_topic_check(topic) == 0);
+
+	return 1;
+}
+
 static void plua_network_mqtt_object(lua_State *L, struct lua_mqtt_t *mqtt) {
 	lua_newtable(L);
 
@@ -661,6 +687,11 @@ static void plua_network_mqtt_object(lua_State *L, struct lua_mqtt_t *mqtt) {
 	lua_pushstring(L, "getCallback");
 	lua_pushlightuserdata(L, mqtt);
 	lua_pushcclosure(L, plua_network_mqtt_get_callback, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "validTopic");
+	lua_pushlightuserdata(L, mqtt);
+	lua_pushcclosure(L, plua_network_mqtt_valid_topic, 1);
 	lua_settable(L, -3);
 
 	lua_pushstring(L, "connect");
