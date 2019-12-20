@@ -18,6 +18,7 @@
 #include "../libs/pilight/core/mem.h"
 #include "../libs/pilight/config/settings.h"
 #include "../libs/pilight/lua_c/lua.h"
+#include "../libs/libuv/uv.h"
 #include "mqtt.h"
 #include "network.h"
 
@@ -1145,6 +1146,7 @@ void mqtt_client_register(uv_poll_t *req, struct mqtt_pkt_t *pkt) {
 
 	if(known == 1) {
 		if(node->keepalive > 0) {
+			uv_update_time(uv_default_loop());
 #ifdef PILIGHT_UNITTEST
 			uv_timer_start(node->timer_req, mqtt_client_timeout, (node->keepalive*1.5)*100, 0);
 #else
@@ -1458,6 +1460,7 @@ static void mqtt_process_publish(uv_poll_t *req, struct mqtt_pkt_t *pkt) {
 
 									uv_timer_init(uv_default_loop(), message->timer_req);
 									if(node->keepalive > 0) {
+										uv_update_time(uv_default_loop());
 #ifdef PILIGHT_UNITTEST
 										uv_timer_start(message->timer_req, mqtt_message_resend, 100, 100);
 #else
@@ -2024,6 +2027,7 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			}
 			if(node->poll_req == req) {
 				if(node->keepalive > 0) {
+					uv_update_time(uv_default_loop());
 #ifdef PILIGHT_UNITTEST
 					uv_timer_start(node->timer_req , mqtt_client_timeout, (node->keepalive*1.5)*100, 0);
 #else
