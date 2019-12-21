@@ -49,6 +49,7 @@ Settings
 - `MQTT`_
    - `mqtt-enable`_
    - `mqtt-port`_
+   - `mqtt-blacklist`_
 
 Introduction
 ------------
@@ -745,3 +746,18 @@ The pilight MQTT broker can be turned off as a whole. This could be useful if yo
    { "mqtt-port": 1883 }
 
 The pilight MQTT broker runs by default on the standard 1883 port. If you do want to run the MQTT broker any other port, you can change this setting. The port specified must be a valid and unused port.
+
+.. _mqtt-blacklist:
+.. rubric:: mqtt-blacklist
+
+.. note::
+
+   Linux, \*BSD, and Windows
+
+.. code-block:: json
+   :linenos:
+
+   { "mqtt-blacklist": [ "topic", "..." ] }
+
+This settings allow you to prevent the broker to communication certain topics, e.g. the datetime protocol that sends
+updates every second. Only valid MQTT topics with or without wildcards are supported,
