@@ -8,6 +8,8 @@ Changelog
 - pilight now contains a MQTT broker
 - Support for Shelly and Tasmota
 - Generic MQTT hardware module
+- Communicate updates over MQTT
+- Allow controlling pilight over MQTT
 - pilight lua MQTT interface
 - pilight lua MDNS interface
 - Lua pilight.log properly interacts with luaL_error
@@ -27,6 +29,8 @@ Changelog
 - Fixed random character generator
 - Small fix in eventpool
 - Small improvements in coap lib
+- Better handling of invalid streams in 433nano
+- Don't let sender in a high state in 433gpio
 
 .. versionadded:: 8.1.5
 

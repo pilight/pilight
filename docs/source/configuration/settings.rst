@@ -273,6 +273,12 @@ pilight can be ran on various GPIO compatible platforms. However, it is impossib
 
 If you are running on a platform that doesn't support GPIO, you can either use ``none`` as the ``gpio-platform`` or remove the setting altogether.
 
+If you are not sure what version Raspberry Pi you are running, you can run the following command:
+
+.. code-block:: console
+
+   # cat /sys/firmware/devicetree/base/model
+
 .. _loopback:
 .. rubric:: loopback
 
