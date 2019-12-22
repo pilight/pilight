@@ -1183,6 +1183,8 @@ void mqtt_client_add(struct mqtt_client_t **node, uv_poll_t *req, int side) {
 	(*node)->timer_req->data = (*node);
 
 	uv_timer_init(uv_default_loop(), (*node)->timer_req);
+
+	uv_update_time(uv_default_loop());
 #ifdef PILIGHT_UNITTEST
 	uv_timer_start((*node)->timer_req, mqtt_client_timeout, 150, 0);
 #else
