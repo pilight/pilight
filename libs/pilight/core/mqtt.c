@@ -76,7 +76,9 @@ static struct mqtt_topic_t *mqtt_topics = NULL;
 static struct mqtt_messages_t *mqtt_messages = NULL;
 
 static char **mqtt_blacklist = NULL;
+static char **mqtt_whitelist = NULL;
 static int mqtt_blacklist_nr = 0;
+static int mqtt_whitelist_nr = 0;
 
 static void poll_close_cb(uv_poll_t *req);
 
@@ -102,6 +104,13 @@ void mqtt_gc(void) {
 		FREE(mqtt_blacklist);
 	}
 	mqtt_blacklist_nr = 0;
+	for(i=0;i<mqtt_whitelist_nr;i++) {
+		FREE(mqtt_whitelist[i]);
+	}
+	if(mqtt_whitelist_nr > 0) {
+		FREE(mqtt_whitelist);
+	}
+	mqtt_whitelist_nr = 0;
 
 	{
 		struct mqtt_topic_t *node = NULL;
@@ -1395,21 +1404,34 @@ static void mqtt_process_publish(uv_poll_t *req, struct mqtt_pkt_t *pkt) {
 #endif
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct mqtt_client_t *node = mqtt_clients;
-	int ret = 0, x = 0, match = 0;
+	int ret = 0, x = 0, match = 0, pass = 1;
 
 	if(pkt->type == MQTT_PUBLISH) {
 		for(x=0;x<mqtt_blacklist_nr;x++) {
 			if(mosquitto_topic_matches_sub(mqtt_blacklist[x], pkt->payload.publish.topic, &ret) == 0) {
 				if(ret == 1) {
-#ifdef _WIN32
-	uv_mutex_unlock(&mqtt_lock);
-#else
-	pthread_mutex_unlock(&mqtt_lock);
-#endif
-					return;
+					pass = 0;
 				}
 			}
 		}
+		if(pass == 0) {
+			for(x=0;x<mqtt_whitelist_nr;x++) {
+				if(mosquitto_topic_matches_sub(mqtt_whitelist[x], pkt->payload.publish.topic, &ret) == 0) {
+					if(ret == 1) {
+						pass = 1;
+					}
+				}
+			}
+		}
+		if(pass == 0) {
+#ifdef _WIN32
+			uv_mutex_unlock(&mqtt_lock);
+#else
+			pthread_mutex_unlock(&mqtt_lock);
+#endif
+			return;
+		}
+
 		while(node) {
 			if(node->side == SERVER_SIDE && (req == NULL || node->poll_req != req)) {
 				for(x=0;x<node->nrsubs;x++) {
@@ -2270,6 +2292,15 @@ int mqtt_server(int port) {
 			}
 			mqtt_blacklist[mqtt_blacklist_nr] = out;
 			mqtt_blacklist_nr++;
+		}
+
+		out = NULL;
+		while(config_setting_get_string(state->L, "mqtt-whitelist", mqtt_whitelist_nr, &out) == 0) {
+			if((mqtt_whitelist = REALLOC(mqtt_whitelist, (mqtt_whitelist_nr+1)*sizeof(char *))) == NULL) {
+				OUT_OF_MEMORY
+			}
+			mqtt_whitelist[mqtt_whitelist_nr] = out;
+			mqtt_whitelist_nr++;
 		}
 		plua_clear_state(state);
 	}
