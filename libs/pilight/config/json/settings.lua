@@ -63,7 +63,7 @@ function M.read(f)
 		'webserver-enable', 'webserver-cache', 'watchdog-enable', 'webgui-websockets',
 		'webserver-root',
 
-		'mqtt-port', 'mqtt-enable', 'mqtt-blacklist',
+		'mqtt-port', 'mqtt-enable', 'mqtt-blacklist', 'mqtt-whitelist',
 
 		'pid-file', 'pem-file', 'log-file',
 
@@ -270,20 +270,22 @@ function M.read(f)
 	--
 	-- These settings should contain a valid mqtt topic
 	--
-	v = 'mqtt-blacklist';
-	if settings[v] ~= nil then
-		if type(settings[v]) ~= 'table' or settings[v].len() == 0 then
-			pilight.log(LOG_ERR, 'config setting "' .. v .. '" must be in the format of [ \"pilight/+/+\", ... ]');
-		end
-		if type(settings[v]) == 'table' then
-			local mqtt = pilight.network.mqtt();
-			for k, x in pairs(settings[v]) do
-				if type(x) ~= 'string' or mqtt.validTopic(x) == false then
-					pilight.log(LOG_ERR, 'config setting "' .. v .. '" must be in the format of [ \"pilight/+/+\", ... ]');
-				end
+	keys = { 'mqtt-blacklist', 'mqtt-whitelist' }
+	for k, v in pairs(keys) do
+		if settings[v] ~= nil then
+			if type(settings[v]) ~= 'table' or settings[v].len() == 0 then
+				pilight.log(LOG_ERR, 'config setting "' .. v .. '" must be in the format of [ \"pilight/+/+\", ... ]');
 			end
-		else
-			pilight.log(LOG_ERR, 'config setting "' .. v .. '" must be in the format of [ \"pilight/+/+\", ... ]');
+			if type(settings[v]) == 'table' then
+				local mqtt = pilight.network.mqtt();
+				for k, x in pairs(settings[v]) do
+					if type(x) ~= 'string' or mqtt.validTopic(x) == false then
+						pilight.log(LOG_ERR, 'config setting "' .. v .. '" must be in the format of [ \"pilight/+/+\", ... ]');
+					end
+				end
+			else
+				pilight.log(LOG_ERR, 'config setting "' .. v .. '" must be in the format of [ \"pilight/+/+\", ... ]');
+			end
 		end
 	end
 
