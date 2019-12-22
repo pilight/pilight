@@ -350,7 +350,7 @@ static void test_lua_async_event(CuTest *tc) {
 
 	eventpool_gc();
 
-	CuAssertTrue(tc, (run >= 25) && (run <= 28));
+	CuAssertTrue(tc, (run >= 25) && (run <= 30));
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
