@@ -164,10 +164,6 @@ static int plua_print(lua_State* L) {
 			}
 		}
 	}
-
-	if((run >= 24) && (run <= 25)) {
-		uv_stop(uv_default_loop());
-	}
 	return 0;
 }
 
@@ -350,7 +346,7 @@ static void test_lua_async_event(CuTest *tc) {
 
 	eventpool_gc();
 
-	CuAssertTrue(tc, (run >= 25) && (run <= 30));
+	CuAssertTrue(tc, (run >= 25) && (run <= 28));
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
