@@ -6,6 +6,7 @@
 #include <math.h>
 
 #include "CuTest.h"
+#include "pilight.h"
 
 const char *CuFilter = NULL;
 
@@ -150,9 +151,14 @@ void CuTestRun(CuTest* tc)
 {
 	jmp_buf buf;
 	tc->jumpBuf = &buf;
+
 	if (setjmp(buf) == 0)
 	{
 		tc->ran = 1;
+
+		const uv_thread_t pth_cur_id = uv_thread_self();
+		memcpy((void *)&pth_main_id, &pth_cur_id, sizeof(uv_thread_t));
+
 		(tc->function)(tc);
 	}
 	tc->jumpBuf = 0;
