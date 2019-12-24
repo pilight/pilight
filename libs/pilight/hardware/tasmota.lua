@@ -84,12 +84,13 @@ function M.callback(mqtt, data)
 		mqtt.subscribe("cmnd/+/+");
 		mqtt.subscribe("stat/+/+");
 	end
+
 	if data['type'] == MQTT_PUBLISH then
 		local substr = pilight.common.explode(data['topic'], "/");
 		if #substr == 3 then
 			if substr[1] == 'tele' then
 				if substr[3] == 'LWT' then
-					if data['message'] == 'Online' then
+					if data['message'] == 'Online' and tmp[substr[2]] == nil then
 						tmp[substr[2]] = {};
 						tmp[substr[2]]['hasstatus'] = false;
 						tmp[substr[2]]['lastseen'] = os.time();
@@ -157,6 +158,8 @@ function M.send(obj, reason, data)
 
 	if data['protocol'] == 'tasmota_switch' then
 		mqtt.publish("cmnd/" .. data['id'] .. "/POWER", data['state']);
+		devs[data['id']]['status'] = string.lower(data['state']);
+		M.createMessage(devs, data['id']);
 	end
 end
 

@@ -43,6 +43,8 @@ function M.send(obj, reason, data)
 		 data['protocol'] == 'shellyplug' or
 		 data['protocol'] == 'shellyplug-s' then
 		mqtt.publish("shellies/" .. devs[data['id']]['type'] .. "-" .. data['id'] .. "/relay/0/command", data['state']);
+		devs[data['id']]['state'] = string.lower(data['state']);
+		M.createMessage(devs, data['id']);
 	end
 end
 
@@ -155,8 +157,6 @@ function M.callback(mqtt, data)
 		end
 	end
 	if data['type'] == MQTT_SUBACK then
-	end
-	if data['type'] == MQTT_DISCONNECT then
 	end
 end
 
