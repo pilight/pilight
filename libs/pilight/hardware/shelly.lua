@@ -16,6 +16,18 @@ function M.validate()
 	return;
 end
 
+function M.reset(timer)
+	local data = timer.getUserdata();
+	local mqtt = pilight.network.mqtt(data['mqtt']);
+	local tmp = mqtt.getUserdata();
+
+	for _ in pairs(tmp) do
+		if(tmp[_]['timer'] == timer()) then
+			M.createMessage(tmp, _);
+		end
+	end
+end
+
 function M.send(obj, reason, data)
 	if reason ~= pilight.reason.SEND_CODE then
 		return;
@@ -43,8 +55,24 @@ function M.send(obj, reason, data)
 		 data['protocol'] == 'shellyplug' or
 		 data['protocol'] == 'shellyplug-s' then
 		mqtt.publish("shellies/" .. devs[data['id']]['type'] .. "-" .. data['id'] .. "/relay/0/command", data['state']);
+
+		local tmp = devs[data['id']]['state'];
 		devs[data['id']]['state'] = string.lower(data['state']);
 		M.createMessage(devs, data['id']);
+		devs[data['id']]['state'] = tmp;
+
+		--
+		-- If we don't get a confirmation within
+		-- 3000ms, restore to the current state
+		--
+		local timer = pilight.async.timer();
+		timer.setCallback("reset");
+		timer.setTimeout(3000);
+		timer.setRepeat(0);
+		timer.setUserdata({['mqtt']=mqtt()});
+		timer.start();
+
+		devs[data['id']]['timer'] = timer();
 	end
 end
 
@@ -140,6 +168,7 @@ function M.callback(mqtt, data)
 						end
 						if #substr == 4 then
 							tmp[id]['relay'][tonumber(substr[4])]['state'] = data['message'];
+							tmp[id]['timer'] = nil;
 						end
 						if #substr == 5 then
 							if substr[5] == 'power' then

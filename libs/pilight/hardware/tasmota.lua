@@ -21,6 +21,18 @@ function M.validate()
 	return;
 end
 
+function M.reset(timer)
+	local data = timer.getUserdata();
+	local mqtt = pilight.network.mqtt(data['mqtt']);
+	local tmp = mqtt.getUserdata();
+
+	for _ in pairs(tmp) do
+		if(tmp[_]['timer'] == timer()) then
+			M.createMessage(tmp, _);
+		end
+	end
+end
+
 function M.timer(timer)
 	local data = timer.getUserdata();
 	local mqtt = pilight.network.mqtt(data['mqtt']);
@@ -102,6 +114,7 @@ function M.callback(mqtt, data)
 				if substr[3] == 'POWER' then
 					if tmp[substr[2]] ~= nil then
 						tmp[substr[2]]['status'] = string.lower(data['message']);
+						tmp[substr[2]]['timer'] = nil;
 					end
 					M.createMessage(tmp, substr[2]);
 				end
@@ -121,6 +134,7 @@ function M.callback(mqtt, data)
 					tmp[substr[2]]['status'] = lookup(jobject, 'StatusSTS', 'POWER') or nil;
 					if tmp[substr[2]]['status'] ~= nil then
 						tmp[substr[2]]['status'] = string.lower(tmp[substr[2]]['status']);
+						tmp[substr[2]]['timer'] = nil;
 					end
 					tmp[substr[2]]['hasstatus'] = true;
 					M.createMessage(tmp, substr[2]);
@@ -158,8 +172,24 @@ function M.send(obj, reason, data)
 
 	if data['protocol'] == 'tasmota_switch' then
 		mqtt.publish("cmnd/" .. data['id'] .. "/POWER", data['state']);
+
+		local tmp = devs[data['id']]['status'];
 		devs[data['id']]['status'] = string.lower(data['state']);
 		M.createMessage(devs, data['id']);
+		devs[data['id']]['status'] = tmp;
+
+		--
+		-- If we don't get a confirmation within
+		-- 3000ms, restore to the current state
+		--
+		local timer = pilight.async.timer();
+		timer.setCallback("reset");
+		timer.setTimeout(3000);
+		timer.setRepeat(0);
+		timer.setUserdata({['mqtt']=mqtt()});
+		timer.start();
+
+		devs[data['id']]['timer'] = timer();
 	end
 end
 
