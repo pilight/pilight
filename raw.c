@@ -45,8 +45,9 @@ static uv_signal_t *signal_req = NULL;
 
 static unsigned short main_loop = 1;
 static unsigned short linefeed = 0;
-static int min_pulses = 0;
-static int pulses_per_line = 0;
+static int min_pulses = 10;
+static int pulses_per_line = 5;
+static int first_pulse = 1;
 
 static const char pulse_fmt[] = " %5d";
 static const char line_fmt[] = "\n%*d:";
@@ -54,6 +55,7 @@ static const char line_fmt[] = "\n%*d:";
 static char *lua_root = LUA_ROOT;
 
 int main_gc(void) {
+	printf("\n");
 	log_shell_disable();
 	main_loop = 0;
 
@@ -119,10 +121,16 @@ static void *listener(int reason, void *param, void *userdata) {
 		for(i=0;i<(int)length;i++) {
 			iter++;
 			if(min_pulses > 0) {
-				if(iter < min_pulses) {
+				if(buffer[i] > 100000) {
+					if(first_pulse == 0) {
+						printf("\n\n");
+					}
+					first_pulse = 0;
+					printf("     1 %s: %d", hardware, buffer[i]);
+				} else if(iter < min_pulses) {
 					pulses[iter] = buffer[i];
 				} else if(iter == min_pulses) {
-					len = printf("%6u %s:", ++lines, hardware) - 1; // don't count the ':' - is added by line_fmt.
+					len = printf("\n\n%6u %s:", ++lines, hardware) - 3; // don't count the ':' - is added by line_fmt.
 					for(iter = 1; iter < min_pulses; iter++) {
 						if(iter > 1 && (iter-1) % pulses_per_line == 0) {
 							printf(line_fmt, len, (iter-1));
@@ -135,7 +143,7 @@ static void *listener(int reason, void *param, void *userdata) {
 					printf(pulse_fmt, buffer[i]);
 				} else {
 					if(iter > 1 && (iter-1) % pulses_per_line == 0) {
-						len = snprintf(NULL, 0, "%6u %s:", lines, hardware) - 1;
+						len = snprintf(NULL, 0, "\n\n%6u %s:", lines, hardware) - 3;
 						printf(line_fmt, len, (iter-1));
 					}
 					printf(pulse_fmt, buffer[i]);
@@ -144,7 +152,7 @@ static void *listener(int reason, void *param, void *userdata) {
 				if(buffer[i] > 5100) {
 					if(iter >= min_pulses) {
 						if(iter >= pulses_per_line) {
-							printf("\n\n");	// space line after large reports.
+							// printf("");	// space line after large reports.
 						}
 					}
 					iter = 0;
@@ -252,11 +260,12 @@ int main(int argc, char **argv) {
 		printf("Usage: %s [options]\n", progname);
 		printf("\t -H  --help\t\t\tdisplay usage summary\n");
 		printf("\t -V  --version\t\t\tdisplay version\n");
-		printf("\t -L  --linefeed\t\t\tstructure raw printout\n");
 		printf("\t -C  --config\t\t\tconfig file\n");
 		printf("\t -L  --linefeed\t\t\tstructure raw printout\n");
-		printf("\t -m  --minpulses\t\tprint nothing if not at least # pulses (implies --linefeed).\n");
-		printf("\t -p  --pulsesperline\t\tpulses to print per line (10 by default; implies --linefeed).\n");
+		printf("\t -m  --minpulses\t\tprint nothing if not at least # pulses\n \
+\t\t\t\t\t(default: 10; implies --linefeed).\n\n");
+		printf("\t -p  --pulsesperline\t\tpulses to print per line\n \
+\t\t\t\t\t(default: 5; implies --linefeed).\n\n");
 		printf("\t -Ls --storage-root=xxxx\tlocation of the storage lua modules\n");
 		printf("\t -Ll --lua-root=xxxx\t\tlocation of the plain lua modules\n");
 		goto close;
