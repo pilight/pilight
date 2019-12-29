@@ -317,7 +317,7 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct mqtt_client_t *currP, *prevP;
 	struct mqtt_client_t *node = mqtt_clients;
-	int ret = 0, x = 0;
+	int ret = 0, x = 0, ret1 = 0;
 
 	prevP = NULL;
 
@@ -331,36 +331,42 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 
 			uv_timer_stop(currP->timer_req);
 
-			if(currP->haswill == 1 && disconnect == 0) {
-				node = mqtt_clients;
-				while(node) {
-					for(x=0;x<node->nrsubs;x++) {
-						if(mosquitto_topic_matches_sub(node->subs[x]->topic, currP->will.topic, &ret) == 0) {
-							if(ret == 1) {
-								struct mqtt_pkt_t pkt1;
-								unsigned int len = 0;
-								unsigned char *buf = NULL;
+			node = mqtt_clients;
+			while(node) {
+				for(x=0;x<node->nrsubs;x++) {
+					if((currP->haswill == 1 && disconnect == 0 &&
+							mosquitto_topic_matches_sub(node->subs[x]->topic, currP->will.topic, &ret) == 0) ||
+							mosquitto_topic_matches_sub(node->subs[x]->topic, "pilight/mqtt/disconnected", &ret1) == 0
+						) {
+						if((currP->haswill == 1 && disconnect == 0 && ret == 1) || ret1 == 1) {
+							struct mqtt_pkt_t pkt1;
+							unsigned int len = 0;
+							unsigned char *buf = NULL;
 
-								memset(&pkt1, 0, sizeof(struct mqtt_pkt_t));
+							memset(&pkt1, 0, sizeof(struct mqtt_pkt_t));
 
+							if(currP->haswill == 1 && disconnect == 0 && ret == 1) {
 								mqtt_pkt_publish(&pkt1, 0, currP->will.qos, 0, currP->will.topic, node->msgid++, currP->will.message);
-
-								if(mqtt_encode(&pkt1, &buf, &len) == 0) {
-									custom_poll_data = node->poll_req->data;
-
-									iobuf_append(&custom_poll_data->send_iobuf, (void *)buf, len);
-									node->flush = 1;
-									if(node->msgid > 1024) {
-										node->msgid = 0;
-									}
-									FREE(buf);
-								}
-								mqtt_free(&pkt1);
 							}
+							if(ret1 == 1) {
+								mqtt_pkt_publish(&pkt1, 0, 0, 0, "pilight/mqtt/disconnected", node->msgid++, currP->id);
+							}
+
+							if(mqtt_encode(&pkt1, &buf, &len) == 0) {
+								custom_poll_data = node->poll_req->data;
+
+								iobuf_append(&custom_poll_data->send_iobuf, (void *)buf, len);
+								node->flush = 1;
+								if(node->msgid > 1024) {
+									node->msgid = 0;
+								}
+								FREE(buf);
+							}
+							mqtt_free(&pkt1);
 						}
 					}
-					node = node->next;
 				}
+				node = node->next;
 			}
 
 			int i = 0;
@@ -1162,6 +1168,39 @@ void mqtt_client_register(uv_poll_t *req, struct mqtt_pkt_t *pkt) {
 			uv_timer_start(node->timer_req, mqtt_client_timeout, (node->keepalive*1.5)*1000, 0);
 #endif
 		}
+	}
+
+	clients = mqtt_clients;
+
+	struct uv_custom_poll_t *custom_poll_data = NULL;
+	int ret = 0, x = 0;
+	while(clients) {
+		for(x=0;x<clients->nrsubs;x++) {
+			if(mosquitto_topic_matches_sub(clients->subs[x]->topic, "pilight/mqtt/connected", &ret) == 0) {
+				if(ret == 1) {
+					struct mqtt_pkt_t pkt1;
+					unsigned int len = 0;
+					unsigned char *buf = NULL;
+
+					memset(&pkt1, 0, sizeof(struct mqtt_pkt_t));
+
+					mqtt_pkt_publish(&pkt1, 0, 0, 0, "pilight/mqtt/connected", clients->msgid++, node->id);
+
+					if(mqtt_encode(&pkt1, &buf, &len) == 0) {
+						custom_poll_data = clients->poll_req->data;
+
+						iobuf_append(&custom_poll_data->send_iobuf, (void *)buf, len);
+						clients->flush = 1;
+						if(clients->msgid > 1024) {
+							clients->msgid = 0;
+						}
+						FREE(buf);
+					}
+					mqtt_free(&pkt1);
+				}
+			}
+		}
+		clients = clients->next;
 	}
 
 #ifdef _WIN32
