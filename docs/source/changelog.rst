@@ -17,6 +17,7 @@ Changelog
 - Less verbose logging in release version
 - Added atomic increment and decrement functions
 - Allow storing lightuserdata in pilight lua metatables
+- webGUI switches readonly can be disabled or enabled on request
 
 .. rubric:: Bugfixes
 

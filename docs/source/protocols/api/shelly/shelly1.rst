@@ -42,7 +42,8 @@ Shelly
          "id": [{
            "id": "A01BC2",
          }],
-         "state": "off"
+         "state": "off",
+         "readonly": 0
        }
      },
      "gui": {

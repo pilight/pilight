@@ -46,7 +46,8 @@ Shelly
          "energy": 1234,
          "power": 1000,
          "overtemperature": 0,
-         "temperature": 23.00
+         "temperature": 23.00,
+         "readonly": 0
        }
      },
      "gui": {
@@ -73,8 +74,6 @@ Shelly
 +------------------+-----------------+
 | overtemperature  | 0 or 1          |
 +------------------+-----------------+
-
-.. rubric:: Optional Settings
 
 :underline:`GUI Settings`
 

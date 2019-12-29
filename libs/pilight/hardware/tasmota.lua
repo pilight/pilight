@@ -65,6 +65,9 @@ function M.createMessage(data, id)
 			if data[id]['status'] ~= nil then
 				broadcast['message']['state'] = data[id]['status'];
 			end
+			if data[id]['readonly'] ~= nil then
+				broadcast['message']['readonly'] = data[id]['readonly'];
+			end
 		end
 		broadcast['message']['id'] = id;
 	end
@@ -95,6 +98,7 @@ function M.callback(mqtt, data)
 		mqtt.subscribe("tele/+/+");
 		mqtt.subscribe("cmnd/+/+");
 		mqtt.subscribe("stat/+/+");
+		mqtt.subscribe("pilight/mqtt/+");
 	end
 
 	if data['type'] == MQTT_PUBLISH then
@@ -102,10 +106,17 @@ function M.callback(mqtt, data)
 		if #substr == 3 then
 			if substr[1] == 'tele' then
 				if substr[3] == 'LWT' then
-					if data['message'] == 'Online' and tmp[substr[2]] == nil then
-						tmp[substr[2]] = {};
-						tmp[substr[2]]['hasstatus'] = false;
-						tmp[substr[2]]['lastseen'] = os.time();
+					if data['message'] == 'Online' then
+						if tmp[substr[2]] == nil then
+							tmp[substr[2]] = {};
+							tmp[substr[2]]['hasstatus'] = false;
+							tmp[substr[2]]['lastseen'] = os.time();
+						end
+						tmp[substr[2]]['readonly'] = 0;
+					end
+					if data['message'] == 'Offline' then
+						tmp[substr[2]]['readonly'] = 1;
+						M.createMessage(tmp, substr[2]);
 					end
 				end
 				tmp[substr[2]]['lastseen'] = os.time();
@@ -142,6 +153,14 @@ function M.callback(mqtt, data)
 
 				tmp[substr[2]]['lastseen'] = os.time();
 			end
+			if substr[1] == 'pilight' and substr[2] == 'mqtt' then
+				if substr[3] == 'disconnected' then
+					if tmp[data['message']] ~= nil then
+						tmp[data['message']]['readonly'] = 1;
+						M.createMessage(tmp, data['message']);
+					end
+				end
+			end
 		end
 	end
 	if data['type'] == MQTT_SUBACK then
@@ -162,6 +181,20 @@ function M.send(obj, reason, data)
 	local devs = mqtt.getUserdata();
 
 	if data['id'] == nil then
+		return;
+	end
+
+	if data['readonly'] ~= nil then
+		local broadcast = pilight.table();
+		broadcast['origin'] = 'receiver';
+		broadcast['message'] = {};
+		broadcast['protocol'] = data['protocol'];
+		broadcast['message']['id'] = data['id'];
+		broadcast['message']['readonly'] = data['readonly'];
+
+		local event = pilight.async.event();
+		event.register(pilight.reason.RECEIVED_API);
+		event.trigger(broadcast());
 		return;
 	end
 

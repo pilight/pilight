@@ -42,7 +42,8 @@ Tasmota
          "id": [{
            "id": "switch",
          }],
-         "state": "off"
+         "state": "off",
+         "readonly": 0
        }
      },
      "gui": {
@@ -61,8 +62,6 @@ Tasmota
 +------------------+-----------------+
 | state            | on / off        |
 +------------------+-----------------+
-
-.. rubric:: Optional Settings
 
 :underline:`GUI Settings`
 
