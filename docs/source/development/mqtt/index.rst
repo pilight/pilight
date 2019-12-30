@@ -55,7 +55,6 @@ The pilight mqtt broker communicated by using two topics:
 
    .. code-block:: console
 
-      pilight/mqtt/connected
-      pilight/mqtt/disconnected
+      pilight/mqtt/+
 
-These topic inform when a client is connected or disconnected by posting the client id as the payload. This is usefull when a client voluntarily disconnects and therefor no LWT is sent, or when no LWT is configured.
+The wildcard of this topic is the client id. The payload can either be ``connected`` or ``disconnected`` and either one will be send as the payload.

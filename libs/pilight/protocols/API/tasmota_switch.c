@@ -44,7 +44,7 @@ static void *reason_send_code_free(void *param) {
 static int createCode(struct JsonNode *code) {
 	char *id = NULL;
 	int state = -1;
-	int readonly = -1;
+	int connected = -1;
 	double itmp = -1;
 
 	json_find_string(code, "id", &id);
@@ -52,10 +52,19 @@ static int createCode(struct JsonNode *code) {
 		state=0;
 	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
-	else if(json_find_number(code, "readonly", &itmp) == 0)
-		readonly = itmp;
 
-	if(id == NULL || (state == -1 && readonly == -1)) {
+	if(json_find_number(code, "connected", &itmp) == 0) {
+		if(itmp < 0 || itmp > 1) {
+			logprintf(LOG_ERR, "tasmota_switch: connected must be either 1 or 0");
+			return EXIT_FAILURE;
+		}
+		connected = itmp;
+	}
+
+	if(connected != -1 && state != -1) {
+		logprintf(LOG_ERR, "tasmota_switch: connected and state cannot be combined");
+		return EXIT_FAILURE;
+	} else if(id == NULL || (state == -1 && connected == -1)) {
 		logprintf(LOG_ERR, "tasmota_switch: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else if(id == NULL) {
@@ -69,8 +78,8 @@ static int createCode(struct JsonNode *code) {
 			plua_metatable_set_string(table, "state", "on");
 		} else if(state == 0) {
 			plua_metatable_set_string(table, "state", "off");
-		} else if(readonly != -1) {
-			plua_metatable_set_number(table, "readonly", readonly);
+		} else if(connected != -1) {
+			plua_metatable_set_number(table, "connected", connected);
 		}
 		plua_metatable_set_string(table, "protocol", tasmotaSwitch->id);
 		plua_metatable_set_number(table, "hwtype", TASMOTA);
@@ -85,6 +94,7 @@ static void printHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
+	printf("\t -c --connected=1|0\t\toverride (dis)connected state\n");
 }
 
 static struct threadqueue_t *initDev(JsonNode *jdevice) {
@@ -101,7 +111,7 @@ static struct threadqueue_t *initDev(JsonNode *jdevice) {
 				json_append_element(jprotocol, json_mkstring("tasmota_switch"));
 
 				json_append_member(jcode, "id", json_mkstring(id));
-				json_append_member(jcode, "readonly", json_mknumber(1, 0));
+				json_append_member(jcode, "connected", json_mknumber(1, 0));
 				json_append_member(jcode, "protocol", jprotocol);
 
 				json_append_member(jobject, "code", jcode);
@@ -130,7 +140,9 @@ void tasmotaSwitchInit(void) {
 	options_add(&tasmotaSwitch->options, "i", "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
 	options_add(&tasmotaSwitch->options, "t", "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&tasmotaSwitch->options, "f", "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&tasmotaSwitch->options, "r", "readonly", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&tasmotaSwitch->options, "c", "connected", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *)1, "^[10]{1}$");
+
+	options_add(&tasmotaSwitch->options, "0", "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	tasmotaSwitch->initDev=&initDev;
 	tasmotaSwitch->createCode=&createCode;

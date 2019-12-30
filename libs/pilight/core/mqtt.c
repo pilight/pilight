@@ -317,7 +317,9 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct mqtt_client_t *currP, *prevP;
 	struct mqtt_client_t *node = mqtt_clients;
-	int ret = 0, x = 0, ret1 = 0;
+	char *topicfmt = "pilight/mqtt/%s";
+	char *topic = NULL;
+	int ret = 0, x = 0;
 
 	prevP = NULL;
 
@@ -331,26 +333,48 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 
 			uv_timer_stop(currP->timer_req);
 
+			int len = snprintf(NULL, 0, topicfmt, currP->id);
+			if((topic = MALLOC(len+1)) == NULL) {
+				OUT_OF_MEMORY
+			}
+			snprintf(topic, len+1, topicfmt, currP->id);
+
 			node = mqtt_clients;
 			while(node) {
 				for(x=0;x<node->nrsubs;x++) {
-					if((currP->haswill == 1 && disconnect == 0 &&
-							mosquitto_topic_matches_sub(node->subs[x]->topic, currP->will.topic, &ret) == 0) ||
-							mosquitto_topic_matches_sub(node->subs[x]->topic, "pilight/mqtt/disconnected", &ret1) == 0
-						) {
-						if((currP->haswill == 1 && disconnect == 0 && ret == 1) || ret1 == 1) {
+					if(currP->haswill == 1 && disconnect == 0 &&
+							mosquitto_topic_matches_sub(node->subs[x]->topic, currP->will.topic, &ret) == 0) {
+						if(ret == 1) {
 							struct mqtt_pkt_t pkt1;
 							unsigned int len = 0;
 							unsigned char *buf = NULL;
 
 							memset(&pkt1, 0, sizeof(struct mqtt_pkt_t));
 
-							if(currP->haswill == 1 && disconnect == 0 && ret == 1) {
-								mqtt_pkt_publish(&pkt1, 0, currP->will.qos, 0, currP->will.topic, node->msgid++, currP->will.message);
+							mqtt_pkt_publish(&pkt1, 0, currP->will.qos, 0, currP->will.topic, node->msgid++, currP->will.message);
+
+							if(mqtt_encode(&pkt1, &buf, &len) == 0) {
+								custom_poll_data = node->poll_req->data;
+
+								iobuf_append(&custom_poll_data->send_iobuf, (void *)buf, len);
+								node->flush = 1;
+								if(node->msgid > 1024) {
+									node->msgid = 0;
+								}
+								FREE(buf);
 							}
-							if(ret1 == 1) {
-								mqtt_pkt_publish(&pkt1, 0, 0, 0, "pilight/mqtt/disconnected", node->msgid++, currP->id);
-							}
+							mqtt_free(&pkt1);
+						}
+					}
+					if(mosquitto_topic_matches_sub(node->subs[x]->topic, topic, &ret) == 0) {
+						if(ret == 1) {
+							struct mqtt_pkt_t pkt1;
+							unsigned int len = 0;
+							unsigned char *buf = NULL;
+
+							memset(&pkt1, 0, sizeof(struct mqtt_pkt_t));
+
+							mqtt_pkt_publish(&pkt1, 0, 0, 0, topic, node->msgid++, "disconnected");
 
 							if(mqtt_encode(&pkt1, &buf, &len) == 0) {
 								custom_poll_data = node->poll_req->data;
@@ -368,6 +392,8 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 				}
 				node = node->next;
 			}
+
+			FREE(topic);
 
 			int i = 0;
 			for(i=0;i<currP->nrsubs;i++) {
@@ -1172,11 +1198,20 @@ void mqtt_client_register(uv_poll_t *req, struct mqtt_pkt_t *pkt) {
 
 	clients = mqtt_clients;
 
+	char *topicfmt = "pilight/mqtt/%s";
+	char *topic = NULL;
+
+	int len = snprintf(NULL, 0, topicfmt, node->id);
+	if((topic = MALLOC(len+1)) == NULL) {
+		OUT_OF_MEMORY
+	}
+	snprintf(topic, len+1, topicfmt, node->id);
+
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	int ret = 0, x = 0;
 	while(clients) {
 		for(x=0;x<clients->nrsubs;x++) {
-			if(mosquitto_topic_matches_sub(clients->subs[x]->topic, "pilight/mqtt/connected", &ret) == 0) {
+			if(mosquitto_topic_matches_sub(clients->subs[x]->topic, topic, &ret) == 0) {
 				if(ret == 1) {
 					struct mqtt_pkt_t pkt1;
 					unsigned int len = 0;
@@ -1184,7 +1219,7 @@ void mqtt_client_register(uv_poll_t *req, struct mqtt_pkt_t *pkt) {
 
 					memset(&pkt1, 0, sizeof(struct mqtt_pkt_t));
 
-					mqtt_pkt_publish(&pkt1, 0, 0, 0, "pilight/mqtt/connected", clients->msgid++, node->id);
+					mqtt_pkt_publish(&pkt1, 0, 0, 0,  topic, clients->msgid++, "connected");
 
 					if(mqtt_encode(&pkt1, &buf, &len) == 0) {
 						custom_poll_data = clients->poll_req->data;
@@ -1202,6 +1237,8 @@ void mqtt_client_register(uv_poll_t *req, struct mqtt_pkt_t *pkt) {
 		}
 		clients = clients->next;
 	}
+
+	FREE(topic);
 
 #ifdef _WIN32
 	uv_mutex_unlock(&mqtt_lock);

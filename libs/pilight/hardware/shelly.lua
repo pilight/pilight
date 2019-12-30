@@ -45,13 +45,13 @@ function M.send(obj, reason, data)
 		return;
 	end
 
-	if data['readonly'] ~= nil then
+	if data['connected'] ~= nil then
 		local broadcast = pilight.table();
 		broadcast['origin'] = 'receiver';
 		broadcast['message'] = {};
 		broadcast['protocol'] = data['protocol'];
 		broadcast['message']['id'] = data['id'];
-		broadcast['message']['readonly'] = data['readonly'];
+		broadcast['message']['connected'] = data['connected'];
 
 		local event = pilight.async.event();
 		event.register(pilight.reason.RECEIVED_API);
@@ -113,7 +113,7 @@ function M.createMessage(data, id)
 			broadcast['message']['energy'] = lookup(data[id], 'relay', 0, 'energy') or nil;
 			broadcast['message']['overtemperature'] = lookup(data[id], 'overtemperature') or nil;
 			broadcast['message']['temperature'] = lookup(data[id], 'temperature') or nil;
-			broadcast['message']['readonly'] = lookup(data[id], 'readonly') or nil;
+			broadcast['message']['connected'] = lookup(data[id], 'connected') or nil;
 		end
 		broadcast['message']['id'] = id;
 	end
@@ -169,15 +169,15 @@ function M.callback(mqtt, data)
 						tmp[id] = {};
 					end
 					tmp[id]['type'] = type_;
-					tmp[id]['readonly'] = 0;
+					tmp[id]['connected'] = 0;
 					if substr[3] == 'temperature' then
 						tmp[id]['temperature'] = tonumber(data['message']);
 					end
 					if substr[3] == 'online' then
 						if data['message'] == 'true' then
-							tmp[id]['readonly'] = 0;
+							tmp[id]['connected'] = 0;
 						elseif data['message'] == 'false' then
-							tmp[id]['readonly'] = 1;
+							tmp[id]['connected'] = 1;
 						end
 					end
 					if substr[3] == 'overtemperature' then
@@ -210,11 +210,9 @@ function M.callback(mqtt, data)
 				tmp[id]['lastseen'] = os.time();
 			end
 			if substr[1] == 'pilight' and substr[2] == 'mqtt' then
-				if substr[3] == 'disconnected' then
-					if tmp[data['message']] ~= nil then
-						tmp[data['message']]['readonly'] = 1;
-						M.createMessage(tmp, data['message']);
-					end
+				if data['message'] == 'disconnected' and tmp[substr[3]] ~= nil then
+					tmp[substr[3]]['connected'] = 1;
+					M.createMessage(tmp, tmp[substr[3]]);
 				end
 			end
 		end

@@ -42,7 +42,7 @@ static void *reason_send_code_free(void *param) {
 static int createCode(struct JsonNode *code) {
 	char *id = NULL;
 	int state = -1;
-	int readonly = -1;
+	int connected = -1;
 	double itmp = -1;
 
 	json_find_string(code, "id", &id);
@@ -50,14 +50,22 @@ static int createCode(struct JsonNode *code) {
 		state=0;
 	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
-	if(json_find_number(code, "readonly", &itmp) == 0)
-		readonly = itmp;
+	if(json_find_number(code, "connected", &itmp) == 0) {
+		if(itmp < 0 || itmp > 1) {
+			logprintf(LOG_ERR, "shellyplug-s: connected must be either 1 or 0");
+			return EXIT_FAILURE;
+		}
+		connected = itmp;
+	}
 
-	if(id == NULL || (state == -1 && readonly == -1)) {
-		logprintf(LOG_ERR, "shellyPlugS: insufficient number of arguments");
+	if(connected != -1 && state != -1) {
+		logprintf(LOG_ERR, "shellyplug-s: connected and state cannot be combined");
+		return EXIT_FAILURE;
+	} else if(id == NULL || (state == -1 && connected == -1)) {
+		logprintf(LOG_ERR, "shellyplug-s: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else if(id == NULL) {
-		logprintf(LOG_ERR, "shellyPlugS: invalid id");
+		logprintf(LOG_ERR, "shellyplug-s: invalid id");
 		return EXIT_FAILURE;
 	} else {
 		struct plua_metatable_t *table = NULL;
@@ -68,8 +76,8 @@ static int createCode(struct JsonNode *code) {
 		} else if(state == 0) {
 			plua_metatable_set_string(table, "state", "off");
 		}
-		if(readonly != -1) {
-			plua_metatable_set_number(table, "readonly", readonly);
+		if(connected != -1) {
+			plua_metatable_set_number(table, "connected", connected);
 		}
 		plua_metatable_set_string(table, "protocol", shellyPlugS->id);
 		plua_metatable_set_number(table, "hwtype", SHELLY);
@@ -94,7 +102,7 @@ static struct threadqueue_t *initDev(JsonNode *jdevice) {
 				json_append_element(jprotocol, json_mkstring("shellyplug-s"));
 
 				json_append_member(jcode, "id", json_mkstring(id));
-				json_append_member(jcode, "readonly", json_mknumber(1, 0));
+				json_append_member(jcode, "connected", json_mknumber(1, 0));
 				json_append_member(jcode, "protocol", jprotocol);
 
 				json_append_member(jobject, "code", jcode);
@@ -114,6 +122,7 @@ static void printHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
+	printf("\t -c --connected=0\t\toverride (dis)connected state\n");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -133,7 +142,9 @@ void shellyPlugSInit(void) {
 	options_add(&shellyPlugS->options, "power", "power", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 	options_add(&shellyPlugS->options, "overtemperature", "overtemperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 	options_add(&shellyPlugS->options, "temperature", "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
-	options_add(&shellyPlugS->options, "r", "readonly", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&shellyPlugS->options, "c", "connected", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *)1, "^[10]{1}$");
+
+	options_add(&shellyPlugS->options, "0", "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	shellyPlugS->initDev=&initDev;
 	shellyPlugS->createCode=&createCode;

@@ -43,7 +43,7 @@ Shelly
            "id": "A01BC2",
          }],
          "state": "off",
-         "readonly": 0
+         "connected": 0
        }
      },
      "gui": {
@@ -61,6 +61,8 @@ Shelly
 | id               | as hardcoded    |
 +------------------+-----------------+
 | state            | on / off        |
++------------------+-----------------+
+| connected        | on / off        |
 +------------------+-----------------+
 
 .. rubric:: Optional Settings

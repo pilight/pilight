@@ -47,7 +47,7 @@ Shelly
          "power": 1000,
          "overtemperature": 0,
          "temperature": 23.00,
-         "readonly": 0
+         "connected": 0
        }
      },
      "gui": {
@@ -74,6 +74,10 @@ Shelly
 +------------------+-----------------+
 | overtemperature  | 0 or 1          |
 +------------------+-----------------+
+| connected        | 0 or 1          |
++------------------+-----------------+
+
+.. rubric:: Optional Settings
 
 :underline:`GUI Settings`
 

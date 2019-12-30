@@ -65,8 +65,8 @@ function M.createMessage(data, id)
 			if data[id]['status'] ~= nil then
 				broadcast['message']['state'] = data[id]['status'];
 			end
-			if data[id]['readonly'] ~= nil then
-				broadcast['message']['readonly'] = data[id]['readonly'];
+			if data[id]['connected'] ~= nil then
+				broadcast['message']['connected'] = data[id]['connected'];
 			end
 		end
 		broadcast['message']['id'] = id;
@@ -112,10 +112,10 @@ function M.callback(mqtt, data)
 							tmp[substr[2]]['hasstatus'] = false;
 							tmp[substr[2]]['lastseen'] = os.time();
 						end
-						tmp[substr[2]]['readonly'] = 0;
+						tmp[substr[2]]['connected'] = 0;
 					end
 					if data['message'] == 'Offline' then
-						tmp[substr[2]]['readonly'] = 1;
+						tmp[substr[2]]['connected'] = 1;
 						M.createMessage(tmp, substr[2]);
 					end
 				end
@@ -154,10 +154,9 @@ function M.callback(mqtt, data)
 				tmp[substr[2]]['lastseen'] = os.time();
 			end
 			if substr[1] == 'pilight' and substr[2] == 'mqtt' then
-				if substr[3] == 'disconnected' then
-					if tmp[data['message']] ~= nil then
-						tmp[data['message']]['readonly'] = 1;
-						M.createMessage(tmp, data['message']);
+				if data['message'] == 'disconnected' and tmp[substr[3]] ~= nil then
+					tmp[substr[3]]['connected'] = 1;
+					M.createMessage(tmp, tmp[substr[3]]);
 					end
 				end
 			end
@@ -184,13 +183,13 @@ function M.send(obj, reason, data)
 		return;
 	end
 
-	if data['readonly'] ~= nil then
+	if data['connected'] ~= nil then
 		local broadcast = pilight.table();
 		broadcast['origin'] = 'receiver';
 		broadcast['message'] = {};
 		broadcast['protocol'] = data['protocol'];
 		broadcast['message']['id'] = data['id'];
-		broadcast['message']['readonly'] = data['readonly'];
+		broadcast['message']['connected'] = data['connected'];
 
 		local event = pilight.async.event();
 		event.register(pilight.reason.RECEIVED_API);

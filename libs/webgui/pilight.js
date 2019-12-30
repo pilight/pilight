@@ -918,13 +918,13 @@ function parseValues(data) {
 						}
 						$('#'+dvalues+'_switch').slider('refresh');
 					}
-					if(vindex == 'readonly' && $('#'+dvalues+'_switch').length > 0) {
-						if(vvalues == 1) {
-							$('#'+dvalues+'_switch').slider('disable');
-							aReadOnly[dvalues] = 1;
-						} else {
-							$('#'+dvalues+'_switch').slider('enable');
-							aReadOnly[dvalues] = 0;
+					if(vindex == 'connected' && $('#'+dvalues+'_switch').length > 0) {
+						if(aReadOnly[dvalues] != 1) {
+							if(vvalues == 1) {
+								$('#'+dvalues+'_switch').slider('disable');
+							} else {
+								$('#'+dvalues+'_switch').slider('enable');
+							}
 						}
 					}
 				} else if(iType == 2) {
