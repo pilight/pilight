@@ -157,7 +157,6 @@ function M.callback(mqtt, data)
 				if data['message'] == 'disconnected' and tmp[substr[3]] ~= nil then
 					tmp[substr[3]]['connected'] = 1;
 					M.createMessage(tmp, tmp[substr[3]]);
-					end
 				end
 			end
 		end
