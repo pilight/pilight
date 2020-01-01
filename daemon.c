@@ -2757,6 +2757,10 @@ static void mqtt_callback(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, 
 #endif
 
 static void pilight_stats(uv_timer_t *timer_req) {
+	if(main_loop == 0) {
+		return;
+	}
+
 	int watchdog = 1, stats = 1;
 	// double itmp = 0.0;
 	{

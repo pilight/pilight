@@ -375,6 +375,10 @@ static int plua_network_mqtt_publish(lua_State *L) {
 static void mqtt_callback(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, void *userdata) {
 	struct lua_mqtt_t *data = userdata;
 
+	if(data->sigterm == 1) {
+		return;
+	}
+
 	char name[255], *p = name;
 	memset(name, '\0', 255);
 
