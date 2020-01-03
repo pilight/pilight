@@ -27,6 +27,7 @@
 #include "../libs/pilight/protocols/GPIO/lm75.h"
 #include "../libs/pilight/protocols/GPIO/lm76.h"
 #include "../libs/pilight/protocols/GPIO/bmp180.h"
+#include "../libs/pilight/protocols/GPIO/bme280.h"
 
 #include "alltests.h"
 
@@ -34,6 +35,7 @@
 #define LM75   0
 #define LM76   1
 #define BMP180 2
+#define BME280 3
 
 static CuTest *gtc = NULL;
 static int step = 0;
@@ -271,8 +273,32 @@ static void *received(int reason, void *param, void *userdata) {
 				} break;
 			}
 		} break;
+		case BME280: {
+			switch(step++) {
+				case 0: {
+					CuAssertStrEquals(gtc, "{\"id\":118,\"temperature\":22.54,\"pressure\":102265.96,\"humidity\":40.58}", data->message);
+					printf("[ - %-46s ]\n", "Correct values read and calculated");
+					uv_stop(uv_default_loop());
+				} break;
+			}
+		} break;
 	}
 	return NULL;
+}
+
+static void loop_bme280(void *param) {
+	int x = 0;
+	sleep(1);
+	usleep(5000);
+	/*
+	 * Requested start measurement
+	*/
+	x = wiringXI2CReadReg8(fd, 0xF2);
+	CuAssertIntEquals(gtc, x, 0x01);
+	x = wiringXI2CReadReg8(fd, 0xF4);
+	CuAssertIntEquals(gtc, x, 0x25);
+	printf("[ - %-46s ]\n", "Start measurement requested");
+	usleep(200000);
 }
 
 static void loop(void *param) {
@@ -316,11 +342,11 @@ static void test_protocols_i2c_lm75(CuTest *tc) {
 
 	dev = LM75;
 	step = 0;
-	
+
 	memtrack();
 
 	gtc = tc;
-	
+
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	int ret = delete_module("i2c_dev", 0);
@@ -411,11 +437,11 @@ static void test_protocols_i2c_lm76(CuTest *tc) {
 
 	dev = LM76;
 	step = 0;
-	
+
 	memtrack();
 
 	gtc = tc;
-	
+
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	int ret = delete_module("i2c_dev", 0);
@@ -505,11 +531,11 @@ static void test_protocols_i2c_bmp180(CuTest *tc) {
 	char path[MAX_DIR_PATH], *p = path;
 	dev = BMP180;
 	step = 0;
-	
+
 	memtrack();
 
 	gtc = tc;
-	
+
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	int ret = delete_module("i2c_dev", 0);
@@ -604,12 +630,145 @@ static void test_protocols_i2c_bmp180(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
-CuSuite *suite_protocols_i2c(void) {	
+static void test_protocols_i2c_bme280(CuTest *tc) {
+	if(geteuid() != 0) {
+		printf("[ %-33s (requires root)]\n", __FUNCTION__);
+		fflush(stdout);
+		return;
+	}
+	if(load_module("i2c-stub", "chip-addr=0x76", 1) != 0) {
+		printf("[ %-29s (requires i2c-stub)]\n", __FUNCTION__);
+		fflush(stdout);
+		return;
+	}
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	char path[MAX_DIR_PATH], *p = path;
+	dev = BME280;
+	step = 0;
+
+	memtrack();
+
+	gtc = tc;
+
+	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
+
+	int ret = delete_module("i2c_dev", 0);
+	CuAssertTrue(tc, ret == 0 || errno == 2);
+
+	ret = delete_module("i2c_stub", 0);
+	CuAssertTrue(tc, ret == 0 || errno == 2);
+
+	load_module("i2c-dev", "", 0);
+	CuAssertIntEquals(tc, 0, load_module("i2c-stub", "chip-addr=0x76", 0));
+
+	struct dirent **namelist = NULL;
+	int sizelist = scandir("/dev", &namelist, NULL, sortbydatetime);
+	CuAssertTrue(tc, sizelist > 0);
+
+	int i = 0, nr = -1;
+	for(i=0;i<sizelist;i++) {
+		if(strstr(namelist[i]->d_name, "i2c-") != NULL) {
+			if(nr == -1) {
+				CuAssertIntEquals(gtc, 1, sscanf(namelist[i]->d_name, "i2c-%d", &nr));
+			}
+		}
+		free(namelist[i]);
+	}
+	free(namelist);
+
+	CuAssertTrue(gtc, snprintf(p, MAX_DIR_PATH, "/dev/i2c-%d", nr) > 0);
+
+	CuAssertIntEquals(tc, 0, wiringXSetup(NULL, _logprintf));
+
+	fd = wiringXI2CSetup(path, 0x76);
+	CuAssertTrue(tc, fd > 0);
+
+	/* Set Chip ID */
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xD0, 0x60));
+
+	/* Set calibration */
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x88, 0x6ecd));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x8A, 0x6707));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x8C, 0x0032));
+
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x8E, 0x8fa1));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x90, 0xd6a0));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x92, 0x0bd0));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x94, 0x1b80));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x96, 0xffc3));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x98, 0xfff9));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x9A, 0x26ac));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x9C, 0xd80a));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x9E, 0x10bd));
+
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xA1, 0x4b));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0xE1, 0x0167));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xE3, 0x00));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xE4, 0x14));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xE5, 0x27));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xE6, 0x03));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xE5, 0x27));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xE7, 0x1e));
+
+	/* Set Measurement values */
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xF7, 0x50));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xF8, 0xee));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xF9, 0x00));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xFA, 0x80));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xFB, 0x4d));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xFC, 0x80));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xFD, 0x6e));
+	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xFE, 0xd3));
+
+	bme280Init();
+
+	char add[255], *q = add;
+	sprintf(q, "{\"test\":{\"protocol\":[\"bme280\"],\"id\":[{\"id\":118,\"i2c-path\":\"/dev/i2c-%d\"}],\"temperature\":0.0,\"pressure\":0.0,\"humidity\":0.0,\"tem-oversampling\":1,\"hum-oversampling\":1,\"pre-oversampling\":1,\"poll-interval\":1}}", nr);
+
+	printf("[ - %-46s ]\n", "first interval");
+	// fflush(stdout);
+
+	eventpool_init(EVENTPOOL_NO_THREADS);
+
+	eventpool_trigger(REASON_DEVICE_ADDED, done, json_decode(add));
+	eventpool_callback(REASON_CODE_RECEIVED, received, NULL);
+
+	uv_thread_create(&pth, loop_bme280, NULL);
+
+	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+		uv_run(uv_default_loop(), UV_RUN_ONCE);
+	}
+
+	eventpool_gc();
+	protocol_gc();
+	close(fd);
+
+	uv_thread_join(&pth);
+
+	wiringXGC();
+
+	ret = delete_module("i2c_dev", 0);
+	CuAssertTrue(tc, ret == 0 || errno == 2);
+
+	ret = delete_module("i2c_stub", 0);
+	CuAssertIntEquals(tc, 0, ret);
+
+	CuAssertIntEquals(tc, 1, step);
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
+CuSuite *suite_protocols_i2c(void) {
 	CuSuite *suite = CuSuiteNew();
 
 	SUITE_ADD_TEST(suite, test_protocols_i2c_lm75);
 	SUITE_ADD_TEST(suite, test_protocols_i2c_lm76);
 	SUITE_ADD_TEST(suite, test_protocols_i2c_bmp180);
-
+	SUITE_ADD_TEST(suite, test_protocols_i2c_bme280);
 	return suite;
 }
