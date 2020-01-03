@@ -1,0 +1,135 @@
+.. |yes| image:: ../../images/yes.png
+.. |no| image:: ../../images/no.png
+
+.. role:: underline
+   :class: underline
+
++------------------+-------------+
+| **Feature**      | **Support** |
++------------------+-------------+
+| Sending          | |no|        |
++------------------+-------------+
+| Receiving        | |yes|       |
++------------------+-------------+
+| Config           | |yes|       |
++------------------+-------------+
+
+.. rubric:: Supported Brands
+
++------------------+--------------+
+| **Brand**        | **Protocol** |
++------------------+--------------+
+| BME280           | bme280       |
++------------------+--------------+
+
+.. rubric:: Sender Arguments
+
+*None*
+
+.. rubric:: Config
+
+.. code-block:: json
+   :linenos:
+
+   {
+     "devices": {
+       "bme280": {
+         "protocol": [ "bme280" ],
+         "id": [{
+           "id": "0x76",
+           "i2c-path": "/dev/i2c-1"
+         }],
+         "temperature": 19.1,
+         "pressure": 1006.8,
+         "humidity": 36.24,
+         "hum-oversampling": 2,
+         "tem-oversampling": 2,
+         "pre-oversampling": 2
+
+       }
+     },
+     "gui": {
+       "bme280": {
+         "name": "bme280 Sensor",
+         "group": [ "Misc" ],
+         "media": [ "all" ],
+         "show-temperature": 1,
+         "show-pressure": 1,
+         "show-humidity": 1
+       }
+     }
+   }
+
++------------------+--------------------+
+| **Option**       | **Value**          |
++------------------+--------------------+
+| id               | *i2c address*      |
++------------------+--------------------+
+| path             | *valid i2c path*   |
++------------------+--------------------+
+| temperature      | -40 - 85           |
++------------------+--------------------+
+| pressure         | 300 - 110000       |
++------------------+--------------------+
+| humidity         | 0 - 100            |
++------------------+--------------------+
+
+.. rubric:: Optional Settings
+
+:underline:`Device Settings`
+
++--------------------+-------------+------------+-------------------------------------------------+
+| **Setting**        | **Default** | **Format** | **Description**                                 |
++--------------------+-------------+------------+-------------------------------------------------+
+| poll-interval      | 10          | seconds    | What should be the poll interval of the sensors |
++--------------------+-------------+------------+-------------------------------------------------+
+| humidity-offset    | 0           | number     | Correct humidity value                          |
++--------------------+-------------+------------+-------------------------------------------------+
+| temperature-offset | 0           | number     | Correct temperature value                       |
++--------------------+-------------+------------+-------------------------------------------------+
+| tem-oversampling   | 1           | 0-5        | Oversampling for temperature                    |
++--------------------+-------------+------------+-------------------------------------------------+
+| hum-oversampling   | 1           | 0-5        | Oversampling for humidity                       |
++--------------------+-------------+------------+-------------------------------------------------+
+| pre-oversampling   | 1           | 0-5        | Oversampling for pressure                       |
++--------------------+-------------+------------+-------------------------------------------------+
+
+:underline:`GUI Settings`
+
++----------------------+-------------+------------+-----------------------------------------------------------+
+| **Setting**          | **Default** | **Format** | **Description**                                           |
++----------------------+-------------+------------+-----------------------------------------------------------+
+| temperature-decimals | 2           | number     | How many decimals the GUIs should display for temperature |
++----------------------+-------------+------------+-----------------------------------------------------------+
+| pressure-decimals    | 2           | number     | How many decimals the GUIs should display for pressure    |
++----------------------+-------------+------------+-----------------------------------------------------------+
+| show-temperature     | 1           | 1 or 0     | Don't display the temperature value                       |
++----------------------+-------------+------------+-----------------------------------------------------------+
+| show-pressure        | 1           | 1 or 0     | Don't display the pressure value                          |
++----------------------+-------------+------------+-----------------------------------------------------------+
+| show-humidity        | 1           | 1 or 0     | Don't display the humidity value                          |
++----------------------+-------------+------------+-----------------------------------------------------------+
+
+.. rubric:: Comments
+
+Pressure is provided in pascal (Pa) and temperature in degrees Celsius (°C).
+
+Options ``oversampling`` sets the BME280 hardware accuracy mode which is relevant for all 3 readings separately.
+
++--------------+---------------------------------+
+| oversampling | Internal no. of samples         |
++--------------+---------------------------------+
+| 0            | skipped (output set to 0x8000)  |
++--------------+---------------------------------+
+| 1            | oversampling x 1                |
++--------------+---------------------------------+
+| 2            | oversampling x 2                |
++--------------+---------------------------------+
+| 3            | oversampling x 4                |
++--------------+---------------------------------+
+| 4            | oversampling x 8                |
++--------------+---------------------------------+
+| 5            | oversampling x 16               |
++--------------+---------------------------------+
+
+The algorithm for pressure, humidity and temperature measurement is based on the specification in the `official datasheet <https://www.bosch-sensortec.com/media/boschsensortec/downloads/environmental_sensors_2/humidity_sensors_1/bme280/bst-bme280-ds002.pdf>`_.
