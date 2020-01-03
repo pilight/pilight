@@ -5,6 +5,7 @@ GPIO
    :maxdepth: 3
 
    am2302
+   bme280
    bmp180
    bmp085
    cputemp
