@@ -1,5 +1,5 @@
 /*
-	Copyright (C) CurlyMo
+	Copyright (C) CurlyMo and MaGallant
 	This Source Code Form is subject to the terms of the Mozilla Public
 	License, v. 2.0. If a copy of the MPL was not distributed with this
 	file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -81,8 +81,8 @@ static void *thread(void *param) {
 	char *stmp = NULL;
 	double itmp = -1, temp_offset = 0, pressure_offset = 0;
 	uint8_t hum_oversampling = 1;
-        uint8_t tem_oversampling = 1;
-        uint8_t pre_oversampling = 1;
+	uint8_t tem_oversampling = 1;
+	uint8_t pre_oversampling = 1;
 
 	if(bme280data == NULL) {
 		fprintf(stderr, "out of memory\n");
@@ -143,20 +143,20 @@ static void *thread(void *param) {
 		hum_oversampling = (uint8_t) itmp;
 	}
 	hum_oversampling &= 0x7;
-        if(json_find_number(json, "tem-oversampling", &itmp) == 0) {
+	if(json_find_number(json, "tem-oversampling", &itmp) == 0) {
 		tem_oversampling = (uint8_t) itmp;
-        }
-        tem_oversampling &= 0x7;
+	}
+	tem_oversampling &= 0x7;
 
-        if(json_find_number(json, "pre-oversampling", &itmp) == 0) {
+	if(json_find_number(json, "pre-oversampling", &itmp) == 0) {
 		pre_oversampling = (uint8_t) itmp;
-        }
-        pre_oversampling &= 0x7;
+	}
+	pre_oversampling &= 0x7;
 
 	// resize the memory blocks pointed to by the different pointers
 	size_t sz = (size_t) (bme280data->nrid + 1);
 	unsigned long int sizeUChar = sizeof(uint8_t) * sz;
-        unsigned long int sizeChar = sizeof(int8_t) * sz;
+	unsigned long int sizeChar = sizeof(int8_t) * sz;
 	unsigned long int sizeShort = sizeof(int32_t) * sz;
 	unsigned long int sizeUShort = sizeof(uint32_t) * sz;
 	bme280data->fd = REALLOC(bme280data->fd, (sizeof(int) * sz));
@@ -166,24 +166,24 @@ static void *thread(void *param) {
 	bme280data->dig_p1 = REALLOC(bme280data->dig_p1, sizeUShort);
 	bme280data->dig_p2 = REALLOC(bme280data->dig_p2, sizeShort);
 	bme280data->dig_p3 = REALLOC(bme280data->dig_p3, sizeShort);
-        bme280data->dig_p4 = REALLOC(bme280data->dig_p4, sizeShort);
-        bme280data->dig_p5 = REALLOC(bme280data->dig_p5, sizeShort);
-        bme280data->dig_p6 = REALLOC(bme280data->dig_p6, sizeShort);
-        bme280data->dig_p7 = REALLOC(bme280data->dig_p7, sizeShort);
-        bme280data->dig_p8 = REALLOC(bme280data->dig_p8, sizeShort);
-        bme280data->dig_p9 = REALLOC(bme280data->dig_p9, sizeShort);
+	bme280data->dig_p4 = REALLOC(bme280data->dig_p4, sizeShort);
+	bme280data->dig_p5 = REALLOC(bme280data->dig_p5, sizeShort);
+	bme280data->dig_p6 = REALLOC(bme280data->dig_p6, sizeShort);
+	bme280data->dig_p7 = REALLOC(bme280data->dig_p7, sizeShort);
+	bme280data->dig_p8 = REALLOC(bme280data->dig_p8, sizeShort);
+	bme280data->dig_p9 = REALLOC(bme280data->dig_p9, sizeShort);
 	bme280data->dig_h1 = REALLOC(bme280data->dig_h1, sizeUChar);
 	bme280data->dig_h2 = REALLOC(bme280data->dig_h2, sizeShort);
-        bme280data->dig_h3 = REALLOC(bme280data->dig_h3, sizeUChar);
-        bme280data->dig_h4 = REALLOC(bme280data->dig_h4, sizeShort);
-        bme280data->dig_h5 = REALLOC(bme280data->dig_h5, sizeShort);
-        bme280data->dig_h6 = REALLOC(bme280data->dig_h6, sizeChar);
+	bme280data->dig_h3 = REALLOC(bme280data->dig_h3, sizeUChar);
+	bme280data->dig_h4 = REALLOC(bme280data->dig_h4, sizeShort);
+	bme280data->dig_h5 = REALLOC(bme280data->dig_h5, sizeShort);
+	bme280data->dig_h6 = REALLOC(bme280data->dig_h6, sizeChar);
 
 	if(bme280data->dig_t1 == NULL || bme280data->dig_t2 == NULL || bme280data->dig_t3 == NULL || bme280data->dig_p1 == NULL ||
-	  bme280data->dig_p2 == NULL || bme280data->dig_p3 == NULL || bme280data->dig_p4 == NULL || bme280data->dig_p5 == NULL ||
-          bme280data->dig_p6 == NULL || bme280data->dig_p7 == NULL || bme280data->dig_p8 == NULL || bme280data->dig_p9 == NULL ||
-          bme280data->dig_h1 == NULL || bme280data->dig_h2 == NULL || bme280data->dig_h3 == NULL || bme280data->dig_h4 == NULL ||
-          bme280data->dig_h5 == NULL || bme280data->dig_h6 == NULL || bme280data->fd == NULL) {
+		bme280data->dig_p2 == NULL || bme280data->dig_p3 == NULL || bme280data->dig_p4 == NULL || bme280data->dig_p5 == NULL ||
+		bme280data->dig_p6 == NULL || bme280data->dig_p7 == NULL || bme280data->dig_p8 == NULL || bme280data->dig_p9 == NULL ||
+		bme280data->dig_h1 == NULL || bme280data->dig_h2 == NULL || bme280data->dig_h3 == NULL || bme280data->dig_h4 == NULL ||
+		bme280data->dig_h5 == NULL || bme280data->dig_h6 == NULL || bme280data->fd == NULL) {
 		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
@@ -212,36 +212,34 @@ static void *thread(void *param) {
 			bme280data->dig_p6[y] = (int16_t) wiringXI2CReadReg16(bme280data->fd[y], 0x98);
 			bme280data->dig_p7[y] = (int16_t) wiringXI2CReadReg16(bme280data->fd[y], 0x9A);
 			bme280data->dig_p8[y] = (int16_t) wiringXI2CReadReg16(bme280data->fd[y], 0x9C);
-                        bme280data->dig_p9[y] = (int16_t) wiringXI2CReadReg16(bme280data->fd[y], 0x9E);
+			bme280data->dig_p9[y] = (int16_t) wiringXI2CReadReg16(bme280data->fd[y], 0x9E);
 
-                        bme280data->dig_h1[y] = (uint8_t) wiringXI2CReadReg8(bme280data->fd[y], 0xA1);
-                        bme280data->dig_h2[y] = (int16_t) wiringXI2CReadReg16(bme280data->fd[y], 0xE1);
-                        bme280data->dig_h3[y] = (uint8_t) wiringXI2CReadReg8(bme280data->fd[y], 0xE3);
+			bme280data->dig_h1[y] = (uint8_t) wiringXI2CReadReg8(bme280data->fd[y], 0xA1);
+			bme280data->dig_h2[y] = (int16_t) wiringXI2CReadReg16(bme280data->fd[y], 0xE1);
+			bme280data->dig_h3[y] = (uint8_t) wiringXI2CReadReg8(bme280data->fd[y], 0xE3);
 			bme280data->dig_h4[y] = (int16_t) (wiringXI2CReadReg8(bme280data->fd[y], 0xE4) << 4) | (wiringXI2CReadReg8(bme280data->fd[y], 0xE5) & 0xF);
-                        bme280data->dig_h5[y] = (int16_t) (wiringXI2CReadReg8(bme280data->fd[y], 0xE6) << 4) | (wiringXI2CReadReg8(bme280data->fd[y], 0xE5) >> 4);
-                        bme280data->dig_h6[y] = (int8_t) wiringXI2CReadReg8(bme280data->fd[y], 0xE7);
+			bme280data->dig_h5[y] = (int16_t) (wiringXI2CReadReg8(bme280data->fd[y], 0xE6) << 4) | (wiringXI2CReadReg8(bme280data->fd[y], 0xE5) >> 4);
+			bme280data->dig_h6[y] = (int8_t) wiringXI2CReadReg8(bme280data->fd[y], 0xE7);
 
 
 			// check communication: no result must equal 0 or 0xFFFF (=65535)
 			if (bme280data->dig_t1[y] == 0 || bme280data->dig_t1[y] == 0xFFFF ||
-					bme280data->dig_t2[y] == 0 || bme280data->dig_t2[y] == 0xFFFF ||
-					bme280data->dig_t3[y] == 0 || bme280data->dig_t3[y] == 0xFFFF ||
-					bme280data->dig_p1[y] == 0 || bme280data->dig_p1[y] == 0xFFFF ||
-					bme280data->dig_p2[y] == 0 || bme280data->dig_p2[y] == 0xFFFF ||
-					bme280data->dig_p3[y] == 0 || bme280data->dig_p3[y] == 0xFFFF ||
-					bme280data->dig_p4[y] == 0 || bme280data->dig_p4[y] == 0xFFFF ||
-					bme280data->dig_p5[y] == 0 || bme280data->dig_p5[y] == 0xFFFF ||
-					bme280data->dig_p6[y] == 0 || bme280data->dig_p6[y] == 0xFFFF ||
-					bme280data->dig_p7[y] == 0 || bme280data->dig_p7[y] == 0xFFFF ||
-                                        bme280data->dig_p8[y] == 0 || bme280data->dig_p8[y] == 0xFFFF ||
-                                        bme280data->dig_p9[y] == 0 || bme280data->dig_p9[y] == 0xFFFF
-                                      	|| bme280data->dig_h1[y] == 0 || bme280data->dig_h1[y] == 0xFF
-                                    	|| bme280data->dig_h2[y] == 0 || bme280data->dig_h2[y] == 0xFFFF
-                 //                       || bme280data->dig_h3[y] == 0 || bme280data->dig_h3[y] == 0xFF
-                                      	|| bme280data->dig_h4[y] == 0 || bme280data->dig_h4[y] == 0xFFFF
-                                        || bme280data->dig_h5[y] == 0 || bme280data->dig_h5[y] == 0xFFFF
-		 			|| bme280data->dig_h6[y] == 0 || bme280data->dig_h6[y] == 0xFF
-					) {
+				bme280data->dig_t2[y] == 0 || bme280data->dig_t2[y] == 0xFFFF ||
+				bme280data->dig_t3[y] == 0 || bme280data->dig_t3[y] == 0xFFFF ||
+				bme280data->dig_p1[y] == 0 || bme280data->dig_p1[y] == 0xFFFF ||
+				bme280data->dig_p2[y] == 0 || bme280data->dig_p2[y] == 0xFFFF ||
+				bme280data->dig_p3[y] == 0 || bme280data->dig_p3[y] == 0xFFFF ||
+				bme280data->dig_p4[y] == 0 || bme280data->dig_p4[y] == 0xFFFF ||
+				bme280data->dig_p5[y] == 0 || bme280data->dig_p5[y] == 0xFFFF ||
+				bme280data->dig_p6[y] == 0 || bme280data->dig_p6[y] == 0xFFFF ||
+				bme280data->dig_p7[y] == 0 || bme280data->dig_p7[y] == 0xFFFF ||
+				bme280data->dig_p8[y] == 0 || bme280data->dig_p8[y] == 0xFFFF ||
+				bme280data->dig_p9[y] == 0 || bme280data->dig_p9[y] == 0xFFFF
+				|| bme280data->dig_h1[y] == 0 || bme280data->dig_h1[y] == 0xFF
+				|| bme280data->dig_h2[y] == 0 || bme280data->dig_h2[y] == 0xFFFF
+				|| bme280data->dig_h4[y] == 0 || bme280data->dig_h4[y] == 0xFFFF
+				|| bme280data->dig_h5[y] == 0 || bme280data->dig_h5[y] == 0xFFFF
+				|| bme280data->dig_h6[y] == 0 || bme280data->dig_h6[y] == 0xFF ) {
 				logprintf(LOG_ERR, "data communication error");
 				exit(EXIT_FAILURE);
 			}
@@ -257,10 +255,10 @@ static void *thread(void *param) {
 					// write hum_oversampling in Register 0xF2 (ctrl_hum) to set
 					// humidity oversampling.
 					wiringXI2CWriteReg8(bme280data->fd[y], 0xF2, hum_oversampling);
-                                        // write tem_oversampling and pre-oversampling into
+					// write tem_oversampling and pre-oversampling into
 					// Register 0xF4 (ctrl_meas) to set temp and press oversampling
 					// this starts a single measurement
-                                        wiringXI2CWriteReg8(bme280data->fd[y], 0xF4,(tem_oversampling<<5 | pre_oversampling<<2 | 0x01));
+					wiringXI2CWriteReg8(bme280data->fd[y], 0xF4,(tem_oversampling<<5 | pre_oversampling<<2 | 0x01));
 
 					// wait at least 50 ms: we suspend execution for 50000 microseconds.
 					usleep(50000);
@@ -269,13 +267,13 @@ static void *thread(void *param) {
 					wiringXI2CWrite(bme280data->fd[y], 0xF7);
 					//ut = (unsigned short) readReg16(bme280data->fd[y], 0xF7);
 					uint8_t pmsb = wiringXI2CRead(bme280data->fd[y]);
-                                        uint8_t plsb = wiringXI2CRead(bme280data->fd[y]);
-                                        uint8_t pxsb = wiringXI2CRead(bme280data->fd[y]);
-                                        uint8_t tmsb = wiringXI2CRead(bme280data->fd[y]);
-                                        uint8_t tlsb = wiringXI2CRead(bme280data->fd[y]);
-                                        uint8_t txsb = wiringXI2CRead(bme280data->fd[y]);
-                                        uint8_t hmsb = wiringXI2CRead(bme280data->fd[y]);
-                                        uint8_t hlsb = wiringXI2CRead(bme280data->fd[y]);
+					uint8_t plsb = wiringXI2CRead(bme280data->fd[y]);
+					uint8_t pxsb = wiringXI2CRead(bme280data->fd[y]);
+					uint8_t tmsb = wiringXI2CRead(bme280data->fd[y]);
+					uint8_t tlsb = wiringXI2CRead(bme280data->fd[y]);
+					uint8_t txsb = wiringXI2CRead(bme280data->fd[y]);
+					uint8_t hmsb = wiringXI2CRead(bme280data->fd[y]);
+					uint8_t hlsb = wiringXI2CRead(bme280data->fd[y]);
 
 					uint32_t raw_temperature = 0;
 					raw_temperature = (raw_temperature | tmsb) << 8;
@@ -329,15 +327,15 @@ static void *thread(void *param) {
 						((int32_t)bme280data->dig_h1[y])) >> 4));
 
 					v_x1_u32r = (v_x1_u32r < 0) ? 0 : v_x1_u32r;
- 					v_x1_u32r = (v_x1_u32r > 419430400) ? 419430400 : v_x1_u32r;
- 					compensateHumidity = ((float)(v_x1_u32r>>12))/1024.0;
+					v_x1_u32r = (v_x1_u32r > 419430400) ? 419430400 : v_x1_u32r;
+					compensateHumidity = ((float)(v_x1_u32r>>12))/1024.0;
 
 					bme280->message = json_mkobject();
 					JsonNode *code = json_mkobject();
 					json_append_member(code, "id", json_mkstring(bme280data->id[y]));
 					json_append_member(code, "temperature", json_mknumber(((double) compensateTemperature ) + temp_offset, 2)); // in deg C
 					json_append_member(code, "pressure", json_mknumber(((double) compensatePressure) + pressure_offset, 2)); // in hPa
-                                        json_append_member(code, "humidity", json_mknumber(((double) compensateHumidity), 2));
+					json_append_member(code, "humidity", json_mknumber(((double) compensateHumidity), 2));
 					json_append_member(bme280->message, "message", code);
 					json_append_member(bme280->message, "origin", json_mkstring("receiver"));
 					json_append_member(bme280->message, "protocol", json_mkstring(bme280->id));
@@ -397,27 +395,27 @@ static void *thread(void *param) {
 	if (bme280data->dig_p8) {
 		FREE(bme280data->dig_p8);
 	}
-        if (bme280data->dig_p9) {
-                FREE(bme280data->dig_p9);
-        }
-        if (bme280data->dig_h1) {
-                FREE(bme280data->dig_h1);
-        }
-        if (bme280data->dig_h2) {
-                FREE(bme280data->dig_h2);
-        }
-        if (bme280data->dig_h3) {
-                FREE(bme280data->dig_h3);
-        }
-        if (bme280data->dig_h4) {
-                FREE(bme280data->dig_h4);
-        }
-        if (bme280data->dig_h5) {
-                FREE(bme280data->dig_h5);
-        }
-        if (bme280data->dig_h6) {
-                FREE(bme280data->dig_h6);
-        }
+	if (bme280data->dig_p9) {
+		FREE(bme280data->dig_p9);
+	}
+	if (bme280data->dig_h1) {
+		FREE(bme280data->dig_h1);
+	}
+	if (bme280data->dig_h2) {
+		FREE(bme280data->dig_h2);
+	}
+	if (bme280data->dig_h3) {
+		FREE(bme280data->dig_h3);
+	}
+	if (bme280data->dig_h4) {
+		FREE(bme280data->dig_h4);
+	}
+	if (bme280data->dig_h5) {
+		FREE(bme280data->dig_h5);
+	}
+	if (bme280data->dig_h6) {
+		FREE(bme280data->dig_h6);
+	}
 	if (bme280data->fd) {
 		for (y = 0; y < bme280data->nrid; y++) {
 			if (bme280data->fd[y] > 0) {
@@ -492,7 +490,7 @@ void bme280Init(void) {
 
 	options_add(&bme280->options, "i", "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "0x[0-9a-f]{2}");
 	options_add(&bme280->options, "p", "pressure", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *) 0, "^[0-9]{1,3}$");
-        options_add(&bme280->options, "t", "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *) 0, "^[0-9]{1,3}$");
+	options_add(&bme280->options, "t", "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *) 0, "^[0-9]{1,3}$");
 	options_add(&bme280->options, "h", "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *) 0, "^[0-9]{1,3}$");
 	options_add(&bme280->options, "d", "i2c-path", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^/dev/i2c-[0-9]{1,2}$");
 
