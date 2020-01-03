@@ -1,19 +1,8 @@
 /*
-	Copyright (C) 2014 CurlyMo & hstroh
-
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	Copyright (C) CurlyMo
+	This Source Code Form is subject to the terms of the Mozilla Public
+	License, v. 2.0. If a copy of the MPL was not distributed with this
+	file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -109,18 +98,18 @@ static void *thread(void *param) {
 	bme280data->dig_p1 = 0;
 	bme280data->dig_p2 = 0;
 	bme280data->dig_p3 = 0;
-        bme280data->dig_p4 = 0;
-        bme280data->dig_p5 = 0;
-        bme280data->dig_p6 = 0;
-        bme280data->dig_p7 = 0;
-        bme280data->dig_p8 = 0;
-        bme280data->dig_p9 = 0;
+	bme280data->dig_p4 = 0;
+	bme280data->dig_p5 = 0;
+	bme280data->dig_p6 = 0;
+	bme280data->dig_p7 = 0;
+	bme280data->dig_p8 = 0;
+	bme280data->dig_p9 = 0;
 	bme280data->dig_h1 = 0;
 	bme280data->dig_h2 = 0;
-        bme280data->dig_h3 = 0;
-        bme280data->dig_h4 = 0;
-        bme280data->dig_h5 = 0;
-        bme280data->dig_h6 = 0;
+	bme280data->dig_h3 = 0;
+	bme280data->dig_h4 = 0;
+	bme280data->dig_h5 = 0;
+	bme280data->dig_h6 = 0;
 
 	threads++;
 
@@ -155,12 +144,12 @@ static void *thread(void *param) {
 	}
 	hum_oversampling &= 0x7;
         if(json_find_number(json, "tem-oversampling", &itmp) == 0) {
-                tem_oversampling = (uint8_t) itmp;
+		tem_oversampling = (uint8_t) itmp;
         }
         tem_oversampling &= 0x7;
 
         if(json_find_number(json, "pre-oversampling", &itmp) == 0) {
-                pre_oversampling = (uint8_t) itmp;
+		pre_oversampling = (uint8_t) itmp;
         }
         pre_oversampling &= 0x7;
 
