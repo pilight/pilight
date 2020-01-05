@@ -545,14 +545,14 @@ static void timeout(uv_timer_t *req) {
 	struct request_t *request = req->data;
 	void (*callback)(int, char *, int, char *, void *) = request->callback;
 	void *userdata = request->userdata;
-	int called = request->called;
 	if(request->timer_req != NULL) {
 		uv_timer_stop(request->timer_req);
 	}
-	http_client_close(request->poll_req);
-	if(callback != NULL && called == 0) {
+	if(callback != NULL && request->called == 0) {
+		request->called = 1;
 		callback(408, NULL, 0, NULL, userdata);
 	}
+	http_client_close(request->poll_req);
 }
 
 static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
@@ -871,6 +871,7 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 		}
 
 		uv_timer_init(uv_default_loop(), request->timer_req);
+		uv_update_time(uv_default_loop());
 		uv_timer_start(request->timer_req, (void (*)(uv_timer_t *))timeout, 3000, 0);
 
 		http_client_add(request->poll_req, custom_poll_data);
