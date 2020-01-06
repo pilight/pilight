@@ -212,7 +212,7 @@ function M.callback(mqtt, data)
 			if substr[1] == 'pilight' and substr[2] == 'mqtt' then
 				if data['message'] == 'disconnected' and tmp[substr[3]] ~= nil then
 					tmp[substr[3]]['connected'] = 1;
-					M.createMessage(tmp, tmp[substr[3]]);
+					M.createMessage(tmp, substr[3]);
 				end
 			end
 		end
