@@ -366,27 +366,29 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 							mqtt_free(&pkt1);
 						}
 					}
-					if(mosquitto_topic_matches_sub(node->subs[x]->topic, topic, &ret) == 0) {
-						if(ret == 1) {
-							struct mqtt_pkt_t pkt1;
-							unsigned int len = 0;
-							unsigned char *buf = NULL;
+					if(node->poll_req != req) {
+						if(mosquitto_topic_matches_sub(node->subs[x]->topic, topic, &ret) == 0) {
+							if(ret == 1) {
+								struct mqtt_pkt_t pkt1;
+								unsigned int len = 0;
+								unsigned char *buf = NULL;
 
-							memset(&pkt1, 0, sizeof(struct mqtt_pkt_t));
+								memset(&pkt1, 0, sizeof(struct mqtt_pkt_t));
 
-							mqtt_pkt_publish(&pkt1, 0, 0, 0, topic, node->msgid++, "disconnected");
+								mqtt_pkt_publish(&pkt1, 0, 0, 0, topic, node->msgid++, "disconnected");
 
-							if(mqtt_encode(&pkt1, &buf, &len) == 0) {
-								custom_poll_data = node->poll_req->data;
+								if(mqtt_encode(&pkt1, &buf, &len) == 0) {
+									custom_poll_data = node->poll_req->data;
 
-								iobuf_append(&custom_poll_data->send_iobuf, (void *)buf, len);
-								node->flush = 1;
-								if(node->msgid > 1024) {
-									node->msgid = 0;
+									iobuf_append(&custom_poll_data->send_iobuf, (void *)buf, len);
+									node->flush = 1;
+									if(node->msgid > 1024) {
+										node->msgid = 0;
+									}
+									FREE(buf);
 								}
-								FREE(buf);
+								mqtt_free(&pkt1);
 							}
-							mqtt_free(&pkt1);
 						}
 					}
 				}
