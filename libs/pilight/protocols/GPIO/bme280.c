@@ -37,7 +37,6 @@
 
 #define STEP1		1
 #define STEP2		2
-//#define STEP3		3
 
 typedef struct data_t {
 	char *name;
@@ -176,53 +175,6 @@ static void thread(uv_work_t *req) {
 			v_x1_u32r = (v_x1_u32r > 419430400) ? 419430400 : v_x1_u32r;
 			settings->humidity = ((double)(v_x1_u32r>>12))/1024.0;
 
-
-/*			settings->ut = I2C2Int(wiringXI2CReadReg16(settings->fd, 0xF6));
-
-			settings->x1 = (((int)settings->ut - (int)settings->ac6)*(int)settings->ac5) >> 15;
-			settings->x2 = ((int)settings->mc << 11)/(settings->x1 + settings->md);
-			settings->b5 = settings->x1 + settings->x2;
-
-			int rawTemperature = ((settings->b5 + 8) >> 4); 
-			settings->temp = ((double)rawTemperature)/10;
-
-			wiringXI2CWriteReg8(settings->fd, 0xF4, 0x34 + (settings->oversampling << 6));
-
-//			settings->steps = STEP3;
-
-//			uv_timer_start(settings->stepped_req, (void (*)(uv_timer_t *))thread, 500, 0);
-//		} break;
-//		case STEP3: {
-			unsigned int msb = wiringXI2CReadReg8(settings->fd, 0xF6);
-			unsigned int lsb = wiringXI2CReadReg8(settings->fd, 0xF7);
-			unsigned int xlsb = wiringXI2CReadReg8(settings->fd, 0xF8);
-			unsigned int up = (((unsigned int)msb << 16) | ((unsigned int)lsb << 8) | (unsigned int)xlsb) >> (8-settings->oversampling);
-
-			settings->b6 = settings->b5 - 4000;
-			settings->x1 = (settings->b2 * (settings->b6 * settings->b6) >> 12) >> 11;
-			settings->x2 = (settings->ac2 * settings->b6) >> 11;
-			settings->x3 = settings->x1 + settings->x2;
-			settings->b3 = (((((int)settings->ac1) * 4 + settings->x3) << settings->oversampling) + 2) >> 2;
-
-			settings->x1 = (settings->ac3 * settings->b6) >> 13;
-			settings->x2 = (settings->b1 * ((settings->b6 * settings->b6) >> 12)) >> 16;
-			settings->x3 = ((settings->x1 + settings->x2) + 2) >> 2;
-			settings->b4 = (settings->ac4 * (unsigned long)(settings->x3 + 32768)) >> 15;
-
-			settings->b7 = ((unsigned long)(up - settings->b3) * (50000 >> settings->oversampling));
-			int p = 0;
-			if(settings->b7 < 0x80000000) {
-				p = (settings->b7 * 2) / settings->b4;
-			} else {
-				p = (settings->b7 / settings->b4) * 2;
-			}
-			settings->x1 = (p >> 8) * (p >> 8);
-			settings->x1 = (settings->x1 * 3038) >> 16;
-			settings->x2 = (-7357 * p) >> 16;
-			p += (settings->x1 + settings->x2 + 3791) >> 4;
-
-			settings->pressure = ((double)p)/100;
-*/
 			struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
 			if(data == NULL) {
 				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -350,28 +302,7 @@ static void *addDevice(int reason, void *param, void *userdata) {
 		return (void *)NULL;
 	}
 
-	// read 0xD1 to check chip version: must equal 0x01 for BMP085 or 0x02 for BMP180
-/*	int version = wiringXI2CReadReg8(node->fd, 0xD1);
-	if(version != 0x01 && version != 0x02) {
-		logprintf(LOG_ERR, "bmp180: wrong device version on i2c bus: %s", node->path);
-		FREE(node);
-		return (void *)NULL;
-	}
-
-	node->ac1 = I2C2Int1(wiringXI2CReadReg16(node->fd, 0xAA));
-	node->ac2 = I2C2Int1(wiringXI2CReadReg16(node->fd, 0xAC));
-	node->ac3 = I2C2Int1(wiringXI2CReadReg16(node->fd, 0xAE));
-	node->ac4 = I2C2Int1(wiringXI2CReadReg16(node->fd, 0xB0));
-	node->ac5 = I2C2Int1(wiringXI2CReadReg16(node->fd, 0xB2));
-	node->ac6 = I2C2Int1(wiringXI2CReadReg16(node->fd, 0xB4));
-
-	node->b1 = I2C2Int1(wiringXI2CReadReg16(node->fd, 0xB6));
-	node->b2 = I2C2Int1(wiringXI2CReadReg16(node->fd, 0xB8));
-
-	node->mb = I2C2Int1(wiringXI2CReadReg16(node->fd, 0xBA));
-	node->mc = I2C2Int1(wiringXI2CReadReg16(node->fd, 0xBC));
-	node->md = I2C2Int1(wiringXI2CReadReg16(node->fd, 0xBE));*/
-			// read calibration coefficients from register addresses
+	// read calibration coefficients from register addresses
 	node->dig_t1 = (uint16_t) wiringXI2CReadReg16(node->fd, 0x88);
 	node->dig_t2 = (int16_t) wiringXI2CReadReg16(node->fd, 0x8A);
 	node->dig_t3 = (int16_t) wiringXI2CReadReg16(node->fd, 0x8C);
@@ -392,7 +323,6 @@ static void *addDevice(int reason, void *param, void *userdata) {
 	node->dig_h4 = (int16_t) (wiringXI2CReadReg8(node->fd, 0xE4) << 4) | (wiringXI2CReadReg8(node->fd, 0xE5) & 0xF);
 	node->dig_h5 = (int16_t) (wiringXI2CReadReg8(node->fd, 0xE6) << 4) | (wiringXI2CReadReg8(node->fd, 0xE5) >> 4);
 	node->dig_h6 = (int8_t) wiringXI2CReadReg8(node->fd, 0xE7);
-
 
 	// check communication: no result must equal 0 or 0xFFFF (=65535)
 	if (node->dig_t1 == 0 || node->dig_t1 == 0xFFFF
@@ -427,7 +357,7 @@ static void *addDevice(int reason, void *param, void *userdata) {
 
 	if((node->interval_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}	
+	}
 
 	if((node->stepped_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -470,22 +400,7 @@ void bme280Init(void) {
 	bme280->devtype = WEATHER;
 	bme280->hwtype = SENSOR;
 	bme280->multipleId = 0;
-/*
-	options_add(&bme280->options, "i", "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([1-9]|1[1-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
-	options_add(&bme280->options, "o", "oversampling", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *) 3, "^[0123]$");
-	options_add(&bme280->options, "p", "pressure", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *) 0, "^[0-9]{1,3}$");
-	options_add(&bme280->options, "t", "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *) 0, "^[0-9]{1,3}$");
-	options_add(&bme280->options, "d", "i2c-path", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^/dev/i2c-[0-9]{1,2}%");
 
-	options_add(&bme280->options, "0", "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *) 10, "[0-9]");
-	options_add(&bme280->options, "0", "pressure-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *) 0, "[0-9]");
-	options_add(&bme280->options, "0", "temperature-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *) 0, "[0-9]");
-	options_add(&bme280->options, "0", "temperature-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *) 1, "[0-9]");
-	options_add(&bme280->options, "0", "humidity-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *) 1, "[0-9]");
-	options_add(&bme280->options, "0", "pressure-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *) 1, "[0-9]");
-	options_add(&bme280->options, "0", "show-pressure", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *) 1, "^[10]{1}$");
-	options_add(&bme280->options, "0", "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *) 1, "^[10]{1}$"); */
-	
 	options_add(&bme280->options, "i", "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "0x[0-9a-f]{2}");
 	options_add(&bme280->options, "p", "pressure", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *) 0, "^[0-9]{1,3}$");
 	options_add(&bme280->options, "t", "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *) 0, "^[0-9]{1,3}$");
@@ -504,7 +419,6 @@ void bme280Init(void) {
 	options_add(&bme280->options, "0", "show-pressure", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *) 1, "^[10]{1}$");
 	options_add(&bme280->options, "0", "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *) 1, "^[10]{1}$");
 	options_add(&bme280->options, "0", "show-humidity", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-
 
 #if !defined(__FreeBSD__) && !defined(_WIN32) && !defined(__sun)
 	bme280->gc = &gc;

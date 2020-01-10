@@ -277,6 +277,7 @@ static void *received(int reason, void *param, void *userdata) {
 			switch(step++) {
 				case 0: {
 					CuAssertStrEquals(gtc, "{\"id\":118,\"temperature\":22.54,\"pressure\":102265.96,\"humidity\":40.58}", data->message);
+					printf("[ - %-46s ]\n", "Correct values read and calculated");
 					uv_stop(uv_default_loop());
 				} break;
 			}
@@ -290,21 +291,14 @@ static void loop_bme280(void *param) {
 	sleep(1);
 	usleep(5000);
 	/*
-	 * Requested temperature
+	 * Requested start measurement
 	*/
 	x = wiringXI2CReadReg8(fd, 0xF2);
 	CuAssertIntEquals(gtc, x, 0x01);
 	x = wiringXI2CReadReg8(fd, 0xF4);
 	CuAssertIntEquals(gtc, x, 0x25);
+	printf("[ - %-46s ]\n", "Start measurement requested");
 	usleep(200000);
-	/*
-	 * Requested pressure
-	*/
-/*	x = wiringXI2CReadReg8(fd, 0xF4);
-	CuAssertIntEquals(gtc, x, 0x34);
-	wiringXI2CWriteReg8(fd, 0xF6, 0x5D);
-	wiringXI2CWriteReg8(fd, 0xF7, 0x23);
-	wiringXI2CWriteReg8(fd, 0xF8, 0x00);*/
 }
 
 static void loop(void *param) {
@@ -691,9 +685,8 @@ static void test_protocols_i2c_bme280(CuTest *tc) {
 	fd = wiringXI2CSetup(path, 0x76);
 	CuAssertTrue(tc, fd > 0);
 
-	/* Set version */
+	/* Set Chip ID */
 	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xD0, 0x60));
-//	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xD1, 0x01));
 
 	/* Set calibration */
 	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg16(fd, 0x88, 0x6ecd));
@@ -719,7 +712,7 @@ static void test_protocols_i2c_bme280(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xE5, 0x27));
 	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xE7, 0x1e));
 
-	/*  */
+	/* Set Measurement values */
 	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xF7, 0x50));
 	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xF8, 0xee));
 	CuAssertIntEquals(tc, 0, wiringXI2CWriteReg8(fd, 0xF9, 0x00));
@@ -734,7 +727,7 @@ static void test_protocols_i2c_bme280(CuTest *tc) {
 	char add[255], *q = add;
 	sprintf(q, "{\"test\":{\"protocol\":[\"bme280\"],\"id\":[{\"id\":118,\"i2c-path\":\"/dev/i2c-%d\"}],\"temperature\":0.0,\"pressure\":0.0,\"humidity\":0.0,\"tem-oversampling\":1,\"hum-oversampling\":1,\"pre-oversampling\":1,\"poll-interval\":1}}", nr);
 
-	// printf("[ - %-46s ]\n", "first interval");
+	printf("[ - %-46s ]\n", "first interval");
 	// fflush(stdout);
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
