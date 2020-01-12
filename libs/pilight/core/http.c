@@ -739,7 +739,7 @@ static void write_cb(uv_poll_t *req) {
 	}
 }
 
-char *http_process(int type, char *url, const char *conttype, char *post, void (*callback)(int, char *, int, char *, void *), void *userdata) {
+int http_process(int type, char *url, const char *conttype, char *post, void (*callback)(int, char *, int, char *, void *), void *userdata) {
 	struct request_t *request = NULL;
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct sockaddr_in addr4;
@@ -879,7 +879,7 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 		uv_custom_write(request->poll_req);
 	}
 
-	return NULL;
+	return 0;
 
 freeuv:
 	if(request->timer_req != NULL) {
@@ -900,13 +900,13 @@ freeuv:
 #endif
 	}
 	FREE(request);
-	return NULL;
+	return -1;
 }
 
-char *http_get_content(char *url, void (*callback)(int, char *, int, char *, void *), void *userdata) {
+int http_get_content(char *url, void (*callback)(int, char *, int, char *, void *), void *userdata) {
 	return http_process(HTTP_GET, url, NULL, NULL, callback, userdata);
 }
 
-char *http_post_content(char *url, const char *conttype, char *post, void (*callback)(int, char *, int, char *, void *), void *userdata) {
+int http_post_content(char *url, const char *conttype, char *post, void (*callback)(int, char *, int, char *, void *), void *userdata) {
 	return http_process(HTTP_POST, url, conttype, post, callback, userdata);
 }
