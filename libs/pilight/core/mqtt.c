@@ -366,7 +366,7 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 							mqtt_free(&pkt1);
 						}
 					}
-					if(node->poll_req != req) {
+					if(node->poll_req != req && currP->side == SERVER_SIDE) {
 						if(mosquitto_topic_matches_sub(node->subs[x]->topic, topic, &ret) == 0) {
 							if(ret == 1) {
 								struct mqtt_pkt_t pkt1;
@@ -374,7 +374,6 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 								unsigned char *buf = NULL;
 
 								memset(&pkt1, 0, sizeof(struct mqtt_pkt_t));
-
 								mqtt_pkt_publish(&pkt1, 0, 0, 0, topic, node->msgid++, "disconnected");
 
 								if(mqtt_encode(&pkt1, &buf, &len) == 0) {
