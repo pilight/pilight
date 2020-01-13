@@ -159,6 +159,45 @@ static int plua_print(lua_State* L) {
 				} break;
 			}
 		} break;
+		case 2: {
+			switch(run) {
+				case 0: {
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 5, lua_tonumber(L, -1));
+					run++;
+				} break;
+				case 1: {
+					CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
+					CuAssertStrEquals(gtc, "main", lua_tostring(L, -1));
+					run++;
+				} break;
+				case 2:
+				case 4: {
+					CuAssertIntEquals(gtc, LUA_TBOOLEAN, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 1, lua_toboolean(L, -1));
+					run++;
+				} break;
+				case 5: {
+					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 404, lua_tonumber(L, -1));
+					run++;
+				} break;
+				case 3: {
+					CuAssertIntEquals(gtc, LUA_TNIL, lua_type(L, -1));
+					run++;
+				} break;
+				case 6: {
+					CuAssertIntEquals(gtc, LUA_TNIL, lua_type(L, -1));
+					run++;
+				} break;
+				case 7: {
+					CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
+					CuAssertStrEquals(gtc, "http://WvQTxNJ13BJUBC62R8PM.com/", lua_tostring(L, -1));
+					run++;
+					uv_stop(uv_default_loop());
+				} break;
+			}
+		} break;
 	}
 
 	return 0;
@@ -425,6 +464,91 @@ static void test_lua_network_http_get(CuTest *tc) {
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
+static void test_lua_network_http_get_invalid_host(CuTest *tc) {
+	struct lua_state_t *state = NULL;
+	struct lua_State *L = NULL;
+	char path[1024], *p = path, name[255];
+	char *file = NULL;
+
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	run = 0;
+	test = 2;
+
+	gtc = tc;
+	memtrack();
+
+	plua_init();
+	plua_overwrite_print();
+	plua_pause_coverage(1);
+
+	file = STRDUP(__FILE__);
+	CuAssertPtrNotNull(tc, file);
+
+	str_replace("lua_network_http.c", "", &file);
+
+	memset(p, 0, 1024);
+	snprintf(p, 1024, "%shttp3.lua", file);
+	FREE(file);
+	file = NULL;
+
+	plua_module_load(path, UNITTEST);
+
+	CuAssertIntEquals(tc, 0, plua_module_exists("http", UNITTEST));
+
+	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+
+	uv_timer_init(uv_default_loop(), timer_req);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);
+
+	state = plua_get_free_state();
+	CuAssertPtrNotNull(tc, state);
+	CuAssertPtrNotNull(tc, (L = state->L));
+
+	p = name;
+
+	eventpool_init(EVENTPOOL_NO_THREADS);
+
+	http_start(10080);
+
+	sprintf(name, "unittest.%s", "http");
+	lua_getglobal(L, name);
+	CuAssertIntEquals(tc, LUA_TTABLE, lua_type(L, -1));
+
+	struct plua_module_t *tmp = plua_get_modules();
+	while(tmp) {
+		if(strcmp("http", tmp->name) == 0) {
+			file = tmp->file;
+			state->module = tmp;
+			break;
+		}
+		tmp = tmp->next;
+	}
+	CuAssertPtrNotNull(tc, file);
+	CuAssertIntEquals(tc, 0, call(L, file, "run"));
+
+	lua_pop(L, -1);
+
+	plua_clear_state(state);
+
+	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	}
+
+	plua_pause_coverage(0);
+	http_gc();
+	plua_gc();
+	CuAssertIntEquals(tc, 8, run);
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
 static void test_lua_network_http_post(CuTest *tc) {
 	struct lua_state_t *state = NULL;
 	struct lua_State *L = NULL;
@@ -594,6 +718,7 @@ CuSuite *suite_lua_network_http(void) {
 	CuSuite *suite = CuSuiteNew();
 
 	SUITE_ADD_TEST(suite, test_lua_network_http_missing_parameters);
+	SUITE_ADD_TEST(suite, test_lua_network_http_get_invalid_host);
 	SUITE_ADD_TEST(suite, test_lua_network_http_get);
 	SUITE_ADD_TEST(suite, test_lua_network_http_post);
 	SUITE_ADD_TEST(suite, test_lua_network_http_nonexisting_callback);
