@@ -393,7 +393,7 @@ static int plua_network_http_get(lua_State *L) {
 	}
 
 	if(http_get_content(http->url, plua_network_http_callback, http) != 0) {
-		plua_gc_unreg(http->L, http);
+		plua_gc_unreg(L, http);
 
 		lua_pushboolean(L, 0);
 
@@ -402,7 +402,7 @@ static int plua_network_http_get(lua_State *L) {
 		return 1;
 	}
 
-	plua_gc_unreg(http->L, http);
+	plua_gc_unreg(L, http);
 
 	lua_pushboolean(L, 1);
 
@@ -441,7 +441,7 @@ static int plua_network_http_post(lua_State *L) {
 	}
 
 	if(http_post_content(http->url, http->mimetype, http->data, plua_network_http_callback, http) != 0) {
-		plua_gc_unreg(http->L, http);
+		plua_gc_unreg(L, http);
 
 		lua_pushboolean(L, 0);
 
@@ -450,7 +450,7 @@ static int plua_network_http_post(lua_State *L) {
 		return 1;
 	}
 
-	plua_gc_unreg(http->L, http);
+	plua_gc_unreg(L, http);
 
 	lua_pushboolean(L, 1);
 
