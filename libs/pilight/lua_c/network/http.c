@@ -394,6 +394,7 @@ static int plua_network_http_get(lua_State *L) {
 
 	if(http_get_content(http->url, plua_network_http_callback, http) != 0) {
 		plua_gc_unreg(L, http);
+		plua_gc_reg(NULL, http, plua_network_http_gc);
 
 		lua_pushboolean(L, 0);
 
@@ -709,6 +710,7 @@ int plua_network_http(struct lua_State *L) {
 	lua_http->code = -1;
 
 	plua_gc_reg(L, lua_http, plua_network_http_gc);
+	plua_gc_unreg(NULL, lua_http);
 
 	plua_network_http_object(L, lua_http);
 

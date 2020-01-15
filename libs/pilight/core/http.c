@@ -885,10 +885,13 @@ freeuv:
 	if(request->timer_req != NULL) {
 		uv_timer_stop(request->timer_req);
 	}
-	if(request->callback != NULL && request->called == 0) {
-		request->called = 1;
-		request->callback(404, NULL, 0, 0, request->userdata);
-	}
+	/*
+	 * 404 should be given by an available server
+	 */
+	// if(request->callback != NULL && request->called == 0) {
+		// request->called = 1;
+		// request->callback(404, NULL, 0, 0, request->userdata);
+	// }
 	FREE(request->uri);
 	FREE(request->host);
 

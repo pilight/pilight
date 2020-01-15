@@ -178,23 +178,14 @@ static int plua_print(lua_State* L) {
 					run++;
 				} break;
 				case 5: {
-					CuAssertIntEquals(gtc, LUA_TNUMBER, lua_type(L, -1));
-					CuAssertIntEquals(gtc, 404, lua_tonumber(L, -1));
+					CuAssertIntEquals(gtc, LUA_TBOOLEAN, lua_type(L, -1));
+					CuAssertIntEquals(gtc, 0, lua_toboolean(L, -1));
 					run++;
+					uv_stop(uv_default_loop());
 				} break;
 				case 3: {
 					CuAssertIntEquals(gtc, LUA_TNIL, lua_type(L, -1));
 					run++;
-				} break;
-				case 6: {
-					CuAssertIntEquals(gtc, LUA_TNIL, lua_type(L, -1));
-					run++;
-				} break;
-				case 7: {
-					CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, -1));
-					CuAssertStrEquals(gtc, "http://WvQTxNJ13BJUBC62R8PM.com/", lua_tostring(L, -1));
-					run++;
-					uv_stop(uv_default_loop());
 				} break;
 			}
 		} break;
@@ -545,7 +536,7 @@ static void test_lua_network_http_get_invalid_host(CuTest *tc) {
 	plua_pause_coverage(0);
 	http_gc();
 	plua_gc();
-	CuAssertIntEquals(tc, 8, run);
+	CuAssertIntEquals(tc, 6, run);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 

@@ -617,16 +617,38 @@ static void test(void *param) {
 	is_ssl = 0;
 	doquit = 0;
 
+	int ret = 0;
+
 	if(testnr != 17) {
 		http_start(tests[testnr].url, tests[testnr].port);
 		uv_thread_create(&pth, http_wait, NULL);
 	}
 
 	if(tests[testnr].getpost == GET) {
-		http_get_content(tests[testnr].url, callback, _userdata);
+		ret = http_get_content(tests[testnr].url, callback, _userdata);
 	}
 	if(tests[testnr].getpost == POST) {
-		http_post_content(tests[testnr].url, tests[testnr].type, tests[testnr].post, callback, _userdata);
+		ret = http_post_content(tests[testnr].url, tests[testnr].type, tests[testnr].post, callback, _userdata);
+	}
+
+	if(ret == -1) {
+		testnr++;
+
+		doquit = 2;
+		uv_thread_join(&pth);
+		if(is_ssl == 1) {
+			mbedtls_ssl_free(&ssl_ctx);
+		}
+
+		if(testnr < sizeof(tests)/sizeof(tests[0])) {
+			if(threaded == 0) {
+				test(NULL);
+			} else {
+				uv_stop(uv_default_loop());
+			}
+		} else {
+			uv_stop(uv_default_loop());
+		}
 	}
 
 	started = 1;
