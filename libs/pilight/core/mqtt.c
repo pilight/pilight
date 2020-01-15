@@ -727,9 +727,13 @@ int mqtt_decode(struct mqtt_pkt_t **pkt, unsigned char *buf, unsigned int len, u
 	if(len < msglength+((*pos)-1)) {
 		/*
 		 * Packet too short for full message
+		 * so we are waiting for additional
+		 * content. Not an error and also not
+		 * a successful decode, so a return 1.
 		 */
 		mqtt_free((*pkt));
 		FREE((*pkt));
+
 		return 1;
 	}
 
@@ -1941,6 +1945,12 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	if(*nread > 0) {
 		buf[*nread] = '\0';
 
+		// int i = 0;
+		// for(i=0;i<*nread;i++) {
+			// printf("0x02x ", (unsigned char)buf[i]);
+		// }
+		// printf("\n");
+
 		while(*nread > 0 && (ret = mqtt_decode(&pkt, (unsigned char *)buf, *nread, &pos)) == 0) {
 			memmove(&buf[0], &buf[pos], *nread-pos);
 			*nread -= pos;
@@ -2069,8 +2079,18 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	pthread_mutex_unlock(&mqtt_lock);
 #endif
 
-	uv_custom_write(req);
-	uv_custom_read(req);
+
+	if(ret == -1) {
+		/*
+		 * Dirty fix:
+		 * disconnect clients when an invalid package
+		 * has been received to prevent endless loops
+		 */
+		uv_custom_write(req);
+	} else {
+		uv_custom_write(req);
+		uv_custom_read(req);
+	}
 }
 
 static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
