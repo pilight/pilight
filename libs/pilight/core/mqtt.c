@@ -317,6 +317,8 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct mqtt_client_t *currP, *prevP;
 	struct mqtt_client_t *node = mqtt_clients;
+	char *topicfmt = "pilight/mqtt/%s";
+	char *topic = NULL;
 	int ret = 0, x = 0;
 
 	prevP = NULL;
@@ -331,19 +333,48 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 
 			uv_timer_stop(currP->timer_req);
 
-			if(currP->haswill == 1 && disconnect == 0) {
-				node = mqtt_clients;
-				while(node) {
-					for(x=0;x<node->nrsubs;x++) {
-						if(mosquitto_topic_matches_sub(node->subs[x]->topic, currP->will.topic, &ret) == 0) {
+			int len = snprintf(NULL, 0, topicfmt, currP->id);
+			if((topic = MALLOC(len+1)) == NULL) {
+				OUT_OF_MEMORY
+			}
+			snprintf(topic, len+1, topicfmt, currP->id);
+
+			node = mqtt_clients;
+			while(node) {
+				for(x=0;x<node->nrsubs;x++) {
+					if(currP->haswill == 1 && disconnect == 0 &&
+							mosquitto_topic_matches_sub(node->subs[x]->topic, currP->will.topic, &ret) == 0) {
+						if(ret == 1) {
+							struct mqtt_pkt_t pkt1;
+							unsigned int len = 0;
+							unsigned char *buf = NULL;
+
+							memset(&pkt1, 0, sizeof(struct mqtt_pkt_t));
+
+							mqtt_pkt_publish(&pkt1, 0, currP->will.qos, 0, currP->will.topic, node->msgid++, currP->will.message);
+
+							if(mqtt_encode(&pkt1, &buf, &len) == 0) {
+								custom_poll_data = node->poll_req->data;
+
+								iobuf_append(&custom_poll_data->send_iobuf, (void *)buf, len);
+								node->flush = 1;
+								if(node->msgid > 1024) {
+									node->msgid = 0;
+								}
+								FREE(buf);
+							}
+							mqtt_free(&pkt1);
+						}
+					}
+					if(node->poll_req != req && currP->side == SERVER_SIDE) {
+						if(mosquitto_topic_matches_sub(node->subs[x]->topic, topic, &ret) == 0) {
 							if(ret == 1) {
 								struct mqtt_pkt_t pkt1;
 								unsigned int len = 0;
 								unsigned char *buf = NULL;
 
 								memset(&pkt1, 0, sizeof(struct mqtt_pkt_t));
-
-								mqtt_pkt_publish(&pkt1, 0, currP->will.qos, 0, currP->will.topic, node->msgid++, currP->will.message);
+								mqtt_pkt_publish(&pkt1, 0, 0, 0, topic, node->msgid++, "disconnected");
 
 								if(mqtt_encode(&pkt1, &buf, &len) == 0) {
 									custom_poll_data = node->poll_req->data;
@@ -359,9 +390,11 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 							}
 						}
 					}
-					node = node->next;
 				}
+				node = node->next;
 			}
+
+			FREE(topic);
 
 			int i = 0;
 			for(i=0;i<currP->nrsubs;i++) {
@@ -763,16 +796,28 @@ int mqtt_decode(struct mqtt_pkt_t **pkt, unsigned char *buf, unsigned int len, u
 			}
 
 			{
-				if((*pos) < msglength) {
+				if((*pkt)->header.connect.willflag == 1) {
 					length = (buf[(*pos)]) | buf[(*pos)+1]; (*pos)+=2;
+					if((int)length < 0) {
+						logprintf(LOG_ERR, "received incomplete message");
+						mqtt_free((*pkt));
+						FREE((*pkt));
+						return -1;
+					}
 					read_value(&buf[(*pos)], length, &(*pkt)->payload.connect.willtopic);
 					(*pos)+=length;
 				}
 			}
 
 			{
-				if((*pos) < msglength) {
+				if((*pkt)->header.connect.willflag == 1) {
 					length = (buf[(*pos)]) | buf[(*pos)+1]; (*pos)+=2;
+					if((int)length < 0) {
+						logprintf(LOG_ERR, "received incomplete message");
+						mqtt_free((*pkt));
+						FREE((*pkt));
+						return -1;
+					}
 					read_value(&buf[(*pos)], length, &(*pkt)->payload.connect.willmessage);
 					(*pos)+=length;
 				}
@@ -781,6 +826,12 @@ int mqtt_decode(struct mqtt_pkt_t **pkt, unsigned char *buf, unsigned int len, u
 			{
 				if((*pkt)->header.connect.username == 1) {
 					length = (buf[(*pos)]) | buf[(*pos)+1]; (*pos)+=2;
+					if((int)length < 0) {
+						logprintf(LOG_ERR, "received incomplete message");
+						mqtt_free((*pkt));
+						FREE((*pkt));
+						return -1;
+					}
 					read_value(&buf[(*pos)], length, &(*pkt)->payload.connect.username);
 					(*pos)+=length;
 				}
@@ -789,6 +840,12 @@ int mqtt_decode(struct mqtt_pkt_t **pkt, unsigned char *buf, unsigned int len, u
 			{
 				if((*pkt)->header.connect.password == 1) {
 					length = (buf[(*pos)]) | buf[(*pos)+1]; (*pos)+=2;
+					if((int)length < 0) {
+						logprintf(LOG_ERR, "received incomplete message");
+						mqtt_free((*pkt));
+						FREE((*pkt));
+						return -1;
+					}
 					read_value(&buf[(*pos)], length, &(*pkt)->payload.connect.password);
 					(*pos)+=length;
 				}
@@ -1167,6 +1224,50 @@ void mqtt_client_register(uv_poll_t *req, struct mqtt_pkt_t *pkt) {
 #endif
 		}
 	}
+
+	clients = mqtt_clients;
+
+	char *topicfmt = "pilight/mqtt/%s";
+	char *topic = NULL;
+
+	int len = snprintf(NULL, 0, topicfmt, node->id);
+	if((topic = MALLOC(len+1)) == NULL) {
+		OUT_OF_MEMORY
+	}
+	snprintf(topic, len+1, topicfmt, node->id);
+
+	struct uv_custom_poll_t *custom_poll_data = NULL;
+	int ret = 0, x = 0;
+	while(clients) {
+		for(x=0;x<clients->nrsubs;x++) {
+			if(mosquitto_topic_matches_sub(clients->subs[x]->topic, topic, &ret) == 0) {
+				if(ret == 1) {
+					struct mqtt_pkt_t pkt1;
+					unsigned int len = 0;
+					unsigned char *buf = NULL;
+
+					memset(&pkt1, 0, sizeof(struct mqtt_pkt_t));
+
+					mqtt_pkt_publish(&pkt1, 0, 0, 0,  topic, clients->msgid++, "connected");
+
+					if(mqtt_encode(&pkt1, &buf, &len) == 0) {
+						custom_poll_data = clients->poll_req->data;
+
+						iobuf_append(&custom_poll_data->send_iobuf, (void *)buf, len);
+						clients->flush = 1;
+						if(clients->msgid > 1024) {
+							clients->msgid = 0;
+						}
+						FREE(buf);
+					}
+					mqtt_free(&pkt1);
+				}
+			}
+		}
+		clients = clients->next;
+	}
+
+	FREE(topic);
 
 #ifdef _WIN32
 	uv_mutex_unlock(&mqtt_lock);
@@ -1947,7 +2048,7 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 		// int i = 0;
 		// for(i=0;i<*nread;i++) {
-			// printf("0x02x ", (unsigned char)buf[i]);
+			// printf("0x%02x, ", (unsigned char)buf[i]);
 		// }
 		// printf("\n");
 
