@@ -85,13 +85,13 @@ static void mqtt_callback1(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt,
 				} else if(pkt->type == MQTT_SUBACK) {
 					CuAssertIntEquals(gtc, step1[pkt->type]++, 0);
 				} else if(pkt->type == MQTT_PUBLISH) {
-					CuAssertTrue(gtc, step1[pkt->type] == 0 || step1[pkt->type] == 1);
-					if(step1[pkt->type] == 0) {
-						CuAssertStrEquals(gtc, "tele/sonoff/POWER", pkt->payload.publish.topic);
+					CuAssertTrue(gtc, step1[pkt->type] == 0 || step1[pkt->type] == 1 || step1[pkt->type] == 2);
+					if(strcmp(pkt->payload.publish.topic, "tele/sonoff/POWER") == 0) {
 						CuAssertStrEquals(gtc, "on", pkt->payload.publish.message);
-					} else {
-						CuAssertStrEquals(gtc, "pilight/lamp/status", pkt->payload.publish.topic);
+					} else if(strcmp(pkt->payload.publish.topic, "pilight/lamp/status") == 0) {
 						CuAssertStrEquals(gtc, "{\"Time\":\"1970-01-01T02:32:27\",\"Uptime\":\"0T02:25:16\",\"Vcc\":3.238,\"SleepMode\":\"Dynamic\",\"Sleep\":50,\"LoadAvg\":19,\"POWER\":\"ON\",\"Wifi\":{\"AP\":1,\"SSId\":\"pilight\",\"BSSId\":\"AA:BB:CC:DD:EE:FF\",\"Channel\":2,\"RSSI\":82,\"LinkCount\":1,\"Downtime\":\"0T00:00:06\"}}", pkt->payload.publish.message);
+					} else if(strcmp(pkt->payload.publish.topic, "pilight/mqtt/pilight1") == 0) {
+						CuAssertStrEquals(gtc, "connected", pkt->payload.publish.message);
 					}
 					step1[pkt->type]++;
 				} else {
@@ -121,14 +121,13 @@ static void mqtt_callback1(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt,
 					}
 					CuAssertIntEquals(gtc, step1[pkt->type]++, 0);
 				} else if(pkt->type == MQTT_PUBLISH) {
-
 					CuAssertTrue(gtc, step1[pkt->type]++ >= 0);
 					if(strcmp(pkt->payload.publish.topic, "tele/sonoff/POWER") == 0) {
-						CuAssertStrEquals(gtc, "tele/sonoff/POWER", pkt->payload.publish.topic);
 						CuAssertStrEquals(gtc, "on", pkt->payload.publish.message);
-					} else {
-						CuAssertStrEquals(gtc, "pilight/lamp/status", pkt->payload.publish.topic);
+					} else if(strcmp(pkt->payload.publish.topic, "pilight/lamp/status") == 0) {
 						CuAssertStrEquals(gtc, "{\"Time\":\"1970-01-01T02:32:27\",\"Uptime\":\"0T02:25:16\",\"Vcc\":3.238,\"SleepMode\":\"Dynamic\",\"Sleep\":50,\"LoadAvg\":19,\"POWER\":\"ON\",\"Wifi\":{\"AP\":1,\"SSId\":\"pilight\",\"BSSId\":\"AA:BB:CC:DD:EE:FF\",\"Channel\":2,\"RSSI\":82,\"LinkCount\":1,\"Downtime\":\"0T00:00:06\"}}", pkt->payload.publish.message);
+					} else if(strcmp(pkt->payload.publish.topic, "pilight/mqtt/pilight1") == 0) {
+						CuAssertStrEquals(gtc, "connected", pkt->payload.publish.message);
 					}
 				} else {
 					step1[pkt->type]++;
@@ -160,11 +159,11 @@ static void mqtt_callback1(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt,
 
 					CuAssertTrue(gtc, step1[pkt->type]++ >= 0);
 					if(strcmp(pkt->payload.publish.topic, "tele/sonoff/POWER") == 0) {
-						CuAssertStrEquals(gtc, "tele/sonoff/POWER", pkt->payload.publish.topic);
 						CuAssertStrEquals(gtc, "on", pkt->payload.publish.message);
-					} else {
-						CuAssertStrEquals(gtc, "pilight/lamp/status", pkt->payload.publish.topic);
+					} else if(strcmp(pkt->payload.publish.topic, "pilight/lamp/status") == 0) {
 						CuAssertStrEquals(gtc, "{\"Time\":\"1970-01-01T02:32:27\",\"Uptime\":\"0T02:25:16\",\"Vcc\":3.238,\"SleepMode\":\"Dynamic\",\"Sleep\":50,\"LoadAvg\":19,\"POWER\":\"ON\",\"Wifi\":{\"AP\":1,\"SSId\":\"pilight\",\"BSSId\":\"AA:BB:CC:DD:EE:FF\",\"Channel\":2,\"RSSI\":82,\"LinkCount\":1,\"Downtime\":\"0T00:00:06\"}}", pkt->payload.publish.message);
+					} else if(strcmp(pkt->payload.publish.topic, "pilight/mqtt/pilight1") == 0) {
+						CuAssertStrEquals(gtc, "connected", pkt->payload.publish.message);
 					}
 				} else {
 					step1[pkt->type]++;
@@ -389,9 +388,12 @@ static void mqtt_callback1(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt,
 				} else if(pkt->type == MQTT_SUBACK) {
 					CuAssertIntEquals(gtc, step1[pkt->type]++, 0);
 				} else if(pkt->type == MQTT_PUBLISH) {
-					CuAssertIntEquals(gtc, step1[pkt->type]++, 0);
-					CuAssertStrEquals(gtc, "tele/sonoff/POWER", pkt->payload.publish.topic);
-					CuAssertStrEquals(gtc, "on", pkt->payload.publish.message);
+					if(strcmp(pkt->payload.publish.topic, "tele/sonoff/POWER") == 0) {
+						CuAssertStrEquals(gtc, "on", pkt->payload.publish.message);
+					} else if(strcmp(pkt->payload.publish.topic, "pilight/mqtt/pilight1") == 0) {
+						CuAssertStrEquals(gtc, "disconnected", pkt->payload.publish.message);
+					}
+					step1[pkt->type]++;
 				} else {
 					step1[pkt->type]++;
 				}
@@ -444,9 +446,12 @@ static void mqtt_callback1(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt,
 					}
 					CuAssertIntEquals(gtc, step1[pkt->type]++, 0);
 				} else if(pkt->type == MQTT_PUBLISH) {
-					CuAssertStrEquals(gtc, "pilight/status", pkt->payload.publish.topic);
-					CuAssertStrEquals(gtc, "offline", pkt->payload.publish.message);
-					CuAssertTrue(gtc, step1[pkt->type]++ >= 0);
+					if(strcmp(pkt->payload.publish.topic, "pilight/status") == 0) {
+						CuAssertStrEquals(gtc, "offline", pkt->payload.publish.message);
+					} else if(strcmp(pkt->payload.publish.topic, "pilight/mqtt/pilight1") == 0) {
+						CuAssertStrEquals(gtc, "disconnected", pkt->payload.publish.message);
+					}
+					step1[pkt->type]++;
 				} else {
 					step1[pkt->type]++;
 				}
@@ -850,7 +855,7 @@ void test_mqtt_server_client(CuTest *tc) {
 		}
 
 		uv_timer_init(uv_default_loop(), stop_timer_req);
-		uv_timer_start(stop_timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);
+		uv_timer_start(stop_timer_req, (void (*)(uv_timer_t *))stop, 2000, 0);
 
 		mqtt_server(11883);
 		uv_thread_create(&pth, start_clients, NULL);
@@ -871,7 +876,7 @@ void test_mqtt_server_client(CuTest *tc) {
 			case 0: {
 				CuAssertIntEquals(tc, 1, step1[MQTT_CONNACK]);
 				CuAssertIntEquals(tc, 1, step1[MQTT_SUBACK]);
-				CuAssertIntEquals(tc, 2, step1[MQTT_PUBLISH]);
+				CuAssertIntEquals(tc, 3, step1[MQTT_PUBLISH]);
 				CuAssertIntEquals(tc, 1, step1[MQTT_DISCONNECTED]);
 				for(x=0;x<17;x++) {
 					if(x != MQTT_CONNACK && x != MQTT_SUBACK && x != MQTT_PUBLISH && x != MQTT_DISCONNECTED) {
@@ -889,7 +894,7 @@ void test_mqtt_server_client(CuTest *tc) {
 			case 1: {
 				CuAssertIntEquals(tc, 1, step1[MQTT_CONNACK]);
 				CuAssertIntEquals(tc, 1, step1[MQTT_SUBACK]);
-				CuAssertIntEquals(tc, 2, step1[MQTT_PUBLISH]);
+				CuAssertIntEquals(tc, 3, step1[MQTT_PUBLISH]);
 				CuAssertTrue(tc, step1[MQTT_PINGRESP] >= 1);
 				for(x=0;x<17;x++) {
 					if(x != MQTT_CONNACK && x != MQTT_SUBACK && x != MQTT_PUBLISH && x != MQTT_PINGRESP) {
@@ -1039,7 +1044,7 @@ void test_mqtt_server_client(CuTest *tc) {
 			case 9: {
 				CuAssertIntEquals(tc, 1, step1[MQTT_CONNACK]);
 				CuAssertIntEquals(tc, 1, step1[MQTT_SUBACK]);
-				CuAssertIntEquals(tc, 1, step1[MQTT_PUBLISH]);
+				CuAssertIntEquals(tc, 2, step1[MQTT_PUBLISH]);
 				CuAssertIntEquals(tc, 1, step1[MQTT_DISCONNECTED]);
 				for(x=0;x<17;x++) {
 					if(x != MQTT_CONNACK && x != MQTT_SUBACK && x != MQTT_PUBLISH && x != MQTT_DISCONNECTED) {
@@ -1070,7 +1075,7 @@ void test_mqtt_server_client(CuTest *tc) {
 			case 11: {
 				CuAssertIntEquals(tc, 1, step1[MQTT_CONNACK]);
 				CuAssertIntEquals(tc, 1, step1[MQTT_SUBACK]);
-				CuAssertIntEquals(tc, 1, step1[MQTT_PUBLISH]);
+				CuAssertIntEquals(tc, 2, step1[MQTT_PUBLISH]);
 				CuAssertIntEquals(tc, 1, step1[MQTT_DISCONNECTED]);
 				for(x=0;x<17;x++) {
 					if(x != MQTT_CONNACK && x != MQTT_SUBACK && x != MQTT_PUBLISH && x != MQTT_DISCONNECTED) {
