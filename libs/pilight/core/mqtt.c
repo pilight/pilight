@@ -796,16 +796,28 @@ int mqtt_decode(struct mqtt_pkt_t **pkt, unsigned char *buf, unsigned int len, u
 			}
 
 			{
-				if((*pos) < msglength) {
+				if((*pkt)->header.connect.willflag == 1) {
 					length = (buf[(*pos)]) | buf[(*pos)+1]; (*pos)+=2;
+					if((int)length < 0) {
+						logprintf(LOG_ERR, "received incomplete message");
+						mqtt_free((*pkt));
+						FREE((*pkt));
+						return -1;
+					}
 					read_value(&buf[(*pos)], length, &(*pkt)->payload.connect.willtopic);
 					(*pos)+=length;
 				}
 			}
 
 			{
-				if((*pos) < msglength) {
+				if((*pkt)->header.connect.willflag == 1) {
 					length = (buf[(*pos)]) | buf[(*pos)+1]; (*pos)+=2;
+					if((int)length < 0) {
+						logprintf(LOG_ERR, "received incomplete message");
+						mqtt_free((*pkt));
+						FREE((*pkt));
+						return -1;
+					}
 					read_value(&buf[(*pos)], length, &(*pkt)->payload.connect.willmessage);
 					(*pos)+=length;
 				}
@@ -814,6 +826,12 @@ int mqtt_decode(struct mqtt_pkt_t **pkt, unsigned char *buf, unsigned int len, u
 			{
 				if((*pkt)->header.connect.username == 1) {
 					length = (buf[(*pos)]) | buf[(*pos)+1]; (*pos)+=2;
+					if((int)length < 0) {
+						logprintf(LOG_ERR, "received incomplete message");
+						mqtt_free((*pkt));
+						FREE((*pkt));
+						return -1;
+					}
 					read_value(&buf[(*pos)], length, &(*pkt)->payload.connect.username);
 					(*pos)+=length;
 				}
@@ -822,6 +840,12 @@ int mqtt_decode(struct mqtt_pkt_t **pkt, unsigned char *buf, unsigned int len, u
 			{
 				if((*pkt)->header.connect.password == 1) {
 					length = (buf[(*pos)]) | buf[(*pos)+1]; (*pos)+=2;
+					if((int)length < 0) {
+						logprintf(LOG_ERR, "received incomplete message");
+						mqtt_free((*pkt));
+						FREE((*pkt));
+						return -1;
+					}
 					read_value(&buf[(*pos)], length, &(*pkt)->payload.connect.password);
 					(*pos)+=length;
 				}
@@ -2024,7 +2048,7 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 		// int i = 0;
 		// for(i=0;i<*nread;i++) {
-			// printf("0x02x ", (unsigned char)buf[i]);
+			// printf("0x%02x, ", (unsigned char)buf[i]);
 		// }
 		// printf("\n");
 
