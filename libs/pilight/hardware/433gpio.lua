@@ -170,6 +170,7 @@ function M.validate()
 
 	if platform == nil or platform == 'none' then
 		pilight.log(LOG_ERR, "no gpio-platform configured");
+		return;
 	end
 
 	obj = wiringX.setup(platform);
