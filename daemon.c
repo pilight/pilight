@@ -2154,8 +2154,8 @@ static void *socket_parse_data1(int reason, void *param, void *userdata) {
 		return NULL;
 	} else {
 		logprintf(LOG_ERR, "could not parse response to: %s", data->buffer);
-		client_remove(sd);
-		socket_close(sd);
+		//client_remove(sd);
+		//socket_close(sd);
 		json_delete(json);
 		return NULL;
 	}
