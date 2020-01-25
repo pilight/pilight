@@ -125,7 +125,7 @@ void protocol_init(void) {
 	memset(pilight_commit, '\0', 3);
 
 	struct lua_state_t *state = plua_get_free_state();
-	int ret = config_setting_get_string(state->L, "actions-root", 0, &protocol_root);
+	int ret = config_setting_get_string(state->L, "protocol-root", 0, &protocol_root);
 	assert(plua_check_stack(state->L, 0) == 0);
 	plua_clear_state(state);
 
