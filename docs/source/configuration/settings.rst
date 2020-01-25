@@ -38,10 +38,10 @@ Settings
    - `firmware-gpio-reset`_
    - `firmware-gpio-sck`_
 - `Module Paths`_
-   - `action-root`_
-   - `function-root`_
+   - `actions-root`_
+   - `functions-root`_
    - `hardware-root`_
-   - `operator-root`_
+   - `operators-root`_
    - `protocol-root`_
 
 .. versionadded:: nightly
@@ -650,8 +650,8 @@ pilight has the possibility to load various external modules to enhance its func
    protocols, hardware drivers, event operators, functions,
    and actions.
 
-.. _action-root:
-.. rubric:: action-root
+.. _actions-root:
+.. rubric:: actions-root
 
 .. note::
 
@@ -660,12 +660,12 @@ pilight has the possibility to load various external modules to enhance its func
 .. code-block:: json
    :linenos:
 
-   { "action-root": "/usr/local/lib/pilight/action" }
+   { "actions-root": "/usr/local/lib/pilight/actions" }
 
-pilight event actions are loaded from the action-root folder. The action-root setting must contain a valid path.
+pilight event actions are loaded from the actions-root folder. The actions-root setting must contain a valid path.
 
-.. _function-root:
-.. rubric:: function-root
+.. _functions-root:
+.. rubric:: functions-root
 
 .. note::
 
@@ -674,9 +674,9 @@ pilight event actions are loaded from the action-root folder. The action-root se
 .. code-block:: json
    :linenos:
 
-   { "function-root": "/usr/local/lib/pilight/function" }
+   { "functions-root": "/usr/local/lib/pilight/functions" }
 
-pilight event actions are loaded from the function-root folder. The function-root setting must contain a valid path.
+pilight utility functions are loaded from the functions-root folder. The functions-root setting must contain a valid path.
 
 .. _hardware-root:
 .. rubric:: hardware-root
@@ -690,10 +690,10 @@ pilight event actions are loaded from the function-root folder. The function-roo
 
    { "hardware-root": "/usr/local/lib/pilight/hardware" }
 
-pilight event actions are loaded from the hardware-root folder. The hardware-root setting must contain a valid path.
+pilight hardware modules are loaded from the hardware-root folder. The hardware-root setting must contain a valid path.
 
-.. _operator-root:
-.. rubric:: operator-root
+.. _operators-root:
+.. rubric:: operators-root
 
 .. note::
 
@@ -702,9 +702,9 @@ pilight event actions are loaded from the hardware-root folder. The hardware-roo
 .. code-block:: json
    :linenos:
 
-   { "operator-root": "/usr/local/lib/pilight/operator" }
+   { "operators-root": "/usr/local/lib/pilight/operators" }
 
-pilight event actions are loaded from the operator-root folder. The operator-root setting must contain a valid path.
+pilight operators are loaded from the operators-root folder. The operators-root setting must contain a valid path.
 
 .. _protocol-root:
 .. rubric:: protocol-root
@@ -716,9 +716,9 @@ pilight event actions are loaded from the operator-root folder. The operator-roo
 .. code-block:: json
    :linenos:
 
-   { "protocol-root": "/usr/local/lib/pilight/protocol" }
+   { "protocol-root": "/usr/local/lib/pilight/protocols" }
 
-pilight event actions are loaded from the protocol-root folder. The protocol-root setting must contain a valid path.
+pilight protocol modules are loaded from the protocol-root folder. The protocol-root setting must contain a valid path.
 
 MQTT
 ----
