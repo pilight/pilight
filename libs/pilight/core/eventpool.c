@@ -299,12 +299,12 @@ void eventpool_trigger(int reason, void *(*done)(void *), void *data) {
 		eventqueue = node;
 	}
 
-	/*
-	 * If the eventqueue size is above
-	 * 50 entries then there must be a bug
-	 * at the trigger side.
-	 */
-	assert(eventqueue_size < 50);
+	// /*
+	 // * If the eventqueue size is above
+	 // * 50 entries then there must be a bug
+	 // * at the trigger side.
+	 // */
+	// assert(eventqueue_size < 50);
 
 	uv_mutex_unlock(&listeners_lock);
 
