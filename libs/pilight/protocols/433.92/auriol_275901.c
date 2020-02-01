@@ -1,22 +1,14 @@
 /*
-	Copyright (C) 2014 CurlyMo & Tommybear1979
+  Copyright (C) MightyPolo
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  PH 2017-10-14 0.1.4.0 - First working version battery not implemented, in some segments temperature may vary from displayed, do not know why. 
+  PH 2020-01-30 0.1.5.2 - Licence changed, src formating changes.	
 */
 
-//	PH 2017-10-14 0.1.4.0 - First working version battery not implemented, in some segments temperature may vary from displayed, do not know why. 
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,13 +30,13 @@
 #define AVG_PULSE_LENGTH	471                      //change PH 2017-08-08
 #define MIN_PULSE_LENGTH	AVG_PULSE_LENGTH * 0.75  //change PH 2017-08-08
 #define MAX_PULSE_LENGTH	AVG_PULSE_LENGTH * 1.25  //change PH 2017-08-08
-#define ZERO_PULSE		4710  //change PH 2017-08-07
-#define ONE_PULSE					2355  //change PH 2017-08-07
-#define AVG_PULSE					(ZERO_PULSE+ONE_PULSE)/2
-#define RAW_LENGTH				82    //change PH 2017-08-07
+#define ZERO_PULSE			4710  //change PH 2017-08-07
+#define ONE_PULSE			2355  //change PH 2017-08-07
+#define AVG_PULSE			(ZERO_PULSE+ONE_PULSE)/2
+#define RAW_LENGTH			82    //change PH 2017-08-07
 
 typedef struct settings_t {
-	double id;
+	int id;
 	double temp;
 	double humi;
 	struct settings_t *next;
@@ -79,18 +71,16 @@ static void parseCode(void) {
 	}
 
 	for(x=1;x<auriol_275901->rawlen;x+=2) {
-		if(auriol_275901->raw[x] > AVG_PULSE) {
-			//logprintf(LOG_INFO, "auriol_275901: parsecode binary[%d] = 1", i);
+		if(auriol_275901->raw[x] > AVG_PULSE) {			
 			binary[i++] = 1;			
 		} else {
-			//logprintf(LOG_INFO, "auriol_275901: parsecode binary[%d] = 0", i);
 			binary[i++] = 0;
 		}
 	}
 
 	struct settings_t *tmp = settings;
 	while(tmp) {
-		if(fabs(tmp->id-id) < EPSILON){
+		if(tmp->id-id < EPSILON){
 			humi_offset = tmp->humi;
 			temp_offset = tmp->temp;
 			break;
@@ -108,12 +98,6 @@ static void parseCode(void) {
 	id = binToDec(binary, 0, 7);
 	humidity = h0 * 10.0 + h1;		
 	channel = binToDecRev(binary, 36, 39);			
-	
-	
-	//logprintf(LOG_INFO, "auriol_275901: parsecode debug t0 = %d t1 = %d / 10 h0 = %d * 10 h1 = %d temp_offset = %d", t0, t1, h0, h1, temp_offset);
-	//logprintf(LOG_INFO, "auriol_275901: parsecode debug id = %d hum = %f ch = %d temp = %f", id, humidity, channel, temperature);			
-	//logprintf(LOG_INFO, "auriol_275901: parsecode debug temp_in_fh=%d %d %f hum=%f", temp_in_fh, 0x4c4 - temp_in_fh, (0x4c4 - temp_in_fh) * 5.0/9.0/-10, humidity);
-	
 	json_append_member(auriol_275901->message, "id", json_mknumber(id, 0));
 	json_append_member(auriol_275901->message, "temperature", json_mknumber(temperature, 1));
 	json_append_member(auriol_275901->message, "humidity", json_mknumber(humidity, 1));
@@ -145,7 +129,7 @@ static int checkValues(struct JsonNode *jvalues) {
 
 		struct settings_t *tmp = settings;
 		while(tmp) {
-			if(fabs(tmp->id-id) < EPSILON) {
+			if(tmp->id-id < EPSILON) {
 				match = 1;
 				break;
 			}
@@ -210,19 +194,17 @@ void auriol275901Init(void) {
 	options_add(&auriol_275901->options, 0, "humidity-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
 	options_add(&auriol_275901->options, 0, "show-humidity", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	
-
 	auriol_275901->parseCode=&parseCode;
 	auriol_275901->checkValues=&checkValues;
 	auriol_275901->validate=&validate;
 	auriol_275901->gc=&gc;
 }
 
-//#ifdef MODULAR	//changed PH 2017-09-01	0.1.5.1
+
 #if defined(MODULE) && !defined(_WIN32)
-//void compatibility(const char **version, const char **commit) {	//changed PH 2017-09-01
 void compatibility(struct module_t *module) {
 	module->name = "auriol_275901";
-	module->version = "0.1.5.1";
+	module->version = "0.1.5.2";
 	module->reqversion = "7.0";
 	module->reqcommit = "84";
 }
