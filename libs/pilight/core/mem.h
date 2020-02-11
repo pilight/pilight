@@ -11,6 +11,16 @@
 
 #define OUT_OF_MEMORY fprintf(stderr, "out of memory in %s #%d\n", __FILE__, __LINE__),exit(EXIT_FAILURE);
 
+#ifdef __GNUC__
+	#define atomic_inc(ptr) __sync_add_and_fetch(&(ptr), 1)
+	#define atomic_dec(ptr) __sync_add_and_fetch(&(ptr), -1)
+#elif defined (_WIN32)
+	#define atomic_inc(ptr) InterlockedIncrement(&(ptr))
+	#define atomic_inc(ptr) InterlockedDecrement(&(ptr))
+#else
+	#error "Need some more porting work here"
+#endif
+
 int xfree(void);
 void memtrack(void);
 
@@ -35,10 +45,10 @@ char *___strdup(char *, const char *, int);
 #define STRDUP strdup
 #define FREE(a) free((void *)(a)),(a)=NULL
 
-#define _MALLOC malloc
-#define _REALLOC realloc
-#define _CALLOC calloc
-#define _STRDUP strdup
-#define _FREE free
+// #define _MALLOC malloc
+// #define _REALLOC realloc
+// #define _CALLOC calloc
+// #define _STRDUP strdup
+// #define _FREE free
 
 #endif

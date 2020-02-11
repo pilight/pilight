@@ -21,7 +21,7 @@ Example
      },
      "rules": {
        "lightswitch": {
-         "rule": "IF tv.state IS on THEN switch DEVICE tv TO off",
+         "rule": "IF tv.state == on THEN switch DEVICE tv TO off",
          "active": 1
        }
      },

@@ -15,7 +15,7 @@ The basic pilight rule structure for the configuration looks like this:
    {
      "rules": {
        "rule_name": {
-         "rule": "IF switch.state IS on THEN switch DEVICE switch.state TO off",
+         "rule": "IF switch.state == on THEN switch DEVICE switch.state TO off",
          "active": 1
        }
      }

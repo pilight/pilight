@@ -28,6 +28,7 @@
 #include "../core/common.h"
 #include "../core/dso.h"
 #include "../core/log.h"
+#include "../core/mqtt.h"
 #include "../protocols/protocol.h"
 #include "../config/config.h"
 
@@ -54,6 +55,11 @@ static const struct {
 } pilight_defaults[] = {
 	{ "PILIGHT_VERSION", { .string_ = PILIGHT_VERSION }, LUA_TSTRING },
 	{ "PILIGHT_V", { .number_ = PILIGHT_V }, LUA_TNUMBER },
+#ifdef MQTT
+#ifdef MQTT_ENABLE
+	{ "MQTT_PORT", { .number_ = MQTT_PORT }, LUA_TNUMBER },
+#endif
+#endif
 #ifdef WEBSERVER_ENABLE
 	{ "WEBSERVER_HTTP_PORT", { .number_ = WEBSERVER_HTTP_PORT }, LUA_TNUMBER },
 #ifdef WEBSERVER_HTTPS
@@ -117,10 +123,36 @@ static const struct {
 static const struct {
 	char *name;
 	int number;
+} pilight_mqtt[] = {
+	{ "MQTT_CONNECT", MQTT_CONNECT },
+	{ "MQTT_CONNACK", MQTT_CONNACK },
+	{ "MQTT_PUBLISH", MQTT_PUBLISH },
+	{ "MQTT_PUBACK", MQTT_PUBACK },
+	{ "MQTT_PUBREC", MQTT_PUBREC },
+	{ "MQTT_PUBREL", MQTT_PUBREL },
+	{ "MQTT_PUBACK", MQTT_PUBACK },
+	{ "MQTT_PUBCOMP", MQTT_PUBCOMP },
+	{ "MQTT_SUBSCRIBE", MQTT_SUBSCRIBE },
+	{ "MQTT_UNSUBSCRIBE", MQTT_UNSUBSCRIBE },
+	{ "MQTT_UNSUBACK", MQTT_UNSUBACK },
+	{ "MQTT_PINGREQ", MQTT_PINGREQ },
+	{ "MQTT_PINGRESP", MQTT_PINGRESP },
+	{ "MQTT_DISCONNECT", MQTT_DISCONNECT },
+	{ "MQTT_CONNECTED", MQTT_CONNECTED },
+	{ "MQTT_RETAIN", MQTT_RETAIN },
+	{ "MQTT_DUB", MQTT_DUB },
+	{ "MQTT_QOS1", MQTT_QOS1 },
+	{ "MQTT_QOS2", MQTT_QOS2 },
+};
+
+static const struct {
+	char *name;
+	int number;
 } pilight_hardware[] = {
 	{ "RF433", RF433 },
 	{ "RF868", RF868 },
 	{ "SHELLY", SHELLY },
+	{ "TASMOTA", TASMOTA },
 	{ "NONE", RFNONE }
 };
 
@@ -236,6 +268,12 @@ void plua_register_library(struct lua_State *L) {
 	for(i=0;i<len;i++) {
 		lua_pushnumber(L, pilight_log[i].number);
 		lua_setglobal(L, pilight_log[i].name);
+	}
+
+	len = sizeof(pilight_mqtt)/sizeof(pilight_mqtt[0]);
+	for(i=0;i<len;i++) {
+		lua_pushnumber(L, pilight_mqtt[i].number);
+		lua_setglobal(L, pilight_mqtt[i].name);
 	}
 
 	/*

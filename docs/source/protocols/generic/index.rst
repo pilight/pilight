@@ -4,6 +4,7 @@ Generic
 .. toctree::
    :maxdepth: 3
 
+   datetime
    dimmer
    label
    raw

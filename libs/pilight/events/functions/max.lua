@@ -8,13 +8,13 @@ local M = {}
 
 function M.run(a, b, c)
 	if (a == nil or b == nil) or c ~= nil then
-		error("MAX requires two arguments");
+		pilight.log(LOG_ERR, "MAX requires two arguments");
 	end
 	if tonumber(a) == nil then
-		error(string.format("MAX argument #1 expected number, \"%s\" given", type(a)));
+		pilight.log(LOG_ERR, string.format("MAX argument #1 expected number, \"%s\" given", type(a)));
 	end
 	if tonumber(b) == nil then
-		error(string.format("MAX argument #2 expected number, \"%s\" given", type(b)));
+		pilight.log(LOG_ERR, string.format("MAX argument #2 expected number, \"%s\" given", type(b)));
 	end
 
 	return math.max(tonumber(a), tonumber(b));
