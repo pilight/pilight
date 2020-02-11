@@ -55,8 +55,9 @@ typedef struct settings_t {
     int id;
     int channel;
     int battery;
-    double temp;
-    double humi;
+    double temperature_offset;
+    double humidity_offset;
+    double temperature_decimals;
     struct settings_t *next;
 } settings_t;
 
@@ -70,7 +71,7 @@ static bool isValidPulse(uint16_t pulseLength, enum PulseType measureAgainst) {
 }
 
 static int validate(void) {
-    if (nexus->rawlen >= RAW_LENGTH && isValidPulse(nexus->raw[0], START_P) && isValidPulse(nexus->raw[RAW_LENGTH - 2], START_P)) {
+    if(nexus->rawlen >= RAW_LENGTH && isValidPulse(nexus->raw[0], START_P) && isValidPulse(nexus->raw[RAW_LENGTH - 2], START_P)) {
         // the first and second-to-last pulse should be a short one
         return 0;
     }
@@ -80,7 +81,6 @@ static int validate(void) {
 static void parseCode(void) {
     const int MAXBITS = nexus->rawlen / 2;
     int id = 0, battery = 0, channel = 0;
-    double humi_offset = 0.0, temp_offset = 0.0;
     double temperature = 0.0, humidity = 0.0;
     int binary[MAXBITS];
     int x = 0, i = 0;
@@ -92,13 +92,13 @@ static void parseCode(void) {
     // }
 
     // decode pulses into bits
-    for (x = 1; x < nexus->rawlen - 1; x += 2) {
-        if (!isValidPulse(nexus->raw[x - 1], START_P)) {
+    for(x = 1; x < nexus->rawlen - 1; x += 2) {
+        if(!isValidPulse(nexus->raw[x - 1], START_P)) {
             return;
         }
-        if (isValidPulse(nexus->raw[x], ONE_P)) {
+        if(isValidPulse(nexus->raw[x], ONE_P)) {
             binary[i++] = 1;
-        } else if (isValidPulse(nexus->raw[x], ZERO_P)) {
+        } else if(isValidPulse(nexus->raw[x], ZERO_P)) {
             binary[i++] = 0;
         } else {
             return;
@@ -106,10 +106,10 @@ static void parseCode(void) {
     }
 
     // bit 10 should be 0 and bits 25-28 should be 1
-    if (binary[9] != 0) {
+    if(binary[9] != 0) {
         return;
     }
-    if (binary[24] != 1 || binary[25] != 1 || binary[26] != 1 || binary[27] != 1) {
+    if(binary[24] != 1 || binary[25] != 1 || binary[26] != 1 || binary[27] != 1) {
         return;
     }
 
@@ -121,32 +121,21 @@ static void parseCode(void) {
     humidity = (double)binToDecRev(binary, 28, 35);
 
     temperature /= 10;
-
-    struct settings_t *tmp = settings;
-    while (tmp) {
-        if (tmp->id == id) {
-            humi_offset = tmp->humi;
-            temp_offset = tmp->temp;
-            break;
-        }
-        tmp = tmp->next;
-    }
-
-    temperature += temp_offset;
-    humidity += humi_offset;
+    temperature += settings->temperature_offset;
+    humidity += settings->humidity_offset;
 
     nexus->message = json_mkobject();
     json_append_member(nexus->message, "id", json_mknumber(id, 0));
     json_append_member(nexus->message, "channel", json_mknumber(channel, 0));
     json_append_member(nexus->message, "battery", json_mknumber(battery, 0));
-    json_append_member(nexus->message, "temperature", json_mknumber(temperature, 1));
+    json_append_member(nexus->message, "temperature", json_mknumber(temperature, settings->temperature_decimals));
     json_append_member(nexus->message, "humidity", json_mknumber(humidity, 0));
 }
 
 static int checkValues(struct JsonNode *jvalues) {
     struct JsonNode *jid = NULL;
 
-    if ((jid = json_find_member(jvalues, "id"))) {
+    if((jid = json_find_member(jvalues, "id"))) {
         struct settings_t *snode = NULL;
         struct JsonNode *jchild = NULL;
         struct JsonNode *jchild1 = NULL;
@@ -154,10 +143,10 @@ static int checkValues(struct JsonNode *jvalues) {
         int match = 0;
 
         jchild = json_first_child(jid);
-        while (jchild) {
+        while(jchild) {
             jchild1 = json_first_child(jchild);
-            while (jchild1) {
-                if (strcmp(jchild1->key, "id") == 0) {
+            while(jchild1) {
+                if(strcmp(jchild1->key, "id") == 0) {
                     id = (int)jchild1->number_;
                 }
                 jchild1 = jchild1->next;
@@ -166,25 +155,27 @@ static int checkValues(struct JsonNode *jvalues) {
         }
 
         struct settings_t *tmp = settings;
-        while (tmp) {
-            if (tmp->id == id) {
+        while(tmp) {
+            if(tmp->id == id) {
                 match = 1;
                 break;
             }
             tmp = tmp->next;
         }
 
-        if (match == 0) {
-            if ((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
+        if(match == 0) {
+            if((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
                 fprintf(stderr, "out of memory\n");
                 exit(EXIT_FAILURE);
             }
             snode->id = id;
-            snode->temp = 0;
-            snode->humi = 0;
+            snode->temperature_offset = 0;
+            snode->humidity_offset = 0;
+            snode->temperature_decimals = 1;
 
-            json_find_number(jvalues, "temperature-offset", &snode->temp);
-            json_find_number(jvalues, "humidity-offset", &snode->humi);
+            json_find_number(jvalues, "temperature-offset", &snode->temperature_offset);
+            json_find_number(jvalues, "humidity-offset", &snode->humidity_offset);
+            json_find_number(jvalues, "temperature-decimals", &snode->temperature_decimals);
 
             snode->next = settings;
             settings = snode;
@@ -195,12 +186,12 @@ static int checkValues(struct JsonNode *jvalues) {
 
 static void gc(void) {
     struct settings_t *tmp = NULL;
-    while (settings) {
+    while(settings) {
         tmp = settings;
         settings = settings->next;
         FREE(tmp);
     }
-    if (settings != NULL) {
+    if(settings != NULL) {
         FREE(settings);
     }
 }
