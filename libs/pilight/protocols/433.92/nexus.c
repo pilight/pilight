@@ -91,6 +91,7 @@ static void parseCode(void) {
     // 	return;
     // }
 
+    // decode pulses into bits
     for (x = 1; x < nexus->rawlen - 1; x += 2) {
         if (!isValidPulse(nexus->raw[x - 1], START_P)) {
             return;
@@ -104,16 +105,15 @@ static void parseCode(void) {
         }
     }
 
+    // bit 10 should be 0 and bits 25-28 should be 1
     if (binary[9] != 0) {
-        // logprintf(LOG_DEBUG, "nexus: Bit 10 not zero");
         return;
     }
     if (binary[24] != 1 || binary[25] != 1 || binary[26] != 1 || binary[27] != 1) {
-        // logprintf(LOG_DEBUG, "nexus: Bits 25-28 not one");
         return;
     }
 
-    // decode payload
+    // decode bits into data
     id = binToDecRev(binary, 0, 7);
     battery = binary[8] ? 100 : 0;
     channel = binToDecRev(binary, 10, 11);
@@ -124,7 +124,7 @@ static void parseCode(void) {
 
     struct settings_t *tmp = settings;
     while (tmp) {
-        if (fabs(tmp->id - id) < EPSILON) {
+        if (tmp->id == id) {
             humi_offset = tmp->humi;
             temp_offset = tmp->temp;
             break;
@@ -167,7 +167,7 @@ static int checkValues(struct JsonNode *jvalues) {
 
         struct settings_t *tmp = settings;
         while (tmp) {
-            if (fabs(tmp->id - id) < EPSILON) {
+            if (tmp->id == id) {
                 match = 1;
                 break;
             }
