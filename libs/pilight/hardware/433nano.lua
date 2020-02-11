@@ -74,6 +74,16 @@ function M.send(obj, reason, data)
 	serial.write(code);
 end
 
+function invalid_stream(data, content)
+	pilight.log(LOG_NOTICE, "433nano: received invalid stream \'" .. content .. "'");
+
+	data['pulses'] = {};
+	data['length'] = 0;
+	data['content'] = '';
+	data['write'] = 2;
+	data['invalid'] = 1;
+end
+
 function M.callback(rw, serial, line)
 	if line == nil then
 		return;
@@ -102,7 +112,15 @@ function M.callback(rw, serial, line)
 				data['content'] = "";
 			end
 
-			data['content'] = data['content'] .. line;
+			if data['invalid'] == nil then
+				data['invalid'] = 0;
+			end
+
+			if line ~= '\n' then
+				data['content'] = data['content'] .. line;
+			else
+				data['content'] = "";
+			end
 
 			local a = #data['content'];
 			local l = a;
@@ -115,14 +133,14 @@ function M.callback(rw, serial, line)
 					end
 				end
 
-				if l == a then
+				local c = string.sub(data['content'], l, l);
+
+				if l == a and c ~= '@' then
 					break;
 				end
 
-				local c = string.sub(data['content'], l, l);
 				if c == '@' then
 					content = string.sub(data['content'], 1, l)
-
 					data['content'] = string.sub(data['content'], l+1, a);
 					a = #data['content'];
 
@@ -155,8 +173,8 @@ function M.callback(rw, serial, line)
 										c = string.sub(content, i+1, x);
 										i = x + 1;
 										pulses[#pulses+1] = tonumber(c);
-										if #pulses >= 9 or x >= a then
-											pilight.log(LOG_NOTICE, "433nano: discarded invalid pulse train");
+										if #pulses > 9 then
+											invalid_stream(data, content);
 											serial.read();
 											return;
 										end
@@ -186,14 +204,16 @@ function M.callback(rw, serial, line)
 
 					if #stream > 0 then
 						local b = 1;
-						if tonumber(stream[i]) ~= nil then
-							for i = 1, #stream, 1 do
-								data['pulses'][b] = pulses[1];
-								b = b + 1;
-								data['pulses'][b] = pulses[stream[i] + 1];
-								b = b + 1;
+						for i = 1, #stream, 1 do
+							if tonumber(stream[i]) ~= nil then
+							data['pulses'][b] = pulses[1];
+							b = b + 1;
+							data['pulses'][b] = pulses[stream[i] + 1];
+							b = b + 1;
 							end
 						end
+
+						data['invalid'] = 0;
 
 						data['length'] = b-1;
 						local tmp = data['content'];
@@ -299,4 +319,4 @@ function M.info()
 	}
 end
 
-return M;
+return M; 

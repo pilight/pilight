@@ -35,8 +35,6 @@
 #include "libs/pilight/core/common.h"
 #include "libs/pilight/core/options.h"
 
-static uv_signal_t *signal_req = NULL;
-
 int main_gc(void) {
 	log_shell_disable();
 
@@ -46,19 +44,6 @@ int main_gc(void) {
 	FREE(progname);
 
 	return EXIT_SUCCESS;
-}
-
-void signal_cb(uv_signal_t *handle, int signum) {
-	uv_stop(uv_default_loop());
-	main_gc();
-}
-
-void close_cb(uv_handle_t *handle) {
-	FREE(handle);
-}
-
-static void walk_cb(uv_handle_t *handle, void *arg) {
-	uv_close(handle, close_cb);
 }
 
 int main(int argc, char **argv) {
@@ -77,8 +62,9 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_NOTICE);
 
 	struct options_t *options = NULL;
-  unsigned char output[33];
-	char converted[65], *password = NULL;
+	unsigned char output[34] = { '\0' };
+	unsigned char converted[65] = { '\0' };
+	char *password = NULL;
 	mbedtls_sha256_context ctx;
 	int i = 0, x = 0, help = 0;
 
@@ -86,13 +72,6 @@ int main(int argc, char **argv) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	strcpy(progname, "pilight-sha256");
-
-	if((signal_req = malloc(sizeof(uv_signal_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-
-	uv_signal_init(uv_default_loop(), signal_req);
-	uv_signal_start(signal_req, signal_cb, SIGINT);	
 
 	options_add(&options, "H", "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, "V", "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
@@ -115,7 +94,13 @@ int main(int argc, char **argv) {
 	}
 
 	if(options_exists(options, "p") == 0) {
-		options_get_string(options, "p", &password);
+		char *tmp = NULL;
+		options_get_string(options, "p", &tmp);
+		if(tmp != NULL) {
+			if((password = STRDUP(tmp)) == NULL) {
+				OUT_OF_MEMORY
+			}
+		}
 	}
 
 	options_delete(options);
@@ -128,40 +113,30 @@ int main(int argc, char **argv) {
 		goto close;
 	}
 
-	if(strlen(password) < 64) {
-		if((password = REALLOC(password, 65)) == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
+	mbedtls_sha256_init(&ctx);
+	mbedtls_sha256_starts(&ctx, 0);
+	mbedtls_sha256_update(&ctx, (unsigned char *)password, strlen((char *)password));
+	mbedtls_sha256_finish(&ctx, output);
+	for(x=0;x<64;x+=2) {
+		sprintf((char *)&converted[x], "%02x", output[x/2]);
 	}
+	mbedtls_sha256_free(&ctx);
 
-	for(i=0;i<SHA256_ITERATIONS;i++) {
+	for(i=1;i<SHA256_ITERATIONS;i++) {
 		mbedtls_sha256_init(&ctx);
 		mbedtls_sha256_starts(&ctx, 0);
-		mbedtls_sha256_update(&ctx, (unsigned char *)password, strlen((char *)password));
+		mbedtls_sha256_update(&ctx, (unsigned char *)converted, 64);
 		mbedtls_sha256_finish(&ctx, output);
 		for(x=0;x<64;x+=2) {
-			sprintf(&password[x], "%02x", output[x/2] );
+			sprintf((char *)&converted[x], "%02x", output[x/2]);
 		}
 		mbedtls_sha256_free(&ctx);
 	}
 
-	for(x=0;x<64;x+=2) {
-		sprintf(&converted[x], "%02x", output[x/2] );
-	}
-
-	printf("%s\n", converted);
+	printf("%.64s\n", converted);
 	mbedtls_sha256_free(&ctx);
 
 close:
-	signal_cb(NULL, SIGINT);
-	uv_run(uv_default_loop(), UV_RUN_DEFAULT);	
-	uv_walk(uv_default_loop(), walk_cb, NULL);
-	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-
-	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
-		usleep(10);
-	}
-
 	if(password != NULL) {
 		FREE(password);
 	}
