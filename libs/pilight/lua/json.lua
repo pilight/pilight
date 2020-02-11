@@ -28,7 +28,7 @@ local function skip_delim(str, pos, delim, err_if_missing)
   pos = pos + #str:match('^%s*', pos)
   if str:sub(pos, pos) ~= delim then
     if err_if_missing then
-      error('Expected ' .. delim .. ' near position ' .. pos)
+      pilight.log(LOG_ERR, 'Expected ' .. delim .. ' near position ' .. pos)
     end
     return pos, false
   end
@@ -40,14 +40,14 @@ end
 local function parse_str_val(str, pos, val)
   val = val or ''
   local early_end_error = 'End of input found while parsing string.'
-  if pos > #str then error(early_end_error) end
+  if pos > #str then pilight.log(LOG_ERR, early_end_error) end
   local c = str:sub(pos, pos)
   if c == '"'  then return val, pos + 1 end
   if c ~= '\\' then return parse_str_val(str, pos + 1, val .. c) end
   -- We must have a \ character.
   local esc_map = {b = '\b', f = '\f', n = '\n', r = '\r', t = '\t'}
   local nextc = str:sub(pos + 1, pos + 1)
-  if not nextc then error(early_end_error) end
+  if not nextc then pilight.log(LOG_ERR, early_end_error) end
   return parse_str_val(str, pos + 2, val .. (esc_map[nextc] or nextc))
 end
 
@@ -55,7 +55,7 @@ end
 local function parse_num_val(str, pos)
   local num_str = str:match('^-?%d+%.?%d*[eE]?[+-]?%d*', pos)
   local val = tonumber(num_str)
-  if not val then error('Error parsing number at position ' .. pos .. '.') end
+  if not val then pilight.log(LOG_ERR, 'Error parsing number at position ' .. pos .. '.') end
   return val, pos + #num_str
 end
 
@@ -67,7 +67,7 @@ function json.stringify(obj, as_key, indent)
   local kind = kind_of(obj)  -- This is 'array' if it's an array or type(obj) otherwise.
 	if indent == nil then indent = 0 end
   if kind == 'array' then
-    if as_key then error('Can\'t encode array as key.') end
+    if as_key then pilight.log(LOG_ERR, 'Can\'t encode array as key.') end
     s[#s + 1] = '['
 		local t = nil;
     for i, val in ipairs(obj) do
@@ -83,7 +83,7 @@ function json.stringify(obj, as_key, indent)
 		end
     s[#s + 1] = ']'
   elseif kind == 'table' then
-    if as_key then error('Can\'t encode table as key.') end
+    if as_key then pilight.log(LOG_ERR, 'Can\'t encode table as key.') end
     s[#s + 1] = '{\n'
     for k, v in pairs(obj) do
       if #s > 1 then s[#s + 1] = ',\n' end
@@ -107,7 +107,7 @@ function json.stringify(obj, as_key, indent)
   elseif kind == 'nil' then
     return 'null'
   else
-    error('Unjsonifiable type: ' .. kind .. '.')
+    pilight.log(LOG_ERR, 'Unjsonifiable type: ' .. kind .. '.')
   end
   return table.concat(s)
 end
@@ -116,7 +116,7 @@ json.null = {}  -- This is a one-off table to represent the null value.
 
 function json.parse(str, pos, end_delim)
   pos = pos or 1
-  if pos > #str then error('Reached unexpected end of input.') end
+  if pos > #str then pilight.log(LOG_ERR, 'Reached unexpected end of input.') end
   local pos = pos + #str:match('^%s*', pos)  -- Skip whitespace.
   local first = str:sub(pos, pos)
   if first == '{' then  -- Parse an object.
@@ -125,7 +125,7 @@ function json.parse(str, pos, end_delim)
     while true do
       key, pos = json.parse(str, pos, '}')
       if key == nil then return obj, pos end
-      if not delim_found then error('Comma missing between object items.') end
+      if not delim_found then pilight.log(LOG_ERR, 'Comma missing between object items.') end
       pos = skip_delim(str, pos, ':', true)  -- true -> error if missing.
       obj[key], pos = json.parse(str, pos)
       pos, delim_found = skip_delim(str, pos, ',')
@@ -136,7 +136,7 @@ function json.parse(str, pos, end_delim)
     while true do
       val, pos = json.parse(str, pos, ']')
       if val == nil then return arr, pos end
-      if not delim_found then error('Comma missing between array items.') end
+      if not delim_found then pilight.log(LOG_ERR, 'Comma missing between array items.') end
       arr[#arr + 1] = val
       pos, delim_found = skip_delim(str, pos, ',')
     end
@@ -153,7 +153,7 @@ function json.parse(str, pos, end_delim)
       if str:sub(pos, lit_end) == lit_str then return lit_val, lit_end + 1 end
     end
     local pos_info_str = 'position ' .. pos .. ': ' .. str:sub(pos, pos + 10)
-    error('Invalid json syntax starting at ' .. pos_info_str)
+    pilight.log(LOG_ERR, 'Invalid json syntax starting at ' .. pos_info_str)
   end
 end
 

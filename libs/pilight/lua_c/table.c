@@ -386,10 +386,9 @@ void plua_metatable_init(struct plua_metatable_t **table) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	memset(*table, 0, sizeof(struct plua_metatable_t));
-	if(((*table)->ref = MALLOC(sizeof(uv_sem_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-	uv_sem_init((*table)->ref, 0);
+
+	(*table)->type = PLUA_TABLE;
+	(*table)->ref = 1;
 
 	uv_mutex_init(&(*table)->lock);
 }
@@ -407,7 +406,6 @@ int plua_table(struct lua_State *L) {
 
 	struct plua_metatable_t *table = NULL;
 	plua_metatable_init(&table);
-
 	push_plua_metatable(L, table);
 
 	plua_gc_reg(L, table, plua_table_gc);

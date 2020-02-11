@@ -43,7 +43,7 @@ typedef struct lua_http_t {
 
 	int code;
 	int size;
-	int type;
+	int reqtype;
 } lua_http_t;
 
 static void plua_network_http_object(lua_State *L, struct lua_http_t *http);
@@ -75,9 +75,7 @@ static int plua_network_http_set_userdata(lua_State *L) {
 		}
 		http->table = (void *)lua_topointer(L, -1);
 
-		if(http->table->ref != NULL) {
-			uv_sem_post(http->table->ref);
-		}
+		atomic_inc(http->table->ref);
 
 		lua_remove(L, -1);
 
@@ -384,7 +382,7 @@ static int plua_network_http_get(lua_State *L) {
 		pluaL_error(L, "internal error: http object not passed");
 	}
 
-	http->type = GET;
+	http->reqtype = GET;
 
 	if(http->url == NULL) {
 		pluaL_error(L, "http server url not set");
@@ -395,8 +393,8 @@ static int plua_network_http_get(lua_State *L) {
 	}
 
 	if(http_get_content(http->url, plua_network_http_callback, http) != 0) {
-		plua_gc_unreg(http->L, http);
-		plua_network_http_gc((void *)http);
+		plua_gc_unreg(L, http);
+		plua_gc_reg(NULL, http, plua_network_http_gc);
 
 		lua_pushboolean(L, 0);
 
@@ -405,7 +403,7 @@ static int plua_network_http_get(lua_State *L) {
 		return 1;
 	}
 
-	plua_gc_unreg(http->L, http);
+	plua_gc_unreg(L, http);
 
 	lua_pushboolean(L, 1);
 
@@ -425,7 +423,7 @@ static int plua_network_http_post(lua_State *L) {
 		pluaL_error(L, "internal error: http object not passed");
 	}
 
-	http->type = POST;
+	http->reqtype = POST;
 
 	if(http->url == NULL) {
 		pluaL_error(L, "http server url not set");
@@ -444,8 +442,7 @@ static int plua_network_http_post(lua_State *L) {
 	}
 
 	if(http_post_content(http->url, http->mimetype, http->data, plua_network_http_callback, http) != 0) {
-		plua_gc_unreg(http->L, http);
-		plua_network_http_gc((void *)http);
+		plua_gc_unreg(L, http);
 
 		lua_pushboolean(L, 0);
 
@@ -454,7 +451,7 @@ static int plua_network_http_post(lua_State *L) {
 		return 1;
 	}
 
-	plua_gc_unreg(http->L, http);
+	plua_gc_unreg(L, http);
 
 	lua_pushboolean(L, 1);
 
@@ -713,6 +710,7 @@ int plua_network_http(struct lua_State *L) {
 	lua_http->code = -1;
 
 	plua_gc_reg(L, lua_http, plua_network_http_gc);
+	plua_gc_unreg(NULL, lua_http);
 
 	plua_network_http_object(L, lua_http);
 

@@ -918,6 +918,15 @@ function parseValues(data) {
 						}
 						$('#'+dvalues+'_switch').slider('refresh');
 					}
+					if(vindex == 'connected' && $('#'+dvalues+'_switch').length > 0) {
+						if(aReadOnly[dvalues] != 1) {
+							if(vvalues == 1) {
+								$('#'+dvalues+'_switch').slider('disable');
+							} else {
+								$('#'+dvalues+'_switch').slider('enable');
+							}
+						}
+					}
 				} else if(iType == 2) {
 					if(vindex == 'state' && $('#'+dvalues+'_switch').length > 0) {
 						if(vvalues == 'on') {
@@ -1141,6 +1150,7 @@ function parseValues(data) {
 }
 
 function parseData(data) {
+	console.log(JSON.stringify(data));
 	if(data.hasOwnProperty("config")) {
 		config = data['config'];
 		if(config.hasOwnProperty("gui") && config.hasOwnProperty("devices")) {

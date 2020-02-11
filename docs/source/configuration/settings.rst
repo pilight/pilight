@@ -38,11 +38,18 @@ Settings
    - `firmware-gpio-reset`_
    - `firmware-gpio-sck`_
 - `Module Paths`_
-   - `action-root`_
-   - `function-root`_
+   - `actions-root`_
+   - `functions-root`_
    - `hardware-root`_
-   - `operator-root`_
+   - `operators-root`_
    - `protocol-root`_
+
+.. versionadded:: nightly
+
+- `MQTT`_
+   - `mqtt-enable`_
+   - `mqtt-port`_
+   - `mqtt-blacklist`_
 
 Introduction
 ------------
@@ -265,6 +272,12 @@ pilight can be ran on various GPIO compatible platforms. However, it is impossib
               - pcduino1
 
 If you are running on a platform that doesn't support GPIO, you can either use ``none`` as the ``gpio-platform`` or remove the setting altogether.
+
+If you are not sure what version Raspberry Pi you are running, you can run the following command:
+
+.. code-block:: console
+
+   # cat /sys/firmware/devicetree/base/model
 
 .. _loopback:
 .. rubric:: loopback
@@ -637,8 +650,8 @@ pilight has the possibility to load various external modules to enhance its func
    protocols, hardware drivers, event operators, functions,
    and actions.
 
-.. _action-root:
-.. rubric:: action-root
+.. _actions-root:
+.. rubric:: actions-root
 
 .. note::
 
@@ -647,12 +660,12 @@ pilight has the possibility to load various external modules to enhance its func
 .. code-block:: json
    :linenos:
 
-   { "action-root": "/usr/local/lib/pilight/action" }
+   { "actions-root": "/usr/local/lib/pilight/actions" }
 
-pilight event actions are loaded from the action-root folder. The action-root setting must contain a valid path.
+pilight event actions are loaded from the actions-root folder. The actions-root setting must contain a valid path.
 
-.. _function-root:
-.. rubric:: function-root
+.. _functions-root:
+.. rubric:: functions-root
 
 .. note::
 
@@ -661,9 +674,9 @@ pilight event actions are loaded from the action-root folder. The action-root se
 .. code-block:: json
    :linenos:
 
-   { "function-root": "/usr/local/lib/pilight/function" }
+   { "functions-root": "/usr/local/lib/pilight/functions" }
 
-pilight event actions are loaded from the function-root folder. The function-root setting must contain a valid path.
+pilight utility functions are loaded from the functions-root folder. The functions-root setting must contain a valid path.
 
 .. _hardware-root:
 .. rubric:: hardware-root
@@ -677,10 +690,10 @@ pilight event actions are loaded from the function-root folder. The function-roo
 
    { "hardware-root": "/usr/local/lib/pilight/hardware" }
 
-pilight event actions are loaded from the hardware-root folder. The hardware-root setting must contain a valid path.
+pilight hardware modules are loaded from the hardware-root folder. The hardware-root setting must contain a valid path.
 
-.. _operator-root:
-.. rubric:: operator-root
+.. _operators-root:
+.. rubric:: operators-root
 
 .. note::
 
@@ -689,9 +702,9 @@ pilight event actions are loaded from the hardware-root folder. The hardware-roo
 .. code-block:: json
    :linenos:
 
-   { "operator-root": "/usr/local/lib/pilight/operator" }
+   { "operators-root": "/usr/local/lib/pilight/operators" }
 
-pilight event actions are loaded from the operator-root folder. The operator-root setting must contain a valid path.
+pilight operators are loaded from the operators-root folder. The operators-root setting must contain a valid path.
 
 .. _protocol-root:
 .. rubric:: protocol-root
@@ -703,6 +716,54 @@ pilight event actions are loaded from the operator-root folder. The operator-roo
 .. code-block:: json
    :linenos:
 
-   { "protocol-root": "/usr/local/lib/pilight/protocol" }
+   { "protocol-root": "/usr/local/lib/pilight/protocols" }
 
-pilight event actions are loaded from the protocol-root folder. The protocol-root setting must contain a valid path.
+pilight protocol modules are loaded from the protocol-root folder. The protocol-root setting must contain a valid path.
+
+MQTT
+----
+
+The following settings change the way the internal MQTT broker work or it can be disabled altogether. The MQTT client will not be affected by any of these settings. These can still be used to connect to an external broker.
+
+.. _mqtt-enable:
+.. rubric:: mqtt-enable
+
+.. note::
+
+   Linux, \*BSD, and Windows
+
+.. code-block:: json
+   :linenos:
+
+   { "mqtt-enable": 1 }
+
+The pilight MQTT broker can be turned off as a whole. This could be useful if you do not want to use the MQTT broker at all or if you want to use your own MQTT broken implementation. This setting can be either 0 or 1.
+
+.. _mqtt-port:
+.. rubric:: mqtt-port
+
+.. note::
+
+   Linux, \*BSD, and Windows
+
+.. code-block:: json
+   :linenos:
+
+   { "mqtt-port": 1883 }
+
+The pilight MQTT broker runs by default on the standard 1883 port. If you do want to run the MQTT broker any other port, you can change this setting. The port specified must be a valid and unused port.
+
+.. _mqtt-blacklist:
+.. rubric:: mqtt-blacklist
+
+.. note::
+
+   Linux, \*BSD, and Windows
+
+.. code-block:: json
+   :linenos:
+
+   { "mqtt-blacklist": [ "topic", "..." ] }
+
+This settings allow you to prevent the broker to communication certain topics, e.g. the datetime protocol that sends
+updates every second. Only valid MQTT topics with or without wildcards are supported,

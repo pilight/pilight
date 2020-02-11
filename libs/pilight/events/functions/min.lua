@@ -8,13 +8,13 @@ local M = {}
 
 function M.run(a, b, c)
 	if (a == nil or b == nil) or c ~= nil then
-		error("MIN requires two arguments");
+		pilight.log(LOG_ERR, "MIN requires two arguments");
 	end
 	if tonumber(a) == nil then
-		error(string.format("MIN argument #1 expected number, \"%s\" given", type(a)));
+		pilight.log(LOG_ERR, string.format("MIN argument #1 expected number, \"%s\" given", type(a)));
 	end
 	if tonumber(b) == nil then
-		error(string.format("MIN argument #2 expected number, \"%s\" given", type(b)));
+		pilight.log(LOG_ERR, string.format("MIN argument #2 expected number, \"%s\" given", type(b)));
 	end
 
 	return math.min(tonumber(a), tonumber(b));

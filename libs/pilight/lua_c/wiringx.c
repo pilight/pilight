@@ -142,9 +142,7 @@ static int plua_wiringx_set_userdata(lua_State *L) {
 		}
 
 		wiringx->table = (void *)lua_topointer(L, -1);
-		if(wiringx->table->ref != NULL) {
-			uv_sem_post(wiringx->table->ref);
-		}
+		atomic_inc(wiringx->table->ref);
 
 		lua_pushboolean(L, 1);
 
@@ -720,7 +718,7 @@ int plua_wiringx_setup(struct lua_State *L) {
 		pluaL_error(L, "wiringX setup requires 1 argument, %d given", lua_gettop(L));
 	}
 
-#if !defined(__arm__) && !defined(__mips__) && !defined(PILIGHT_UNITTEST)
+#if !defined(__arm__) && !defined(__mips__) && !defined(__aarch64__) && !defined(PILIGHT_UNITTEST)
 	lua_remove(L, -1);
 	lua_pushboolean(L, 0);
 #else

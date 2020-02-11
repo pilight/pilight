@@ -30,13 +30,9 @@
 #include "../table.h"
 #include "../network.h"
 
-#define LISTEN	0
-#define	SEND		1
-
 typedef struct lua_mdns_t {
 	PLUA_INTERFACE_FIELDS
 
-	int type;
 	char *callback;
 } lua_mdns_t;
 
@@ -69,9 +65,7 @@ static int plua_network_mdns_set_userdata(lua_State *L) {
 		}
 		mdns->table = (void *)lua_topointer(L, -1);
 
-		if(mdns->table->ref != NULL) {
-			uv_sem_post(mdns->table->ref);
-		}
+		atomic_inc(mdns->table->ref);
 
 		lua_pushboolean(L, 1);
 
@@ -1016,7 +1010,6 @@ static int plua_network_mdns_send(lua_State *L) {
 	memset(&pkt1, 0, sizeof(struct mdns_packet_t));
 
 	if(mdns_decode(&pkt1, buf, len) == 0) {
-		mdns->type = SEND;
 		mdns_send(&pkt1, read_cb, mdns);
 		mdns_free(&pkt1);
 	} else {
@@ -1047,7 +1040,6 @@ static int plua_network_mdns_listen(lua_State *L) {
 		pluaL_error(L, "internal error: mdns object not passed");
 	}
 
-	mdns->type = LISTEN;
 	mdns_listen(read_cb, mdns);
 
 	lua_pushboolean(L, 1);

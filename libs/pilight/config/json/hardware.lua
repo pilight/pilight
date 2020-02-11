@@ -38,6 +38,7 @@ function M.read(f)
 		for k, v in pairs(hardware) do
 			local obj = config.getHardware(k);
 			if obj == nil then
+				pilight.log(LOG_ERR, k .. " is an unsupported hardware module");
 				return 0;
 			end
 			if obj.validate() == false then

@@ -545,14 +545,14 @@ static void timeout(uv_timer_t *req) {
 	struct request_t *request = req->data;
 	void (*callback)(int, char *, int, char *, void *) = request->callback;
 	void *userdata = request->userdata;
-	int called = request->called;
 	if(request->timer_req != NULL) {
 		uv_timer_stop(request->timer_req);
 	}
-	http_client_close(request->poll_req);
-	if(callback != NULL && called == 0) {
+	if(callback != NULL && request->called == 0) {
+		request->called = 1;
 		callback(408, NULL, 0, NULL, userdata);
 	}
+	http_client_close(request->poll_req);
 }
 
 static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
@@ -739,7 +739,7 @@ static void write_cb(uv_poll_t *req) {
 	}
 }
 
-char *http_process(int type, char *url, const char *conttype, char *post, void (*callback)(int, char *, int, char *, void *), void *userdata) {
+int http_process(int type, char *url, const char *conttype, char *post, void (*callback)(int, char *, int, char *, void *), void *userdata) {
 	struct request_t *request = NULL;
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct sockaddr_in addr4;
@@ -767,8 +767,8 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 	}
 #endif
 
-	memset(&addr4, 0, sizeof(addr4));
-	memset(&addr6, 0, sizeof(addr6));
+	memset(&addr4, '\0', sizeof(struct sockaddr_in));
+	memset(&addr6, '\0', sizeof(struct sockaddr_in6));
 	if(prepare_request(&request, type, url, conttype, post, callback, userdata) == 0) {
 		int inet = host2ip(request->host, &ip);
 		switch(inet) {
@@ -871,6 +871,7 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 		}
 
 		uv_timer_init(uv_default_loop(), request->timer_req);
+		uv_update_time(uv_default_loop());
 		uv_timer_start(request->timer_req, (void (*)(uv_timer_t *))timeout, 3000, 0);
 
 		http_client_add(request->poll_req, custom_poll_data);
@@ -878,16 +879,19 @@ char *http_process(int type, char *url, const char *conttype, char *post, void (
 		uv_custom_write(request->poll_req);
 	}
 
-	return NULL;
+	return 0;
 
 freeuv:
 	if(request->timer_req != NULL) {
 		uv_timer_stop(request->timer_req);
 	}
-	if(request->callback != NULL && request->called == 0) {
-		request->called = 1;
-		request->callback(404, NULL, 0, 0, request->userdata);
-	}
+	/*
+	 * 404 should be given by an available server
+	 */
+	// if(request->callback != NULL && request->called == 0) {
+		// request->called = 1;
+		// request->callback(404, NULL, 0, 0, request->userdata);
+	// }
 	FREE(request->uri);
 	FREE(request->host);
 
@@ -899,13 +903,13 @@ freeuv:
 #endif
 	}
 	FREE(request);
-	return NULL;
+	return -1;
 }
 
-char *http_get_content(char *url, void (*callback)(int, char *, int, char *, void *), void *userdata) {
+int http_get_content(char *url, void (*callback)(int, char *, int, char *, void *), void *userdata) {
 	return http_process(HTTP_GET, url, NULL, NULL, callback, userdata);
 }
 
-char *http_post_content(char *url, const char *conttype, char *post, void (*callback)(int, char *, int, char *, void *), void *userdata) {
+int http_post_content(char *url, const char *conttype, char *post, void (*callback)(int, char *, int, char *, void *), void *userdata) {
 	return http_process(HTTP_POST, url, conttype, post, callback, userdata);
 }

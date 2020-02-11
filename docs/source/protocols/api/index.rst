@@ -6,3 +6,5 @@ API
 
    program/index
    weather/index
+   shelly/index
+   tasmota/index

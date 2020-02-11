@@ -8,4 +8,4 @@ Conflicts: @conflicts@
 Installed-Size: @size@
 Suggests: php5-cgi, pilight-firmware (>= 3.0)
 Maintainer: CurlyMo <info@pilight.org>
-Description: Control RF devices with the Raspberry Pi
+Description: Efficient and performant domotica server with a small footprint

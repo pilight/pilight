@@ -22,6 +22,18 @@ API
 
    Creates a new timer object
 
+.. versionchanged:: nightly
+
+.. c:function:: userdata pilight.async.timer([userdata timer instance])
+
+   Creates a new timer object or restore the saved instance when passing the instance parameter.
+
+.. versionadded:: nightly
+
+.. c:function:: userdata pilight.async.timer()()
+
+   Returns the timer instance as lightuserdata so it can be stored in a pilight metatable.
+
 .. c:function:: userdata getUserdata()
 
    Returns a persistent userdata table for the lifetime of the timer object.
@@ -92,6 +104,18 @@ API
 
    Creates a new thread object
 
+.. versionchanged:: nightly
+
+.. c:function:: userdata pilight.async.thread([userdata thread instance])
+
+   Creates a new thread object or restore the saved instance when passing the instance parameter.
+
+.. versionadded:: nightly
+
+.. c:function:: userdata pilight.async.thread()()
+
+   Returns the thread instance as lightuserdata so it can be stored in a pilight metatable.
+
 .. c:function:: userdata getUserdata()
 
    Returns a persistent userdata table for the lifetime of the thread object.
@@ -149,6 +173,18 @@ API
 .. c:function:: userdata pilight.async.event()
 
    Creates a new event object
+
+.. versionchanged:: nightly
+
+.. c:function:: userdata pilight.async.event([userdata event instance])
+
+   Creates a new event object or restore the saved instance when passing the instance parameter.
+
+.. versionadded:: nightly
+
+.. c:function:: userdata pilight.async.event()()
+
+   Returns the event instance as lightuserdata so it can be stored in a pilight metatable.
 
 .. c:function:: userdata register(int callback)
 

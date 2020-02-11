@@ -30,7 +30,8 @@ typedef enum {
 	SENSOR,
 	HWRELAY,
 	API,
-	SHELLY
+	SHELLY,
+	TASMOTA
 } hwtype_t;
 
 void hardware_init(void);
