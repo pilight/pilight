@@ -158,7 +158,7 @@ static int checkValues(struct JsonNode *jvalues) {
             jchild1 = json_first_child(jchild);
             while (jchild1) {
                 if (strcmp(jchild1->key, "id") == 0) {
-                    id = jchild1->number_;
+                    id = (int)jchild1->number_;
                 }
                 jchild1 = jchild1->next;
             }
