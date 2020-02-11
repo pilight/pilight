@@ -141,7 +141,6 @@ function M.callback(rw, serial, line)
 
 				if c == '@' then
 					content = string.sub(data['content'], 1, l)
-					print('--', content);
 					data['content'] = string.sub(data['content'], l+1, a);
 					a = #data['content'];
 
@@ -174,7 +173,6 @@ function M.callback(rw, serial, line)
 										c = string.sub(content, i+1, x);
 										i = x + 1;
 										pulses[#pulses+1] = tonumber(c);
-										print(content);
 										if #pulses > 9 then
 											invalid_stream(data, content);
 											serial.read();
