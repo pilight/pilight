@@ -333,6 +333,16 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 
 			uv_timer_stop(currP->timer_req);
 
+			if(currP->fd > -1) {
+#ifdef _WIN32
+				shutdown(currP->fd, SD_BOTH);
+				closesocket(currP->fd);
+#else
+				shutdown(currP->fd, SHUT_RDWR);
+				close(currP->fd);
+#endif
+			}
+
 			int len = snprintf(NULL, 0, topicfmt, currP->id);
 			if((topic = MALLOC(len+1)) == NULL) {
 				OUT_OF_MEMORY
@@ -416,16 +426,15 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 
 			if(currP->poll_req->data != NULL) {
 				struct uv_custom_poll_t *custom_poll_data = currP->poll_req->data;
-				int r = 0, fd = 0;
-				if((r = uv_fileno((uv_handle_t *)currP->poll_req, (uv_os_fd_t *)&fd)) != 0) {
-					/*LCOV_EXCL_START*/
-					logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
-					/*LCOV_EXCL_STOP*/
-				}
+
 				if(custom_poll_data != NULL) {
 					uv_custom_poll_free(custom_poll_data);
 					currP->poll_req->data = NULL;
 				}
+			}
+
+			if(!uv_is_closing((uv_handle_t *)req)) {
+				uv_close((uv_handle_t *)req, close_cb);
 			}
 
 			FREE(currP);

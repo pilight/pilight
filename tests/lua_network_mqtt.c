@@ -59,21 +59,23 @@ static int plua_print(lua_State* L) {
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
 				CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"type\"]=9,[\"msgid\"]=0,[\"retain\"]=0,}", lua_tostring(L, 1));
 			} break;
-			case 2: {
-				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
-				CuAssertStrEquals(gtc, "{[\"qos\"]=0,[\"dub\"]=0,[\"type\"]=3,[\"topic\"]=pilight/mqtt/pilight-send,[\"message\"]=connected,[\"retain\"]=0,}", lua_tostring(L, 1));
-			} break;
+			case 2:
 			case 3: {
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
-				CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=on,[\"type\"]=3,[\"topic\"]=tele/sonoff/POWER,[\"msgid\"]=1,[\"retain\"]=0,}", lua_tostring(L, 1));
+				if(strstr("pilight/mqtt/pilight-send", lua_tostring(L, 1)) != NULL) {
+					CuAssertStrEquals(gtc, "{[\"qos\"]=0,[\"dub\"]=0,[\"type\"]=3,[\"topic\"]=pilight/mqtt/pilight-send,[\"message\"]=connected,[\"retain\"]=0,}", lua_tostring(L, 1));
+				} else if(strstr("tele/sonoff/POWER", lua_tostring(L, 1)) != NULL) {
+					CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=on,[\"type\"]=3,[\"topic\"]=tele/sonoff/POWER,[\"msgid\"]=1,[\"retain\"]=0,}", lua_tostring(L, 1));
+				}
 			} break;
-			case 4: {
-				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
-				CuAssertStrEquals(gtc, "{[\"qos\"]=0,[\"dub\"]=0,[\"type\"]=3,[\"topic\"]=pilight/mqtt/pilight-abcd,[\"message\"]=connected,[\"retain\"]=0,}", lua_tostring(L, 1));
-			} break;
+			case 4:
 			case 5: {
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
-				CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=off,[\"type\"]=3,[\"topic\"]=pilight/lamp/status,[\"msgid\"]=3,[\"retain\"]=0,}", lua_tostring(L, 1));
+				if(strstr("pilight/mqtt/pilight-abcd", lua_tostring(L, 1)) != NULL) {
+					CuAssertStrEquals(gtc, "{[\"qos\"]=0,[\"dub\"]=0,[\"type\"]=3,[\"topic\"]=pilight/mqtt/pilight-send,[\"message\"]=connected,[\"retain\"]=0,}", lua_tostring(L, 1));
+				} else if(strstr("pilight/lamp/status", lua_tostring(L, 1)) != NULL) {
+					CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=off,[\"type\"]=3,[\"topic\"]=pilight/lamp/status,[\"msgid\"]=3,[\"retain\"]=0,}", lua_tostring(L, 1));
+				}
 			} break;
 			case 6: {
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
