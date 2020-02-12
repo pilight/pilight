@@ -115,7 +115,7 @@ static void parseCode(void) {
 
     // decode bits into data
     id = binToDecRev(binary, 0, 7);
-    battery = binary[8] ? 100 : 0;
+    battery = binary[8] ? 1 : 0;
     channel = binToDecRev(binary, 10, 11);
     temperature = (double)binToSignedRev(binary, 12, 23);
     humidity = (double)binToDecRev(binary, 28, 35);
