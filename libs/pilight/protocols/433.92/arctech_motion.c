@@ -30,7 +30,7 @@
 #include "arctech_motion.h"
 
 #define PULSE_MULTIPLIER	3
-#define MIN_PULSE_LENGTH	250
+#define MIN_PULSE_LENGTH	160
 #define MAX_PULSE_LENGTH	284
 #define AVG_PULSE_LENGTH	279
 #define RAW_LENGTH				132
