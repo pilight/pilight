@@ -33,6 +33,8 @@
 +----------------------+--------------------+
 | Rev Ritter 8342LC    | intertechno_switch |
 +----------------------+--------------------+
+| Smartwares           | smartwares_switch  |
++----------------------+--------------------+
 
 .. rubric:: Sender Arguments
 
