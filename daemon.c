@@ -3506,6 +3506,10 @@ int start_pilight(int argc, char **argv) {
 #ifdef MQTT
 	{
 		if(mqtt_enable == 1) {
+			struct lua_state_t *state = plua_get_free_state();
+			config_setting_get_number(state->L, "mqtt_port", 0, &mqtt_port);
+			assert(plua_check_stack(state->L, 0) == 0);
+			plua_clear_state(state);
 			mqtt_server(mqtt_port);
 		}
 	}

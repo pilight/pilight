@@ -20,14 +20,18 @@ extern int plua_network_mail(struct lua_State *L);
 extern int plua_network_http(struct lua_State *L);
 extern int plua_network_coap(struct lua_State *L);
 extern int plua_network_mdns(struct lua_State *L);
+#ifdef MQTT
 extern int plua_network_mqtt(struct lua_State *L);
+#endif
 
 static const luaL_Reg pilight_network_lib[] = {
 	{"mail", plua_network_mail},
 	{"http", plua_network_http},
 	{"coap", plua_network_coap},
 	{"mdns", plua_network_mdns},
+#ifdef MQTT
 	{"mqtt", plua_network_mqtt},
+#endif
 	{NULL, NULL}
 };
 
