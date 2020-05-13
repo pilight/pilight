@@ -36,20 +36,18 @@
 #define MAX_ITEMS_PER_EPOLL       1024
 
 #define UV__O_CLOEXEC             0x80000
-#define UV__EPOLL_CLOEXEC         UV__O_CLOEXEC
-#define UV__EPOLL_CTL_ADD         EPOLL_CTL_ADD
-#define UV__EPOLL_CTL_DEL         EPOLL_CTL_DEL
-#define UV__EPOLL_CTL_MOD         EPOLL_CTL_MOD
 
 struct epoll_event {
   int events;
   int fd;
+  int is_msg;
 };
 
 typedef struct {
   QUEUE member;
   struct pollfd* items;
   unsigned long size;
+  int msg_queue;
 } uv__os390_epoll;
 
 /* epoll api */
@@ -65,5 +63,12 @@ int scandir(const char* maindir, struct dirent*** namelist,
             int (*compar)(const struct dirent **,
             const struct dirent **));
 char *mkdtemp(char* path);
+ssize_t os390_readlink(const char* path, char* buf, size_t len);
+size_t strnlen(const char* str, size_t maxlen);
+int sem_init(UV_PLATFORM_SEM_T* semid, int pshared, unsigned int value);
+int sem_destroy(UV_PLATFORM_SEM_T* semid);
+int sem_post(UV_PLATFORM_SEM_T* semid);
+int sem_trywait(UV_PLATFORM_SEM_T* semid);
+int sem_wait(UV_PLATFORM_SEM_T* semid);
 
 #endif /* UV_OS390_SYSCALL_H_ */

@@ -61,7 +61,7 @@ static void uv__pollfds_maybe_resize(uv_loop_t* loop) {
     return;
 
   n = loop->poll_fds_size ? loop->poll_fds_size * 2 : 64;
-  p = uv__realloc(loop->poll_fds, n * sizeof(*loop->poll_fds));
+  p = uv__reallocf(loop->poll_fds, n * sizeof(*loop->poll_fds));
   if (p == NULL)
     abort();
 
@@ -107,7 +107,7 @@ static void uv__pollfds_add(uv_loop_t* loop, uv__io_t* w) {
 static void uv__pollfds_del(uv_loop_t* loop, int fd) {
   size_t i;
   assert(!loop->poll_fds_iterating);
-  for (i = 0; i < loop->poll_fds_used; ++i) {
+  for (i = 0; i < loop->poll_fds_used;) {
     if (loop->poll_fds[i].fd == fd) {
       /* swap to last position and remove */
       --loop->poll_fds_used;
@@ -115,7 +115,17 @@ static void uv__pollfds_del(uv_loop_t* loop, int fd) {
       loop->poll_fds[loop->poll_fds_used].fd = -1;
       loop->poll_fds[loop->poll_fds_used].events = 0;
       loop->poll_fds[loop->poll_fds_used].revents = 0;
-      return;
+      /* This method is called with an fd of -1 to purge the invalidated fds,
+       * so we may possibly have multiples to remove.
+       */
+      if (-1 != fd)
+        return;
+    } else {
+      /* We must only increment the loop counter when the fds do not match.
+       * Otherwise, when we are purging an invalidated fd, the value just
+       * swapped here from the previous end of the array will be skipped.
+       */
+       ++i;
     }
   }
 }
@@ -288,6 +298,8 @@ update_timeout:
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   size_t i;
 
+  assert(fd >= 0);
+
   if (loop->poll_fds_iterating) {
     /* uv__io_poll is currently iterating.  Just invalidate fd.  */
     for (i = 0; i < loop->poll_fds_used; i++)
@@ -315,43 +327,10 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
   while (rv == -1 && (errno == EINTR || errno == EAGAIN));
 
   if (rv == -1)
-    return -errno;
+    return UV__ERR(errno);
 
   if (p[0].revents & POLLNVAL)
-    return -EINVAL;
+    return UV_EINVAL;
 
   return 0;
-}
-
-/*
- * NEW
- */
-int uv_fs_event_stop(uv_fs_event_t* handle) {
-  if (!uv__is_active(handle))
-    return 0;
-
-  uv__handle_stop(handle);
-
-#if defined(__APPLE__)
-  if (uv__has_forked_with_cfrunloop || uv__fsevents_close(handle))
-#endif /* defined(__APPLE__) */
-  {
-    uv__io_close(handle->loop, &handle->event_watcher);
-  }
-
-  uv__free(handle->path);
-  handle->path = NULL;
-
-  if (handle->event_watcher.fd != -1) {
-    /* When FSEvents is used, we don't use the event_watcher's fd under certain
-     * confitions. (see uv_fs_event_start) */
-    uv__close(handle->event_watcher.fd);
-    handle->event_watcher.fd = -1;
-  }
-
-  return 0;
-}
-
-void uv__fs_event_close(uv_fs_event_t* handle) {
-  uv_fs_event_stop(handle);
 }

@@ -268,9 +268,9 @@ void test_lua_hardware_433gpio_receive_large_pulse(CuTest *tc) {
 	CuAssertPtrNotNull(gtc, pipe_req1);
 	CuAssertPtrNotNull(gtc, pipe_req0);
 
-	r = uv_pipe_init(uv_default_loop(), pipe_req0, 1);
+	r = uv_pipe_init(uv_default_loop(), pipe_req0, 0);
 	CuAssertIntEquals(gtc, 0, r);
-	r = uv_pipe_init(uv_default_loop(), pipe_req1, 1);
+	r = uv_pipe_init(uv_default_loop(), pipe_req1, 0);
 	CuAssertIntEquals(gtc, 0, r);
 
 	uv_fs_t file_req0;

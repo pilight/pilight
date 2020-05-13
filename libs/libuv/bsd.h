@@ -1,4 +1,4 @@
-/* Copyright libuv project contributors. All rights reserved.
+/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -19,24 +19,16 @@
  * IN THE SOFTWARE.
  */
 
-#include "uv.h"
-#include "internal.h"
+#ifndef UV_BSD_H
+#define UV_BSD_H
 
-#include <stdint.h>
-#include <sys/sysinfo.h>
+#define UV_PLATFORM_FS_EVENT_FIELDS                                           \
+  uv__io_t event_watcher;                                                     \
 
-uint64_t uv_get_free_memory(void) {
-  struct sysinfo info;
+#define UV_IO_PRIVATE_PLATFORM_FIELDS                                         \
+  int rcount;                                                                 \
+  int wcount;                                                                 \
 
-  if (sysinfo(&info) == 0)
-    return (uint64_t) info.freeram * info.mem_unit;
-  return 0;
-}
+#define UV_HAVE_KQUEUE 1
 
-uint64_t uv_get_total_memory(void) {
-  struct sysinfo info;
-
-  if (sysinfo(&info) == 0)
-    return (uint64_t) info.totalram * info.mem_unit;
-  return 0;
-}
+#endif /* UV_BSD_H */
