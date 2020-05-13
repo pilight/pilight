@@ -881,7 +881,7 @@ end:
 	eventpool_update_poll(req);
 }
 
-static void iobuf_free(struct iobuf_t *iobuf) {
+void iobuf_free(struct iobuf_t *iobuf) {
   if(iobuf != NULL) {
 		uv_mutex_lock(&iobuf->lock);
     if(iobuf->buf != NULL) {
@@ -909,7 +909,7 @@ void uv_custom_poll_free(struct uv_custom_poll_t *data) {
 	FREE(data);
 }
 
-static void iobuf_init(struct iobuf_t *iobuf, size_t initial_size) {
+void iobuf_init(struct iobuf_t *iobuf, size_t initial_size) {
   iobuf->len = iobuf->size = 0;
   iobuf->buf = NULL;
 	uv_mutex_init(&iobuf->lock);

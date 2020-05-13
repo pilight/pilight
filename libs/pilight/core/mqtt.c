@@ -70,6 +70,8 @@ typedef struct mqtt_topic_t {
 static int lock_init = 0;
 static int started = 0;
 
+static struct iobuf_t server_iobuf;
+
 static uv_poll_t *poll_server_req = NULL;
 static struct mqtt_client_t *mqtt_clients = NULL;
 static struct mqtt_topic_t *mqtt_topics = NULL;
@@ -155,6 +157,7 @@ void mqtt_gc(void) {
 
 	if(poll_server_req != NULL) {
 		poll_close_cb(poll_server_req);
+		iobuf_free(&server_iobuf);
 		poll_server_req = NULL;
 	}
 
@@ -423,6 +426,8 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 			if(currP->will.topic != NULL) {
 				FREE(currP->will.topic);
 			}
+
+			iobuf_free(&currP->iobuf);
 
 			if(currP->poll_req->data != NULL) {
 				struct uv_custom_poll_t *custom_poll_data = currP->poll_req->data;
@@ -1304,6 +1309,7 @@ void mqtt_client_add(struct mqtt_client_t **node, uv_poll_t *req, int side) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	(*node)->timer_req->data = (*node);
+	iobuf_init(&(*node)->iobuf, 0);
 
 	uv_timer_init(uv_default_loop(), (*node)->timer_req);
 
@@ -1842,7 +1848,6 @@ int mqtt_publish(struct mqtt_client_t *client, int dub, int qos, int retain, cha
 		unsigned char *buf = NULL;
 		unsigned int len = 0;
 
-
 		mqtt_pkt_publish(&pkt, dub, qos, retain, topic, client->msgid++, message);
 		if(client->msgid > 1024) {
 			client->msgid = 0;
@@ -2046,6 +2051,7 @@ static void client_write_cb(uv_poll_t *req) {
 static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct mqtt_client_t *client = custom_poll_data->data;
+	struct iobuf_t *iobuf = NULL;
 
 	struct mqtt_pkt_t *pkt = NULL;
 	unsigned int pos = 0, len = 0;
@@ -2055,15 +2061,21 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	if(*nread > 0) {
 		buf[*nread] = '\0';
 
-		// int i = 0;
-		// for(i=0;i<*nread;i++) {
-			// printf("0x%02x, ", (unsigned char)buf[i]);
-		// }
-		// printf("\n");
+		if(client != NULL) {
+			iobuf = &client->iobuf;
+		} else {
+			iobuf = &server_iobuf;
+		}
+		iobuf_append(iobuf, buf, *nread);
+		*nread = 0;
 
-		while(*nread > 0 && (ret = mqtt_decode(&pkt, (unsigned char *)buf, *nread, &pos)) == 0) {
-			memmove(&buf[0], &buf[pos], *nread-pos);
-			*nread -= pos;
+		while(iobuf->len > 0 && (ret = mqtt_decode(&pkt, (unsigned char *)iobuf->buf, iobuf->len, &pos)) == 0) {
+			if(pos > iobuf->len) {
+				mqtt_free(pkt);
+				FREE(pkt);
+				break;
+			}
+			iobuf_remove(iobuf, pos);
 			pos = 0;
 
 			struct mqtt_pkt_t pkt1;
@@ -2077,7 +2089,6 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 				logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
 				/*LCOV_EXCL_STOP*/
 			}
-			// mqtt_dump(pkt);
 
 			if(client == NULL) {
 				switch(pkt->type) {
@@ -2410,6 +2421,8 @@ int mqtt_server(int port) {
 	}
 
 	uv_custom_read(poll_server_req);
+
+	iobuf_init(&server_iobuf, 0);
 
 	logprintf(LOG_DEBUG, "started MQTT broker on port %d", port);
 
