@@ -1,0 +1,6 @@
+include(../../../../CMakeConfig.txt)
+
+if(${MQTT} MATCHES "OFF")
+	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/mqtt.h")
+	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/mqtt.c")
+endif()
