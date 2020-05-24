@@ -771,7 +771,7 @@ int mqtt_decode(struct mqtt_pkt_t **pkt, unsigned char *buf, unsigned int len, u
 
 	startpos = (*pos);
 
-	if(len < msglength+((*pos)-1)) {
+	if(len < msglength+((*pos))) {
 		/*
 		 * Packet too short for full message
 		 * so we are waiting for additional
@@ -2067,14 +2067,10 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			iobuf = &server_iobuf;
 		}
 		iobuf_append(iobuf, buf, *nread);
+
 		*nread = 0;
 
 		while(iobuf->len > 0 && (ret = mqtt_decode(&pkt, (unsigned char *)iobuf->buf, iobuf->len, &pos)) == 0) {
-			if(pos > iobuf->len) {
-				mqtt_free(pkt);
-				FREE(pkt);
-				break;
-			}
 			iobuf_remove(iobuf, pos);
 			pos = 0;
 
