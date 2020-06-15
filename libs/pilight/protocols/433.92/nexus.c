@@ -42,7 +42,8 @@
 
 #define PULSE_TOLERANCE 150
 #define MESSAGE_BITS 36
-#define RAW_LENGTH ((MESSAGE_BITS)*2) + 2
+#define RAW_LENGTH (MESSAGE_BITS * 2 + 2)
+#define MAXBITS (RAW_LENGTH / 2)
 
 enum PulseType {
     START_P = 500,
@@ -79,20 +80,13 @@ static int validate(void) {
 }
 
 static void parseCode(void) {
-    const int MAXBITS = nexus->rawlen / 2;
     int id = 0, battery = 0, channel = 0;
     double temperature = 0.0, humidity = 0.0;
     int binary[MAXBITS];
     int x = 0, i = 0;
 
-    // not sure why the check is needed, we use only the first 36 bits anyway
-    // if(nexus->rawlen>RAW_LENGTH) {
-    // 	logprintf(LOG_ERR, "nexus: parsecode - invalid parameter passed %d", nexus->rawlen);
-    // 	return;
-    // }
-
-    // decode pulses into bits
-    for(x = 1; x < nexus->rawlen - 1; x += 2) {
+    // decode pulses into bits, we only parse the needed amount and ignore everything after
+    for(x = 1; x < RAW_LENGTH - 1; x += 2) {
         if(!isValidPulse(nexus->raw[x - 1], START_P)) {
             return;
         }
@@ -101,6 +95,7 @@ static void parseCode(void) {
         } else if(isValidPulse(nexus->raw[x], ZERO_P)) {
             binary[i++] = 0;
         } else {
+            // invalid pulse length
             return;
         }
     }
@@ -121,14 +116,27 @@ static void parseCode(void) {
     humidity = (double)binToDecRev(binary, 28, 35);
 
     temperature /= 10;
-    temperature += settings->temperature_offset;
-    humidity += settings->humidity_offset;
+    double temperature_decimals = 1;
 
+    // find the matching settings struct; you cannot access settings->anyfield without this!
+    struct settings_t *tmp = settings;
+    while (tmp) {
+        if (tmp->id == id) {
+            // store or apply the settings
+            temperature += settings->temperature_offset;
+            humidity += settings->humidity_offset;
+            temperature_decimals = settings->temperature_decimals;
+            break;
+        }
+        tmp = tmp->next;
+    }
+
+    // build the JSON object
     nexus->message = json_mkobject();
     json_append_member(nexus->message, "id", json_mknumber(id, 0));
     json_append_member(nexus->message, "channel", json_mknumber(channel, 0));
     json_append_member(nexus->message, "battery", json_mknumber(battery, 0));
-    json_append_member(nexus->message, "temperature", json_mknumber(temperature, settings->temperature_decimals));
+    json_append_member(nexus->message, "temperature", json_mknumber(temperature, temperature_decimals));
     json_append_member(nexus->message, "humidity", json_mknumber(humidity, 0));
 }
 
