@@ -141,6 +141,7 @@ char *config_callback_write(lua_State *L, char *module) {
 	int x = 0;
 
 	if(state == NULL) {
+		plua_clear_state(state);
 		return NULL;
 	}
 
