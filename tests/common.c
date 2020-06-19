@@ -537,6 +537,14 @@ static void test_str_replace(CuTest *tc) {
 	CuAssertStrEquals(tc, "My raspberry", str);
 	FREE(str);
 
+	str = MALLOC(26);
+	CuAssertPtrNotNull(tc, str);
+	strcpy(str, "DATE_FORMAT(time, %H%M%S)");
+	n = str_replace("%", "%%", &str);
+	CuAssertIntEquals(tc, 28, n);
+	CuAssertStrEquals(tc, "DATE_FORMAT(time, %%H%%M%%S)", str);
+	FREE(str);
+
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
