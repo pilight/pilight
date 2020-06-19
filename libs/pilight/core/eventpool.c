@@ -306,9 +306,9 @@ void eventpool_trigger(int reason, void *(*done)(void *), void *data) {
 	 // */
 	// assert(eventqueue_size < 50);
 
-	uv_mutex_unlock(&listeners_lock);
-
 	uv_async_send(async_event_req);
+
+	uv_mutex_unlock(&listeners_lock);
 }
 
 static void eventpool_execute(uv_async_t *handle) {
