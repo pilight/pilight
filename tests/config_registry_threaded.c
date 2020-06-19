@@ -67,7 +67,7 @@ static void thread3(void *param) {
 	while(loop) {
 		struct lua_state_t *state = plua_get_free_state();
 		config_registry_set_null(state->L, "pilight.version");
-		config_registry_set_string(state->L, "pilight.version.thread2", "8.1.1");
+		config_registry_set_string(state->L, "pilight.version.thread2", "8.1.3");
 		assert(plua_check_stack(state->L, 0) == 0);
 		plua_clear_state(state);
 		run3++;
