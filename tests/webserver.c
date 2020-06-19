@@ -408,7 +408,6 @@ static void *listener(int reason, void *param, void *userdata) {
 
 
 static void test_webserver(CuTest *tc) {
-	memtrack();
 
 	testnr = 0;
 
@@ -494,7 +493,6 @@ static void test_webserver(CuTest *tc) {
 			CuAssertIntEquals(tc, 20, testnr);
 		break;
 	}
-	CuAssertIntEquals(tc, 0, xfree());
 }
 
 static void test_webserver_get(CuTest *tc) {
@@ -504,13 +502,14 @@ static void test_webserver_get(CuTest *tc) {
 	if(gtc != NULL && gtc->failed == 1) {
 		return;
 	}
+	memtrack();
 
 	char config[1024] = "{\"devices\":{},\"gui\":{},\"rules\":{},"\
 		"\"settings\":{\"pem-file\":\"%s../res/pilight.pem\",\"webserver-root\":\"%s../libs/webgui/\","\
 		"\"webserver-enable\":1,\"webserver-http-port\":10080,\"webserver-https-port\":10443},"\
 		"\"hardware\":{},\"registry\":{}}";
 
-	char *file = strdup(__FILE__);
+	char *file = STRDUP(__FILE__);
 	if(file == NULL) {
 		OUT_OF_MEMORY
 	}
@@ -519,13 +518,15 @@ static void test_webserver_get(CuTest *tc) {
 	FILE *f = fopen("webserver.json", "w");
 	fprintf(f, config, file, file);
 	fclose(f);
-	strdup(file);
+	FREE(file);
 
 	gtc = tc;
 	steps = 0;
 
 	run = GET;
 	test_webserver(tc);
+
+	CuAssertIntEquals(tc, 0, xfree());
 }
 
 static void test_webserver_whitelist(CuTest *tc) {
@@ -535,13 +536,14 @@ static void test_webserver_whitelist(CuTest *tc) {
 	if(gtc != NULL && gtc->failed == 1) {
 		return;
 	}
+	memtrack();
 
 	char config[1024] = "{\"devices\":{},\"gui\":{},\"rules\":{},"\
 		"\"settings\":{\"pem-file\":\"%s../res/pilight.pem\",\"webserver-root\":\"%s../libs/webgui/\","\
 		"\"webserver-enable\":1,\"webserver-http-port\":10080,\"webserver-https-port\":10443,\"whitelist\":\"0.0.0.0\"},"\
 		"\"hardware\":{},\"registry\":{}}";
 
-	char *file = strdup(__FILE__);
+	char *file = STRDUP(__FILE__);
 	if(file == NULL) {
 		OUT_OF_MEMORY
 	}
@@ -550,13 +552,15 @@ static void test_webserver_whitelist(CuTest *tc) {
 	FILE *f = fopen("webserver.json", "w");
 	fprintf(f, config, file, file);
 	fclose(f);
-	free(file);
+	FREE(file);
 
 	gtc = tc;
 	steps = 0;
 
 	run = WHITELIST;
 	test_webserver(tc);
+
+	CuAssertIntEquals(tc, 0, xfree());
 }
 
 static void test_webserver_auth(CuTest *tc) {
@@ -566,6 +570,7 @@ static void test_webserver_auth(CuTest *tc) {
 	if(gtc != NULL && gtc->failed == 1) {
 		return;
 	}
+	memtrack();
 
 	char config[1024] = "{\"devices\":{},\"gui\":{},\"rules\":{},"\
 		"\"settings\":{\"pem-file\":\"%s../res/pilight.pem\",\"webserver-root\":\"%s../libs/webgui/\","\
@@ -573,7 +578,7 @@ static void test_webserver_auth(CuTest *tc) {
 		"\"webserver-authentication\":[\"test\",\"5cc87eb5ab20e91ba99d213869f431a7aa701fc0cd548caccb076eb4712d4962\"]},"\
 		"\"hardware\":{},\"registry\":{}}";
 
-	char *file = strdup(__FILE__);
+	char *file = STRDUP(__FILE__);
 	if(file == NULL) {
 		OUT_OF_MEMORY
 	}
@@ -582,13 +587,15 @@ static void test_webserver_auth(CuTest *tc) {
 	FILE *f = fopen("webserver.json", "w");
 	fprintf(f, config, file, file);
 	fclose(f);
-	free(file);
+	FREE(file);
 
 	gtc = tc;
 	steps = 0;
 
 	run = AUTH;
 	test_webserver(tc);
+
+	CuAssertIntEquals(tc, 0, xfree());
 }
 
 static void test_webserver_websocket1(CuTest *tc) {
@@ -598,13 +605,14 @@ static void test_webserver_websocket1(CuTest *tc) {
 	if(gtc != NULL && gtc->failed == 1) {
 		return;
 	}
+	memtrack();
 
 	char config[1024] = "{\"devices\":{},\"gui\":{},\"rules\":{},"\
 		"\"settings\":{\"pem-file\":\"%s../res/pilight.pem\",\"webserver-root\":\"%s../libs/webgui/\","\
 		"\"webserver-enable\":1,\"webserver-http-port\":10080,\"webserver-https-port\":10443},"\
 		"\"hardware\":{},\"registry\":{}}";
 
-	char *file = strdup(__FILE__);
+	char *file = STRDUP(__FILE__);
 	if(file == NULL) {
 		OUT_OF_MEMORY
 	}
@@ -613,13 +621,15 @@ static void test_webserver_websocket1(CuTest *tc) {
 	FILE *f = fopen("webserver.json", "w");
 	fprintf(f, config, file, file);
 	fclose(f);
-	free(file);
+	FREE(file);
 
 	gtc = tc;
 	steps = 0;
 
 	run = WEBSOCKET1;
 	test_webserver(tc);
+
+	CuAssertIntEquals(tc, 0, xfree());
 }
 
 static void test_webserver_websocket2(CuTest *tc) {
@@ -629,13 +639,14 @@ static void test_webserver_websocket2(CuTest *tc) {
 	if(gtc != NULL && gtc->failed == 1) {
 		return;
 	}
+	memtrack();
 
 	char config[1024] = "{\"devices\":{},\"gui\":{},\"rules\":{},"\
 		"\"settings\":{\"pem-file\":\"%s../res/pilight.pem\",\"webserver-root\":\"%s../libs/webgui/\","\
 		"\"webserver-enable\":1,\"webserver-http-port\":10080,\"webserver-https-port\":10443},"\
 		"\"hardware\":{},\"registry\":{}}";
 
-	char *file = strdup(__FILE__);
+	char *file = STRDUP(__FILE__);
 	if(file == NULL) {
 		OUT_OF_MEMORY
 	}
@@ -644,13 +655,15 @@ static void test_webserver_websocket2(CuTest *tc) {
 	FILE *f = fopen("webserver.json", "w");
 	fprintf(f, config, file, file);
 	fclose(f);
-	strdup(file);
+	FREE(file);
 
 	gtc = tc;
 	steps = 0;
 
 	run = WEBSOCKET2;
 	test_webserver(tc);
+
+	CuAssertIntEquals(tc, 0, xfree());
 }
 
 CuSuite *suite_webserver(void) {

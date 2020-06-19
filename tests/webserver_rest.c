@@ -138,7 +138,6 @@ static void callback(int code, char *data, int size, char *type, void *userdata)
 }
 
 static void test_webserver(CuTest *tc) {
-	memtrack();
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
@@ -192,13 +191,14 @@ static void test_webserver_core_api(CuTest *tc) {
 	if(gtc != NULL && gtc->failed == 1) {
 		return;
 	}
+	memtrack();
 
 	char config[1024] = "{\"devices\":{},\"gui\":{},\"rules\":{},"\
 		"\"settings\":{\"pem-file\":\"%s../res/pilight.pem\",\"webserver-root\":\"%s../libs/webgui/\","\
 		"\"webserver-enable\":1,\"webserver-http-port\":10080,\"webserver-https-port\":10443},"\
 		"\"hardware\":{},\"registry\":{}}";
 
-	char *file = strdup(__FILE__);
+	char *file = STRDUP(__FILE__);
 	if(file == NULL) {
 		OUT_OF_MEMORY
 	}
@@ -207,7 +207,7 @@ static void test_webserver_core_api(CuTest *tc) {
 	FILE *f = fopen("webserver.json", "w");
 	fprintf(f, config, file, file);
 	fclose(f);
-	strdup(file);
+	FREE(file);
 
 	gtc = tc;
 	check = 0;
@@ -231,13 +231,14 @@ static void test_webserver_rest_registry(CuTest *tc) {
 	if(gtc != NULL && gtc->failed == 1) {
 		return;
 	}
+	memtrack();
 
 	char config[1024] = "{\"devices\":{},\"gui\":{},\"rules\":{},"\
 		"\"settings\":{\"pem-file\":\"%s../res/pilight.pem\",\"webserver-root\":\"%s../libs/webgui/\","\
 		"\"webserver-enable\":1,\"webserver-http-port\":10080,\"webserver-https-port\":10443},"\
 		"\"hardware\":{},\"registry\":{\"foo\":\"bar\"}}";
 
-	char *file = strdup(__FILE__);
+	char *file = STRDUP(__FILE__);
 	if(file == NULL) {
 		OUT_OF_MEMORY
 	}
@@ -246,7 +247,7 @@ static void test_webserver_rest_registry(CuTest *tc) {
 	FILE *f = fopen("webserver.json", "w");
 	fprintf(f, config, file, file);
 	fclose(f);
-	strdup(file);
+	FREE(file);
 
 	gtc = tc;
 	check = 0;

@@ -81,8 +81,10 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 }
 
 void read_cb(int fd, char *buffer, ssize_t len, char **buffer1, ssize_t *len1) {
+	char *foo = STRDUP(buffer);
+	CuAssertPtrNotNull(gtc, foo);
 	if(run == SERVER) {
-		if(socket_recv(buffer, len, buffer1, len1) > 0) {
+		if(socket_recv(foo, len, buffer1, len1) > 0) {
 			if(strstr(*buffer1, "\n") != NULL) {
 				char **array = NULL;
 				int n = explode(buffer, "\n", &array), i = 0;
@@ -109,7 +111,7 @@ void read_cb(int fd, char *buffer, ssize_t len, char **buffer1, ssize_t *len1) {
 			*len1 = 0;
 		}
 	} else if(run == BIGCONTENT) {
-		if(socket_recv(buffer, len, buffer1, len1) > 0) {
+		if(socket_recv(foo, len, buffer1, len1) > 0) {
 			char *cpy = STRDUP(gplv3);
 			str_replace(EOSS, "\n", &cpy);
 			CuAssertTrue(gtc, strcmp(cpy, *buffer1) == 0);
@@ -123,6 +125,7 @@ void read_cb(int fd, char *buffer, ssize_t len, char **buffer1, ssize_t *len1) {
 	if(run == SERVER && server_fd != fd) {
 		socket_close(fd);
 	}
+	FREE(foo);
 
 	return;
 }
@@ -216,7 +219,10 @@ static void on_read(uv_stream_t *server_req, ssize_t nread, const uv_buf_t *buf)
 		return;
 	}
 
-	if(socket_recv(buf->base, nread, &data1, &size1) > 0) {
+	char *cpy = STRDUP(buf->base);
+	CuAssertPtrNotNull(gtc, cpy);
+
+	if(socket_recv(cpy, nread, &data1, &size1) > 0) {
 		if(strstr(data1, "\n") != NULL) {
 			char **array = NULL;
 			int n = explode(data1, "\n", &array), i = 0;
@@ -232,6 +238,7 @@ static void on_read(uv_stream_t *server_req, ssize_t nread, const uv_buf_t *buf)
 		FREE(data1);
 		size1 = 0;
 	}
+	FREE(cpy);
 
 	int r = uv_fileno((uv_handle_t *)server_req, &fd);
 	CuAssertIntEquals(gtc, 0, r);
