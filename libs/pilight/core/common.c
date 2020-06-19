@@ -790,11 +790,11 @@ char *uniq_space(char *str){
 
 int str_replace(char *search, char *replace, char **str) {
 	char *ptr = NULL;
-	int x = -1, len = strlen(*str);
+	int x = -1, len = strlen(*str), pos = 0;
 	int slen = strlen(search);
 	int rlen = strlen(replace);
 
-	while((ptr = strstr(*str, search)) != NULL) {
+	while(pos < len && (ptr = strstr(&(*str)[pos], search)) != NULL) {
 		x = ptr-*str;
 
 		if((rlen-slen) > 0) {
@@ -807,6 +807,7 @@ int str_replace(char *search, char *replace, char **str) {
 
 		memmove(&(*str)[x+rlen], &(*str)[x+slen], strlen(&(*str)[x+slen]));
 		memcpy(&(*str)[x], replace, rlen);
+		pos = (x + rlen);
 
 		if((rlen-slen) < 0) {
 			if((*str = REALLOC((*str), len+(rlen-slen)+1)) == NULL) { /*LCOV_EXCL_LINE*/
