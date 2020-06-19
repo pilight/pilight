@@ -301,32 +301,6 @@ static int call(struct lua_State *L, char *file, char *func) {
 	return 0;
 }
 
-static void plua_overwrite_print(void) {
-	struct lua_state_t *state[NRLUASTATES];
-	struct lua_State *L = NULL;
-	int i = 0;
-
-	for(i=0;i<NRLUASTATES;i++) {
-		state[i] = plua_get_free_state();
-
-		if(state[i] == NULL) {
-			return;
-		}
-		if((L = state[i]->L) == NULL) {
-			uv_mutex_unlock(&state[i]->lock);
-			return;
-		}
-
-		lua_getglobal(L, "_G");
-		lua_pushcfunction(L, plua_print);
-		lua_setfield(L, -2, "print");
-		lua_pop(L, 1);
-	}
-	for(i=0;i<NRLUASTATES;i++) {
-		uv_mutex_unlock(&state[i]->lock);
-	}
-}
-
 static void test_lua_network_http_missing_parameters(CuTest *tc) {
 	struct lua_state_t *state = NULL;
 
@@ -340,7 +314,7 @@ static void test_lua_network_http_missing_parameters(CuTest *tc) {
 	memtrack();
 
 	plua_init();
-	plua_overwrite_print();
+	plua_override_global("print", plua_print);
 	plua_pause_coverage(1);
 
 	state = plua_get_free_state();
@@ -386,7 +360,7 @@ static void test_lua_network_http_get(CuTest *tc) {
 	memtrack();
 
 	plua_init();
-	plua_overwrite_print();
+	plua_override_global("print", plua_print);
 	plua_pause_coverage(1);
 
 	file = STRDUP(__FILE__);
@@ -471,7 +445,7 @@ static void test_lua_network_http_get_invalid_host(CuTest *tc) {
 	memtrack();
 
 	plua_init();
-	plua_overwrite_print();
+	plua_override_global("print", plua_print);
 	plua_pause_coverage(1);
 
 	file = STRDUP(__FILE__);
@@ -556,7 +530,7 @@ static void test_lua_network_http_post(CuTest *tc) {
 	memtrack();
 
 	plua_init();
-	plua_overwrite_print();
+	plua_override_global("print", plua_print);
 	plua_pause_coverage(1);
 
 	file = STRDUP(__FILE__);
@@ -641,7 +615,7 @@ static void test_lua_network_http_nonexisting_callback(CuTest *tc) {
 	memtrack();
 
 	plua_init();
-	plua_overwrite_print();
+	plua_override_global("print", plua_print);
 	plua_pause_coverage(1);
 
 	file = STRDUP(__FILE__);
