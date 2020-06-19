@@ -50,7 +50,9 @@ function M.set(key, val)
 	else
 		for i = 1, #keys-1, 1
 		do
-			tmp[keys[i]] = {};
+			if tmp[keys[i]] == nil then
+				tmp[keys[i]] = {};
+			end
 			tmp = tmp[keys[i]];
 			key = keys[i+1];
 		end
