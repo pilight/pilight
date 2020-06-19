@@ -68,40 +68,40 @@ static int plua_print(lua_State* L) {
 					CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=on,[\"type\"]=3,[\"topic\"]=tele/sonoff/POWER,[\"msgid\"]=1,[\"retain\"]=0,}", lua_tostring(L, 1));
 				}
 			} break;
-			case 4:
-			case 5: {
-				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
-				if(strstr("pilight/mqtt/pilight-abcd", lua_tostring(L, 1)) != NULL) {
-					CuAssertStrEquals(gtc, "{[\"qos\"]=0,[\"dub\"]=0,[\"type\"]=3,[\"topic\"]=pilight/mqtt/pilight-send,[\"message\"]=connected,[\"retain\"]=0,}", lua_tostring(L, 1));
-				} else if(strstr("pilight/lamp/status", lua_tostring(L, 1)) != NULL) {
-					CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=off,[\"type\"]=3,[\"topic\"]=pilight/lamp/status,[\"msgid\"]=3,[\"retain\"]=0,}", lua_tostring(L, 1));
-				}
-			} break;
-			case 6: {
+			case 4: {
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
 				CuAssertStrEquals(gtc, "{[\"type\"]=6,[\"msgid\"]=1,}", lua_tostring(L, 1));
 			} break;
-			case 7: {
-				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
-				CuAssertStrEquals(gtc, "{[\"type\"]=6,[\"msgid\"]=3,}", lua_tostring(L, 1));
-			} break;
-			case 8: {
+			case 5: {
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
 				CuAssertStrEquals(gtc, "{[\"type\"]=7,[\"msgid\"]=1,}", lua_tostring(L, 1));
-			} break;
-			case 9: {
-				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
-				CuAssertStrEquals(gtc, "{[\"type\"]=7,[\"msgid\"]=3,}", lua_tostring(L, 1));
-			} break;
-			case 11: {
-				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
-				CuAssertStrEquals(gtc, "{[\"qos\"]=0,[\"dub\"]=0,[\"type\"]=3,[\"topic\"]=pilight/mqtt/pilight-abcd,[\"message\"]=disconnected,[\"retain\"]=0,}", lua_tostring(L, 1));
 			} break;
 			case 10:
 			case 12:
 			case 13: {
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
 				CuAssertStrEquals(gtc, "{[\"type\"]=13,}", lua_tostring(L, 1));
+			} break;
+			case 6: {
+				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
+				CuAssertStrEquals(gtc, "{[\"qos\"]=0,[\"dub\"]=0,[\"type\"]=3,[\"topic\"]=pilight/mqtt/pilight-abcd,[\"message\"]=connected,[\"retain\"]=0,}", lua_tostring(L, 1));
+			} break;
+			case 7:
+			case 11: {
+				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
+				if(strstr("pilight/mqtt/pilight-abcd", lua_tostring(L, 1)) != NULL) {
+					CuAssertStrEquals(gtc, "{[\"qos\"]=0,[\"dub\"]=0,[\"type\"]=3,[\"topic\"]=pilight/mqtt/pilight-send,[\"message\"]=disconnected,[\"retain\"]=0,}", lua_tostring(L, 1));
+				} else if(strstr("pilight/lamp/status", lua_tostring(L, 1)) != NULL) {
+					CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=off,[\"type\"]=3,[\"topic\"]=pilight/lamp/status,[\"msgid\"]=3,[\"retain\"]=0,}", lua_tostring(L, 1));
+				}
+			} break;
+			case 8: {
+				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
+				CuAssertStrEquals(gtc, "{[\"type\"]=6,[\"msgid\"]=3,}", lua_tostring(L, 1));
+			} break;
+			case 9: {
+				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
+				CuAssertStrEquals(gtc, "{[\"type\"]=7,[\"msgid\"]=3,}", lua_tostring(L, 1));
 			} break;
 			case 14: {
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
