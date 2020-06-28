@@ -1150,7 +1150,6 @@ function parseValues(data) {
 }
 
 function parseData(data) {
-	console.log(JSON.stringify(data));
 	if(data.hasOwnProperty("config")) {
 		config = data['config'];
 		if(config.hasOwnProperty("gui") && config.hasOwnProperty("devices")) {
