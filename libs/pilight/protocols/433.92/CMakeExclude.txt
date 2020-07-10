@@ -273,3 +273,7 @@ if(${PROTOCOL_GW_IWDS07} MATCHES "OFF")
         list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/iwds07.h")
 endif()
 
+if(${PROTOCOL_SELECTPLUS_DOORBELL} MATCHES "OFF")
+	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/selectplus_doorbell.c")
+	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/selectplus_doorbell.h")
+endif()
