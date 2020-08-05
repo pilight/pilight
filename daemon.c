@@ -416,8 +416,8 @@ void *broadcast(void *param) {
 									 * START MQTT BROADCAST
 									 */
 									if(mqtt_global_client != NULL) {
-										char *topicfmt = "pilight/device/%s/%s";
-										char *topicfmt1 = "pilight/device/%s";
+										char *topicfmt = "pilight/dev/stat/%s/%s";
+										char *topicfmt1 = "pilight/dev/stat/%s";
 										struct JsonNode *jdevices = json_find_member(jtmp, "devices");
 										struct JsonNode *jchilds = json_first_child(jdevices);
 										while(jchilds) {
@@ -2527,7 +2527,7 @@ int main_gc(void) {
 #ifdef MQTT
 	if(mqtt_global_client != NULL) {
 		int i = 0;
-		mqtt_publish(mqtt_global_client, 0, 0, 0, "pilight/status", "offline");
+		mqtt_publish(mqtt_global_client, 0, 0, 0, "pilight/stat", "offline");
 		for(i=0;i<3;i++) {
 			uv_run(uv_default_loop(), UV_RUN_ONCE);
 		}
@@ -2685,16 +2685,16 @@ static void mqtt_callback(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, 
 					FREE(output);
 				}
 
-				mqtt_subscribe(client, "pilight/device/#", 0);
+				mqtt_subscribe(client, "pilight/dev/ctrl/#", 0);
 			} break;
 			case MQTT_PUBLISH: {
 				if(pkt->payload.publish.message == NULL) {
-					logprintf(LOG_ERR, "pilight/device/+ mqtt messages require a json payload");
+					logprintf(LOG_ERR, "pilight/dev/ctrl/+ mqtt messages require a json payload");
 				} else {
 					char **array = NULL;
 					int n = explode(pkt->payload.publish.topic, "/", &array);
-					if(n == 3) {
-						if(strcmp(array[0], "pilight") == 0 && strcmp(array[1], "device") == 0) {
+					if(n == 4) {
+						if(strcmp(array[0], "pilight") == 0 && strcmp(array[1], "dev") == 0 && strcmp(array[2], "ctrl") == 0) {
 							struct JsonNode *json = json_decode(pkt->payload.publish.message);
 							if(json != NULL) {
 								struct JsonNode *jchild = NULL;
@@ -2718,21 +2718,21 @@ static void mqtt_callback(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, 
 
 								json_delete(json);
 							} else {
-								logprintf(LOG_ERR, "pilight/device/+ mqtt messages require a json payload");
+								logprintf(LOG_ERR, "pilight/dev/ctrl/+ mqtt messages require a json payload");
 							}
 						}
-					} else if(n == 4) {
-						if(strcmp(array[0], "pilight") == 0 && strcmp(array[1], "device") == 0) {
+					} else if(n == 5) {
+						if(strcmp(array[0], "pilight") == 0 && strcmp(array[1], "dev") == 0 && strcmp(array[2], "ctrl") == 0) {
 							struct devices_t *dev = NULL;
-							if(devices_get(array[2], &dev) == 0) {
-								if(strcmp(array[3], "state") == 0) {
+							if(devices_get(array[3], &dev) == 0) {
+								if(strcmp(array[4], "state") == 0) {
 									control_device(dev, pkt->payload.publish.message, NULL, ORIGIN_SENDER);
 								} else {
 									struct JsonNode *json = json_mkobject();
 									if(isNumeric(pkt->payload.publish.message) == 0) {
-										json_append_member(json, array[3], json_mknumber(atof(pkt->payload.publish.message), nrDecimals(pkt->payload.publish.message)));
+										json_append_member(json, array[4], json_mknumber(atof(pkt->payload.publish.message), nrDecimals(pkt->payload.publish.message)));
 									} else {
-										json_append_member(json, array[3], json_mkstring(pkt->payload.publish.message));
+										json_append_member(json, array[4], json_mkstring(pkt->payload.publish.message));
 									}
 									control_device(dev, pkt->payload.publish.message, json_first_child(json), ORIGIN_SENDER);
 									json_delete(json);
