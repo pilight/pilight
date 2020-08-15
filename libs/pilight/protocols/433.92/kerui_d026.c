@@ -40,21 +40,20 @@ static int validate(void) {
 static void createMessage(int unitcode, int state, int state2, int state3, int state4, char **message) {
         int x = 0;
         x = snprintf((*message), 255, "{\"unitcode\":%d,", unitcode);
-
 	if(state4 == 0) {
-	        x += snprintf(&(*message)[x], 255-x, "\"state\":\"opened\"");
+	        x += snprintf(&(*message)[x], 255-x, "\"state\":\"opened\",\"battery\":1");
 	}
         else if(state == 0) {
-	        x += snprintf(&(*message)[x], 255-x, "\"state\":\"closed\"");
+	        x += snprintf(&(*message)[x], 255-x, "\"state\":\"closed\",\"battery\":1");
         }
         else if(state2 == 0) {
-	        x += snprintf(&(*message)[x], 255-x, "\"state\":\"tamper\"");
-        }
+	        x += snprintf(&(*message)[x], 255-x, "\"state\":\"tamper\",\"battery\":1");
+        }/*
         else if(state3 == 0) {
-	        x += snprintf(&(*message)[x], 255-x, "\"state\":\"not used\"");
-        }
+	        x += snprintf(&(*message)[x], 255-x, "\"state\":\"not used\",\"battery\":1");
+        }*/
 	else{
-	        x += snprintf(&(*message)[x], 255-x, "\"battery\":\"low\"");
+	        x += snprintf(&(*message)[x], 255-x, "\"battery\":0");
 	}
 	x += snprintf(&(*message)[x], 255-x, "}");
 }
@@ -97,6 +96,7 @@ void keruiD026Init(void) {
 	options_add(&kerui_D026->options, "t", "opened", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&kerui_D026->options, "f", "closed", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&kerui_D026->options, "a", "tamper", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&kerui_D026->options, "b", "battery", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[01]$");
 
 	kerui_D026->parseCode=&parseCode;
 	kerui_D026->validate=&validate;
