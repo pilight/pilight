@@ -40,18 +40,20 @@ static int validate(void) {
 static void createMessage(int unitcode, int state, int state2, int state3, int state4) {
 	kerui_D026->message = json_mkobject();
 	json_append_member(kerui_D026->message, "unitcode", json_mknumber(unitcode, 0));
+	int battery = 1;
 
 	if(state4 == 0) {
 		json_append_member(kerui_D026->message, "state", json_mkstring("opened"));
 	} else if(state == 0) {
 		json_append_member(kerui_D026->message, "state", json_mkstring("closed"));
 	} else if(state2 == 0) {
-		json_append_member(kerui_D026->message, "state", json_mkstring("tamped"));
-	} else if(state3 == 0) {
+		json_append_member(kerui_D026->message, "state", json_mkstring("tamper"));
+/*	} else if(state3 == 0) {
 		json_append_member(kerui_D026->message, "state", json_mkstring("not used"));
-	} else {
-		json_append_member(kerui_D026->message, "state", json_mkstring("low"));
+*/	} else {
+		battery = 0;
 	}
+	json_append_member(kerui_D026->message, "battery", json_mknumber(battery, 0));
 }
 
 static void parseCode(void) {
@@ -92,6 +94,7 @@ void keruiD026Init(void) {
 	options_add(&kerui_D026->options, "t", "opened", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&kerui_D026->options, "f", "closed", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&kerui_D026->options, "a", "tamper", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&kerui_D026->options, "b", "battery", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[01]$");
 
 	kerui_D026->parseCode=&parseCode;
 	kerui_D026->validate=&validate;
