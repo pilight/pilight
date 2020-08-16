@@ -34,13 +34,12 @@
 #include "../../core/binary.h"
 #include "../../core/common.h"
 #include "../../core/dso.h"
-#include "../../core/gc.h"
 #include "../../core/log.h"
 #include "../../core/pilight.h"
 #include "../protocol.h"
 #include "nexus.h"
 
-#define PULSE_TOLERANCE 150
+#define PULSE_TOLERANCE 320
 #define MESSAGE_BITS 36
 #define RAW_LENGTH (MESSAGE_BITS * 2 + 2)
 #define MAXBITS (RAW_LENGTH / 2)
@@ -58,7 +57,7 @@ typedef struct settings_t {
     int battery;
     double temperature_offset;
     double humidity_offset;
-    double temperature_decimals;
+    int temperature_decimals;
     struct settings_t *next;
 } settings_t;
 
@@ -79,7 +78,7 @@ static int validate(void) {
     return -1;
 }
 
-static void parseCode(void) {
+static void parseCode(char **message) {
     int id = 0, battery = 0, channel = 0;
     double temperature = 0.0, humidity = 0.0;
     int binary[MAXBITS];
@@ -116,7 +115,7 @@ static void parseCode(void) {
     humidity = (double)binToDecRev(binary, 28, 35);
 
     temperature /= 10;
-    double temperature_decimals = 1;
+    int temperature_decimals = 1;
 
     // find the matching settings struct; you cannot access settings->anyfield without this!
     struct settings_t *tmp = settings;
@@ -131,13 +130,11 @@ static void parseCode(void) {
         tmp = tmp->next;
     }
 
-    // build the JSON object
-    nexus->message = json_mkobject();
-    json_append_member(nexus->message, "id", json_mknumber(id, 0));
-    json_append_member(nexus->message, "channel", json_mknumber(channel, 0));
-    json_append_member(nexus->message, "battery", json_mknumber(battery, 0));
-    json_append_member(nexus->message, "temperature", json_mknumber(temperature, temperature_decimals));
-    json_append_member(nexus->message, "humidity", json_mknumber(humidity, 0));
+    // format the results into a JSON string
+	snprintf(*message, 255,
+		"{\"id\":%d,\"channel\":%d,\"temperature\":%.*f,\"humidity\":%.1f,\"battery\":%d}",
+		id, channel, temperature_decimals, temperature, humidity, battery
+	);
 }
 
 static int checkValues(struct JsonNode *jvalues) {
