@@ -2709,7 +2709,7 @@ static void mqtt_callback(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, 
 
 								struct devices_t *dev = NULL;
 
-								if(devices_get(array[2], &dev) == 0) {
+								if(devices_get(array[3], &dev) == 0) {
 									control_device(dev, state, json_first_child(json), ORIGIN_SENDER);
 								}
 								if(jchild != NULL) {
