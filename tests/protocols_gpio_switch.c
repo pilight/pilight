@@ -117,7 +117,7 @@ static void start(void) {
 	pipe_req = MALLOC(sizeof(uv_pipe_t));
 	CuAssertPtrNotNull(gtc, pipe_req);
 
-	r = uv_pipe_init(uv_default_loop(), pipe_req, 1);
+	r = uv_pipe_init(uv_default_loop(), pipe_req, 0);
 	CuAssertIntEquals(gtc, 0, r);
 
 	uv_fs_t file_req;

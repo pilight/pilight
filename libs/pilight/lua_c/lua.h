@@ -81,7 +81,8 @@ typedef struct plua_module_t {
 
 typedef struct lua_state_t {
 	lua_State *L;
-	uv_mutex_t lock;
+	// uv_mutex_t lock;
+	volatile int claimed;
 	struct plua_module_t *module;
 	struct plua_module_t *oldmod;
 	struct plua_metatable_t *table;
@@ -96,6 +97,7 @@ typedef struct lua_state_t {
 		} **list;
 		int nr;
 		int size;
+		int threadid;
 		uv_mutex_t lock;
 	} gc;
 

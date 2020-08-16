@@ -12,6 +12,7 @@
 #include <stdint.h>
 
 #include "../../libuv/uv.h"
+#include "eventpool.h"
 
 typedef struct mqtt_pkt_t {
 	uint8_t type;
@@ -87,6 +88,8 @@ typedef struct mqtt_client_t {
 	struct mqtt_subscriptions_t **subs;
 	int nrsubs;
 	int flush;
+
+	struct iobuf_t iobuf;
 
 	struct {
 		char *message;

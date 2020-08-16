@@ -188,6 +188,8 @@ void eventpool_trigger(int, void *(*)(void *), void *);
 void eventpool_init(enum eventpool_threads_t);
 int eventpool_gc(void);
 
+void iobuf_free(struct iobuf_t *iobuf);
+void iobuf_init(struct iobuf_t *iobuf, size_t initial_size);
 void iobuf_remove(struct iobuf_t *, size_t);
 size_t iobuf_append(struct iobuf_t *, const void *, int);
 

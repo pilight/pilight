@@ -502,31 +502,49 @@ static void test_str_replace(CuTest *tc) {
 
 	memtrack();
 
-	char *str = MALLOC(255), *p = str;
+	char *str = NULL;
 	int n = 0;
-	CuAssertPtrNotNull(tc, str);
 
+	str = MALLOC(11);
+	CuAssertPtrNotNull(tc, str);
 	strcpy(str, "HelloWorld");
-	n = str_replace("o", "a", &p);
+	n = str_replace("o", "a", &str);
 	CuAssertIntEquals(tc, 10, n);
 	CuAssertStrEquals(tc, "HellaWarld", str);
+	FREE(str);
 
+	str = MALLOC(21);
+	CuAssertPtrNotNull(tc, str);
 	strcpy(str, "<body text='%body%'>");
-	n = str_replace("%body%", "black", &p);
+	n = str_replace("%body%", "black", &str);
 	CuAssertIntEquals(tc, 19, n);
 	CuAssertStrEquals(tc, "<body text='black'>", str);
+	FREE(str);
 
+	str = MALLOC(6);
+	CuAssertPtrNotNull(tc, str);
 	strcpy(str, "Apple");
-	n = str_replace("Apple", "Pineapple", &p);
+	n = str_replace("Apple", "Pineapple", &str);
 	CuAssertIntEquals(tc, 9, n);
 	CuAssertStrEquals(tc, "Pineapple", str);
+	FREE(str);
 
+	str = MALLOC(9);
+	CuAssertPtrNotNull(tc, str);
 	strcpy(str, "My fruit");
-	n = str_replace("fruit", "raspberry", &p);
+	n = str_replace("fruit", "raspberry", &str);
 	CuAssertIntEquals(tc, 12, n);
 	CuAssertStrEquals(tc, "My raspberry", str);
-
 	FREE(str);
+
+	str = MALLOC(26);
+	CuAssertPtrNotNull(tc, str);
+	strcpy(str, "DATE_FORMAT(time, %H%M%S)");
+	n = str_replace("%", "%%", &str);
+	CuAssertIntEquals(tc, 28, n);
+	CuAssertStrEquals(tc, "DATE_FORMAT(time, %%H%%M%%S)", str);
+	FREE(str);
+
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -751,7 +769,7 @@ static void test_alpha_random(CuTest *tc) {
 
 	memtrack();
 
-	int i = 0, x = 0;
+	int i = 0, x = 0, result = 0;
 	char suffix[10][5];
 	for(i=0;i<10;i++) {
 		memset(&suffix[i], 0, 5);
@@ -760,11 +778,14 @@ static void test_alpha_random(CuTest *tc) {
 	for(i=0;i<10;i++) {
 		for(x=0;x<10;x++) {
 			if(x != i) {
-				CuAssertTrue(tc, strcmp(suffix[i], suffix[x]) != 0);
+				if(strcmp(suffix[i], suffix[x]) != 0) {
+					result++;
+				}
 			}
 		}
 	}
 
+	CuAssertTrue(tc, result > 85);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 

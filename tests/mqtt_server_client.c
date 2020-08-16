@@ -1063,8 +1063,10 @@ void test_mqtt_server_client(CuTest *tc) {
 				CuAssertIntEquals(tc, 1, step1[MQTT_CONNACK]);
 				CuAssertIntEquals(tc, 1, step1[MQTT_SUBACK]);
 				CuAssertIntEquals(tc, 1, step1[MQTT_PINGRESP]);
+				CuAssertIntEquals(tc, 1, step1[MQTT_DISCONNECTED]);
 				for(x=0;x<17;x++) {
-					if(x != MQTT_CONNACK && x != MQTT_SUBACK && x != MQTT_PINGRESP) {
+					if(x != MQTT_CONNACK && x != MQTT_SUBACK &&
+						 x != MQTT_PINGRESP && x != MQTT_DISCONNECTED) {
 						CuAssertIntEquals(tc, 0, step1[x]);
 					}
 				}

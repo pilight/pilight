@@ -53,32 +53,6 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 	}
 }
 
-static void plua_overwrite_print(void) {
-	struct lua_state_t *state[NRLUASTATES];
-	struct lua_State *L = NULL;
-	int i = 0;
-
-	for(i=0;i<NRLUASTATES;i++) {
-		state[i] = plua_get_free_state();
-
-		if(state[i] == NULL) {
-			return;
-		}
-		if((L = state[i]->L) == NULL) {
-			uv_mutex_unlock(&state[i]->lock);
-			return;
-		}
-
-		lua_getglobal(L, "_G");
-		lua_pushcfunction(L, plua_print);
-		lua_setfield(L, -2, "print");
-		lua_pop(L, 1);
-	}
-	for(i=0;i<NRLUASTATES;i++) {
-		uv_mutex_unlock(&state[i]->lock);
-	}
-}
-
 static int call(struct lua_State *L, char *file, char *func) {
 	lua_getfield(L, -1, func);
 	if(lua_type(L, -1) != LUA_TFUNCTION) {
@@ -180,7 +154,7 @@ void test_lua_hardware_433nano_receive_invalid(CuTest *tc) {
 
 	test_set_plua_path(tc, __FILE__, "lua_hardware_433nano_receive_invalid.c");
 
-	plua_overwrite_print();
+	plua_override_global("print", plua_print);
 
 	file = STRDUP(__FILE__);
 	CuAssertPtrNotNull(tc, file);

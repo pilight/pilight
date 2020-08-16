@@ -509,7 +509,6 @@ static int plua_print(lua_State* L) {
 		} else if(run >= 18) {
 			validate_queries(L, 18);
 		}
-
 		if(run >= 100) {
 			struct sockaddr_in addr;
 
@@ -522,11 +521,12 @@ static int plua_print(lua_State* L) {
 			addr.sin_port = htons(5353);
 		#endif
 
+			test = 2;
+			run = 3;
+
 			int r = sendto(mdns_socket, message_qr1, sizeof(message_qr1), 0, (struct sockaddr *)&addr, sizeof(addr));
 			CuAssertTrue(gtc, (r == sizeof(message_qr1)));
 
-			test = 2;
-			run = 3;
 			return 0;
 		}
 	} else if(test == 2) {

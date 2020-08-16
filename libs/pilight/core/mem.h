@@ -16,7 +16,7 @@
 	#define atomic_dec(ptr) __sync_add_and_fetch(&(ptr), -1)
 #elif defined (_WIN32)
 	#define atomic_inc(ptr) InterlockedIncrement(&(ptr))
-	#define atomic_inc(ptr) InterlockedDecrement(&(ptr))
+	#define atomic_dec(ptr) InterlockedDecrement(&(ptr))
 #else
 	#error "Need some more porting work here"
 #endif

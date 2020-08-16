@@ -789,39 +789,40 @@ char *uniq_space(char *str){
 }
 
 int str_replace(char *search, char *replace, char **str) {
-	unsigned short match = 0;
-	int len = (int)strlen(*str);
-	int nlen = 0;
-	int slen = (int)strlen(search);
-	int rlen = (int)strlen(replace);
-	int x = 0;
-	while(x < len) {
-		if(strncmp(&(*str)[x], search, (size_t)slen) == 0) {
-			match = 1;
-			int rpos = (x + (slen - rlen));
-			if(rpos < 0) {
-				rpos = 0;
+	char *ptr = NULL;
+	int x = -1, len = strlen(*str), pos = 0;
+	int slen = strlen(search);
+	int rlen = strlen(replace);
+
+	while(pos < len && (ptr = strstr(&(*str)[pos], search)) != NULL) {
+		x = ptr-*str;
+
+		if((rlen-slen) > 0) {
+			if((*str = REALLOC((*str), len+(rlen-slen)+1)) == NULL) { /*LCOV_EXCL_LINE*/
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
-			nlen = len - (slen - rlen);
-			if(slen < rlen) {
-				if(((*str) = REALLOC((*str), (size_t)nlen+1)) == NULL) { /*LCOV_EXCL_LINE*/
-					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-				}
-				memset(&(*str)[len], '\0', (size_t)(nlen-len));
-			}
-			len = nlen;
-			memmove(&(*str)[x], &(*str)[rpos], (size_t)(len-x));
-			strncpy(&(*str)[x], replace, (size_t)rlen);
-			(*str)[len] = '\0';
-			x += rlen-1;
+			memset(&(*str)[len], 0, (rlen-slen)+1);
+			len += rlen-slen;
 		}
-		x++;
+
+		memmove(&(*str)[x+rlen], &(*str)[x+slen], strlen(&(*str)[x+slen]));
+		memcpy(&(*str)[x], replace, rlen);
+		pos = (x + rlen);
+
+		if((rlen-slen) < 0) {
+			if((*str = REALLOC((*str), len+(rlen-slen)+1)) == NULL) { /*LCOV_EXCL_LINE*/
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+			}
+			len += rlen-slen;
+		}
+
+		(*str)[len] = 0;
 	}
-	if(match == 1) {
+
+	if(x > -1) {
 		return (int)len;
-	} else {
-		return -1;
 	}
+	return -1;
 }
 
 void strtolower(char **a) {

@@ -40,8 +40,6 @@
 #include <unistd.h>
 #include <time.h>
 
-static char *process_title;
-
 
 int uv__platform_loop_init(uv_loop_t* loop) {
   return uv__kqueue_init(loop);
@@ -57,7 +55,7 @@ void uv_loadavg(double avg[3]) {
   size_t size = sizeof(info);
   int which[] = {CTL_VM, VM_LOADAVG};
 
-  if (sysctl(which, 2, &info, &size, NULL, 0) == -1) return;
+  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0) == -1) return;
 
   avg[0] = (double) info.ldavg[0] / info.fscale;
   avg[1] = (double) info.ldavg[1] / info.fscale;
@@ -66,22 +64,33 @@ void uv_loadavg(double avg[3]) {
 
 
 int uv_exepath(char* buffer, size_t* size) {
+  /* Intermediate buffer, retrieving partial path name does not work
+   * As of NetBSD-8(beta), vnode->path translator does not handle files
+   * with longer names than 31 characters.
+   */
+  char int_buf[PATH_MAX];
+  size_t int_size;
   int mib[4];
-  size_t cb;
-  pid_t mypid;
 
   if (buffer == NULL || size == NULL || *size == 0)
-    return -EINVAL;
+    return UV_EINVAL;
 
-  mypid = getpid();
   mib[0] = CTL_KERN;
   mib[1] = KERN_PROC_ARGS;
-  mib[2] = mypid;
-  mib[3] = KERN_PROC_ARGV;
+  mib[2] = -1;
+  mib[3] = KERN_PROC_PATHNAME;
+  int_size = ARRAY_SIZE(int_buf);
 
-  cb = *size;
-  if (sysctl(mib, 4, buffer, &cb, NULL, 0))
-    return -errno;
+  if (sysctl(mib, 4, int_buf, &int_size, NULL, 0))
+    return UV__ERR(errno);
+
+  /* Copy string from the intermediate buffer to outer one with appropriate
+   * length.
+   */
+  /* TODO(bnoordhuis) Check uv__strscpy() return value. */
+  uv__strscpy(buffer, int_buf, *size);
+
+  /* Set new size. */
   *size = strlen(buffer);
 
   return 0;
@@ -93,8 +102,8 @@ uint64_t uv_get_free_memory(void) {
   size_t size = sizeof(info);
   int which[] = {CTL_VM, VM_UVMEXP};
 
-  if (sysctl(which, 2, &info, &size, NULL, 0))
-    return -errno;
+  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0))
+    return UV__ERR(errno);
 
   return (uint64_t) info.free * sysconf(_SC_PAGESIZE);
 }
@@ -110,49 +119,15 @@ uint64_t uv_get_total_memory(void) {
 #endif
   size_t size = sizeof(info);
 
-  if (sysctl(which, 2, &info, &size, NULL, 0))
-    return -errno;
+  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0))
+    return UV__ERR(errno);
 
   return (uint64_t) info;
 }
 
 
-char** uv_setup_args(int argc, char** argv) {
-  process_title = argc ? uv__strdup(argv[0]) : NULL;
-  return argv;
-}
-
-
-int uv_set_process_title(const char* title) {
-  if (process_title) uv__free(process_title);
-
-  process_title = uv__strdup(title);
-  setproctitle("%s", title);
-
-  return 0;
-}
-
-
-int uv_get_process_title(char* buffer, size_t size) {
-  size_t len;
-
-  if (buffer == NULL || size == 0)
-    return -EINVAL;
-
-  if (process_title) {
-    len = strlen(process_title) + 1;
-
-    if (size < len)
-      return -ENOBUFS;
-
-    memcpy(buffer, process_title, len);
-  } else {
-    len = 0;
-  }
-
-  buffer[len] = '\0';
-
-  return 0;
+uint64_t uv_get_constrained_memory(void) {
+  return 0;  /* Memory constraints are unknown. */
 }
 
 
@@ -182,7 +157,7 @@ int uv_resident_set_memory(size_t* rss) {
 
 error:
   if (kd) kvm_close(kd);
-  return -EPERM;
+  return UV_EPERM;
 }
 
 
@@ -192,8 +167,8 @@ int uv_uptime(double* uptime) {
   size_t size = sizeof(info);
   static int which[] = {CTL_KERN, KERN_BOOTTIME};
 
-  if (sysctl(which, 2, &info, &size, NULL, 0))
-    return -errno;
+  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0))
+    return UV__ERR(errno);
 
   now = time(NULL);
 
@@ -217,12 +192,12 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   size = sizeof(model);
   if (sysctlbyname("machdep.cpu_brand", &model, &size, NULL, 0) &&
       sysctlbyname("hw.model", &model, &size, NULL, 0)) {
-    return -errno;
+    return UV__ERR(errno);
   }
 
   size = sizeof(numcpus);
   if (sysctlbyname("hw.ncpu", &numcpus, &size, NULL, 0))
-    return -errno;
+    return UV__ERR(errno);
   *count = numcpus;
 
   /* Only i386 and amd64 have machdep.tsc_freq */
@@ -233,16 +208,16 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   size = numcpus * CPUSTATES * sizeof(*cp_times);
   cp_times = uv__malloc(size);
   if (cp_times == NULL)
-    return -ENOMEM;
+    return UV_ENOMEM;
 
   if (sysctlbyname("kern.cp_time", cp_times, &size, NULL, 0))
-    return -errno;
+    return UV__ERR(errno);
 
   *cpu_infos = uv__malloc(numcpus * sizeof(**cpu_infos));
   if (!(*cpu_infos)) {
     uv__free(cp_times);
     uv__free(*cpu_infos);
-    return -ENOMEM;
+    return UV_ENOMEM;
   }
 
   for (i = 0; i < numcpus; i++) {
@@ -260,13 +235,25 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   return 0;
 }
 
+int uv__random_sysctl(void* buf, size_t len) {
+  static int name[] = {CTL_KERN, KERN_ARND};
+  size_t count, req;
+  unsigned char* p;
 
-void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
-  int i;
+  p = buf;
+  while (len) {
+    req = len < 32 ? len : 32;
+    count = req;
 
-  for (i = 0; i < count; i++) {
-    uv__free(cpu_infos[i].model);
+    if (sysctl(name, ARRAY_SIZE(name), p, &count, NULL, 0) == -1)
+      return UV__ERR(errno);
+
+    if (count != req)
+      return UV_EIO;  /* Can't happen. */
+
+    p += count;
+    len -= count;
   }
 
-  uv__free(cpu_infos);
+  return 0;
 }

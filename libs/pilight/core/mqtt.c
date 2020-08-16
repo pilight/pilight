@@ -70,6 +70,8 @@ typedef struct mqtt_topic_t {
 static int lock_init = 0;
 static int started = 0;
 
+static struct iobuf_t server_iobuf;
+
 static uv_poll_t *poll_server_req = NULL;
 static struct mqtt_client_t *mqtt_clients = NULL;
 static struct mqtt_topic_t *mqtt_topics = NULL;
@@ -155,6 +157,7 @@ void mqtt_gc(void) {
 
 	if(poll_server_req != NULL) {
 		poll_close_cb(poll_server_req);
+		iobuf_free(&server_iobuf);
 		poll_server_req = NULL;
 	}
 
@@ -333,6 +336,16 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 
 			uv_timer_stop(currP->timer_req);
 
+			if(currP->fd > -1) {
+#ifdef _WIN32
+				shutdown(currP->fd, SD_BOTH);
+				closesocket(currP->fd);
+#else
+				shutdown(currP->fd, SHUT_RDWR);
+				close(currP->fd);
+#endif
+			}
+
 			int len = snprintf(NULL, 0, topicfmt, currP->id);
 			if((topic = MALLOC(len+1)) == NULL) {
 				OUT_OF_MEMORY
@@ -414,18 +427,19 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 				FREE(currP->will.topic);
 			}
 
+			iobuf_free(&currP->iobuf);
+
 			if(currP->poll_req->data != NULL) {
 				struct uv_custom_poll_t *custom_poll_data = currP->poll_req->data;
-				int r = 0, fd = 0;
-				if((r = uv_fileno((uv_handle_t *)currP->poll_req, (uv_os_fd_t *)&fd)) != 0) {
-					/*LCOV_EXCL_START*/
-					logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
-					/*LCOV_EXCL_STOP*/
-				}
+
 				if(custom_poll_data != NULL) {
 					uv_custom_poll_free(custom_poll_data);
 					currP->poll_req->data = NULL;
 				}
+			}
+
+			if(!uv_is_closing((uv_handle_t *)req)) {
+				uv_close((uv_handle_t *)req, close_cb);
 			}
 
 			FREE(currP);
@@ -757,7 +771,7 @@ int mqtt_decode(struct mqtt_pkt_t **pkt, unsigned char *buf, unsigned int len, u
 
 	startpos = (*pos);
 
-	if(len < msglength+((*pos)-1)) {
+	if(len < msglength+((*pos))) {
 		/*
 		 * Packet too short for full message
 		 * so we are waiting for additional
@@ -1295,6 +1309,7 @@ void mqtt_client_add(struct mqtt_client_t **node, uv_poll_t *req, int side) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	(*node)->timer_req->data = (*node);
+	iobuf_init(&(*node)->iobuf, 0);
 
 	uv_timer_init(uv_default_loop(), (*node)->timer_req);
 
@@ -1833,7 +1848,6 @@ int mqtt_publish(struct mqtt_client_t *client, int dub, int qos, int retain, cha
 		unsigned char *buf = NULL;
 		unsigned int len = 0;
 
-
 		mqtt_pkt_publish(&pkt, dub, qos, retain, topic, client->msgid++, message);
 		if(client->msgid > 1024) {
 			client->msgid = 0;
@@ -2037,6 +2051,7 @@ static void client_write_cb(uv_poll_t *req) {
 static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct mqtt_client_t *client = custom_poll_data->data;
+	struct iobuf_t *iobuf = NULL;
 
 	struct mqtt_pkt_t *pkt = NULL;
 	unsigned int pos = 0, len = 0;
@@ -2046,15 +2061,17 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	if(*nread > 0) {
 		buf[*nread] = '\0';
 
-		// int i = 0;
-		// for(i=0;i<*nread;i++) {
-			// printf("0x%02x, ", (unsigned char)buf[i]);
-		// }
-		// printf("\n");
+		if(client != NULL) {
+			iobuf = &client->iobuf;
+		} else {
+			iobuf = &server_iobuf;
+		}
+		iobuf_append(iobuf, buf, *nread);
 
-		while(*nread > 0 && (ret = mqtt_decode(&pkt, (unsigned char *)buf, *nread, &pos)) == 0) {
-			memmove(&buf[0], &buf[pos], *nread-pos);
-			*nread -= pos;
+		*nread = 0;
+
+		while(iobuf->len > 0 && (ret = mqtt_decode(&pkt, (unsigned char *)iobuf->buf, iobuf->len, &pos)) == 0) {
+			iobuf_remove(iobuf, pos);
 			pos = 0;
 
 			struct mqtt_pkt_t pkt1;
@@ -2068,7 +2085,6 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 				logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
 				/*LCOV_EXCL_STOP*/
 			}
-			// mqtt_dump(pkt);
 
 			if(client == NULL) {
 				switch(pkt->type) {
@@ -2401,6 +2417,8 @@ int mqtt_server(int port) {
 	}
 
 	uv_custom_read(poll_server_req);
+
+	iobuf_init(&server_iobuf, 0);
 
 	logprintf(LOG_DEBUG, "started MQTT broker on port %d", port);
 
