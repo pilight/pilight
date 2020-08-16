@@ -57,7 +57,7 @@ typedef struct settings_t {
     int battery;
     double temperature_offset;
     double humidity_offset;
-    int temperature_decimals;
+    double temperature_decimals;
     struct settings_t *next;
 } settings_t;
 
@@ -124,7 +124,7 @@ static void parseCode(char **message) {
             // store or apply the settings
             temperature += settings->temperature_offset;
             humidity += settings->humidity_offset;
-            temperature_decimals = settings->temperature_decimals;
+            temperature_decimals = (int)round(settings->temperature_decimals);
             break;
         }
         tmp = tmp->next;
