@@ -131,10 +131,10 @@ static void parseCode(char **message) {
     }
 
     // format the results into a JSON string
-	snprintf(*message, 255,
-		"{\"id\":%d,\"channel\":%d,\"temperature\":%.*f,\"humidity\":%.1f,\"battery\":%d}",
-		id, channel, temperature_decimals, temperature, humidity, battery
-	);
+    snprintf(*message, 255,
+        "{\"id\":%d,\"channel\":%d,\"temperature\":%.*f,\"humidity\":%.1f,\"battery\":%d}",
+        id, channel, temperature_decimals, temperature, humidity, battery
+    );
 }
 
 static int checkValues(struct JsonNode *jvalues) {
