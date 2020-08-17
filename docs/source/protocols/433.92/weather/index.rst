@@ -15,6 +15,7 @@ Weather Stations
    iboutique
    kaku
    meteoscan_w1xxx
+   nexus
    ninja_blocks
    soens
    tcm
