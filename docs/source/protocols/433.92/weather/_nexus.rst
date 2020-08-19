@@ -19,7 +19,7 @@
 +--------------------------------------+----------------+
 | **Brand**                            | **Protocol**   |
 +--------------------------------------+----------------+
-| "Nexus Weather Stations              | nexus          |
+| Nexus Weather Stations               | nexus          |
 +--------------------------------------+----------------+
 | Digoo DG-R8H/DG-R8S Weather Stations | dgr8h          |
 +--------------------------------------+----------------+
@@ -37,16 +37,16 @@
    :linenos:
 
    {
-     "devices": {
-       "weather": {
-         "protocol": [ "nexus" ],
-         "id": [{
-           "id": 108,
-           "channel": 1
-         }],
-         "temperature": 18.90,
-         "humidity": 41.00,
-         "battery": 1
+      "devices": {
+        "weather": {
+          "protocol": [ "nexus" ],
+          "id": [{
+            "id": 97,
+            "channel": 1
+          }],
+          "temperature": 18.90,
+          "humidity": 41.00,
+          "battery": 1
         }
      },
      "gui": {
