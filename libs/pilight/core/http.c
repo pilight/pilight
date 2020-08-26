@@ -126,6 +126,7 @@ static void free_request(struct request_t *request) {
 
 int http_gc(void) {
 	struct http_clients_t *node = NULL;
+	char buffer[BUFFER_SIZE] = { 0 };
 
 #ifdef _WIN32
 	uv_mutex_lock(&http_lock);
@@ -140,7 +141,8 @@ int http_gc(void) {
 			shutdown(http_clients->fd, SD_BOTH);
 			closesocket(http_clients->fd);
 #else
-			shutdown(http_clients->fd, SHUT_RDWR);
+			shutdown(http_clients->fd, SHUT_WR);
+			while(recv(http_clients->fd, buffer, BUFFER_SIZE, 0) > 0);
 			close(http_clients->fd);
 #endif
 		}
@@ -486,6 +488,8 @@ static void http_client_close(uv_poll_t *req) {
 	struct request_t *request = custom_poll_data->data;
 	uv_timer_stop(request->timer_req);
 
+	char buffer[BUFFER_SIZE] = { 0 };
+
 	if(request->reading == 1) {
 		if(request->has_length == 0 && request->has_chunked == 0) {
 			if(request->callback != NULL && request->called == 0) {
@@ -514,7 +518,8 @@ static void http_client_close(uv_poll_t *req) {
 		shutdown(request->fd, SD_BOTH);
 		closesocket(request->fd);
 #else
-		shutdown(request->fd, SHUT_RDWR);
+		shutdown(request->fd, SHUT_WR);
+		while(recv(request->fd, buffer, BUFFER_SIZE, 0) > 0);
 		close(request->fd);
 #endif
 	}

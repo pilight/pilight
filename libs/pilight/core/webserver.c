@@ -1626,6 +1626,8 @@ static void poll_close_cb(uv_poll_t *req) {
 	struct connection_t *conn = custom_poll_data->data;
 	int fd = -1, r = 0;
 
+	char buffer[BUFFER_SIZE] = { 0 };
+
 	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
 		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
@@ -1641,7 +1643,8 @@ static void poll_close_cb(uv_poll_t *req) {
 		shutdown(fd, SD_BOTH);
 		closesocket(fd);
 #else
-		shutdown(fd, SHUT_RDWR);
+		shutdown(fd, SHUT_WR);
+		while(recv(fd, buffer, BUFFER_SIZE, 0) > 0);
 		close(fd);
 #endif
 	}

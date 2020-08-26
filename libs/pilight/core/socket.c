@@ -318,6 +318,7 @@ void socket_close(int sockfd) {
 	struct sockaddr_in address;
 	int addrlen = sizeof(address);
 	char buf[INET_ADDRSTRLEN+1];
+	char buffer[BUFFER_SIZE] = { 0 };
 
 	if(sockfd > 0) {
 		if(getpeername(sockfd, (struct sockaddr*)&address, (socklen_t*)&addrlen) == 0) {
@@ -332,7 +333,8 @@ void socket_close(int sockfd) {
 				break;
 			}
 		}
-		shutdown(sockfd, 2);
+		shutdown(sockfd, SHUT_WR);
+		while(recv(sockfd, buffer, BUFFER_SIZE, 0) > 0);
 		close(sockfd);
 	}
 }
@@ -406,6 +408,7 @@ void socket_rm_client(int i, struct socket_callback_t *socket_callback) {
 	int addrlen = sizeof(address);
 	int sd = socket_clients[i];
 	char buf[INET_ADDRSTRLEN+1];
+	char buffer[BUFFER_SIZE] = { 0 };
 
 	//Somebody disconnected, get his details and print
 	getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
@@ -415,7 +418,8 @@ void socket_rm_client(int i, struct socket_callback_t *socket_callback) {
 	if(socket_callback->client_disconnected_callback)
 		socket_callback->client_disconnected_callback(i);
 	//Close the socket and mark as 0 in list for reuse
-	shutdown(sd, 2);
+	shutdown(sd, SHUT_WR);
+	while(recv(sd, buffer, BUFFER_SIZE, 0) > 0);
 	close(sd);
 	socket_clients[i] = 0;
 }
@@ -519,6 +523,7 @@ void *socket_wait(void *param) {
 
 	struct socket_callback_t *socket_callback = (struct socket_callback_t *)param;
 
+	char buffer[BUFFER_SIZE] = { 0 };
 	char buf[INET_ADDRSTRLEN+1];
 	int activity;
 	int i, sd;
@@ -570,7 +575,8 @@ void *socket_wait(void *param) {
 			inet_ntop(AF_INET, (void *)&(address.sin_addr), buf, INET_ADDRSTRLEN+1);
 			if(whitelist_check(buf) != 0) {
 				logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", buf, ntohs(address.sin_port));
-				shutdown(socket_client, 2);
+				shutdown(socket_client, SHUT_WR);
+				while(recv(socket_client, buffer, BUFFER_SIZE, 0) > 0);
 				close(socket_client);
 			} else {
 				//inform user of socket number - used in send and receive commands
