@@ -50,10 +50,13 @@ if(CMAKE_BUILD_TOOL MATCHES "make")
   endif(NOT CMAKE_C_FLAGS MATCHES "-Wall")
 endif(CMAKE_BUILD_TOOL MATCHES "make")
 
-IF(CMAKE_COMPILER_IS_GNUCC)
+string(TOUPPER ${CMAKE_BUILD_TYPE} BUILD_TYPE)
+add_definitions(-D${BUILD_TYPE})
+
+IF(CMAKE_COMPILER_IS_GNUCC MATCHES "Release")
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
-ENDIF(CMAKE_COMPILER_IS_GNUCC)
+ENDIF()
 
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
@@ -160,9 +163,6 @@ else()
 	add_definitions(-DHASH="${git_ver}-nightly-${git_hash}")
 endif()
 
-string(TOUPPER ${CMAKE_BUILD_TYPE} BUILD_TYPE)
-add_definitions(-D${BUILD_TYPE})
-
 file(MD5 ${PROJECT_SOURCE_DIR}/res/pilight.pem md5sum)
 add_definitions(-DPILIGHT_PEM_MD5="${md5sum}")
 
@@ -181,7 +181,7 @@ if(NOT WIN32)
 				/usr/lib
 				/usr/lib32
 				/usr/lib64
-				/usr/lib/i386-linux-gnu		
+				/usr/lib/i386-linux-gnu
 				/usr/lib/x86_64-linux-gnu
 				/usr/local/lib
 				/usr/local/lib32
