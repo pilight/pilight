@@ -97,7 +97,9 @@ int log_gc(void) {
 	loop = 0;
 
 	if(pthinitialized == 1) {
-		pthread_mutex_unlock(&logqueue_lock);
+		if(pthread_mutex_trylock(&logqueue_lock) == 0) {
+			pthread_mutex_unlock(&logqueue_lock);
+		}
 		pthread_cond_signal(&logqueue_signal);
 	}
 
