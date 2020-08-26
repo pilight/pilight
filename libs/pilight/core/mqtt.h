@@ -83,13 +83,15 @@ typedef struct mqtt_pkt_t {
 
 typedef struct mqtt_client_t {
 	uv_poll_t *poll_req;
+	uv_async_t *async_req;
 	char *id;
 
 	struct mqtt_subscriptions_t **subs;
 	int nrsubs;
 	int flush;
 
-	struct iobuf_t iobuf;
+	struct iobuf_t recv_iobuf;
+	struct iobuf_t send_iobuf;
 
 	struct {
 		char *message;

@@ -60,7 +60,6 @@ typedef struct mqtt_topic_t {
 	struct mqtt_topic_t *next;
 } mqtt_topic_t;
 
-
 #ifdef _WIN32
 	static uv_mutex_t mqtt_lock;
 #else
@@ -164,6 +163,17 @@ void mqtt_gc(void) {
 	pthread_mutex_unlock(&mqtt_lock);
 #endif
 	return;
+}
+
+static void client_do_write(uv_async_t *handle) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
+
+	struct mqtt_client_t *client = handle->data;
+	uv_custom_write(client->poll_req);
 }
 
 void mqtt_free(struct mqtt_pkt_t *pkt) {
@@ -318,7 +328,7 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 	struct mqtt_client_t *currP, *prevP;
 	struct mqtt_client_t *node = mqtt_clients;
 	char *topicfmt = "pilight/mqtt/%s";
-	char *topic = NULL;
+	char *topic = NULL, buffer[BUFFER_SIZE] = { 0 };
 	int ret = 0, x = 0;
 
 	prevP = NULL;
@@ -338,7 +348,8 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 				shutdown(currP->fd, SD_BOTH);
 				closesocket(currP->fd);
 #else
-				shutdown(currP->fd, SHUT_RDWR);
+				shutdown(currP->fd, SHUT_WR);
+				while(recv(currP->fd, buffer, BUFFER_SIZE, 0) > 0);
 				close(currP->fd);
 #endif
 			}
@@ -424,7 +435,8 @@ void mqtt_client_remove(uv_poll_t *req, int disconnect) {
 				FREE(currP->will.topic);
 			}
 
-			iobuf_free(&currP->iobuf);
+			iobuf_free(&currP->send_iobuf);
+			iobuf_free(&currP->recv_iobuf);
 
 			if(currP->poll_req->data != NULL) {
 				struct uv_custom_poll_t *custom_poll_data = currP->poll_req->data;
@@ -1306,7 +1318,7 @@ void mqtt_client_add(struct mqtt_client_t **node, uv_poll_t *req, int side) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	(*node)->timer_req->data = (*node);
-	iobuf_init(&(*node)->iobuf, 0);
+	iobuf_init(&(*node)->recv_iobuf, 0);
 
 	uv_timer_init(uv_default_loop(), (*node)->timer_req);
 
@@ -1434,6 +1446,7 @@ static void poll_close_cb(uv_poll_t *req) {
 	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	struct uv_custom_poll_t *custom_poll_data = req->data;
+	char buffer[BUFFER_SIZE] = { 0 };
 	int fd = -1, r = 0;
 
 	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
@@ -1447,7 +1460,8 @@ static void poll_close_cb(uv_poll_t *req) {
 		shutdown(fd, SD_BOTH);
 		closesocket(fd);
 #else
-		shutdown(fd, SHUT_RDWR);
+		shutdown(fd, SHUT_WR);
+		while(recv(fd, buffer, BUFFER_SIZE, 0) > 0);
 		close(fd);
 #endif
 	}
@@ -1816,20 +1830,17 @@ int mqtt_subscribe(struct mqtt_client_t *client, char *topic, int qos) {
 	if(client->step != MQTT_CONNECTED) {
 		return -1;
 	} else {
-		uv_poll_t *poll_req = client->poll_req;
-		struct uv_custom_poll_t *custom_poll_data = poll_req->data;
-
 		struct mqtt_pkt_t pkt;
 		unsigned char *buf = NULL;
 		unsigned int len = 0;
 
-		mqtt_pkt_subscribe(&pkt, topic, 0, qos);
+		mqtt_pkt_subscribe(&pkt, topic, 1, qos);
 		if(mqtt_encode(&pkt, &buf, &len) == 0) {
-			iobuf_append(&custom_poll_data->send_iobuf, (void *)buf, len);
+			iobuf_append(&client->send_iobuf, (void *)buf, len);
 			FREE(buf);
 		}
 		mqtt_free(&pkt);
-		uv_custom_write(poll_req);
+		uv_async_send(client->async_req);
 	}
 	return 0;
 }
@@ -1838,9 +1849,6 @@ int mqtt_publish(struct mqtt_client_t *client, int dub, int qos, int retain, cha
 	if(client->step != MQTT_CONNECTED) {
 		return -1;
 	} else {
-		uv_poll_t *poll_req = client->poll_req;
-		struct uv_custom_poll_t *custom_poll_data = poll_req->data;
-
 		struct mqtt_pkt_t pkt;
 		unsigned char *buf = NULL;
 		unsigned int len = 0;
@@ -1851,11 +1859,11 @@ int mqtt_publish(struct mqtt_client_t *client, int dub, int qos, int retain, cha
 		}
 
 		if(mqtt_encode(&pkt, &buf, &len) == 0) {
-			iobuf_append(&custom_poll_data->send_iobuf, (void *)buf, len);
+			iobuf_append(&client->send_iobuf, (void *)buf, len);
 			FREE(buf);
 		}
 		mqtt_free(&pkt);
-		uv_custom_write(poll_req);
+		uv_async_send(client->async_req);
 	}
 	return 0;
 }
@@ -1864,9 +1872,6 @@ int mqtt_puback(struct mqtt_client_t *client, int msgid) {
 	if(client->step != MQTT_CONNECTED) {
 		return -1;
 	} else {
-		uv_poll_t *poll_req = client->poll_req;
-		struct uv_custom_poll_t *custom_poll_data = poll_req->data;
-
 		struct mqtt_pkt_t pkt;
 		unsigned char *buf = NULL;
 		unsigned int len = 0;
@@ -1878,11 +1883,11 @@ int mqtt_puback(struct mqtt_client_t *client, int msgid) {
 		}
 
 		if(mqtt_encode(&pkt, &buf, &len) == 0) {
-			iobuf_append(&custom_poll_data->send_iobuf, (void *)buf, len);
+			iobuf_append(&client->send_iobuf, (void *)buf, len);
 			FREE(buf);
 		}
 		mqtt_free(&pkt);
-		uv_custom_write(poll_req);
+		uv_async_send(client->async_req);
 	}
 	return 0;
 }
@@ -1891,9 +1896,6 @@ int mqtt_pubrec(struct mqtt_client_t *client, int msgid) {
 	if(client->step != MQTT_CONNECTED) {
 		return -1;
 	} else {
-		uv_poll_t *poll_req = client->poll_req;
-		struct uv_custom_poll_t *custom_poll_data = poll_req->data;
-
 		struct mqtt_pkt_t pkt;
 		unsigned char *buf = NULL;
 		unsigned int len = 0;
@@ -1905,11 +1907,11 @@ int mqtt_pubrec(struct mqtt_client_t *client, int msgid) {
 		}
 
 		if(mqtt_encode(&pkt, &buf, &len) == 0) {
-			iobuf_append(&custom_poll_data->send_iobuf, (void *)buf, len);
+			iobuf_append(&client->send_iobuf, (void *)buf, len);
 			FREE(buf);
 		}
 		mqtt_free(&pkt);
-		uv_custom_write(poll_req);
+		uv_async_send(client->async_req);
 	}
 	return 0;
 }
@@ -1918,9 +1920,6 @@ int mqtt_pubrel(struct mqtt_client_t *client, int msgid) {
 	if(client->step != MQTT_CONNECTED) {
 		return -1;
 	} else {
-		uv_poll_t *poll_req = client->poll_req;
-		struct uv_custom_poll_t *custom_poll_data = poll_req->data;
-
 		struct mqtt_pkt_t pkt;
 		unsigned char *buf = NULL;
 		unsigned int len = 0;
@@ -1931,11 +1930,11 @@ int mqtt_pubrel(struct mqtt_client_t *client, int msgid) {
 		}
 
 		if(mqtt_encode(&pkt, &buf, &len) == 0) {
-			iobuf_append(&custom_poll_data->send_iobuf, (void *)buf, len);
+			iobuf_append(&client->send_iobuf, (void *)buf, len);
 			FREE(buf);
 		}
 		mqtt_free(&pkt);
-		uv_custom_write(poll_req);
+		uv_async_send(client->async_req);
 	}
 	return 0;
 }
@@ -1944,9 +1943,6 @@ int mqtt_pubcomp(struct mqtt_client_t *client, int msgid) {
 	if(client->step != MQTT_CONNECTED) {
 		return -1;
 	} else {
-		uv_poll_t *poll_req = client->poll_req;
-		struct uv_custom_poll_t *custom_poll_data = poll_req->data;
-
 		struct mqtt_pkt_t pkt;
 		unsigned char *buf = NULL;
 		unsigned int len = 0;
@@ -1957,11 +1953,11 @@ int mqtt_pubcomp(struct mqtt_client_t *client, int msgid) {
 		}
 
 		if(mqtt_encode(&pkt, &buf, &len) == 0) {
-			iobuf_append(&custom_poll_data->send_iobuf, (void *)buf, len);
+			iobuf_append(&client->send_iobuf, (void *)buf, len);
 			FREE(buf);
 		}
 		mqtt_free(&pkt);
-		uv_custom_write(poll_req);
+		uv_async_send(client->async_req);
 	}
 	return 0;
 }
@@ -1970,19 +1966,16 @@ int mqtt_ping(struct mqtt_client_t *client) {
 	if(client->step != MQTT_CONNECTED) {
 		return -1;
 	} else {
-		uv_poll_t *poll_req = client->poll_req;
-		struct uv_custom_poll_t *custom_poll_data = poll_req->data;
-
 		struct mqtt_pkt_t pkt;
 		unsigned char *buf = NULL;
 		unsigned int len = 0;
 
 		mqtt_pkt_pingreq(&pkt);
 		if(mqtt_encode(&pkt, &buf, &len) == 0) {
-			iobuf_append(&custom_poll_data->send_iobuf, (void *)buf, len);
+			iobuf_append(&client->send_iobuf, (void *)buf, len);
 			FREE(buf);
 		}
-		uv_custom_write(poll_req);
+		uv_async_send(client->async_req);
 	}
 	return 0;
 }
@@ -1991,19 +1984,16 @@ int mqtt_disconnect(struct mqtt_client_t *client) {
 	if(client->step != MQTT_CONNECTED) {
 		return -1;
 	} else {
-		uv_poll_t *poll_req = client->poll_req;
-		struct uv_custom_poll_t *custom_poll_data = poll_req->data;
-
 		struct mqtt_pkt_t pkt;
 		unsigned char *buf = NULL;
 		unsigned int len = 0;
 
 		mqtt_pkt_disconnect(&pkt);
 		if(mqtt_encode(&pkt, &buf, &len) == 0) {
-			iobuf_append(&custom_poll_data->send_iobuf, (void *)buf, len);
+			iobuf_append(&client->send_iobuf, (void *)buf, len);
 			FREE(buf);
 		}
-		uv_custom_write(poll_req);
+		uv_async_send(client->async_req);
 	}
 	return 0;
 }
@@ -2028,19 +2018,24 @@ static void client_write_cb(uv_poll_t *req) {
 				memset(&pkt, 0, sizeof(struct mqtt_pkt_t));
 
 #ifdef PILIGHT_UNITTEST
-				mqtt_pkt_connect(&pkt, 0, client->will.qos, 0, client->id, "mqtt", 4, NULL, NULL, client->will.retain, (client->will.topic != NULL && client->will.message != NULL), 1, 1, client->will.topic, client->will.message);
+				mqtt_pkt_connect(&pkt, 0, client->will.qos, 0, client->id, "MQIsdp", 3, NULL, NULL, client->will.retain, (client->will.topic != NULL && client->will.message != NULL), 1, 1, client->will.topic, client->will.message);
 #else
-				mqtt_pkt_connect(&pkt, 0, client->will.qos, 0, client->id, "mqtt", 4, NULL, NULL, client->will.retain, (client->will.topic != NULL && client->will.message != NULL), 1, 60, client->will.topic, client->will.message);
+				mqtt_pkt_connect(&pkt, 0, client->will.qos, 0, client->id, "MQIsdp", 3, NULL, NULL, client->will.retain, (client->will.topic != NULL && client->will.message != NULL), 1, 60, client->will.topic, client->will.message);
 #endif
 				if(mqtt_encode(&pkt, &buf, &len) == 0) {
 					iobuf_append(&custom_poll_data->send_iobuf, (void *)buf, len);
 					FREE(buf);
 				}
 				mqtt_free(&pkt);
-				uv_custom_write(req);
 				client->step = MQTT_CONNACK;
 			}
 		}
+
+		iobuf_append_remove(&client->send_iobuf, &custom_poll_data->send_iobuf);
+	}
+
+	if(custom_poll_data->send_iobuf.len > 0) {
+		uv_custom_write(req);
 	}
 	uv_custom_read(req);
 }
@@ -2058,7 +2053,7 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	if(*nread > 0) {
 		buf[*nread] = '\0';
 
-		iobuf = &client->iobuf;
+		iobuf = &client->recv_iobuf;
 		iobuf_append(iobuf, buf, *nread);
 
 		*nread = 0;
@@ -2188,18 +2183,16 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 #else
 	pthread_mutex_unlock(&mqtt_lock);
 #endif
-
-
 	if(ret == -1) {
-		/*
-		 * Dirty fix:
-		 * disconnect clients when an invalid package
-		 * has been received to prevent endless loops
-		 */
-		uv_custom_write(req);
+		if(client->side == CLIENT_SIDE) {
+			if(!uv_is_closing((uv_handle_t *)client->async_req)) {
+				uv_close((uv_handle_t *)client->async_req, close_cb);
+			}
+		}
+		uv_custom_close(req);
 	} else {
-		uv_custom_write(req);
 		uv_custom_read(req);
+		uv_custom_write(req);
 	}
 }
 
@@ -2454,6 +2447,9 @@ free:
 #endif
 
 int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willmsg, void (*callback)(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, void *userdata), void *userdata) {
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
+
 	if(willtopic != NULL && willmsg == NULL) {
 		return -1;
 	} else if(willmsg != NULL && willtopic == NULL) {
@@ -2559,6 +2555,12 @@ int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willm
 	client->callback = callback;
 	client->userdata = userdata;
 	client->fd = sockfd;
+
+	if((client->async_req = MALLOC(sizeof(uv_async_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	client->async_req->data = client;
+	uv_async_init(uv_default_loop(), client->async_req, client_do_write);
 
 	uv_custom_poll_init(&custom_poll_data, client->poll_req, client);
 
