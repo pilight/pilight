@@ -704,7 +704,7 @@ static void *receiveAPI1(int reason, void *param, void *userdata) {
 
 	plua_metatable_to_json(table, &json);
 
-	if(json != NULL &&
+	if(json != NULL && json_check(json, NULL) == 1 &&
 		json_find_string(json, "protocol", &protocol) == 0 &&
 		json_find_string(json, "origin", &origin) == 0) {
 		broadcast_queue(protocol, json, RECEIVER);
