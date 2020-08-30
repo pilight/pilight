@@ -659,7 +659,7 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 		}
 		custom_poll_data->doclose = 1;
 		custom_poll_data->doread = 0;
-		goto end;
+		// goto end;
 	}
 
 	custom_poll_data->started = 1;
