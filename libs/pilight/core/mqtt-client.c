@@ -1,3 +1,11 @@
+/*
+  Copyright (C) CurlyMo
+
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -400,7 +408,7 @@ int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willm
 	client->userdata = userdata;
 	client->fd = sockfd;
 	if((client->id = STRDUP(clientid)) == NULL) {
-		OUT_OF_MEMORY
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 
 	int i = 0;

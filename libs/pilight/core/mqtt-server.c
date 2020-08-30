@@ -1,3 +1,11 @@
+/*
+  Copyright (C) CurlyMo
+
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -179,7 +187,7 @@ static void client_close_cb(uv_poll_t *req) {
 			char *topicfmt = "pilight/mqtt/%s", *topic = NULL;
 			int len = snprintf(NULL, 0, topicfmt, client->id);
 			if((topic = MALLOC(len+1)) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			snprintf(topic, len+1, topicfmt, client->id);
 
@@ -336,7 +344,7 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 						mqtt_pkt_connack(&pkt1, MQTT_CONNECTION_ACCEPTED);
 						client->step = MQTT_CONNECTED;
 						if((client->id = STRDUP(pkt->payload.connect.clientid)) == NULL) {
-							OUT_OF_MEMORY
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 						}
 
 						client->keepalive = pkt->payload.connect.keepalive;
@@ -346,17 +354,17 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 							client->will.qos = pkt->header.connect.qos;
 							client->will.retain = pkt->header.connect.willretain;
 							if((client->will.topic = STRDUP(pkt->payload.connect.willtopic)) == NULL) {
-								OUT_OF_MEMORY
+								OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 							}
 							if((client->will.message = STRDUP(pkt->payload.connect.willmessage)) == NULL) {
-								OUT_OF_MEMORY
+								OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 							}
 						}
 
 						char *topicfmt = "pilight/mqtt/%s", *topic = NULL;
 						int len = snprintf(NULL, 0, topicfmt, client->id);
 						if((topic = MALLOC(len+1)) == NULL) {
-							OUT_OF_MEMORY
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 						}
 						snprintf(topic, len+1, topicfmt, client->id);
 
@@ -413,7 +421,7 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 						if(message == NULL) {
 							if((message = MALLOC(sizeof(struct mqtt_message_t))) == NULL) {
-								OUT_OF_MEMORY
+								OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 							}
 							memset(message, 0, sizeof(struct mqtt_message_t));
 
@@ -422,10 +430,10 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 						}
 
 						if((message->payload = STRDUP(pkt->payload.publish.message)) == NULL) {
-							OUT_OF_MEMORY
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 						}	
 						if((message->topic = STRDUP(pkt->payload.publish.topic)) == NULL) {
-							OUT_OF_MEMORY
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 						}
 
 						message->client = client;
@@ -493,7 +501,7 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 					if(subscription == NULL) {
 						if((subscription = MALLOC(sizeof(struct mqtt_subscription_t))) == NULL) {
-							OUT_OF_MEMORY
+							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 						}
 						memset(subscription, 0, sizeof(struct mqtt_subscription_t));
 
@@ -502,7 +510,7 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 					}
 
 					if((subscription->topic = STRDUP(pkt->payload.subscribe.topic)) == NULL) {
-						OUT_OF_MEMORY
+						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					subscription->qos = pkt->payload.subscribe.qos;
 
@@ -819,7 +827,7 @@ int mqtt_server(int port) {
 		char *out = NULL;
 		while(config_setting_get_string(state->L, "mqtt-blacklist", mqtt_blacklist_nr, &out) == 0) {
 			if((mqtt_blacklist = REALLOC(mqtt_blacklist, (mqtt_blacklist_nr+1)*sizeof(char *))) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			mqtt_blacklist[mqtt_blacklist_nr] = out;
 			mqtt_blacklist_nr++;
@@ -828,7 +836,7 @@ int mqtt_server(int port) {
 		out = NULL;
 		while(config_setting_get_string(state->L, "mqtt-whitelist", mqtt_whitelist_nr, &out) == 0) {
 			if((mqtt_whitelist = REALLOC(mqtt_whitelist, (mqtt_whitelist_nr+1)*sizeof(char *))) == NULL) {
-				OUT_OF_MEMORY
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			mqtt_whitelist[mqtt_whitelist_nr] = out;
 			mqtt_whitelist_nr++;
