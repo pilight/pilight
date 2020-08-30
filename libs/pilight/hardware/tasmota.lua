@@ -52,7 +52,6 @@ function M.timer(timer)
 			mqtt.publish("cmnd/" .. _ .. "/status", "STATUS0");
 		end
 	end
-	mqtt.ping();
 end
 
 function M.createMessage(data, id)

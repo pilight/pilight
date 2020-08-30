@@ -14,6 +14,22 @@
 #include "../../libuv/uv.h"
 #include "eventpool.h"
 
+struct mqtt_client_t;
+
+typedef struct mqtt_message_t {
+	char *payload;
+	char *topic;
+	int msgid;
+	int step;
+	int qos;
+
+	struct mqtt_client_t *client;
+
+	uv_timer_t *timer_req;
+
+	struct mqtt_message_t *next;
+} mqtt_message_t;
+
 typedef struct mqtt_pkt_t {
 	uint8_t type;
 	uint8_t dub;
@@ -81,17 +97,26 @@ typedef struct mqtt_pkt_t {
 	} payload;
 } mqtt_pkt_t;
 
+typedef struct mqtt_subscription_t {
+	char *topic;
+	int qos;
+
+	struct mqtt_subscription_t *next;
+} mqtt_subscription_t;
+
 typedef struct mqtt_client_t {
 	uv_poll_t *poll_req;
 	uv_async_t *async_req;
-	char *id;
+	uv_timer_t *ping_req;
+	uv_timer_t *timeout_req;
 
-	struct mqtt_subscriptions_t **subs;
-	int nrsubs;
-	int flush;
+	char *id;
 
 	struct iobuf_t recv_iobuf;
 	struct iobuf_t send_iobuf;
+	struct mqtt_message_t messages[1024];
+	struct mqtt_message_t *retain;
+	struct mqtt_subscription_t *subscriptions;
 
 	struct {
 		char *message;
@@ -104,15 +129,12 @@ typedef struct mqtt_client_t {
 	int msgid;
 	int keepalive;
 
-	int side;
 	int step;
 	int fd;
 
 	void *userdata;
 
 	void (*callback)(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, void *userdata);
-
-	uv_timer_t *timer_req;
 
 	struct mqtt_client_t *next;
 } mqtt_client_t;
@@ -164,6 +186,7 @@ int mqtt_pkt_pingreq(struct mqtt_pkt_t *pkt);
 int mqtt_pkt_pingresp(struct mqtt_pkt_t *pkt);
 int mqtt_pkt_disconnect(struct mqtt_pkt_t *pkt);
 
+int mosquitto_topic_matches_sub(const char *sub, const char *topic, int *result);
 int mosquitto_sub_topic_check(const char *str);
 
 int mqtt_subscribe(struct mqtt_client_t *client, char *topic, int qos);
@@ -179,10 +202,11 @@ void mqtt_free(struct mqtt_pkt_t *pkt);
 void mqtt_dump(struct mqtt_pkt_t *pkt);
 
 int mqtt_client(char *server, int port, char *clientid, char *willtopic, char *willmsg, void (*callback)(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, void *userdata), void *userdata);
-void mqtt_client_remove(uv_poll_t *req, int disconnect);
 #ifdef MQTT
 int mqtt_server(int port);
 #endif
-void mqtt_gc(void);
+
+int mqtt_server_gc(void);
+int mqtt_client_gc(void);
 
 #endif

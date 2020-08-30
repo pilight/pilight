@@ -90,14 +90,6 @@ function M.send(obj, reason, data)
 	end
 end
 
-function M.timer(timer)
-	local data = timer.getUserdata();
-	local mqtt = pilight.network.mqtt(data['mqtt']);
-	local tmp = mqtt.getUserdata();
-
-	mqtt.ping();
-end
-
 function M.createMessage(data, id)
 	local broadcast = pilight.table();
 	if data[id]['type'] ~= nil then
@@ -142,13 +134,6 @@ function M.callback(mqtt, data)
 	local tmp = mqtt.getUserdata();
 
 	if data['type'] == MQTT_CONNACK then
-		local timer = pilight.async.timer();
-		timer.setCallback("timer");
-		timer.setTimeout(3000);
-		timer.setRepeat(3000);
-		timer.setUserdata({['mqtt']=mqtt()});
-		timer.start();
-
 		mqtt.subscribe("shellies/+/#");
 		mqtt.subscribe("pilight/mqtt/+");
 	end

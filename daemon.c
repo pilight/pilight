@@ -2522,7 +2522,6 @@ int main_gc(void) {
 	dso_gc();
 	log_gc();
 	ssl_gc();
-	plua_gc();
 
 #ifdef MQTT
 	if(mqtt_global_client != NULL) {
@@ -2533,8 +2532,11 @@ int main_gc(void) {
 		}
 	}
 
-	mqtt_gc();
+	mqtt_server_gc();
+	mqtt_client_gc();
 #endif
+
+	plua_gc();
 
 	uv_stop(uv_default_loop());
 	options_delete(options);
@@ -2635,24 +2637,11 @@ static void pilight_abort(uv_timer_t *timer_req) {
 }
 
 #ifdef MQTT
-static void ping(uv_timer_t *handle) {
-	mqtt_ping(handle->data);
-}
-
 static void mqtt_callback(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, void *userdata) {
 	if(pkt != NULL) {
 		switch(pkt->type) {
 			case MQTT_CONNACK: {
 				mqtt_global_client = client;
-
-				uv_timer_t *timer = client->userdata;
-				if((timer = MALLOC(sizeof(uv_timer_t))) == NULL) {
-					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-				}
-
-				timer->data = client;
-				uv_timer_init(uv_default_loop(), timer);
-				uv_timer_start(timer, (void (*)(uv_timer_t *))ping, 3000, 3000);
 
 #ifdef HASH
 				mqtt_publish(client, 0, 0, 1, "pilight/sys/version", HASH);
@@ -2745,9 +2734,6 @@ static void mqtt_callback(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, 
 			} break;
 			case MQTT_DISCONNECTED: {
 				mqtt_global_client = NULL;
-
-				uv_timer_stop(client->userdata);
-				uv_close((uv_handle_t *)client->userdata, close_cb);
 
 				mqtt_client("127.0.0.1", mqtt_port, "pilight-daemon", NULL, NULL, mqtt_callback, NULL);
 			} break;
