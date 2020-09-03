@@ -519,7 +519,7 @@ void iobuf_remove(struct iobuf_t *io, size_t n) {
 static void eventpool_update_poll(uv_poll_t *req) {
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct iobuf_t *send_io = NULL;
-	int action = UV_DISCONNECT, r = 0;
+	int action = 0, r = 0;
 
 	custom_poll_data = req->data;
 	if(custom_poll_data == NULL) {
@@ -630,7 +630,7 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 	 * Make sure we execute in the main thread
 	 */
 	const uv_thread_t pth_cur_id = uv_thread_self();
-	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));	
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct iobuf_t *send_io = NULL;
@@ -649,13 +649,11 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 	 * Status == -9: Socket is unreachable
 	 * Events == 0: Client-end got disconnected
 	 */
-	if(status < 0 || events == 0 || events & UV_DISCONNECT) {
-		if(!(events & UV_DISCONNECT)) {
-			if(status == -9) {
-				logprintf(LOG_ERR, "uv_custom_poll_cb: socket not responding");
-			} else {
-				logprintf(LOG_ERR, "uv_custom_poll_cb: %s", uv_strerror(status));
-			}
+	if(status < 0 || events == 0) {
+		if(status == -9) {
+			logprintf(LOG_ERR, "uv_custom_poll_cb: socket not responding");
+		} else {
+			logprintf(LOG_ERR, "uv_custom_poll_cb: %s", uv_strerror(status));
 		}
 		custom_poll_data->doclose = 1;
 		custom_poll_data->doread = 0;
@@ -963,7 +961,7 @@ void uv_custom_poll_init(struct uv_custom_poll_t **custom_poll, uv_poll_t *poll,
 	iobuf_init(&(*custom_poll)->recv_iobuf, 0);
 
 	(*custom_poll)->threadid = syscall(__NR_gettid);
-	
+
 	poll->data = *custom_poll;
 	(*custom_poll)->data = data;
 }
