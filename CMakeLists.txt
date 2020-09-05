@@ -318,6 +318,64 @@ else()
 	message(STATUS "Looking for libmbedx509 - found (${CMAKE_MBEDX509_LIBS_INIT})")
 endif()
 
+function(set_lua_version_vars)
+    set(LUA_VERSIONS5 5.3 5.2 5.1 5.0)
+    set(LUAJIT_VERSIONS 2.0 2.1)
+
+    if (LuaJIT_FIND_VERSION_EXACT)
+        if (LuaJIT_FIND_VERSION_COUNT GREATER 1)
+            set(luajit_append_versions ${LuaJIT_FIND_VERSION_MAJOR}.${LuaJIT_FIND_VERSION_MINOR})
+        endif ()
+    elseif (LuaJIT_FIND_VERSION)
+        # once there is a different major version supported this should become a loop
+        if (NOT LuaJIT_FIND_VERSION_MAJOR GREATER 5)
+            if (LuaJIT_FIND_VERSION_COUNT EQUAL 1)
+                set(luajit_append_versions ${LUA_VERSIONS5})
+            else ()
+                foreach (subver IN LISTS LUA_VERSIONS5)
+                    if (NOT subver VERSION_LESS ${LuaJIT_FIND_VERSION})
+                        list(APPEND luajit_append_versions ${subver})
+                    endif ()
+                endforeach ()
+            endif ()
+        endif ()
+    else ()
+        # once there is a different major version supported this should become a loop
+        set(luajit_append_versions ${LUA_VERSIONS5})
+    endif ()
+
+    foreach (ver IN LISTS luajit_append_versions LUAJIT_VERSIONS)
+        string(REGEX MATCH "^([0-9]+)\\.([0-9]+)$" _ver "${ver}")
+        list(APPEND _luajit_include_subdirs
+             include/luajit${CMAKE_MATCH_1}${CMAKE_MATCH_2}
+             include/luajit${CMAKE_MATCH_1}.${CMAKE_MATCH_2}
+             include/luajit-${CMAKE_MATCH_1}.${CMAKE_MATCH_2}
+        )
+
+        list(APPEND _luajit_library_names
+             luajit${CMAKE_MATCH_1}${CMAKE_MATCH_2}
+             luajit${CMAKE_MATCH_1}.${CMAKE_MATCH_2}
+             luajit.${CMAKE_MATCH_1}.${CMAKE_MATCH_2}
+             luajit-${CMAKE_MATCH_1}.${CMAKE_MATCH_2}
+        )
+    endforeach ()
+
+    foreach (ver IN LISTS LUA_VERSIONS5)
+        string(REGEX MATCH "^([0-9]+)\\.([0-9]+)$" _ver "${ver}")
+        list(APPEND _luajit_library_names
+             luajit${CMAKE_MATCH_1}${CMAKE_MATCH_2}
+             luajit${CMAKE_MATCH_1}.${CMAKE_MATCH_2}
+             luajit.${CMAKE_MATCH_1}.${CMAKE_MATCH_2}
+             luajit-${CMAKE_MATCH_1}.${CMAKE_MATCH_2}
+        )
+    endforeach ()
+
+    set(_luajit_include_subdirs "${_luajit_include_subdirs}" PARENT_SCOPE)
+    set(_luajit_library_names "${_luajit_library_names}" PARENT_SCOPE)
+endfunction(set_lua_version_vars)
+
+set_lua_version_vars()
+
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^aarch64")
 	find_library(CMAKE_LUA_LIBS_INIT
 		NAME lua5.1
@@ -342,6 +400,7 @@ if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^aarch64")
 		message(STATUS "Looking for libluajit - found (${CMAKE_LUA_LIBS_INIT})")
 	endif()
 else()
+	find_path(CMAKE_LUA_INCLUDE_DIR luajit.h PATH_SUFFIXES ${_luajit_include_subdirs} include/luajit include PATHS /usr)
 	find_library(CMAKE_LUA_LIBS_INIT
 		NAME luajit-5.1
 		PATHS
@@ -366,9 +425,11 @@ else()
 	endif()
 endif()
 
+
 include_directories(${PROJECT_SOURCE_DIR}/inc)
 include_directories(${PROJECT_SOURCE_DIR}/libs/libuv)
 include_directories(/usr/local/include/)
+include_directories(${CMAKE_LUA_INCLUDE_DIR})
 
 add_subdirectory(inc)
 add_subdirectory(libs)
