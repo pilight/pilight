@@ -191,12 +191,17 @@ int mosquitto_sub_topic_check(const char *str);
 
 int mqtt_subscribe(struct mqtt_client_t *client, char *topic, int qos);
 int mqtt_publish(struct mqtt_client_t *client, int dub, int qos, int retain, char *topic, char *message);
+int mqtt_suback(struct mqtt_client_t *client, int msgid, int qos);
 int mqtt_puback(struct mqtt_client_t *client, int msgid);
 int mqtt_pubrel(struct mqtt_client_t *client, int msgid);
 int mqtt_pubrec(struct mqtt_client_t *client, int msgid);
 int mqtt_pubcomp(struct mqtt_client_t *client, int msgid);
 int mqtt_ping(struct mqtt_client_t *client);
+int mqtt_pingresp(struct mqtt_client_t *client);
 int mqtt_disconnect(struct mqtt_client_t *client);
+#ifdef PILIGHT_UNITTEST
+void mqtt_activate(void);
+#endif
 
 void mqtt_free(struct mqtt_pkt_t *pkt);
 void mqtt_dump(struct mqtt_pkt_t *pkt);

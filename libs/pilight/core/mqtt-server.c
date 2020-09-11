@@ -92,6 +92,8 @@ int mqtt_server_gc(void) {
 #else
 	pthread_mutex_unlock(&mqtt_lock);
 #endif
+
+	started = 0;
 	return 0;
 }
 
@@ -146,20 +148,6 @@ static void client_close_cb(uv_poll_t *req) {
 			uv_close((uv_handle_t *)client->async_req, close_cb);
 		}
 
-		int i = 0;
-		for(i=0;i<1024;i++) {
-			struct mqtt_message_t *message = &client->messages[i];
-			if(message->step == MQTT_PUBACK ||
-				 message->step == MQTT_PUBREL ||
-				 message->step == MQTT_PUBCOMP) {
-				uv_timer_stop(message->timer_req);
-				uv_close((uv_handle_t *)message->timer_req, close_cb);
-				FREE(message->topic);
-				FREE(message->payload);
-				memset(message, 0, sizeof(struct mqtt_message_t));
-			}
-		}
-
 		struct mqtt_subscription_t *subscription = NULL;
 		while(client->subscriptions) {
 			subscription = client->subscriptions;
@@ -205,14 +193,56 @@ static void client_close_cb(uv_poll_t *req) {
 						if(client->haswill == 1) {
 							if(mosquitto_topic_matches_sub(subscription->topic, client->will.topic, &ret) == 0) {
 								if(ret == 1) {
-									mqtt_publish(clients, 0, subscription->qos, 0, client->will.topic, client->will.message);
+									int x = 0, pass = 1;
+									for(x=0;x<mqtt_blacklist_nr;x++) {
+										if(mosquitto_topic_matches_sub(mqtt_blacklist[x], client->will.topic, &ret) == 0) {
+											if(ret == 1) {
+												pass = 0;
+												break;
+											}
+										}
+									}
+									if(pass == 0) {
+										for(x=0;x<mqtt_whitelist_nr;x++) {
+											if(mosquitto_topic_matches_sub(mqtt_whitelist[x], client->will.topic, &ret) == 0) {
+												if(ret == 1) {
+													pass = 1;
+													break;
+												}
+											}
+										}
+									}
+									if(pass == 1) {
+										mqtt_publish(clients, 0, subscription->qos, 0, client->will.topic, client->will.message);
+									}
 								}
 							}
 						}
 
 						if(mosquitto_topic_matches_sub(subscription->topic, topic, &ret) == 0) {
 							if(ret == 1) {
-								mqtt_publish(clients, 0, subscription->qos, 0, topic, "disconnected");
+								int x = 0, pass = 1;
+								for(x=0;x<mqtt_blacklist_nr;x++) {
+									if(mosquitto_topic_matches_sub(mqtt_blacklist[x], topic, &ret) == 0) {
+										if(ret == 1) {
+											pass = 0;
+											break;
+										}
+									}
+								}
+								if(pass == 0) {
+									for(x=0;x<mqtt_whitelist_nr;x++) {
+										if(mosquitto_topic_matches_sub(mqtt_whitelist[x], topic, &ret) == 0) {
+											if(ret == 1) {
+												pass = 1;
+												break;
+											}
+										}
+									}
+								}
+								if(pass == 1) {
+									mqtt_publish(clients, 0, subscription->qos, 0, topic, "disconnected");
+								}
 							}
 						}
 					subscription = subscription->next;
@@ -228,7 +258,27 @@ static void client_close_cb(uv_poll_t *req) {
 			FREE(topic);
 		}
 
-		FREE(client->id);
+		int i = 0;
+		for(i=0;i<1024;i++) {
+			struct mqtt_message_t *message = &client->messages[i];
+			if(message->step > 0) {
+				uv_timer_stop(message->timer_req);
+				uv_close((uv_handle_t *)message->timer_req, close_cb);
+				FREE(message->topic);
+				FREE(message->payload);
+				memset(message, 0, sizeof(struct mqtt_message_t));
+			}
+		}
+
+		if(client->id != NULL) {
+			FREE(client->id);
+		}
+
+		if(client->haswill == 1) {
+			client->haswill = 0;
+			FREE(client->will.topic);
+			FREE(client->will.message);
+		}
 	}
 
 
@@ -368,7 +418,6 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 						}
 						snprintf(topic, len+1, topicfmt, client->id);
 
-						int ret = 0;
 #ifdef _WIN32
 						uv_mutex_lock(&mqtt_lock);
 #else
@@ -445,7 +494,28 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 						while(subscription) {
 							if(mosquitto_topic_matches_sub(subscription->topic, pkt->payload.publish.topic, &ret) == 0) {
 								if(ret == 1) {
-									mqtt_publish(clients, 0, subscription->qos, 0, pkt->payload.publish.topic, pkt->payload.publish.message);
+									int x = 0, pass = 1;
+									for(x=0;x<mqtt_blacklist_nr;x++) {
+										if(mosquitto_topic_matches_sub(mqtt_blacklist[x], pkt->payload.publish.topic, &ret) == 0) {
+											if(ret == 1) {
+												pass = 0;
+												break;
+											}
+										}
+									}
+									if(pass == 0) {
+										for(x=0;x<mqtt_whitelist_nr;x++) {
+											if(mosquitto_topic_matches_sub(mqtt_whitelist[x], pkt->payload.publish.topic, &ret) == 0) {
+												if(ret == 1) {
+													pass = 1;
+													break;
+												}
+											}
+										}
+									}
+									if(pass == 1) {
+										mqtt_publish(clients, 0, subscription->qos, 0, pkt->payload.publish.topic, pkt->payload.publish.message);
+									}
 								}
 							}
 							subscription = subscription->next;
@@ -486,6 +556,7 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 					mqtt_pubcomp(client, pkt->payload.pubrel.msgid);
 				} break;
 				case MQTT_SUBSCRIBE: {
+					mqtt_suback(client, pkt->payload.subscribe.msgid, pkt->payload.subscribe.qos);
 #ifdef _WIN32
 					uv_mutex_lock(&mqtt_lock);
 #else
@@ -521,7 +592,28 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 							while(message) {
 								if(mosquitto_topic_matches_sub(pkt->payload.subscribe.topic, message->topic, &ret) == 0) {
 									if(ret == 1) {
-										mqtt_publish(client, 0, pkt->payload.subscribe.qos, 0, message->topic, message->payload);
+										int x = 0, pass = 1;
+										for(x=0;x<mqtt_blacklist_nr;x++) {
+											if(mosquitto_topic_matches_sub(mqtt_blacklist[x], pkt->payload.publish.topic, &ret) == 0) {
+												if(ret == 1) {
+													pass = 0;
+													break;
+												}
+											}
+										}
+										if(pass == 0) {
+											for(x=0;x<mqtt_whitelist_nr;x++) {
+												if(mosquitto_topic_matches_sub(mqtt_whitelist[x], pkt->payload.publish.topic, &ret) == 0) {
+													if(ret == 1) {
+														pass = 1;
+														break;
+													}
+												}
+											}
+										}
+										if(pass == 1) {
+											mqtt_publish(client, 0, pkt->payload.subscribe.qos, 0, message->topic, message->payload);
+										}
 									}
 								}
 								message = message->next;
@@ -536,12 +628,9 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 #endif
 				} break;
 				case MQTT_PINGREQ: {
-					mqtt_pkt_pingresp(&pkt1);
-					if(mqtt_encode(&pkt1, &buf1, &len) == 0) {
-						iobuf_append(&custom_poll_data->send_iobuf, (void *)buf1, len);
-						FREE(buf1);
-					}
-					uv_custom_write(req);
+					mqtt_pingresp(client);
+				} break;
+				case MQTT_PINGRESP: {
 				} break;
 				case MQTT_DISCONNECT: {
 					disconnect = 1;
@@ -555,6 +644,9 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	*nread = 0;
 
 	if(ret == -1) {
+		mqtt_free(pkt);
+		FREE(pkt);
+
 		if(!uv_is_closing((uv_handle_t *)client->async_req)) {
 			uv_close((uv_handle_t *)client->async_req, close_cb);
 		}

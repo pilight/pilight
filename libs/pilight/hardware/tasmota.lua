@@ -27,7 +27,7 @@ function M.reset(timer)
 	local tmp = mqtt.getUserdata();
 
 	for _ in pairs(tmp) do
-		if(tmp[_]['timer'] == timer()) then
+		if(_ == data['id']) then
 			M.createMessage(tmp, _);
 		end
 	end
@@ -76,6 +76,7 @@ function M.createMessage(data, id)
 		 broadcast['message']['id'] ~= nil then
 		 if broadcast['protocol'] == 'tasmota_switch' and
 				broadcast['message']['state'] ~= nil then
+
 			local event = pilight.async.event();
 			event.register(pilight.reason.RECEIVED_API);
 			event.trigger(broadcast());
@@ -212,14 +213,14 @@ function M.send(obj, reason, data)
 		-- If we don't get a confirmation within
 		-- 3000ms, restore to the current state
 		--
+		local id = pilight.common.random();
+
 		local timer = pilight.async.timer();
 		timer.setCallback("reset");
 		timer.setTimeout(3000);
-		timer.setRepeat(0);
-		timer.setUserdata({['mqtt']=mqtt()});
+		timer.setRepeat(3000);
+		timer.setUserdata({['mqtt']=mqtt(),['id']=data['id']});
 		timer.start();
-
-		devs[data['id']]['timer'] = timer();
 	end
 end
 

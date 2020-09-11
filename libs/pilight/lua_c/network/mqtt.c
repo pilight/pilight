@@ -413,14 +413,16 @@ static void mqtt_callback(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, 
 
 	if(pkt != NULL) {
 		atomic_inc(data->ref);
-		if(pkt->type == MQTT_PUBLISH ||
-			 pkt->type == MQTT_SUBACK) {
-			lua_pushstring(state->L, "dub");
-			lua_pushnumber(state->L, pkt->dub);
-			lua_settable(state->L, -3);
 
+		if(pkt->type == MQTT_SUBACK || pkt->type == MQTT_PUBLISH) {
 			lua_pushstring(state->L, "qos");
 			lua_pushnumber(state->L, pkt->qos);
+			lua_settable(state->L, -3);
+		}
+
+		if(pkt->type == MQTT_PUBLISH) {
+			lua_pushstring(state->L, "dub");
+			lua_pushnumber(state->L, pkt->dub);
 			lua_settable(state->L, -3);
 
 			lua_pushstring(state->L, "retain");
@@ -472,6 +474,12 @@ static void mqtt_callback(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, 
 
 				lua_pushstring(state->L, "message");
 				lua_pushstring(state->L, pkt->payload.publish.message);
+				lua_settable(state->L, -3);
+			} break;
+			case MQTT_DISCONNECTED:
+			case MQTT_DISCONNECT: {
+				lua_pushstring(state->L, "type");
+				lua_pushnumber(state->L, MQTT_DISCONNECT);
 				lua_settable(state->L, -3);
 			} break;
 		}
@@ -612,6 +620,7 @@ static int plua_network_mqtt_connect(lua_State *L) {
 
 	mqtt_client(ip, port, id, willtopic, willmsg, mqtt_callback, mqtt);
 	atomic_inc(mqtt->ref);
+
 	if(freeid == 1) {
 		FREE(id);
 	}

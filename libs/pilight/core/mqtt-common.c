@@ -50,6 +50,8 @@ static char *type_to_string(int type) {
 			return "pingresp";
 		case MQTT_DISCONNECT:
 			return "disconnect";
+		case MQTT_DISCONNECTED:
+			return "disconnected";
 	}
 	return "unknown";
 }
@@ -713,6 +715,19 @@ int mqtt_pkt_pubcomp(struct mqtt_pkt_t *pkt, int msgid) {
 	return mqtt_pkt_pubxxx(pkt, MQTT_PUBCOMP, msgid);
 }
 
+int mqtt_pkt_suback(struct mqtt_pkt_t *pkt, int msgid, int qos) {
+	if(qos < 0 || qos > 2) {
+		return -1;
+	}
+
+	pkt->type = MQTT_SUBACK;
+
+	pkt->payload.suback.msgid = msgid;
+	pkt->payload.suback.qos = qos;
+
+	return 0;
+}
+
 int mqtt_pkt_connack(struct mqtt_pkt_t *pkt, enum mqtt_connection_t status) {
 	pkt->type = MQTT_CONNACK;
 	pkt->reserved = 0;
@@ -806,7 +821,10 @@ int mqtt_subscribe(struct mqtt_client_t *client, char *topic, int qos) {
 		unsigned char *buf = NULL;
 		unsigned int len = 0;
 
-		mqtt_pkt_subscribe(&pkt, topic, 1, qos);
+		mqtt_pkt_subscribe(&pkt, topic, client->msgid++, qos);
+		if(client->msgid > 1024) {
+			client->msgid = 0;
+		}
 		if(mqtt_encode(&pkt, &buf, &len) == 0) {
 			iobuf_append(&client->send_iobuf, (void *)buf, len);
 			FREE(buf);
@@ -909,6 +927,62 @@ int mqtt_puback(struct mqtt_client_t *client, int msgid) {
 	return 0;
 }
 
+int mqtt_suback(struct mqtt_client_t *client, int msgid, int qos) {
+	if(client->step != MQTT_CONNECTED) {
+		return -1;
+	} else {
+		struct mqtt_pkt_t pkt;
+		unsigned char *buf = NULL;
+		unsigned int len = 0;
+
+		mqtt_pkt_suback(&pkt, msgid, qos);
+
+		if(mqtt_encode(&pkt, &buf, &len) == 0) {
+			iobuf_append(&client->send_iobuf, (void *)buf, len);
+			FREE(buf);
+		}
+		mqtt_free(&pkt);
+		uv_async_send(client->async_req);
+	}
+	return 0;
+}
+
+int mqtt_disconnect(struct mqtt_client_t *client) {
+	if(client->step != MQTT_CONNECTED) {
+		return -1;
+	} else {
+		struct mqtt_pkt_t pkt;
+		unsigned char *buf = NULL;
+		unsigned int len = 0;
+
+		mqtt_pkt_disconnect(&pkt);
+		if(mqtt_encode(&pkt, &buf, &len) == 0) {
+			iobuf_append(&client->send_iobuf, (void *)buf, len);
+			FREE(buf);
+		}
+		uv_async_send(client->async_req);
+	}
+	return 0;
+}
+
+int mqtt_pingresp(struct mqtt_client_t *client) {
+	if(client->step != MQTT_CONNECTED) {
+		return -1;
+	} else {
+		struct mqtt_pkt_t pkt;
+		unsigned char *buf = NULL;
+		unsigned int len = 0;
+
+		mqtt_pkt_pingresp(&pkt);
+		if(mqtt_encode(&pkt, &buf, &len) == 0) {
+			iobuf_append(&client->send_iobuf, (void *)buf, len);
+			FREE(buf);
+		}
+		uv_async_send(client->async_req);
+	}
+	return 0;
+}
+
 static void mqtt_message_resend(uv_timer_t *handle) {
 	struct mqtt_message_t *message = handle->data;
 	uv_poll_t *poll_req = message->client->poll_req;
@@ -941,6 +1015,7 @@ int mqtt_publish(struct mqtt_client_t *client, int dub, int qos, int retain, cha
 
 		if(qos > 0) {
 			struct mqtt_message_t *message = &client->messages[msgid];
+
 			if((message->payload = STRDUP(payload)) == NULL) {
 				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
@@ -955,7 +1030,6 @@ int mqtt_publish(struct mqtt_client_t *client, int dub, int qos, int retain, cha
 			if(qos == 2) {
 				message->step = MQTT_PUBREC;
 			}
-
 			if((message->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
 				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
@@ -964,7 +1038,11 @@ int mqtt_publish(struct mqtt_client_t *client, int dub, int qos, int retain, cha
 			message->client = client;
 
 			uv_timer_init(uv_default_loop(), message->timer_req);
+#ifdef PILIGHT_UNITTEST
+			uv_timer_start(message->timer_req, (void (*)(uv_timer_t *))mqtt_message_resend, 150, 150);
+#else
 			uv_timer_start(message->timer_req, (void (*)(uv_timer_t *))mqtt_message_resend, 3000, 3000);
+#endif
 		}
 
 		if(client->msgid > 1024) {

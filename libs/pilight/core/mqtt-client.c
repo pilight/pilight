@@ -25,6 +25,7 @@
 #include "../../libuv/uv.h"
 
 static void client_close_cb(uv_poll_t *req);
+
 static int terminated = 0;
 
 static struct mqtt_client_t *mqtt_clients = NULL;
@@ -112,11 +113,13 @@ static void client_close_cb(uv_poll_t *req) {
 	struct mqtt_pkt_t pkt;
 	pkt.type = MQTT_DISCONNECTED;
 
-	if(custom_poll_data->started == 1) {
-		client->step = MQTT_DISCONNECTED;
-		client->callback(client, &pkt, client->userdata);
-	} else {
-		client->callback(NULL, &pkt, client->userdata);
+	if(terminated == 0) {
+		if(custom_poll_data->started == 1) {
+			client->step = MQTT_DISCONNECTED;
+			client->callback(client, &pkt, client->userdata);
+		} else {
+			client->callback(NULL, &pkt, client->userdata);
+		}
 	}
 
 	FREE(client->id);
@@ -124,9 +127,7 @@ static void client_close_cb(uv_poll_t *req) {
 	int i = 0;
 	for(i=0;i<1024;i++) {
 		struct mqtt_message_t *message = &client->messages[i];
-		if(message->step == MQTT_PUBACK ||
-		   message->step == MQTT_PUBREL ||
-		   message->step == MQTT_PUBCOMP) {
+		if(message->step > 0) {
 			uv_timer_stop(message->timer_req);
 			uv_close((uv_handle_t *)message->timer_req, close_cb);
 			FREE(message->topic);
@@ -135,14 +136,24 @@ static void client_close_cb(uv_poll_t *req) {
 		}
 	}
 
+	if(client->haswill == 1) {
+		client->haswill = 0;
+		FREE(client->will.topic);
+		FREE(client->will.message);
+	}
+
 	iobuf_free(&client->send_iobuf);
 	iobuf_free(&client->recv_iobuf);
 
-	uv_timer_stop(client->ping_req);
-	uv_close((uv_handle_t *)client->ping_req, close_cb);
+	if(client->ping_req != NULL) {
+		uv_timer_stop(client->ping_req);
+		uv_close((uv_handle_t *)client->ping_req, close_cb);
+	}
 
-	uv_timer_stop(client->timeout_req);
-	uv_close((uv_handle_t *)client->timeout_req, close_cb);
+	if(client->timeout_req != NULL) {
+		uv_timer_stop(client->timeout_req);
+		uv_close((uv_handle_t *)client->timeout_req, close_cb);
+	}
 
 	int fd = -1, r = 0;
 
@@ -253,13 +264,34 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 						client->ping_req->data = client;
 						uv_timer_init(uv_default_loop(), client->ping_req);
+#ifdef PILIGHT_UNITTEST
+						uv_timer_start(client->ping_req, (void (*)(uv_timer_t *))ping, 100, 100);
+#else
 						uv_timer_start(client->ping_req, (void (*)(uv_timer_t *))ping, 3000, 3000);
+#endif
 
 						client->step = MQTT_CONNECTED;
 						client->callback(client, pkt, client->userdata);
 					} else {
 						// error
 					}
+				} break;
+				case MQTT_PUBREL: {
+					mqtt_pubcomp(client, pkt->payload.pubrel.msgid);
+				} break;
+				case MQTT_PUBLISH: {
+					if(pkt->qos == 1) {
+						mqtt_puback(client, pkt->payload.publish.msgid);
+					}
+					if(pkt->qos == 2) {
+						mqtt_pubrec(client, pkt->payload.publish.msgid);
+					}
+					client->callback(client, pkt, client->userdata);
+				} break;
+				case MQTT_PINGREQ: {
+					mqtt_pingresp(client);
+				} break;
+				case MQTT_PINGRESP: {
 				} break;
 				default: {
 					client->callback(client, pkt, client->userdata);
@@ -269,6 +301,11 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			mqtt_free(pkt);	
 			FREE(pkt);
 		}
+	}
+
+	if(ret == -1) {
+		mqtt_free(pkt);
+		FREE(pkt);
 	}
 
 	uv_custom_write(req);
@@ -294,9 +331,9 @@ static void write_cb(uv_poll_t *req) {
 			memset(&pkt, 0, sizeof(struct mqtt_pkt_t));
 
 #ifdef PILIGHT_UNITTEST
-			mqtt_pkt_connect(&pkt, 0, client->will.qos, 0, client->id, "MQIsdp", 3, NULL, NULL, 0, 0, 1, 1, NULL, NULL);
+			mqtt_pkt_connect(&pkt, 0, client->will.qos, 0, client->id, "MQIsdp", 3, NULL, NULL, client->will.retain, (client->will.topic != NULL && client->will.message != NULL), 1, 1, client->will.topic, client->will.message);
 #else
-			mqtt_pkt_connect(&pkt, 0, client->will.qos, 0, client->id, "MQIsdp", 3, NULL, NULL, 0, 0, 1, 60, NULL, NULL);
+			mqtt_pkt_connect(&pkt, 0, client->will.qos, 0, client->id, "MQIsdp", 3, NULL, NULL, client->will.retain, (client->will.topic != NULL && client->will.message != NULL), 1, 60, client->will.topic, client->will.message);
 #endif
 			if(mqtt_encode(&pkt, &buf, &len) == 0) {
 				iobuf_append(&custom_poll_data->send_iobuf, (void *)buf, len);
@@ -315,6 +352,12 @@ static void write_cb(uv_poll_t *req) {
 
 	uv_custom_read(req);
 }
+
+#ifdef PILIGHT_UNITTEST
+void mqtt_activate(void) {
+	terminated = 0;
+}
+#endif
 
 int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willmsg, void (*callback)(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, void *userdata), void *userdata) {
 	if(terminated == 1) {
@@ -403,12 +446,31 @@ int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willm
 
 	client->poll_req = poll_req;
 
+#ifdef PILIGHT_UNITTEST
+	client->keepalive = 1;
+#else
+	client->keepalive = 60;
+#endif
+
 	client->step = MQTT_CONNECT;
 	client->callback = callback;
 	client->userdata = userdata;
 	client->fd = sockfd;
+
 	if((client->id = STRDUP(clientid)) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+
+	if(willtopic != NULL && willmsg != NULL) {
+		if((client->will.message = STRDUP(willmsg)) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		if((client->will.topic = STRDUP(willtopic)) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		client->will.retain = 0;
+		client->will.qos = 0;
+		client->haswill = 1;
 	}
 
 	int i = 0;
