@@ -206,7 +206,7 @@ static int utf8_validate_cz(const char *s)
 }
 
 /* Validate a null-terminated UTF-8 string. */
-static bool utf8_validate(const char *s)
+bool utf8_validate(const char *s)
 {
 	int len;
 
@@ -438,12 +438,14 @@ bool json_validate(const char *json)
 	const char *s = json;
 
 	skip_space(&s);
-	if (!parse_value(&s, NULL))
+	if (!parse_value(&s, NULL)) {
 		return false;
+	}
 
 	skip_space(&s);
-	if (*s != 0)
+	if (*s != 0) {
 		return false;
+	}
 
 	return true;
 }
