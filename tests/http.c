@@ -721,18 +721,20 @@ static void test_http_threaded(CuTest *tc) {
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
-	plua_init();
-
-	test_set_plua_path(tc, __FILE__, "http.c");
-
-	eventpool_init(EVENTPOOL_NO_THREADS);
-	storage_init();
-	CuAssertIntEquals(tc, 0, storage_read("http.json", CONFIG_SETTINGS));
-
-	ssl_init();
-	CuAssertIntEquals(tc, 0, ssl_server_init_status());
-
 	while(testnr < sizeof(tests)/sizeof(tests[0])) {
+
+		plua_init();
+
+		test_set_plua_path(tc, __FILE__, "http.c");
+
+		eventpool_init(EVENTPOOL_NO_THREADS);
+
+		storage_init();
+		CuAssertIntEquals(tc, 0, storage_read("http.json", CONFIG_SETTINGS));
+
+		ssl_init();
+		CuAssertIntEquals(tc, 0, ssl_server_init_status());
+
 		started = 0;
 
 		threaded = 1;
@@ -756,13 +758,13 @@ static void test_http_threaded(CuTest *tc) {
 		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
 			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 		}
-	}
+		eventpool_gc();
 
-	plua_gc();
-	http_gc();
-	ssl_gc();
-	storage_gc();
-	eventpool_gc();
+		plua_gc();
+		http_gc();
+		ssl_gc();
+		storage_gc();
+	}
 
 	FREE(_userdata);
 	CuAssertIntEquals(tc, 18, testnr);

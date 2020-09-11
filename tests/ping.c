@@ -35,6 +35,7 @@ static int ping_socket = 0;
 static int ping_loop = 1;
 static int threaded = 0;
 static int started = 0;
+static uv_timer_t *timer_req;
 
 /*
  * A ICMP request to 127.0.0.1
@@ -70,6 +71,10 @@ static char response[40] = {
 
 static CuTest *gtc = NULL;
 
+static void stop(uv_timer_t *handle) {
+	uv_stop(uv_default_loop());
+}
+
 static void callback(char *ip, int status) {
 	if(run == LOCALHOST) {
 		CuAssertStrEquals(gtc, "127.0.0.1", ip);
@@ -82,6 +87,11 @@ static void callback(char *ip, int status) {
 		CuAssertIntEquals(gtc, 0, status);
 	}
 	ping_loop = 0;
+
+	if(run == TIMEOUT) {
+		int r = uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 1000);
+		CuAssertIntEquals(gtc, 0, r);
+	}
 }
 
 static void close_cb(uv_handle_t *handle) {
@@ -95,7 +105,6 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 		uv_close(handle, close_cb);
 	}
 }
-
 
 static void ping_wait(void *param) {
 	struct timeval tv;
@@ -177,6 +186,9 @@ clear:
 	close(ping_socket);
 #endif
 	FREE(message);
+
+	r = uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 1000);
+	CuAssertIntEquals(gtc, 0, r);
 	return;
 }
 
@@ -246,6 +258,12 @@ static void test_ping(CuTest *tc) {
 
 #ifndef _WIN32
 	ping_custom_server();
+	eventpool_init(EVENTPOOL_NO_THREADS);
+
+	timer_req = MALLOC(sizeof(uv_timer_t));
+	CuAssertPtrNotNull(tc, timer_req);
+	int r = uv_timer_init(uv_default_loop(), timer_req);
+	CuAssertIntEquals(tc, 0, r);
 #endif
 
 	if(threaded == 1) {
@@ -274,6 +292,7 @@ static void test_ping(CuTest *tc) {
 	if(threaded == 1) {
 		uv_thread_join(&pth1);
 	}
+	eventpool_gc();
 #endif
 
 	CuAssertIntEquals(tc, 0, xfree());

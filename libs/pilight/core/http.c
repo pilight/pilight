@@ -126,6 +126,7 @@ static void free_request(struct request_t *request) {
 
 int http_gc(void) {
 	struct http_clients_t *node = NULL;
+	char buffer[BUFFER_SIZE] = { 0 };
 
 #ifdef _WIN32
 	uv_mutex_lock(&http_lock);
@@ -140,7 +141,8 @@ int http_gc(void) {
 			shutdown(http_clients->fd, SD_BOTH);
 			closesocket(http_clients->fd);
 #else
-			shutdown(http_clients->fd, SHUT_RDWR);
+			shutdown(http_clients->fd, SHUT_WR);
+			while(recv(http_clients->fd, buffer, BUFFER_SIZE, 0) > 0);
 			close(http_clients->fd);
 #endif
 		}
@@ -486,6 +488,8 @@ static void http_client_close(uv_poll_t *req) {
 	struct request_t *request = custom_poll_data->data;
 	uv_timer_stop(request->timer_req);
 
+	char buffer[BUFFER_SIZE] = { 0 };
+
 	if(request->reading == 1) {
 		if(request->has_length == 0 && request->has_chunked == 0) {
 			if(request->callback != NULL && request->called == 0) {
@@ -514,7 +518,8 @@ static void http_client_close(uv_poll_t *req) {
 		shutdown(request->fd, SD_BOTH);
 		closesocket(request->fd);
 #else
-		shutdown(request->fd, SHUT_RDWR);
+		shutdown(request->fd, SHUT_WR);
+		while(recv(request->fd, buffer, BUFFER_SIZE, 0) > 0);
 		close(request->fd);
 #endif
 	}
@@ -739,8 +744,12 @@ static void write_cb(uv_poll_t *req) {
 	}
 }
 
-int http_process(int type, char *url, const char *conttype, char *post, void (*callback)(int, char *, int, char *, void *), void *userdata) {
-	struct request_t *request = NULL;
+static void thread_free(uv_work_t *req, int status) {
+	FREE(req);
+}
+
+static void thread(uv_work_t *req) {
+	struct request_t *request = req->data;
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct sockaddr_in addr4;
 	struct sockaddr_in6 addr6;
@@ -769,117 +778,116 @@ int http_process(int type, char *url, const char *conttype, char *post, void (*c
 
 	memset(&addr4, '\0', sizeof(struct sockaddr_in));
 	memset(&addr6, '\0', sizeof(struct sockaddr_in6));
-	if(prepare_request(&request, type, url, conttype, post, callback, userdata) == 0) {
-		int inet = host2ip(request->host, &ip);
-		switch(inet) {
-			case AF_INET: {
-				memset(&addr4, '\0', sizeof(struct sockaddr_in));
-				r = uv_ip4_addr(ip, request->port, &addr4);
-				if(r != 0) {
-					/*LCOV_EXCL_START*/
-					logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
-					goto freeuv;
-					/*LCOV_EXCL_END*/
-				}
-			} break;
-			case AF_INET6: {
-				memset(&addr6, '\0', sizeof(struct sockaddr_in6));
-				r = uv_ip6_addr(ip, request->port, &addr6);
-				if(r != 0) {
-					/*LCOV_EXCL_START*/
-					logprintf(LOG_ERR, "uv_ip6_addr: %s", uv_strerror(r));
-					goto freeuv;
-					/*LCOV_EXCL_END*/
-				}
-			} break;
-			default: {
+
+	int inet = host2ip(request->host, &ip);
+	switch(inet) {
+		case AF_INET: {
+			memset(&addr4, '\0', sizeof(struct sockaddr_in));
+			r = uv_ip4_addr(ip, request->port, &addr4);
+			if(r != 0) {
 				/*LCOV_EXCL_START*/
-				logprintf(LOG_ERR, "host2ip");
+				logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
 				goto freeuv;
 				/*LCOV_EXCL_END*/
-			} break;
-		}
-		FREE(ip);
-
-		/*
-		 * Partly bypass libuv in case of ssl connections
-		 */
-		if((request->fd = socket(inet, SOCK_STREAM, 0)) < 0){
-			/*LCOV_EXCL_START*/
-			logprintf(LOG_ERR, "socket: %s", strerror(errno));
-			goto freeuv;
-			/*LCOV_EXCL_STOP*/
-		}
-
-#ifdef _WIN32
-		unsigned long on = 1;
-		ioctlsocket(request->fd, FIONBIO, &on);
-#else
-		long arg = fcntl(request->fd, F_GETFL, NULL);
-		fcntl(request->fd, F_SETFL, arg | O_NONBLOCK);
-#endif
-
-		switch(inet) {
-			case AF_INET: {
-				r = connect(request->fd, (struct sockaddr *)&addr4, sizeof(addr4));
-			} break;
-			case AF_INET6: {
-				r = connect(request->fd, (struct sockaddr *)&addr6, sizeof(addr6));
-			} break;
-			default: {
-			} break;
-		}
-
-		if(r < 0) {
-#ifdef _WIN32
-			if(!(WSAGetLastError() == WSAEWOULDBLOCK || WSAGetLastError() == WSAEISCONN)) {
-#else
-			if(!(errno == EINPROGRESS || errno == EISCONN)) {
-#endif
-				/*LCOV_EXCL_START*/
-				logprintf(LOG_ERR, "connect: %s", strerror(errno));
-				goto freeuv;
-				/*LCOV_EXCL_STOP*/
 			}
-		}
-
-		request->poll_req = NULL;
-		if((request->poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
-		if((request->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
-		uv_custom_poll_init(&custom_poll_data, request->poll_req, (void *)request);
-		custom_poll_data->is_ssl = request->is_ssl;
-		custom_poll_data->write_cb = write_cb;
-		custom_poll_data->read_cb = read_cb;
-		custom_poll_data->close_cb = poll_close_cb;
-		if((custom_poll_data->host = STRDUP(request->host)) == NULL) {
-			OUT_OF_MEMORY
-		}
-
-		request->timer_req->data = request;
-
-		r = uv_poll_init_socket(uv_default_loop(), request->poll_req, request->fd);
-		if(r != 0) {
+		} break;
+		case AF_INET6: {
+			memset(&addr6, '\0', sizeof(struct sockaddr_in6));
+			r = uv_ip6_addr(ip, request->port, &addr6);
+			if(r != 0) {
+				/*LCOV_EXCL_START*/
+				logprintf(LOG_ERR, "uv_ip6_addr: %s", uv_strerror(r));
+				goto freeuv;
+				/*LCOV_EXCL_END*/
+			}
+		} break;
+		default: {
 			/*LCOV_EXCL_START*/
-			logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
-			FREE(request->poll_req);
+			logprintf(LOG_ERR, "host2ip");
 			goto freeuv;
-			/*LCOV_EXCL_STOP*/
-		}
+			/*LCOV_EXCL_END*/
+		} break;
+	}
+	FREE(ip);
 
-		uv_timer_init(uv_default_loop(), request->timer_req);
-		uv_update_time(uv_default_loop());
-		uv_timer_start(request->timer_req, (void (*)(uv_timer_t *))timeout, 3000, 0);
-
-		http_client_add(request->poll_req, custom_poll_data);
-		request->steps = STEP_WRITE;
-		uv_custom_write(request->poll_req);
+	/*
+	 * Partly bypass libuv in case of ssl connections
+	 */
+	if((request->fd = socket(inet, SOCK_STREAM, 0)) < 0){
+		/*LCOV_EXCL_START*/
+		logprintf(LOG_ERR, "socket: %s", strerror(errno));
+		goto freeuv;
+		/*LCOV_EXCL_STOP*/
 	}
 
-	return 0;
+#ifdef _WIN32
+	unsigned long on = 1;
+	ioctlsocket(request->fd, FIONBIO, &on);
+#else
+	long arg = fcntl(request->fd, F_GETFL, NULL);
+	fcntl(request->fd, F_SETFL, arg | O_NONBLOCK);
+#endif
+
+	switch(inet) {
+		case AF_INET: {
+			r = connect(request->fd, (struct sockaddr *)&addr4, sizeof(addr4));
+		} break;
+		case AF_INET6: {
+			r = connect(request->fd, (struct sockaddr *)&addr6, sizeof(addr6));
+		} break;
+		default: {
+		} break;
+	}
+
+	if(r < 0) {
+#ifdef _WIN32
+		if(!(WSAGetLastError() == WSAEWOULDBLOCK || WSAGetLastError() == WSAEISCONN)) {
+#else
+		if(!(errno == EINPROGRESS || errno == EISCONN)) {
+#endif
+			/*LCOV_EXCL_START*/
+			logprintf(LOG_ERR, "connect: %s", strerror(errno));
+			goto freeuv;
+			/*LCOV_EXCL_STOP*/
+		}
+	}
+
+	request->poll_req = NULL;
+	if((request->poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	if((request->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	uv_custom_poll_init(&custom_poll_data, request->poll_req, (void *)request);
+	custom_poll_data->is_ssl = request->is_ssl;
+	custom_poll_data->write_cb = write_cb;
+	custom_poll_data->read_cb = read_cb;
+	custom_poll_data->close_cb = poll_close_cb;
+	if((custom_poll_data->host = STRDUP(request->host)) == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	request->timer_req->data = request;
+
+	r = uv_poll_init_socket(uv_default_loop(), request->poll_req, request->fd);
+	if(r != 0) {
+		/*LCOV_EXCL_START*/
+		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
+		FREE(request->poll_req);
+		goto freeuv;
+		/*LCOV_EXCL_STOP*/
+	}
+
+	uv_timer_init(uv_default_loop(), request->timer_req);
+	uv_update_time(uv_default_loop());
+	uv_timer_start(request->timer_req, (void (*)(uv_timer_t *))timeout, 3000, 0);
+
+	http_client_add(request->poll_req, custom_poll_data);
+	request->steps = STEP_WRITE;
+	uv_custom_write(request->poll_req);
+
+	return;
 
 freeuv:
 	if(request->timer_req != NULL) {
@@ -902,6 +910,34 @@ freeuv:
 		close(request->fd);
 #endif
 	}
+	FREE(request);
+	return ;
+}
+
+int http_process(int type, char *url, const char *conttype, char *post, void (*callback)(int, char *, int, char *, void *), void *userdata) {
+	struct request_t *request = NULL;
+	char *ip = NULL;
+
+	if(prepare_request(&request, type, url, conttype, post, callback, userdata) == 0) {
+		int inet = host2ip(request->host, &ip);
+		if(inet == -1) {
+			FREE(request->uri);
+			FREE(request->host);
+			FREE(request);
+			return -1;
+		}
+		FREE(ip);
+		uv_work_t *work_req = NULL;
+		if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		work_req->data = request;
+		uv_queue_work_s(work_req, "http", 1, thread, thread_free);
+		return 0;
+	}
+
+	FREE(request->uri);
+	FREE(request->host);
 	FREE(request);
 	return -1;
 }

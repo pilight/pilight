@@ -521,15 +521,15 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	uv_custom_read(req);
 }
 
-int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
+static void thread_free(uv_work_t *req, int status) {
+	FREE(req);
+}
+
+static void thread(uv_work_t *req) {
+	struct data_t *data = req->data;
 	struct uv_custom_poll_t *custom_poll_data = NULL;
-	struct data_t *data = NULL;
 	int sockfd = 0;
 	unsigned long on = 1;
-
-	if(iplist == NULL) {
-		return -1;
-	}
 
 #ifdef _WIN32
 	WSADATA wsa;
@@ -543,7 +543,7 @@ int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
 	if((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0) {
 		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "socket: %s", strerror(errno));
-		return -1;
+		goto free;
 		/*LCOV_EXCL_STOP*/
 	}
 
@@ -558,7 +558,7 @@ int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
 		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "setsockopt: %s", strerror(errno));
 		close(sockfd);
-		return -1;
+		goto free;
 		/*LCOV_EXCL_STOP*/
 	}
 
@@ -571,17 +571,9 @@ int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
 		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "setsockopt: %s", strerror(errno));
 		close(sockfd);
-		return -1;
+		goto free;
 		/*LCOV_EXCL_STOP*/
 	}
-
-	if((data = MALLOC(sizeof(struct data_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-	memset(data, 0, sizeof(struct data_t));
-	data->callback = callback;
-	data->nodes = iplist;
-	data->iplist = iplist;
 
 	if((data->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -625,7 +617,7 @@ int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
 	uv_custom_write(data->poll_req);
 	uv_custom_read(data->poll_req);
 
-	return 0;
+	return;
 
 free:
 	FREE(data->poll_req);
@@ -633,6 +625,30 @@ free:
 	ping_data_gc(data);
 	uv_custom_poll_free(custom_poll_data);
 
-	return -1;
+	return;
+}
+
+int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
+	if(iplist == NULL) {
+		return -1;
+	}
+
+	struct data_t *data = NULL;
+	if((data = MALLOC(sizeof(struct data_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	memset(data, 0, sizeof(struct data_t));
+	data->callback = callback;
+	data->nodes = iplist;
+	data->iplist = iplist;
+
+	uv_work_t *work_req = NULL;
+	if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	work_req->data = data;
+	uv_queue_work_s(work_req, "ping", 1, thread, thread_free);
+
+	return 0;
 }
 #endif

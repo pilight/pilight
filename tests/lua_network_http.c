@@ -425,6 +425,8 @@ static void test_lua_network_http_get(CuTest *tc) {
 	plua_pause_coverage(0);
 	http_gc();
 	plua_gc();
+	eventpool_gc();
+
 	CuAssertIntEquals(tc, 11, run);
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -510,6 +512,8 @@ static void test_lua_network_http_get_invalid_host(CuTest *tc) {
 	plua_pause_coverage(0);
 	http_gc();
 	plua_gc();
+	eventpool_gc();
+
 	CuAssertIntEquals(tc, 6, run);
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -595,6 +599,8 @@ static void test_lua_network_http_post(CuTest *tc) {
 	plua_pause_coverage(0);
 	http_gc();
 	plua_gc();
+	eventpool_gc();
+
 	CuAssertIntEquals(tc, 11, run);
 	CuAssertIntEquals(tc, 0, xfree());
 }
@@ -675,6 +681,7 @@ static void test_lua_network_http_nonexisting_callback(CuTest *tc) {
 
 	plua_pause_coverage(0);
 	plua_gc();
+
 	CuAssertIntEquals(tc, 6, run);
 	CuAssertIntEquals(tc, 0, xfree());
 }

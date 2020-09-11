@@ -171,17 +171,42 @@ static void dosend(int fd) {
 	}
 }
 
-static void resend(uv_timer_t *timer_req) {
-	struct data_t *data = timer_req->data;
+static void thread(uv_work_t *req) {
+	struct data_t *data = req->data;
 	dosend(data->fd);
+}
 
-	FREE(timer_req->data);
+static void thread_free(uv_work_t *req, int status) {
+	FREE(req);
+}
+
+static void thread_free1(uv_work_t *req, int status) {
+	struct data_t *data = req->data;
+	FREE(data);
+	FREE(req);
+}
+
+static void resend1(uv_timer_t *timer_req) {
+	struct data_t *data = timer_req->data;
+
+	uv_work_t *work_req = NULL;
+	if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	work_req->data = data;
+	uv_queue_work_s(work_req, "socket", 1, thread, thread_free1);
 }
 
 static void *socket_connected(int reason, void *param, void *userdata) {
 	struct reason_socket_connected_t *data = param;
 
-	dosend(data->fd);
+	uv_work_t *work_req = NULL;
+	if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	work_req->data = data;
+	uv_queue_work_s(work_req, "socket", 1, thread, thread_free);
+	usleep(100);
 
 	if(run == SERVER) {
 		uv_timer_t *timer_req1 = MALLOC(sizeof(uv_timer_t));
@@ -192,7 +217,7 @@ static void *socket_connected(int reason, void *param, void *userdata) {
 		data1->fd = data->fd;
 		timer_req1->data = data1;
 		uv_timer_init(uv_default_loop(), timer_req1);
-		uv_timer_start(timer_req1, (void (*)(uv_timer_t *))resend, 250, 0);
+		uv_timer_start(timer_req1, (void (*)(uv_timer_t *))resend1, 250, 0);
 	}
 
 	return NULL;
