@@ -398,7 +398,6 @@ static void test_event_actions_pushbullet_run(CuTest *tc) {
 	plua_init();
 	{
 		struct lua_state_t *state[NRLUASTATES];
-		struct lua_State *L = NULL;
 		int i = 0;
 
 		for(i=0;i<NRLUASTATES;i++) {
@@ -407,16 +406,17 @@ static void test_event_actions_pushbullet_run(CuTest *tc) {
 			if(state[i] == NULL) {
 				return;
 			}
-
 			lua_getglobal(state[i]->L, "pilight");
-			lua_pushcfunction(L, plua_error);
-			lua_setfield(L, -2, "log");
-			lua_pop(L, 1);
+			lua_pushcfunction(state[i]->L, plua_error);
+			lua_setfield(state[i]->L, -2, "log");
+			lua_pop(state[i]->L, 1);
+			plua_clear_state(state[i]);
 		}
 	}
 
 	test_set_plua_path(tc, __FILE__, "event_actions_pushbullet.c");
 
+	eventpool_init(EVENTPOOL_NO_THREADS);
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("event_actions_pushbullet.json", CONFIG_SETTINGS | CONFIG_DEVICES));
 	event_action_init();
