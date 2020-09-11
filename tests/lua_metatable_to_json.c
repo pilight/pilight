@@ -36,47 +36,78 @@ static void test_metatable_to_json(CuTest *tc) {
 	plua_init();
 	plua_pause_coverage(1);
 
-	state = plua_get_free_state();
-	CuAssertPtrNotNull(gtc, state);
+	{
+		state = plua_get_free_state();
+		CuAssertPtrNotNull(gtc, state);
 
-	luaL_loadstring(state->L, " \
-		local table = pilight.table(); \
-		table[1] = 'a'; \
-		table['c'] = 1; \
-		table['b'] = true; \
-		table['a'] = {}; \
-		table['a'][1] = {}; \
-		table['a'][2] = {}; \
-		table['a'][1]['c'] = {}; \
-		table['a'][2]['c'] = {}; \
-		table['a'][1]['c'][1] = {}; \
-		table['a'][1]['c'][2] = {}; \
-		table['a'][2]['c'][1] = {}; \
-		table['a'][2]['c'][2] = {}; \
-		table['a'][1]['c'][1]['e'] = 'a'; \
-		table['a'][1]['c'][2]['e'] = 'b'; \
-		table['a'][2]['c'][1]['e'] = 'c'; \
-		table['a'][2]['c'][2]['e'] = 'd'; \
-		return table(); \
-	");
+		luaL_loadstring(state->L, " \
+			local table = pilight.table(); \
+			table[1] = 'a'; \
+			table['c'] = 1; \
+			table['b'] = true; \
+			table['a'] = {}; \
+			table['a'][1] = {}; \
+			table['a'][2] = {}; \
+			table['a'][1]['c'] = {}; \
+			table['a'][2]['c'] = {}; \
+			table['a'][1]['c'][1] = {}; \
+			table['a'][1]['c'][2] = {}; \
+			table['a'][2]['c'][1] = {}; \
+			table['a'][2]['c'][2] = {}; \
+			table['a'][1]['c'][1]['e'] = 'a'; \
+			table['a'][1]['c'][2]['e'] = 'b'; \
+			table['a'][2]['c'][1]['e'] = 'c'; \
+			table['a'][2]['c'][2]['e'] = 'd'; \
+			return table(); \
+		");
 
-	plua_pcall(state->L, __FILE__, 0, 1);
+		plua_pcall(state->L, __FILE__, 0, 1);
 
-	struct plua_metatable_t *table = NULL;
-	struct JsonNode *json = NULL;
+		struct plua_metatable_t *table = NULL;
+		struct JsonNode *json = NULL;
 
-	CuAssertIntEquals(tc, LUA_TLIGHTUSERDATA, lua_type(state->L, -1));
+		CuAssertIntEquals(tc, LUA_TLIGHTUSERDATA, lua_type(state->L, -1));
 
-	table = (void *)lua_topointer(state->L, -1);
-	plua_metatable_to_json(table, &json);
-	CuAssertPtrNotNull(tc, json);
-	char *out = json_stringify(json, NULL);
-	CuAssertStrEquals(tc, "{\"1\":\"a\",\"c\":1,\"b\":true,\"a\":[{\"c\":[{\"e\":\"a\"},{\"e\":\"b\"}]},{\"c\":[{\"e\":\"c\"},{\"e\":\"d\"}]}]}", out);
-	json_free(out);
-	json_delete(json);
+		table = (void *)lua_topointer(state->L, -1);
+		plua_metatable_to_json(table, &json);
+		CuAssertPtrNotNull(tc, json);
+		CuAssertIntEquals(tc, json_check(json, NULL), 1);
+		char *out = json_stringify(json, NULL);
+		CuAssertStrEquals(tc, "{\"1\":\"a\",\"c\":1,\"b\":true,\"a\":[{\"c\":[{\"e\":\"a\"},{\"e\":\"b\"}]},{\"c\":[{\"e\":\"c\"},{\"e\":\"d\"}]}]}", out);
+		json_free(out);
+		json_delete(json);
 
-	lua_pop(state->L, -1);
-	plua_clear_state(state);
+		lua_pop(state->L, -1);
+		plua_clear_state(state);
+	}
+
+	{
+		state = plua_get_free_state();
+		CuAssertPtrNotNull(gtc, state);
+
+		luaL_loadstring(state->L, " \
+			local table = pilight.table(); \
+			table['origin'] = 'receiver'; \
+			table['message'] = {}; \
+			table['message']['topic'] = 'pilight/dev/ctrl/statuslabel_v'; \
+			table['message']['payload'] = '{0\220\001'; \
+			table['protocol'] = 'mqtt'; \
+			return table();");
+
+		plua_pcall(state->L, __FILE__, 0, 1);
+
+		struct plua_metatable_t *table = NULL;
+		struct JsonNode *json = NULL;
+
+		CuAssertIntEquals(tc, LUA_TLIGHTUSERDATA, lua_type(state->L, -1));
+
+		table = (void *)lua_topointer(state->L, -1);
+		plua_metatable_to_json(table, &json);
+		CuAssertTrue(tc, json == NULL);
+
+		lua_pop(state->L, -1);
+		plua_clear_state(state);
+	}
 
 	run = 0;
 	test = 0;
