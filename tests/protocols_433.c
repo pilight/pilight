@@ -25,6 +25,7 @@
 #include "../libs/pilight/protocols/433.92/livolo_switch.h"
 #include "../libs/pilight/protocols/433.92/iwds07.h"
 #include "../libs/pilight/protocols/433.92/kerui_d026.h"
+#include "../libs/pilight/protocols/433.92/nexus.h"
 #include "../libs/pilight/protocols/433.92/smartwares_switch.h"
 #include "../libs/pilight/protocols/433.92/tfa2017.h"
 
@@ -54,6 +55,7 @@ const struct test_t {
 #include "protocols/smartwares_switch.h"
 #include "protocols/iwds07.h"
 #include "protocols/kerui_d026.h"
+#include "protocols/nexus.h"
 #include "protocols/tfa2017.h"
 
 static const struct test_t tests[] = {
@@ -67,6 +69,7 @@ static const struct test_t tests[] = {
 	{ &livoloSwitchInit, &livolo_switch, livolo_switch_tests, &livolo_switch_nrtests },
 	{ &smartwaresSwitchInit, &smartwares_switch, smartwares_switch_tests, &smartwares_switch_nrtests },
 	{ &keruiD026Init, &kerui_D026, kerui_d026_tests, &kerui_d026_nrtests },
+	{ &nexusInit, &nexus, nexus_tests, &nexus_nrtests },
 	{ &tfa2017Init, &tfa2017, tfa2017_tests, &tfa2017_nrtests },
 };
 

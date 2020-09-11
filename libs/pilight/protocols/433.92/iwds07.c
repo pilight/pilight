@@ -37,25 +37,30 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int unit, int battery, int state, char **message) {
+static void createMessage(int unit, int alert, int state, int fault, char **message) {
 	int x = 0;
 	x = snprintf((*message), 255, "{\"unit\":%d,", unit);
-	if(battery == 0) {
-		x += snprintf(&(*message)[x], 255 - x, "\"battery\":0,");
-	} else {
-		x += snprintf(&(*message)[x], 255 - x, "\"battery\":1,");
-	}
-	if(state == 0) {
-		x += snprintf(&(*message)[x], 255 - x, "\"state\":\"opened\"");
-	} else {
-		x += snprintf(&(*message)[x], 255 - x, "\"state\":\"closed\"");
-	}
-	x += snprintf(&(*message)[x], 255 - x, "}");
+
+    if(alert == 0) {
+        if(fault == 1) {
+	        x += snprintf(&(*message)[x], 255-x, "\"state\":\"tamped\"");
+        } else {
+	        x += snprintf(&(*message)[x], 255-x, "\"state\":\"low\"");
+        }
+    } else {
+        if(state == 1) {
+	        x += snprintf(&(*message)[x], 255-x, "\"state\":\"closed\"");
+        } else {
+	        x += snprintf(&(*message)[x], 255-x, "\"state\":\"opened\"");
+        }
+    }
+
+	x += snprintf(&(*message)[x], 255-x, "}");
 }
 
 static void parseCode(char **message) {
-	int binary[RAW_LENGTH / 2], i = 0, x = 0;
-	int unit = 0, battery = -1, state = -1;
+	int binary[RAW_LENGTH/2], i=0, x=0;
+	int unit=0, alert=-1, state=-1, fault=-1;
 
 	if(iwds07->rawlen > RAW_LENGTH) {
 		logprintf(LOG_ERR, "iwds07: parsecode - invalid parameter passed %d", iwds07->rawlen);
@@ -71,9 +76,10 @@ static void parseCode(char **message) {
 	}
 
 	unit = binToDec(binary, 0, 19);
-	battery = binToDec(binary, 20, 20);
+	alert = binToDec(binary, 20, 20);
 	state = binToDec(binary, 21, 21);
-	createMessage(unit, battery, state, message);
+	fault = binToDec(binary, 23, 23);
+	createMessage(unit, alert, state, fault, message);
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -94,6 +100,7 @@ void iwds07Init(void) {
 	options_add(&iwds07->options, "b", "battery", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[01]$");
 	options_add(&iwds07->options, "t", "opened", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&iwds07->options, "f", "closed", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&iwds07->options, "a", "tamper", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
 	iwds07->parseCode = &parseCode;
 	iwds07->validate = &validate;
