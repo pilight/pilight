@@ -27,6 +27,7 @@ static int run = 0;
 static int test = 0;
 static uv_thread_t pth;
 static CuTest *gtc = NULL;
+static int foo = 0;
 static int _send = 0;
 static int _recv = 0;
 static int _check = 0;
@@ -57,20 +58,32 @@ static int plua_print(lua_State* L) {
 			case 5: {
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
 				if(strstr(lua_tostring(L, 1), "pilight/mqtt/pilight-abcd") != NULL) {
+					char *foo = "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=connected,[\"type\"]=3,[\"topic\"]=pilight/mqtt/pilight-abcd,[\"msgid\"]=%d,[\"retain\"]=0,}";
+					char msg[1024] = { '\0' };
+					snprintf((char *)&msg, 1024, foo, _check);
+					CuAssertStrEquals(gtc, msg, lua_tostring(L, 1));
 					_check++;
-					CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=connected,[\"type\"]=3,[\"topic\"]=pilight/mqtt/pilight-abcd,[\"msgid\"]=0,[\"retain\"]=0,}", lua_tostring(L, 1));
 				}
 				if(strstr(lua_tostring(L, 1), "pilight/mqtt/pilight-send") != NULL) {
+					char *foo = "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=connected,[\"type\"]=3,[\"topic\"]=pilight/mqtt/pilight-send,[\"msgid\"]=%d,[\"retain\"]=0,}";
+					char msg[1024] = { '\0' };
+					snprintf((char *)&msg, 1024, foo, _check);
+					CuAssertStrEquals(gtc, msg, lua_tostring(L, 1));
 					_check++;
-					CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=connected,[\"type\"]=3,[\"topic\"]=pilight/mqtt/pilight-send,[\"msgid\"]=1,[\"retain\"]=0,}", lua_tostring(L, 1));
 				}
 				if(strstr(lua_tostring(L, 1), "pilight/lamp/status") != NULL) {
+					char *foo = "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=off,[\"type\"]=3,[\"topic\"]=pilight/lamp/status,[\"msgid\"]=%d,[\"retain\"]=0,}";
+					char msg[1024] = { '\0' };
+					snprintf((char *)&msg, 1024, foo, _check);
+					CuAssertStrEquals(gtc, msg, lua_tostring(L, 1));
 					_check++;
-					CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=off,[\"type\"]=3,[\"topic\"]=pilight/lamp/status,[\"msgid\"]=2,[\"retain\"]=0,}", lua_tostring(L, 1));
 				}
 				if(strstr(lua_tostring(L, 1), "tele/sonoff/POWER") != NULL) {
+					char *foo = "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=on,[\"type\"]=3,[\"topic\"]=tele/sonoff/POWER,[\"msgid\"]=%d,[\"retain\"]=0,}";
+					char msg[1024] = { '\0' };
+					snprintf((char *)&msg, 1024, foo, _check);
+					CuAssertStrEquals(gtc, msg, lua_tostring(L, 1));
 					_check++;
-					CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=on,[\"type\"]=3,[\"topic\"]=tele/sonoff/POWER,[\"msgid\"]=3,[\"retain\"]=0,}", lua_tostring(L, 1));
 				}
 			}
 		}
@@ -186,12 +199,17 @@ static void start_lua(char *module) {
 }
 
 static void start_clients(void *param) {
-	usleep(1000);
-	start_lua("mqtt_recv");
-	usleep(1000);
-	start_lua("mqtt_send");
-	usleep(1000);
-	mqtt_client("127.0.0.1", 11883, "pilight-abcd", NULL, NULL, mqtt_callback, NULL);
+	switch(foo++) {
+		case 0: {
+			start_lua("mqtt_recv");
+		} break;
+		case 1: {
+			start_lua("mqtt_send");
+		} break;
+		case 2: {
+			mqtt_client("127.0.0.1", 11883, "pilight-abcd", NULL, NULL, mqtt_callback, NULL);
+		} break;
+	}
 }
 
 static void test_lua_network_mqtt_server_client(CuTest *tc) {
@@ -224,7 +242,7 @@ static void test_lua_network_mqtt_server_client(CuTest *tc) {
 	 * Don't make this too quick so we can properly test the
 	 * timeout of the mqtt library itself.
 	 */
-	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 2000, 0);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 2500, 0);
 
 	eventpool_init(EVENTPOOL_NO_THREADS);
 
@@ -235,7 +253,7 @@ static void test_lua_network_mqtt_server_client(CuTest *tc) {
 	CuAssertPtrNotNull(tc, start_timer_req);
 
 	uv_timer_init(uv_default_loop(), start_timer_req);
-	uv_timer_start(start_timer_req, (void (*)(uv_timer_t *))start_clients, 500, 0);
+	uv_timer_start(start_timer_req, (void (*)(uv_timer_t *))start_clients, 500, 500);
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);

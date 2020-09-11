@@ -37,6 +37,7 @@ static uv_thread_t pth;
 
 static int running = 1;
 static int test = 0;
+static int foo = 0;
 static int step1[17] = { 0 };
 static int step2[17] = { 0 };
 
@@ -614,9 +615,15 @@ static void start_clients(uv_async_t *handle) {
 		usleep(5000);
 		mqtt_client("127.0.0.1", 11883, "pilight", NULL, NULL, mqtt_callback2, NULL);
 	} else {
-		mqtt_client("127.0.0.1", 11883, "pilight", NULL, NULL, mqtt_callback1, NULL);
-		usleep(1000);
-		mqtt_client("127.0.0.1", 11883, "pilight1", NULL, NULL, mqtt_callback2, NULL);
+		switch(foo++) {
+			case 0: {
+				mqtt_client("127.0.0.1", 11883, "pilight", NULL, NULL, mqtt_callback1, NULL);
+				uv_timer_start(start_timer_req, (void (*)(uv_timer_t *))start_clients, 100, 0);
+			} break;
+			case 1: {
+				mqtt_client("127.0.0.1", 11883, "pilight1", NULL, NULL, mqtt_callback2, NULL);
+			} break;
+		}
 	}
 }
 
@@ -642,6 +649,7 @@ void test_mqtt_server_client(CuTest *tc) {
 		timer_req2 = NULL;
 
 		running = 1;
+		foo = 0;
 		test = i;
 
 		for(x=0;x<17;x++) {

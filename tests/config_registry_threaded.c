@@ -160,9 +160,9 @@ void test_config_registry_threaded(CuTest *tc) {
 		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
-	CuAssertTrue(tc, run1 > 3000 && run2 > 3000 && fabs((double)min(run1, run2)/(double)max(run2, run1)) > 0.7);
-	CuAssertTrue(tc, run2 > 3000 && run3 > 3000 && fabs((double)min(run2, run3)/(double)max(run3, run2)) > 0.7);
-	CuAssertTrue(tc, run1 > 3000 && run3 > 3000 && fabs((double)min(run1, run3)/(double)max(run3, run1)) > 0.7);
+	CuAssertTrue(tc, run1 > 2750 && run2 > 2750 && fabs((double)min(run1, run2)/(double)max(run2, run1)) > 0.7);
+	CuAssertTrue(tc, run2 > 2750 && run3 > 2750 && fabs((double)min(run2, run3)/(double)max(run3, run2)) > 0.7);
+	CuAssertTrue(tc, run1 > 2750 && run3 > 2750 && fabs((double)min(run1, run3)/(double)max(run3, run1)) > 0.7);
 	config_write();
 	config_gc();
 	plua_gc();
