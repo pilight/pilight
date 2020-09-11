@@ -178,11 +178,11 @@ static void poll_cb(uv_poll_t *req, int status, int events) {
 					check = 1;
 					for(i=0;i<data.rptr;i++) {
 						if(!((int)(data.rbuffer[i]*0.6) <= pulses[i] && (int)(data.rbuffer[i]*1.4) >= pulses[i])) {
-							check = 0;
+							check++;
 						}
 					}
 					data.rptr = 0;
-					if(check == 1 || round > 9) {
+					if(check < 3) {
 						wiringXGC();
 						uv_poll_stop(poll_req);
 						uv_stop(uv_default_loop());
@@ -382,6 +382,6 @@ void test_lua_hardware_433gpio_send(CuTest *tc) {
 	eventpool_gc();
 	wiringXGC();
 
-	CuAssertIntEquals(tc, 1, check);
+	CuAssertTrue(tc, check < 3);
 	CuAssertIntEquals(tc, 0, xfree());
 }
