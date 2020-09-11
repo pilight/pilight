@@ -2859,6 +2859,11 @@ void plua_metatable_to_json(struct plua_metatable_t *table, struct JsonNode **jn
 				len = snprintf(key, len+1, "%g", (float)table->table[x].key.number_);
 
 				if(table->table[x].val.type_ == LUA_TSTRING) {
+					if(utf8_validate(table->table[x].val.string_) == 0) {
+						json_delete(*jnode);
+						*jnode = NULL;
+						return;
+					}
 					json_append_member(*jnode, key, json_mkstring(table->table[x].val.string_));
 				} else if(table->table[x].val.type_ == LUA_TBOOLEAN) {
 					json_append_member(*jnode, key, json_mkbool((int)table->table[x].val.number_));
@@ -2875,12 +2880,22 @@ void plua_metatable_to_json(struct plua_metatable_t *table, struct JsonNode **jn
 				} else if(table->table[x].val.type_ == LUA_TTABLE) {
 					struct JsonNode *jchild = NULL;
 					plua_metatable_to_json(table->table[x].val.void_, &jchild);
+					if(jchild == NULL) {
+						json_delete(*jnode);
+						*jnode = NULL;
+						return;
+					}
 					json_append_member(*jnode, key, jchild);
 				}
 
 				FREE(key);
 			} else {
 				if(table->table[x].val.type_ == LUA_TSTRING) {
+					if(utf8_validate(table->table[x].val.string_) == 0) {
+						json_delete(*jnode);
+						*jnode = NULL;
+						return;
+					}
 					json_append_element(*jnode, json_mkstring(table->table[x].val.string_));
 				} else if(table->table[x].val.type_ == LUA_TBOOLEAN) {
 					json_append_element(*jnode, json_mkbool((int)table->table[x].val.number_));
@@ -2898,14 +2913,29 @@ void plua_metatable_to_json(struct plua_metatable_t *table, struct JsonNode **jn
 				} else if(table->table[x].val.type_ == LUA_TTABLE) {
 					struct JsonNode *jchild = NULL;
 					plua_metatable_to_json(table->table[x].val.void_, &jchild);
+					if(jchild == NULL) {
+						json_delete(*jnode);
+						*jnode = NULL;
+						return;
+					}
 					json_append_element(*jnode, jchild);
 				}
 			}
 		} else if(table->table[x].key.type_ == LUA_TSTRING) {
 			if(mkobject == 1) {
 				if(table->table[x].val.type_ == LUA_TSTRING) {
+					if(utf8_validate(table->table[x].val.string_) == 0 || utf8_validate(table->table[x].key.string_) == 0) {
+						json_delete(*jnode);
+						*jnode = NULL;
+						return;
+					}
 					json_append_member(*jnode, table->table[x].key.string_, json_mkstring(table->table[x].val.string_));
 				} else if(table->table[x].val.type_ == LUA_TBOOLEAN) {
+					if(utf8_validate(table->table[x].key.string_) == 0) {
+						json_delete(*jnode);
+						*jnode = NULL;
+						return;
+					}
 					json_append_member(*jnode, table->table[x].key.string_, json_mkbool((int)table->table[x].val.number_));
 				} else if(table->table[x].val.type_ == LUA_TNUMBER) {
 					char *val = NULL;
@@ -2916,15 +2946,35 @@ void plua_metatable_to_json(struct plua_metatable_t *table, struct JsonNode **jn
 					memset(val, 0, len+1);
 					len = snprintf(val, len+1, "%g", (float)table->table[x].val.number_);
 
+					if(utf8_validate(table->table[x].key.string_) == 0) {
+						json_delete(*jnode);
+						*jnode = NULL;
+						return;
+					}
 					json_append_member(*jnode, table->table[x].key.string_, json_mknumber(table->table[x].val.number_, nrDecimals(val)));
 					FREE(val);
 				} else if(table->table[x].val.type_ == LUA_TTABLE) {
 					struct JsonNode *jchild = NULL;
+					if(utf8_validate(table->table[x].key.string_) == 0) {
+						json_delete(*jnode);
+						*jnode = NULL;
+						return;
+					}
 					plua_metatable_to_json(table->table[x].val.void_, &jchild);
+					if(jchild == NULL) {
+						json_delete(*jnode);
+						*jnode = NULL;
+						return;
+					}
 					json_append_member(*jnode, table->table[x].key.string_, jchild);
 				}
 			} else {
 				if(table->table[x].val.type_ == LUA_TSTRING) {
+					if(utf8_validate(table->table[x].key.string_) == 0) {
+						json_delete(*jnode);
+						*jnode = NULL;
+						return;
+					}
 					json_append_element(*jnode, json_mkstring(table->table[x].val.string_));
 				} else if(table->table[x].val.type_ == LUA_TBOOLEAN) {
 					json_append_element(*jnode, json_mkbool((int)table->table[x].val.number_));
@@ -2942,6 +2992,11 @@ void plua_metatable_to_json(struct plua_metatable_t *table, struct JsonNode **jn
 				} else if(table->table[x].val.type_ == LUA_TTABLE) {
 					struct JsonNode *jchild = NULL;
 					plua_metatable_to_json(table->table[x].val.void_, &jchild);
+					if(jchild == NULL) {
+						json_delete(*jnode);
+						*jnode = NULL;
+						return;
+					}
 					json_append_element(*jnode, jchild);
 				}
 			}
