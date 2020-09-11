@@ -160,6 +160,7 @@ struct uv_custom_poll_t {
 	int doclose;
 	int started;
 	int action;
+	int threadid;
 
 	char *host;
 
@@ -191,6 +192,7 @@ int eventpool_gc(void);
 void iobuf_free(struct iobuf_t *iobuf);
 void iobuf_init(struct iobuf_t *iobuf, size_t initial_size);
 void iobuf_remove(struct iobuf_t *, size_t);
+size_t iobuf_append_remove(struct iobuf_t *from, struct iobuf_t *to);
 size_t iobuf_append(struct iobuf_t *, const void *, int);
 
 void uv_custom_poll_init(struct uv_custom_poll_t **, uv_poll_t *, void *);
@@ -200,6 +202,6 @@ int uv_custom_read(uv_poll_t *);
 int uv_custom_write(uv_poll_t *);
 int uv_custom_close(uv_poll_t *);
 
-void uv_queue_work_s(uv_work_t *req, char *name, uv_work_cb work_cb, uv_after_work_cb after_work_cb);
+void uv_queue_work_s(uv_work_t *req, char *name, int main, uv_work_cb work_cb, uv_after_work_cb after_work_cb);
 
 #endif
