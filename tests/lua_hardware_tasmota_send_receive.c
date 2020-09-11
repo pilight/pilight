@@ -27,10 +27,9 @@
 #include "alltests.h"
 
 static CuTest *gtc = NULL;
-static uv_thread_t pth;
+static uv_timer_t *start_timer_req = NULL;
 static uv_timer_t *timer_req = NULL;
 static uv_timer_t *timer_req1 = NULL;
-static uv_timer_t *timer_req2 = NULL;
 static int running = 1;
 static struct eventpool_listener_t *node = NULL;
 static int test[10] = { 0 };
@@ -73,7 +72,7 @@ static void *receiveAPI1(int reason, void *param, void *userdata) {
 		json_find_string(json, "protocol", &protocol) == 0 &&
 		json_find_string(json, "origin", &origin) == 0) {
 			char *foo = json_stringify(json, NULL);
-			if(strcmp("{\"origin\":\"receiver\",\"message\":{\"state\":\"on\",\"id\":\"tasmota-pilight\"},\"protocol\":\"tasmota_switch\"}", foo) == 0) {
+			if(strcmp("{\"origin\":\"receiver\",\"message\":{\"state\":\"on\",\"connected\":0,\"id\":\"tasmota-pilight\"},\"protocol\":\"tasmota_switch\"}", foo) == 0) {
 				test[0]++;
 			}
 			json_free(foo);
@@ -87,29 +86,17 @@ static void *receiveAPI1(int reason, void *param, void *userdata) {
 static void stop(uv_work_t *req) {
 	running = 0;
 	eventpool_callback_remove(node);
-	mqtt_gc();
+
+	mqtt_client_gc();
+	mqtt_server_gc();
 	uv_timer_stop(timer_req);
 	uv_stop(uv_default_loop());
 	plua_gc();
 }
 
-static void ping(uv_timer_t *handle) {
-	if(running == 1) {
-		mqtt_ping(handle->data);
-	}
-}
-
 static void mqtt_callback2(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, void *userdata) {
 	if(pkt != NULL) {
 		if(pkt->type == MQTT_CONNACK) {
-			if((timer_req2 = MALLOC(sizeof(uv_timer_t))) == NULL) {
-				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-			}
-
-			timer_req2->data = client;
-			uv_timer_init(uv_default_loop(), timer_req2);
-			uv_timer_start(timer_req2, (void (*)(uv_timer_t *))ping, 100, 100);
-
 			mqtt_subscribe(client, "#", 0);
 
 			mqtt_publish(client, 0, 0, 0, "tele/tasmota-pilight/LWT", "Online");
@@ -163,6 +150,11 @@ static void timeout(uv_timer_t *req) {
 	}
 }
 
+static int plua_print(lua_State* L) {
+	plua_stack_dump(L);
+	return 0;
+}
+
 void test_lua_hardware_tasmota_send_receive(CuTest *tc) {
 	struct lua_state_t *state = NULL;
 	struct lua_State *L = NULL;
@@ -178,7 +170,7 @@ void test_lua_hardware_tasmota_send_receive(CuTest *tc) {
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	plua_init();
-
+	plua_override_global("print", plua_print);
 	test_set_plua_path(tc, __FILE__, "lua_hardware_tasmota_send_receive.c");
 
 	file = STRDUP(__FILE__);
@@ -214,13 +206,14 @@ void test_lua_hardware_tasmota_send_receive(CuTest *tc) {
 	timer_req = MALLOC(sizeof(uv_timer_t));
 	CuAssertPtrNotNull(gtc, timer_req);
 	uv_timer_init(uv_default_loop(), timer_req);
-	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 1000);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1500, 1500);
 
 	timer_req1 = MALLOC(sizeof(uv_timer_t));
 	CuAssertPtrNotNull(gtc, timer_req1);
 	uv_timer_init(uv_default_loop(), timer_req1);
-	uv_timer_start(timer_req1, (void (*)(uv_timer_t *))timeout, 500, 0);
+	uv_timer_start(timer_req1, (void (*)(uv_timer_t *))timeout, 750, 0);
 
+	mqtt_activate();
 	mqtt_server(11883);
 
 	hardware_init();
@@ -254,7 +247,11 @@ void test_lua_hardware_tasmota_send_receive(CuTest *tc) {
 
 	plua_clear_state(state);
 
-	uv_thread_create(&pth, start_clients, NULL);
+	start_timer_req = MALLOC(sizeof(uv_timer_t));
+	CuAssertPtrNotNull(tc, start_timer_req);
+
+	uv_timer_init(uv_default_loop(), start_timer_req);
+	uv_timer_start(start_timer_req, (void (*)(uv_timer_t *))start_clients, 500, 0);
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);

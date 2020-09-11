@@ -30,7 +30,6 @@ function M.timer(timer)
 	if data['repeat'] > 2 then
 		timer.stop();
 	end
-	mqtt.ping();
 end
 
 function M.callback(mqtt, data)
@@ -50,11 +49,6 @@ function M.callback(mqtt, data)
 	end
 	if data['type'] == MQTT_PUBLISH then
 		mqtt.pubrec(data['msgid']);
-	end
-	if data['type'] == MQTT_PUBREL then
-		mqtt.pubcomp(data['msgid']);
-	end
-	if data['type'] == MQTT_PINGRESP then
 	end
 end
 

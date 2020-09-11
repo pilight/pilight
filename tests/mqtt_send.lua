@@ -30,7 +30,6 @@ function M.timer(timer)
 	if data['repeat'] > 2 then
 		timer.stop();
 	end
-	mqtt.ping();
 end
 
 function M.callback(mqtt, data)
@@ -45,8 +44,6 @@ function M.callback(mqtt, data)
 		timer.start();
 
 		mqtt.publish("tele/sonoff/POWER", "on", {MQTT_QOS2});
-	end
-	if data['type'] == MQTT_PINGRESP then
 	end
 end
 

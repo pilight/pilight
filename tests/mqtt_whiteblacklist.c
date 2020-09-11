@@ -35,6 +35,7 @@ static CuTest *gtc = NULL;
 static uv_timer_t *timer_req1 = NULL;
 static uv_timer_t *timer_req2 = NULL;
 static uv_timer_t *stop_timer_req = NULL;
+static uv_timer_t *start_timer_req = NULL;
 static uv_async_t *async_req = NULL;
 static uv_thread_t pth;
 static int test[3] = { 0 };
@@ -62,7 +63,9 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 static void stop(uv_timer_t *handle) {
 	running = 0;
 	usleep(1000);
-	mqtt_gc();
+
+	mqtt_client_gc();
+	mqtt_server_gc();
 	uv_stop(uv_default_loop());
 }
 
@@ -72,7 +75,9 @@ static void async_close_cb(uv_async_t *handle) {
 	}
 	running = 0;
 	usleep(1000);
-	mqtt_gc();
+
+	mqtt_client_gc();
+	mqtt_server_gc();;
 	uv_stop(uv_default_loop());
 }
 
@@ -109,10 +114,10 @@ static void mqtt_callback2(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt,
 	}
 }
 
-static void start_clients(void *param) {
-	usleep(1000);
+static void start_clients(uv_async_t *handle) {
+	usleep(100);
 	mqtt_client("127.0.0.1", 11883, "pilight", NULL, NULL, mqtt_callback1, NULL);
-	usleep(1000);
+	usleep(100);
 	mqtt_client("127.0.0.1", 11883, "pilight1", NULL, NULL, mqtt_callback2, NULL);
 }
 
@@ -139,7 +144,7 @@ void test_mqtt_blacklist(CuTest *tc) {
 	char config[1024] =
 		"{\"devices\":{},\"gui\":{},\"rules\":{},\
 		\"settings\":{\
-				\"mqtt-blacklist\":[\"tele/sonoff/POWER\",\"pilight/device/#\"]\
+			\"mqtt-blacklist\":[\"tele/sonoff/POWER\",\"pilight/device/#\"]\
 		},\
 		\"hardware\":{},\
 		\"registry\":{}}";
@@ -171,10 +176,16 @@ void test_mqtt_blacklist(CuTest *tc) {
 	}
 
 	uv_timer_init(uv_default_loop(), stop_timer_req);
-	uv_timer_start(stop_timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);
+	uv_timer_start(stop_timer_req, (void (*)(uv_timer_t *))stop, 2000, 0);
 
+	mqtt_activate();
 	mqtt_server(11883);
-	uv_thread_create(&pth, start_clients, NULL);
+
+	start_timer_req = MALLOC(sizeof(uv_timer_t));
+	CuAssertPtrNotNull(tc, start_timer_req);
+
+	uv_timer_init(uv_default_loop(), start_timer_req);
+	uv_timer_start(start_timer_req, (void (*)(uv_timer_t *))start_clients, 500, 0);
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
@@ -252,10 +263,16 @@ void test_mqtt_whitelist(CuTest *tc) {
 	}
 
 	uv_timer_init(uv_default_loop(), stop_timer_req);
-	uv_timer_start(stop_timer_req, (void (*)(uv_timer_t *))stop, 1000, 0);
+	uv_timer_start(stop_timer_req, (void (*)(uv_timer_t *))stop, 2000, 0);
 
+	mqtt_activate();
 	mqtt_server(11883);
-	uv_thread_create(&pth, start_clients, NULL);
+
+	start_timer_req = MALLOC(sizeof(uv_timer_t));
+	CuAssertPtrNotNull(tc, start_timer_req);
+
+	uv_timer_init(uv_default_loop(), start_timer_req);
+	uv_timer_start(start_timer_req, (void (*)(uv_timer_t *))start_clients, 500, 0);
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
