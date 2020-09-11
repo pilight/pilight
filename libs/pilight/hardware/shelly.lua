@@ -22,7 +22,7 @@ function M.reset(timer)
 	local tmp = mqtt.getUserdata();
 
 	for _ in pairs(tmp) do
-		if(tmp[_]['timer'] == timer()) then
+		if(_ == data['id']) then
 			M.createMessage(tmp, _);
 		end
 	end
@@ -82,11 +82,9 @@ function M.send(obj, reason, data)
 		local timer = pilight.async.timer();
 		timer.setCallback("reset");
 		timer.setTimeout(3000);
-		timer.setRepeat(0);
-		timer.setUserdata({['mqtt']=mqtt()});
+		timer.setRepeat(3000);
+		timer.setUserdata({['mqtt']=mqtt(),['id']=data['id']});
 		timer.start();
-
-		devs[data['id']]['timer'] = timer();
 	end
 end
 
