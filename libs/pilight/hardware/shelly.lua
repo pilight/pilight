@@ -22,7 +22,7 @@ function M.reset(timer)
 	local tmp = mqtt.getUserdata();
 
 	for _ in pairs(tmp) do
-		if(_ == timer()) then
+		if(_ == data['id']) then
 			M.createMessage(tmp, _);
 		end
 	end
