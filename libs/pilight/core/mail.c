@@ -78,6 +78,7 @@ typedef struct request_t {
 	const char *pass;
 	unsigned short port;
 
+	int is_ssl;
 	char *content;
 	int content_len;
 	int step;
@@ -144,6 +145,7 @@ static void abort_cb(uv_poll_t *req) {
 	}
 
 	if(request != NULL) {
+		FREE(request->host);
 		FREE(request);
 	}
 }
@@ -530,46 +532,17 @@ static void write_cb(uv_poll_t *req) {
 	}
 }
 
-int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ssl, struct mail_t *mail, void (*callback)(int, struct mail_t *)) {
-	struct request_t *request = NULL;
+static void thread_free(uv_work_t *req, int status) {
+	FREE(req);
+}
+
+static void thread(uv_work_t *req) {
+	struct request_t *request = req->data;
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct sockaddr_in addr4;
 	struct sockaddr_in6 addr6;
 	char *ip = NULL;
 	int type = 0, sockfd = 0, r = 0;
-
-	if(mail->from == NULL) {
-		logprintf(LOG_ERR, "SMTP: sender not set");
-		return -1;
-	}
-	if(mail->subject == NULL) {
-		logprintf(LOG_ERR, "SMTP: subject not set");
-		return -1;
-	}
-	if(mail->message == NULL) {
-		logprintf(LOG_ERR, "SMTP: message not set");
-		return -1;
-	}
-	if(mail->to == NULL) {
-		logprintf(LOG_ERR, "SMTP: recipient not set");
-		return -1;
-	}
-	if(strcmp(mail->message, ".") == 0) {
-		logprintf(LOG_ERR, "SMTP: message cannot be a single .");
-		return -1;
-	}
-
-	if((request = MALLOC(sizeof(struct request_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-	memset(request, 0, sizeof(struct request_t));
-	request->host = host;
-	request->login = login;
-	request->pass = pass;
-	request->port = port;
-	request->mail = mail;
-	request->authtype = UNSUPPORTED;
-	request->callback = callback;
 
 #ifdef _WIN32
 	WSADATA wsa;
@@ -580,11 +553,11 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 	}
 #endif
 
-	type = host2ip(host, &ip);
+	type = host2ip((char *)request->host, &ip);
 	switch(type) {
 		case AF_INET: {
 			memset(&addr4, '\0', sizeof(struct sockaddr_in));
-			r = uv_ip4_addr(ip, port, &addr4);
+			r = uv_ip4_addr(ip, request->port, &addr4);
 			if(r != 0) {
 				/*LCOV_EXCL_START*/
 				logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
@@ -594,7 +567,7 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 		} break;
 		case AF_INET6: {
 			memset(&addr6, '\0', sizeof(struct sockaddr_in6));
-			r = uv_ip6_addr(ip, port, &addr6);
+			r = uv_ip6_addr(ip, request->port, &addr6);
 			if(r != 0) {
 				/*LCOV_EXCL_START*/
 				logprintf(LOG_ERR, "uv_ip6_addr: %s", uv_strerror(r));
@@ -654,12 +627,12 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 
 	uv_custom_poll_init(&custom_poll_data, poll_req, (void *)request);
 
-	custom_poll_data->is_ssl = is_ssl;
+	custom_poll_data->is_ssl = request->is_ssl;
 
 	if(custom_poll_data->is_ssl == 1 && ssl_client_init_status() == -1) {
 		logprintf(LOG_ERR, "secure e-mails require a properly initialized SSL library");
 		abort_cb(poll_req);
-		return -1;
+		return;
 	}
 	custom_poll_data->write_cb = write_cb;
 	custom_poll_data->read_cb = read_cb;
@@ -677,12 +650,13 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ss
 	request->step = SMTP_STEP_RECV_WELCOME;
 	uv_custom_write(poll_req);
 
-	return 0;
+	return;
 
 free:
 	if(request != NULL && request->callback != NULL) {
 		request->callback(-1, request->mail);
 	}
+	FREE(request->host);
 	FREE(request);
 	if(custom_poll_data != NULL) {
 		uv_custom_poll_free(custom_poll_data);
@@ -694,5 +668,74 @@ free:
 		close(sockfd);
 #endif
 	}
-	return -1;
+	return;
+}
+
+static void error(uv_work_t *req) {
+	struct request_t *request = req->data;
+
+	if(request != NULL && request->callback != NULL) {
+		request->callback(-1, request->mail);
+	}
+	FREE(request->host);
+	FREE(request);
+}
+
+int sendmail(char *host, char *login, char *pass, unsigned short port, int is_ssl, struct mail_t *mail, void (*callback)(int, struct mail_t *)) {
+	struct request_t *request = NULL;
+	char *ip = NULL;
+
+	if(mail->from == NULL) {
+		logprintf(LOG_ERR, "SMTP: sender not set");
+		return -1;
+	}
+	if(mail->subject == NULL) {
+		logprintf(LOG_ERR, "SMTP: subject not set");
+		return -1;
+	}
+	if(mail->message == NULL) {
+		logprintf(LOG_ERR, "SMTP: message not set");
+		return -1;
+	}
+	if(mail->to == NULL) {
+		logprintf(LOG_ERR, "SMTP: recipient not set");
+		return -1;
+	}
+	if(strcmp(mail->message, ".") == 0) {
+		logprintf(LOG_ERR, "SMTP: message cannot be a single .");
+		return -1;
+	}
+
+	if((request = MALLOC(sizeof(struct request_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	memset(request, 0, sizeof(struct request_t));
+
+	if((request->host = STRDUP(host)) == NULL) {
+		OUT_OF_MEMORY
+	}
+	request->login = login;
+	request->pass = pass;
+	request->port = port;
+	request->mail = mail;
+	request->is_ssl = is_ssl;
+	request->authtype = UNSUPPORTED;
+	request->callback = callback;
+
+	uv_work_t *work_req = NULL;
+	if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	work_req->data = request;
+
+	int type = host2ip(host, &ip);
+	if(type == -1) {
+		uv_queue_work_s(work_req, "mail", 1, error, thread_free);
+		return -1;
+	}
+	FREE(ip);
+
+	uv_queue_work_s(work_req, "mail", 1, thread, thread_free);
+
+	return 0;
 }

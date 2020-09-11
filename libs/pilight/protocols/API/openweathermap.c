@@ -547,7 +547,7 @@ static void *update(void *param) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	work_req->data = settings;
-	uv_queue_work_s(work_req, "openweathermap", thread, thread_free);
+	uv_queue_work_s(work_req, "openweathermap", 0, thread, thread_free);
 	if(time_override > -1) {
 		settings->update = time_override;
 	} else {
@@ -825,7 +825,7 @@ static int createCode(JsonNode *code) {
 						OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 					}
 					work_req->data = tmp;
-					uv_queue_work_s(work_req, "openweathermap", thread, thread_free);
+					uv_queue_work_s(work_req, "openweathermap", 0, thread, thread_free);
 
 					if(time_override > -1) {
 						tmp->update = time_override;
