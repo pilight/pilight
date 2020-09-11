@@ -29,6 +29,7 @@ static uv_thread_t pth;
 static CuTest *gtc = NULL;
 static int _send = 0;
 static int _recv = 0;
+static int _check = 0;
 
 static int plua_print(lua_State* L) {
 	if(strcmp(lua_tostring(L, 1), "send") == 0) {
@@ -50,22 +51,28 @@ static int plua_print(lua_State* L) {
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
 				CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"msgid\"]=0,[\"type\"]=9,}", lua_tostring(L, 1));
 			} break;
-			case 2: {
-				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
-				CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=connected,[\"type\"]=3,[\"topic\"]=pilight/mqtt/pilight-abcd,[\"msgid\"]=0,[\"retain\"]=0,}", lua_tostring(L, 1));
-			} break;
-			case 3: {
-				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
-				CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=connected,[\"type\"]=3,[\"topic\"]=pilight/mqtt/pilight-send,[\"msgid\"]=1,[\"retain\"]=0,}", lua_tostring(L, 1));
-			} break;
-			case 4: {
-				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
-				CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=off,[\"type\"]=3,[\"topic\"]=pilight/lamp/status,[\"msgid\"]=2,[\"retain\"]=0,}", lua_tostring(L, 1));
-			} break;
+			case 2:
+			case 3:
+			case 4:
 			case 5: {
 				CuAssertIntEquals(gtc, LUA_TSTRING, lua_type(L, 1));
-				CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=on,[\"type\"]=3,[\"topic\"]=tele/sonoff/POWER,[\"msgid\"]=3,[\"retain\"]=0,}", lua_tostring(L, 1));
-			} break;
+				if(strstr(lua_tostring(L, 1), "pilight/mqtt/pilight-abcd") != NULL) {
+					_check++;
+					CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=connected,[\"type\"]=3,[\"topic\"]=pilight/mqtt/pilight-abcd,[\"msgid\"]=0,[\"retain\"]=0,}", lua_tostring(L, 1));
+				}
+				if(strstr(lua_tostring(L, 1), "pilight/mqtt/pilight-send") != NULL) {
+					_check++;
+					CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=connected,[\"type\"]=3,[\"topic\"]=pilight/mqtt/pilight-send,[\"msgid\"]=1,[\"retain\"]=0,}", lua_tostring(L, 1));
+				}
+				if(strstr(lua_tostring(L, 1), "pilight/lamp/status") != NULL) {
+					_check++;
+					CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=off,[\"type\"]=3,[\"topic\"]=pilight/lamp/status,[\"msgid\"]=2,[\"retain\"]=0,}", lua_tostring(L, 1));
+				}
+				if(strstr(lua_tostring(L, 1), "tele/sonoff/POWER") != NULL) {
+					_check++;
+					CuAssertStrEquals(gtc, "{[\"qos\"]=2,[\"dub\"]=0,[\"message\"]=on,[\"type\"]=3,[\"topic\"]=tele/sonoff/POWER,[\"msgid\"]=3,[\"retain\"]=0,}", lua_tostring(L, 1));
+				}
+			}
 		}
 	}
 	return 0;
@@ -242,6 +249,7 @@ static void test_lua_network_mqtt_server_client(CuTest *tc) {
 	plua_gc();
 	uv_thread_join(&pth);
 
+	CuAssertIntEquals(tc, 4, _check);
 	CuAssertIntEquals(tc, 6, _recv);
 	CuAssertIntEquals(tc, 1, _send);
 	CuAssertIntEquals(tc, 0, xfree());
