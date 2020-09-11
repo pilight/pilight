@@ -272,6 +272,7 @@ static void poll_close_cb(uv_poll_t *req) {
 	struct sockaddr_in addr;
 	socklen_t socklen = sizeof(addr);
 	char buf[INET_ADDRSTRLEN+1];
+	char buffer[BUFFER_SIZE] = { 0 };
 	int fd = -1, r = 0;
 
 	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
@@ -303,7 +304,8 @@ static void poll_close_cb(uv_poll_t *req) {
 		shutdown(fd, SD_BOTH);
 		closesocket(fd);
 #else
-		shutdown(fd, SHUT_RDWR);
+		shutdown(fd, SHUT_WR);
+		while(recv(fd, buffer, BUFFER_SIZE, 0) > 0);
 		close(fd);
 #endif
 	}

@@ -645,7 +645,6 @@ static void test_mail(CuTest *tc) {
 
 	test_set_plua_path(tc, __FILE__, "mail.c");
 
-	eventpool_init(EVENTPOOL_NO_THREADS);
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("mail.json", CONFIG_SETTINGS));
 
@@ -658,6 +657,8 @@ static void test_mail(CuTest *tc) {
 	while(testnr < sizeof(tests)/sizeof(tests[0])) {
 		printf("[ - %-46s ]\n", tests[testnr].desc);
 		fflush(stdout);
+
+		eventpool_init(EVENTPOOL_NO_THREADS);
 
 		int success = tests[testnr].success;
 		threaded = 0;
@@ -674,6 +675,8 @@ static void test_mail(CuTest *tc) {
 		if(success == 0) {
 			uv_thread_join(&pth);
 		}
+
+		eventpool_gc();
 	}
 
 	FREE(mail);
@@ -681,7 +684,6 @@ static void test_mail(CuTest *tc) {
 	ssl_gc();
 	storage_gc();
 	plua_gc();
-	eventpool_gc();
 
 	CuAssertIntEquals(tc, 9, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
@@ -703,7 +705,6 @@ static void test_mail_threaded(CuTest *tc) {
 
 	test_set_plua_path(tc, __FILE__, "mail.c");
 
-	eventpool_init(EVENTPOOL_NO_THREADS);
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("mail.json", CONFIG_SETTINGS));
 
@@ -716,6 +717,8 @@ static void test_mail_threaded(CuTest *tc) {
 	while(testnr < sizeof(tests)/sizeof(tests[0])) {
 		printf("[ - %-46s ]\n", tests[testnr].desc);
 		fflush(stdout);
+
+		eventpool_init(EVENTPOOL_NO_THREADS);
 
 		threaded = 1;
 		uv_thread_create(&pth1, test, NULL);
@@ -737,6 +740,8 @@ static void test_mail_threaded(CuTest *tc) {
 		while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
 			uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 		}
+
+		eventpool_gc();
 	}
 
 	FREE(mail);
@@ -744,7 +749,6 @@ static void test_mail_threaded(CuTest *tc) {
 	ssl_gc();
 	storage_gc();
 	plua_gc();
-	eventpool_gc();
 
 	CuAssertIntEquals(tc, 9, testnr);
 	CuAssertIntEquals(tc, 0, xfree());
@@ -809,13 +813,14 @@ static void test_mail_inactive_server(CuTest *tc) {
 	mail->from = sender;
 	mail->to = to;
 
+	eventpool_init(EVENTPOOL_NO_THREADS);
+
 	CuAssertIntEquals(gtc, 0, sendmail("127.0.0.1", user, password, 10025, 0, mail, callback1));
 
 	plua_init();
 
 	test_set_plua_path(tc, __FILE__, "mail.c");
 
-	eventpool_init(EVENTPOOL_NO_THREADS);
 	storage_init();
 	CuAssertIntEquals(tc, 0, storage_read("mail.json", CONFIG_SETTINGS));
 
