@@ -218,7 +218,7 @@ function M.send(obj, reason, data)
 		local timer = pilight.async.timer();
 		timer.setCallback("reset");
 		timer.setTimeout(3000);
-		timer.setRepeat(3000);
+		timer.setRepeat(0);
 		timer.setUserdata({['mqtt']=mqtt(),['id']=data['id']});
 		timer.start();
 	end
