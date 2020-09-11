@@ -62,6 +62,7 @@ typedef struct eventqueue_data_t {
 } eventqueue_data_t;
 
 typedef struct thread_list_t {
+	int main;
 	char *name;
 	void *gc;
 	uv_work_t *work_req;
@@ -143,7 +144,12 @@ static void safe_thread_loop(uv_async_t *handle) {
 	node = thread_list;
 
 	if(node != NULL) {
-		uv_queue_work(uv_default_loop(), node->work_req, node->name, node->work_cb, node->after_work_cb);
+		if(node->main == 1) {
+			node->work_cb(node->work_req);
+			node->after_work_cb(node->work_req, 0);
+		} else {
+			uv_queue_work(uv_default_loop(), node->work_req, node->name, node->work_cb, node->after_work_cb);
+		}
 
 		thread_list = thread_list->next;
 		FREE(node);
@@ -155,7 +161,7 @@ static void safe_thread_loop(uv_async_t *handle) {
 	uv_mutex_unlock(&thread_lock);
 }
 
-void uv_queue_work_s(uv_work_t *req, char *name, uv_work_cb work_cb, uv_after_work_cb after_work_cb) {
+void uv_queue_work_s(uv_work_t *req, char *name, int main, uv_work_cb work_cb, uv_after_work_cb after_work_cb) {
 	uv_mutex_lock(&thread_lock);
 
 	struct thread_list_t *node = MALLOC(sizeof(struct thread_list_t));
@@ -163,6 +169,7 @@ void uv_queue_work_s(uv_work_t *req, char *name, uv_work_cb work_cb, uv_after_wo
 	node->work_cb = work_cb;
 	node->work_req = req;
 	node->after_work_cb = after_work_cb;
+	node->main = main;
 	node->next = thread_list;
 	thread_list = node;
 

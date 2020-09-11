@@ -109,7 +109,7 @@ static int plua_async_thread_trigger(lua_State *L) {
 
 	thread->running = 1;
 
-	uv_queue_work_s(thread->work_req, "lua thread", thread_callback, thread_free);
+	uv_queue_work_s(thread->work_req, "lua thread", 0, thread_callback, thread_free);
 
 	lua_pushboolean(L, 1);
 

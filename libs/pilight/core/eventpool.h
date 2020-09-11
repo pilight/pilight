@@ -202,6 +202,6 @@ int uv_custom_read(uv_poll_t *);
 int uv_custom_write(uv_poll_t *);
 int uv_custom_close(uv_poll_t *);
 
-void uv_queue_work_s(uv_work_t *req, char *name, uv_work_cb work_cb, uv_after_work_cb after_work_cb);
+void uv_queue_work_s(uv_work_t *req, char *name, int main, uv_work_cb work_cb, uv_after_work_cb after_work_cb);
 
 #endif
