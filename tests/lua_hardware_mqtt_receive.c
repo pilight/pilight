@@ -27,8 +27,8 @@
 #include "alltests.h"
 
 static CuTest *gtc = NULL;
-static uv_thread_t pth;
 static uv_timer_t *timer_req = NULL;
+static uv_timer_t *start_timer_req = NULL;
 static struct eventpool_listener_t *node = NULL;
 static int test[2] = { 0 };
 
@@ -86,7 +86,9 @@ static void *receiveAPI1(int reason, void *param, void *userdata) {
 
 static void stop(uv_work_t *req) {
 	eventpool_callback_remove(node);
-	mqtt_gc();
+
+	mqtt_client_gc();
+	mqtt_server_gc();
 	uv_timer_stop(timer_req);
 	uv_stop(uv_default_loop());
 	plua_gc();
@@ -157,8 +159,9 @@ void test_lua_hardware_mqtt_receive(CuTest *tc) {
 	timer_req = MALLOC(sizeof(uv_timer_t));
 	CuAssertPtrNotNull(gtc, timer_req);
 	uv_timer_init(uv_default_loop(), timer_req);
-	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1000, 1000);
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 1500, 1500);
 
+	mqtt_activate();
 	mqtt_server(11883);
 
 	hardware_init();
@@ -192,7 +195,11 @@ void test_lua_hardware_mqtt_receive(CuTest *tc) {
 
 	plua_clear_state(state);
 
-	uv_thread_create(&pth, start_clients, NULL);
+	start_timer_req = MALLOC(sizeof(uv_timer_t));
+	CuAssertPtrNotNull(tc, start_timer_req);
+
+	uv_timer_init(uv_default_loop(), start_timer_req);
+	uv_timer_start(start_timer_req, (void (*)(uv_timer_t *))start_clients, 500, 0);
 
 	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	uv_walk(uv_default_loop(), walk_cb, NULL);
