@@ -102,7 +102,6 @@ int config_callback_read(lua_State *L, char *module, char *string) {
 	int x = 0;
 
 	if(state == NULL) {
-		plua_clear_state(state);
 		return -1;
 	}
 
