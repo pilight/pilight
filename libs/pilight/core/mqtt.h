@@ -130,6 +130,9 @@ typedef struct mqtt_client_t {
 	int keepalive;
 
 	int step;
+
+	char *ip;
+	int port;
 	int fd;
 
 	void *userdata;

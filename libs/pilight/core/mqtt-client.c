@@ -359,6 +359,123 @@ void mqtt_activate(void) {
 }
 #endif
 
+static void thread(uv_work_t *req) {
+	struct mqtt_client_t *client = req->data;
+	struct uv_custom_poll_t *custom_poll_data = NULL;
+	struct sockaddr_in addr4;
+	int r = 0;
+
+#ifdef _WIN32
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "WSAStartup");
+		exit(EXIT_FAILURE);
+	}
+#endif
+
+	memset(&addr4, '\0', sizeof(struct sockaddr_in));
+	r = uv_ip4_addr(client->ip, client->port, &addr4);
+	if(r != 0) {
+		/*LCOV_EXCL_START*/
+		logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
+		goto free;
+		/*LCOV_EXCL_END*/
+	}
+
+	if((client->fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+		/*LCOV_EXCL_START*/
+		logprintf(LOG_ERR, "socket: %s", strerror(errno));
+		goto free;
+		/*LCOV_EXCL_STOP*/
+	}
+
+#ifdef _WIN32
+	unsigned long on = 1;
+	ioctlsocket(client->fd, FIONBIO, &on);
+#else
+	long arg = fcntl(client->fd, F_GETFL, NULL);
+	fcntl(client->fd, F_SETFL, arg | O_NONBLOCK);
+#endif
+
+	if(connect(client->fd, (struct sockaddr *)&addr4, sizeof(addr4)) < 0) {
+#ifdef _WIN32
+		if(!(WSAGetLastError() == WSAEWOULDBLOCK || WSAGetLastError() == WSAEISCONN)) {
+#else
+		if(!(errno == EINPROGRESS || errno == EISCONN)) {
+#endif
+			/*LCOV_EXCL_START*/
+			logprintf(LOG_ERR, "connect: %s", strerror(errno));
+			goto free;
+			/*LCOV_EXCL_STOP*/
+		}
+	}
+
+	uv_poll_t *poll_req = NULL;
+	if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+
+	uv_timer_start(client->timeout_req, (void (*)(uv_timer_t *))timeout, 9000, 9000);
+
+	client->poll_req = poll_req;
+
+	uv_custom_poll_init(&custom_poll_data, client->poll_req, client);
+
+	custom_poll_data->is_ssl = 0;
+	custom_poll_data->write_cb = write_cb;
+	custom_poll_data->read_cb = read_cb;
+	custom_poll_data->close_cb = client_close_cb;
+
+	r = uv_poll_init_socket(uv_default_loop(), client->poll_req, client->fd);
+	if(r != 0) {
+		/*LCOV_EXCL_START*/
+		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
+		FREE(client->poll_req);
+		goto free;
+		/*LCOV_EXCL_STOP*/
+	}
+
+#ifdef _WIN32
+	uv_mutex_lock(&mqtt_lock);
+#else
+	pthread_mutex_lock(&mqtt_lock);
+#endif
+	client->next = mqtt_clients;
+	mqtt_clients = client;
+#ifdef _WIN32
+	uv_mutex_unlock(&mqtt_lock);
+#else
+	pthread_mutex_unlock(&mqtt_lock);
+#endif
+
+	uv_custom_write(client->poll_req);
+
+	FREE(client->ip);
+
+	return;
+
+/*LCOV_EXCL_START*/
+free:
+	if(custom_poll_data != NULL) {
+		uv_custom_poll_free(custom_poll_data);
+	}
+	if(client->fd > 0) {
+#ifdef _WIN32
+		closesocket(client->fd);
+#else
+		close(client->fd);
+#endif
+	}
+	FREE(client->ip);
+	return;
+/*LCOV_EXCL_STOP*/
+}
+
+static void thread_free(uv_work_t *req, int status) {
+	FREE(req);
+}
+
 int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willmsg, void (*callback)(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt, void *userdata), void *userdata) {
 	if(terminated == 1) {
 		return -1;
@@ -382,61 +499,6 @@ int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willm
 #endif
 	}
 
-	struct uv_custom_poll_t *custom_poll_data = NULL;
-	struct sockaddr_in addr4;
-	int sockfd = 0, r = 0;
-
-#ifdef _WIN32
-	WSADATA wsa;
-
-	if(WSAStartup(0x202, &wsa) != 0) {
-		logprintf(LOG_ERR, "WSAStartup");
-		exit(EXIT_FAILURE);
-	}
-#endif
-
-	memset(&addr4, '\0', sizeof(struct sockaddr_in));
-	r = uv_ip4_addr(ip, port, &addr4);
-	if(r != 0) {
-		/*LCOV_EXCL_START*/
-		logprintf(LOG_ERR, "uv_ip4_addr: %s", uv_strerror(r));
-		goto free;
-		/*LCOV_EXCL_END*/
-	}
-
-	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-		/*LCOV_EXCL_START*/
-		logprintf(LOG_ERR, "socket: %s", strerror(errno));
-		goto free;
-		/*LCOV_EXCL_STOP*/
-	}
-
-#ifdef _WIN32
-	unsigned long on = 1;
-	ioctlsocket(sockfd, FIONBIO, &on);
-#else
-	long arg = fcntl(sockfd, F_GETFL, NULL);
-	fcntl(sockfd, F_SETFL, arg | O_NONBLOCK);
-#endif
-
-	if(connect(sockfd, (struct sockaddr *)&addr4, sizeof(addr4)) < 0) {
-#ifdef _WIN32
-		if(!(WSAGetLastError() == WSAEWOULDBLOCK || WSAGetLastError() == WSAEISCONN)) {
-#else
-		if(!(errno == EINPROGRESS || errno == EISCONN)) {
-#endif
-			/*LCOV_EXCL_START*/
-			logprintf(LOG_ERR, "connect: %s", strerror(errno));
-			goto free;
-			/*LCOV_EXCL_STOP*/
-		}
-	}
-
-	uv_poll_t *poll_req = NULL;
-	if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-
 	struct mqtt_client_t *client = NULL;
 
 	if((client = MALLOC(sizeof(struct mqtt_client_t))) == NULL) {
@@ -444,7 +506,7 @@ int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willm
 	}
 	memset(client, 0, sizeof(struct mqtt_client_t));
 
-	client->poll_req = poll_req;
+	client->poll_req = NULL;
 
 #ifdef PILIGHT_UNITTEST
 	client->keepalive = 1;
@@ -455,7 +517,12 @@ int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willm
 	client->step = MQTT_CONNECT;
 	client->callback = callback;
 	client->userdata = userdata;
-	client->fd = sockfd;
+	client->fd = -1;
+	client->port = port;
+
+	if((client->ip = STRDUP(ip)) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
 
 	if((client->id = STRDUP(clientid)) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -489,53 +556,13 @@ int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willm
 	}
 	client->timeout_req->data = client;
 	uv_timer_init(uv_default_loop(), client->timeout_req);
-	uv_timer_start(client->timeout_req, (void (*)(uv_timer_t *))timeout, 9000, 9000);
 
-	uv_custom_poll_init(&custom_poll_data, client->poll_req, client);
-
-	custom_poll_data->is_ssl = 0;
-	custom_poll_data->write_cb = write_cb;
-	custom_poll_data->read_cb = read_cb;
-	custom_poll_data->close_cb = client_close_cb;
-
-	r = uv_poll_init_socket(uv_default_loop(), client->poll_req, sockfd);
-	if(r != 0) {
-		/*LCOV_EXCL_START*/
-		logprintf(LOG_ERR, "uv_poll_init_socket: %s", uv_strerror(r));
-		FREE(client->poll_req);
-		goto free;
-		/*LCOV_EXCL_STOP*/
+	uv_work_t *work_req = NULL;
+	if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
-
-#ifdef _WIN32
-	uv_mutex_lock(&mqtt_lock);
-#else
-	pthread_mutex_lock(&mqtt_lock);
-#endif
-	client->next = mqtt_clients;
-	mqtt_clients = client;
-#ifdef _WIN32
-	uv_mutex_unlock(&mqtt_lock);
-#else
-	pthread_mutex_unlock(&mqtt_lock);
-#endif
-
-	uv_custom_write(client->poll_req);
+	work_req->data = client;
+	uv_queue_work_s(work_req, "mqtt", 1, thread, thread_free);
 
 	return 0;
-
-/*LCOV_EXCL_START*/
-free:
-	if(custom_poll_data != NULL) {
-		uv_custom_poll_free(custom_poll_data);
-	}
-	if(sockfd > 0) {
-#ifdef _WIN32
-		closesocket(sockfd);
-#else
-		close(sockfd);
-#endif
-	}
-	return -1;
-/*LCOV_EXCL_STOP*/
 }
