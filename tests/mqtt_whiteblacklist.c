@@ -38,6 +38,7 @@ static uv_timer_t *stop_timer_req = NULL;
 static uv_timer_t *start_timer_req = NULL;
 static uv_async_t *async_req = NULL;
 static uv_thread_t pth;
+static int foo = 0;
 static int test[3] = { 0 };
 
 static int running = 1;
@@ -115,10 +116,15 @@ static void mqtt_callback2(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt,
 }
 
 static void start_clients(uv_async_t *handle) {
-	usleep(100);
-	mqtt_client("127.0.0.1", 11883, "pilight", NULL, NULL, mqtt_callback1, NULL);
-	usleep(100);
-	mqtt_client("127.0.0.1", 11883, "pilight1", NULL, NULL, mqtt_callback2, NULL);
+	switch(foo++) {
+		case 0: {
+			mqtt_client("127.0.0.1", 11883, "pilight", NULL, NULL, mqtt_callback1, NULL);
+			uv_timer_start(start_timer_req, (void (*)(uv_timer_t *))start_clients, 100, 0);
+		} break;
+		case 1: {
+			mqtt_client("127.0.0.1", 11883, "pilight1", NULL, NULL, mqtt_callback2, NULL);
+		} break;
+	}
 }
 
 void test_mqtt_blacklist(CuTest *tc) {
@@ -129,6 +135,7 @@ void test_mqtt_blacklist(CuTest *tc) {
 
 	gtc = tc;
 
+	foo = 0;
 	test[0] = 0; test[1] = 0; test[2] = 0;
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
@@ -215,6 +222,7 @@ void test_mqtt_whitelist(CuTest *tc) {
 
 	gtc = tc;
 
+	foo = 0;
 	test[0] = 0; test[1] = 0; test[2] = 0;
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
