@@ -307,7 +307,9 @@ static void mqtt_callback1(struct mqtt_client_t *client, struct mqtt_pkt_t *pkt,
 					if(strcmp(pkt->payload.publish.topic, "tele/sonoff/POWER") == 0) {
 						CuAssertStrEquals(gtc, "on", pkt->payload.publish.message);
 					} else if(strcmp(pkt->payload.publish.topic, "pilight/mqtt/pilight1") == 0) {
-						CuAssertStrEquals(gtc, "disconnected", pkt->payload.publish.message);
+						CuAssertStrEquals(gtc, "connected", pkt->payload.publish.message);
+					} else if(strcmp(pkt->payload.publish.topic, "pilight/lamp/status") == 0) {
+						CuAssertStrEquals(gtc, "{\"Time\":\"1970-01-01T02:32:27\",\"Uptime\":\"0T02:25:16\",\"Vcc\":3.238,\"SleepMode\":\"Dynamic\",\"Sleep\":50,\"LoadAvg\":19,\"POWER\":\"ON\",\"Wifi\":{\"AP\":1,\"SSId\":\"pilight\",\"BSSId\":\"AA:BB:CC:DD:EE:FF\",\"Channel\":2,\"RSSI\":82,\"LinkCount\":1,\"Downtime\":\"0T00:00:06\"}}", pkt->payload.publish.message);
 					}
 					step1[pkt->type]++;
 				} else if(pkt->type == MQTT_DISCONNECTED) {
@@ -601,15 +603,27 @@ static void start_last_client() {
 static void start_clients(uv_async_t *handle) {
 	usleep(1000);
 	if(test == 9) {
-		mqtt_client("127.0.0.1", 11883, "pilight1", NULL, NULL, mqtt_callback2, NULL);
-		usleep(1000);
-		mqtt_client("127.0.0.1", 11883, "pilight", NULL, NULL, mqtt_callback1, NULL);
+		switch(foo++) {
+			case 0: {
+				mqtt_client("127.0.0.1", 11883, "pilight1", NULL, NULL, mqtt_callback2, NULL);
+				uv_timer_start(start_timer_req, (void (*)(uv_timer_t *))start_clients, 100, 0);
+			} break;
+			case 1: {
+				mqtt_client("127.0.0.1", 11883, "pilight", NULL, NULL, mqtt_callback1, NULL);
+			} break;
+		}
 	} else if(test == 10) {
 		mqtt_client("127.0.0.1", 11883, "pilight", NULL, NULL, mqtt_callback1, NULL);
 	} else if(test == 11) {
-		mqtt_client("127.0.0.1", 11883, "pilight1", "pilight/status", "offline", mqtt_callback2, NULL);
-		usleep(100);
-		mqtt_client("127.0.0.1", 11883, "pilight", NULL, NULL, mqtt_callback1, NULL);
+		switch(foo++) {
+			case 0: {
+				mqtt_client("127.0.0.1", 11883, "pilight1", "pilight/status", "offline", mqtt_callback2, NULL);
+				uv_timer_start(start_timer_req, (void (*)(uv_timer_t *))start_clients, 100, 0);
+			} break;
+			case 1: {
+				mqtt_client	("127.0.0.1", 11883, "pilight", NULL, NULL, mqtt_callback1, NULL);
+			} break;
+		}
 	} else if(test == 12) {
 		mqtt_client("127.0.0.1", 11883, "pilight", NULL, NULL, mqtt_callback1, NULL);
 		usleep(5000);
@@ -640,7 +654,6 @@ void test_mqtt_server_client(CuTest *tc) {
 	test = 0;
 
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
-
 
 	for(i=0;i<14;i++) {
 		mqtt_activate();
