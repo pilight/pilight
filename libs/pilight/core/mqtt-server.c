@@ -480,7 +480,7 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 						if((message->payload = STRDUP(pkt->payload.publish.message)) == NULL) {
 							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-						}	
+						}
 						if((message->topic = STRDUP(pkt->payload.publish.topic)) == NULL) {
 							OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 						}
@@ -637,16 +637,13 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 					uv_custom_close(req);
 				} break;
 			}
-			mqtt_free(pkt);	
+			mqtt_free(pkt);
 			FREE(pkt);
 		}
 	}
 	*nread = 0;
 
 	if(ret == -1) {
-		mqtt_free(pkt);
-		FREE(pkt);
-
 		if(!uv_is_closing((uv_handle_t *)client->async_req)) {
 			uv_close((uv_handle_t *)client->async_req, close_cb);
 		}
