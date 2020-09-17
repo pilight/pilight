@@ -448,17 +448,17 @@ int mqtt_encode(struct mqtt_pkt_t *pkt, unsigned char **buf, unsigned int *len) 
 int mqtt_decode(struct mqtt_pkt_t **pkt, unsigned char *buf, unsigned int len, unsigned int *pos) {
 	unsigned int length = 0, startpos = 0;
 
-	if(((*pkt) = MALLOC(sizeof(struct mqtt_pkt_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-	memset((*pkt), 0, sizeof(struct mqtt_pkt_t));
-
 	if(len < 2) {
 		/*
 		 * Packet too short for minimal MQTT
 		 */
 		return -1;
 	}
+
+	if(((*pkt) = MALLOC(sizeof(struct mqtt_pkt_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	memset((*pkt), 0, sizeof(struct mqtt_pkt_t));
 
 	(*pkt)->type = (buf[(*pos)] & 0xF0) >> 4;
 	if((*pkt)->type == MQTT_PUBLISH ||
@@ -646,6 +646,8 @@ int mqtt_decode(struct mqtt_pkt_t **pkt, unsigned char *buf, unsigned int len, u
 	}
 
 	if(msglength+startpos != (*pos)) {
+		mqtt_free((*pkt));
+		FREE((*pkt));
 		return -1;
 	}
 

@@ -298,14 +298,9 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 				} break;
 			}
 
-			mqtt_free(pkt);	
+			mqtt_free(pkt);
 			FREE(pkt);
 		}
-	}
-
-	if(ret == -1) {
-		mqtt_free(pkt);
-		FREE(pkt);
 	}
 
 	uv_custom_write(req);
