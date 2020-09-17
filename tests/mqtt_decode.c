@@ -864,10 +864,6 @@ void test_mqtt_decode(CuTest *tc) {
 			mqtt_free(pkt);
 			FREE(pkt);
 		}
-		if(ret == -1) {
-			mqtt_free(pkt);
-			FREE(pkt);
-		}
 		CuAssertIntEquals(tc, -1, ret);
 		iobuf_free(&iobuf);
 		FREE(buf);
