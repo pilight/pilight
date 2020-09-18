@@ -905,7 +905,7 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 			/*
 			 * Client was disconnected
 			 */
-			} else if(n == 0) {
+			} else if(n == 0 || (n < 0 && err == EPIPE)) {
 				custom_poll_data->doclose = 1;
 				custom_poll_data->doread = 0;
 				goto end;
