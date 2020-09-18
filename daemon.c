@@ -3143,6 +3143,8 @@ int start_pilight(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 
+	signal(SIGPIPE, SIG_IGN);
+
 	eventpool_init(EVENTPOOL_THREADED);
 	protocol_init();
 	config_init();
