@@ -213,8 +213,6 @@ function M.send(obj, reason, data)
 		-- If we don't get a confirmation within
 		-- 3000ms, restore to the current state
 		--
-		local id = pilight.common.random();
-
 		local timer = pilight.async.timer();
 		timer.setCallback("reset");
 		timer.setTimeout(3000);
