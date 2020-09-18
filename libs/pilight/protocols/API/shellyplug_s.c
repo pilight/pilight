@@ -111,6 +111,7 @@ static struct threadqueue_t *initDev(JsonNode *jdevice) {
 				if(pilight.send(jobject, PROTOCOL) == 0) {
 
 				}
+				json_delete(jobject);
 			}
 			jchild = jchild->next;
 		}
