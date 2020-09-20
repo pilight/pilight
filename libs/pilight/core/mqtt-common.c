@@ -1005,7 +1005,7 @@ static void mqtt_message_resend(uv_timer_t *handle) {
 }
 
 int mqtt_publish(struct mqtt_client_t *client, int dub, int qos, int retain, char *topic, char *payload) {
-	if(client->step != MQTT_CONNECTED) {
+	if(client == NULL || client->step != MQTT_CONNECTED) {
 		return -1;
 	} else {
 		struct mqtt_pkt_t pkt;

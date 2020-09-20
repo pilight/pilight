@@ -594,7 +594,7 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 									if(ret == 1) {
 										int x = 0, pass = 1;
 										for(x=0;x<mqtt_blacklist_nr;x++) {
-											if(mosquitto_topic_matches_sub(mqtt_blacklist[x], pkt->payload.publish.topic, &ret) == 0) {
+											if(mosquitto_topic_matches_sub(mqtt_blacklist[x], message->topic, &ret) == 0) {
 												if(ret == 1) {
 													pass = 0;
 													break;
@@ -603,7 +603,7 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 										}
 										if(pass == 0) {
 											for(x=0;x<mqtt_whitelist_nr;x++) {
-												if(mosquitto_topic_matches_sub(mqtt_whitelist[x], pkt->payload.publish.topic, &ret) == 0) {
+												if(mosquitto_topic_matches_sub(mqtt_whitelist[x], message->topic, &ret) == 0) {
 													if(ret == 1) {
 														pass = 1;
 														break;
