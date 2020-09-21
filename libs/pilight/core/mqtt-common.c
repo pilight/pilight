@@ -810,7 +810,7 @@ int mqtt_ping(struct mqtt_client_t *client) {
 			iobuf_append(&client->send_iobuf, (void *)buf, len);
 			FREE(buf);
 		}
-		uv_custom_write(client->poll_req);
+		uv_async_send(client->async_req);
 	}
 	return 0;
 }
@@ -832,7 +832,7 @@ int mqtt_subscribe(struct mqtt_client_t *client, char *topic, int qos) {
 			FREE(buf);
 		}
 		mqtt_free(&pkt);
-		uv_custom_write(client->poll_req);
+		uv_async_send(client->async_req);
 	}
 	return 0;
 }
@@ -855,7 +855,7 @@ int mqtt_pubrec(struct mqtt_client_t *client, int msgid) {
 			FREE(buf);
 		}
 		mqtt_free(&pkt);
-		uv_custom_write(client->poll_req);
+		uv_async_send(client->async_req);
 	}
 	return 0;
 }
@@ -878,7 +878,7 @@ int mqtt_pubrel(struct mqtt_client_t *client, int msgid) {
 			FREE(buf);
 		}
 		mqtt_free(&pkt);
-		uv_custom_write(client->poll_req);
+		uv_async_send(client->async_req);
 	}
 	return 0;
 }
@@ -901,7 +901,7 @@ int mqtt_pubcomp(struct mqtt_client_t *client, int msgid) {
 			FREE(buf);
 		}
 		mqtt_free(&pkt);
-		uv_custom_write(client->poll_req);
+		uv_async_send(client->async_req);
 	}
 	return 0;
 }
@@ -924,7 +924,7 @@ int mqtt_puback(struct mqtt_client_t *client, int msgid) {
 			FREE(buf);
 		}
 		mqtt_free(&pkt);
-		uv_custom_write(client->poll_req);
+		uv_async_send(client->async_req);
 	}
 	return 0;
 }
@@ -944,7 +944,7 @@ int mqtt_suback(struct mqtt_client_t *client, int msgid, int qos) {
 			FREE(buf);
 		}
 		mqtt_free(&pkt);
-		uv_custom_write(client->poll_req);
+		uv_async_send(client->async_req);
 	}
 	return 0;
 }
@@ -962,7 +962,7 @@ int mqtt_disconnect(struct mqtt_client_t *client) {
 			iobuf_append(&client->send_iobuf, (void *)buf, len);
 			FREE(buf);
 		}
-		uv_custom_write(client->poll_req);
+		uv_async_send(client->async_req);
 	}
 	return 0;
 }
@@ -980,7 +980,7 @@ int mqtt_pingresp(struct mqtt_client_t *client) {
 			iobuf_append(&client->send_iobuf, (void *)buf, len);
 			FREE(buf);
 		}
-		uv_custom_write(client->poll_req);
+		uv_async_send(client->async_req);
 	}
 	return 0;
 }
@@ -1056,7 +1056,7 @@ int mqtt_publish(struct mqtt_client_t *client, int dub, int qos, int retain, cha
 			FREE(buf);
 		}
 		mqtt_free(&pkt);
-		uv_custom_write(client->poll_req);
+		uv_async_send(client->async_req);
 	}
 	return 0;
 }
