@@ -106,10 +106,6 @@ static void client_close_cb(uv_poll_t *req) {
 	struct mqtt_client_t *client = custom_poll_data->data;
 	char buffer[BUFFER_SIZE] = { 0 };
 
-	if(!uv_is_closing((uv_handle_t *)client->async_req)) {
-		uv_close((uv_handle_t *)client->async_req, close_cb);
-	}
-
 	struct mqtt_pkt_t pkt;
 	pkt.type = MQTT_DISCONNECTED;
 
@@ -184,17 +180,6 @@ static void client_close_cb(uv_poll_t *req) {
 	}
 
 	mqtt_client_remove(req);
-}
-
-static void do_write(uv_async_t *handle) {
-	/*
-	 * Make sure we execute in the main thread
-	 */
-	const uv_thread_t pth_cur_id = uv_thread_self();
-	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
-
-	struct mqtt_client_t *client = handle->data;
-	uv_custom_write(client->poll_req);
 }
 
 static void ping(uv_timer_t *handle) {
@@ -539,12 +524,6 @@ int mqtt_client(char *ip, int port, char *clientid, char *willtopic, char *willm
 	for(i=0;i<1024;i++) {
 		memset(&client->messages[i], 0, sizeof(struct mqtt_message_t));
 	}
-
-	if((client->async_req = MALLOC(sizeof(uv_async_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-	client->async_req->data = client;
-	uv_async_init(uv_default_loop(), client->async_req, do_write);
 
 	if((client->timeout_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/

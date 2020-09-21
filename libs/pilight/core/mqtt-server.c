@@ -144,10 +144,6 @@ static void client_close_cb(uv_poll_t *req) {
 	char buffer[BUFFER_SIZE] = { 0 };
 
 	if(client != NULL) {
-		if(!uv_is_closing((uv_handle_t *)client->async_req)) {
-			uv_close((uv_handle_t *)client->async_req, close_cb);
-		}
-
 		struct mqtt_subscription_t *subscription = NULL;
 		while(client->subscriptions) {
 			subscription = client->subscriptions;
@@ -340,17 +336,6 @@ static void client_write_cb(uv_poll_t *req) {
 	}
 
 	uv_custom_read(req);
-}
-
-static void do_write(uv_async_t *handle) {
-	/*
-	 * Make sure we execute in the main thread
-	 */
-	const uv_thread_t pth_cur_id = uv_thread_self();
-	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
-
-	struct mqtt_client_t *client = handle->data;
-	uv_custom_write(client->poll_req);
 }
 
 static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
@@ -644,9 +629,6 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	*nread = 0;
 
 	if(ret == -1) {
-		if(!uv_is_closing((uv_handle_t *)client->async_req)) {
-			uv_close((uv_handle_t *)client->async_req, close_cb);
-		}
 		uv_custom_close(req);
 	} else if(disconnect == 0) {
 		uv_custom_write(req);
@@ -744,12 +726,6 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 #else
 	uv_timer_start(client->timeout_req, timeout, (client->keepalive*1.5)*1000, 0);
 #endif
-
-	if((client->async_req = MALLOC(sizeof(uv_async_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-	client->async_req->data = client;
-	uv_async_init(uv_default_loop(), client->async_req, do_write);
 
 	uv_custom_poll_init(&custom_poll_data, poll_req, client);
 

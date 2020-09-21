@@ -106,7 +106,6 @@ typedef struct mqtt_subscription_t {
 
 typedef struct mqtt_client_t {
 	uv_poll_t *poll_req;
-	uv_async_t *async_req;
 	uv_timer_t *ping_req;
 	uv_timer_t *timeout_req;
 
