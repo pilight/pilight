@@ -240,7 +240,7 @@ static void read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
 		"HTTP/1.1 200 OK\r\n"
 		"Server: pilight\r\n"
 		"Date: Fri, 06 Jan 2017 15:22:49 GMT\r\n"
-		"Content-Type: application/json; charset=utf-8\n\r"
+		"Content-Type: application/json; charset=utf-8\r\n"
 		"Content-Length: 445\r\n"
 		"Connection: close\r\n"
 		"X-Cache-Key: /data/2.5/weather?APPID=8db24c4ac56251371c7ea87fd3115493&q=amsterdam,nl\r\n"
