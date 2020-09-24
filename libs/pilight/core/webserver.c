@@ -278,6 +278,25 @@ const char *http_get_header(struct connection_t *conn, const char *s) {
 	return NULL;
 }
 
+void http_free_connection(struct connection_t *conn) {
+	int i = 0;
+
+	for(i = 0; i < conn->num_headers; i++) {
+		FREE(conn->http_headers[i].name);
+		FREE(conn->http_headers[i].value);
+	}
+	if(conn->request_method != NULL) {
+		FREE(conn->request_method);
+	}
+	if(conn->http_version != NULL) {
+		FREE(conn->http_version);
+	}
+	if(conn->uri != NULL) {
+		FREE(conn->uri);
+	}
+}
+
+#ifdef WEBSERVER
 void send_auth_request(uv_poll_t *req) {
 	/*
 	 * Make sure we execute in the main thread
@@ -1282,21 +1301,22 @@ static void *broadcast(int reason, void *param, void *userdata) {
 
 	return NULL;
 }
+#endif
 
-static char *skip(char **buf, const char *delimiters) {
-  char *p, *begin_word, *end_word, *end_delimiters;
+static char *skip(char *buf, ssize_t *pos, const char *delimiters) {
+	char *ptr = strstr(buf, delimiters);
+	char *token = NULL;
 
-  begin_word = *buf;
-  end_word = begin_word + strcspn(begin_word, delimiters);
-  end_delimiters = end_word + strspn(end_word, delimiters);
-
-  for(p = end_word; p < end_delimiters; p++) {
-    *p = '\0';
-  }
-
-  *buf = end_delimiters;
-
-  return begin_word;
+	if(ptr != NULL) {
+		ssize_t x = ptr-buf;
+		if((token = MALLOC(x+1)) == NULL) {
+			OUT_OF_MEMORY
+		}
+		memset(token, '\0', x+1);
+		memmove(token, buf, x);
+		*pos += (x+strlen(delimiters));
+	}
+	return token;
 }
 
 static int is_valid_http_method(const char *s) {
@@ -1326,15 +1346,24 @@ static void remove_double_dots_and_double_slashes(char *s) {
 	*p = '\0';
 }
 
-static void parse_http_headers(char **buf, struct connection_t *c) {
+static void parse_http_headers(const char *buf, ssize_t *pos, struct connection_t *c) {
 	size_t i;
 	c->num_headers = 0;
 	for(i = 0; i < 1024; i++) {
-		c->http_headers[i].name = skip(buf, ": ");
-		c->http_headers[i].value = skip(buf, "\r\n");
-		if(c->http_headers[i].name[0] == '\0')
+		c->http_headers[i].name = skip((char *)&buf[*pos], pos, ": ");
+		if(c->http_headers[i].name == NULL) {
 			break;
+		}
+		c->http_headers[i].value = skip((char *)&buf[*pos], pos, "\r\n");
+		if(c->http_headers[i].value == NULL) {
+			if((c->http_headers[i].value = STRDUP((char *)&buf[*pos])) == NULL) {
+				OUT_OF_MEMORY /* LCOV_EXCL_LINE*/
+			}
+		}
 		c->num_headers = i + 1;
+	}
+	if(strncmp(&buf[*pos], "\r\n", 2) == 0) {
+		*pos += 2;
 	}
 }
 
@@ -1363,28 +1392,30 @@ static int _urldecode(const char *src, int src_len, char *dst, int dst_len, int 
 	return i >= src_len ? j : -1;
 }
 
-int http_parse_request(char *buffer, struct connection_t *c) {
+int http_parse_request(const char *buffer, ssize_t *pos, struct connection_t *c) {
 	int is_request = 0, n = 0;
 
-	while(*buffer != '\0' && isspace(*(unsigned char *)buffer)) {
-		buffer++;
+	while(buffer[*pos] != '\0' && isspace(buffer[*pos])) {
+		(*pos)++;
 	}
 
-	c->request_method = skip(&buffer, " ");
-	c->uri = skip(&buffer, " ");
-	c->http_version = skip(&buffer, "\r\n");
+	c->request_method = skip((char *)&buffer[*pos], pos, " ");
+	c->uri = skip((char *)&buffer[*pos], pos, " ");
+	c->http_version = skip((char *)&buffer[*pos], pos, "\r\n");
 
 	is_request = is_valid_http_method(c->request_method);
 	if((is_request && memcmp(c->http_version, "HTTP/", 5) != 0) ||
 		(!is_request && memcmp(c->request_method, "HTTP/", 5) != 0)) {
 	} else {
 		if(is_request == 1) {
-			c->http_version += 5;
+			int len = strlen(c->http_version);
+			memmove(c->http_version, &c->http_version[5], len-5);
+			c->http_version[len-5] = '\0';
 		} else {
 			c->status_code = atoi(c->uri);
 		}
-		parse_http_headers(&buffer, c);
 
+		parse_http_headers(buffer, pos, c);
 		if((c->query_string = strchr(c->uri, '?')) != NULL) {
 			*(char *)c->query_string++ = '\0';
 		}
@@ -1650,6 +1681,8 @@ static void poll_close_cb(uv_poll_t *req) {
 	}
 
 	if(conn != NULL) {
+		http_free_connection(conn);
+
 		if(conn->fd > 0) {
 #ifdef _WIN32
 			closesocket(conn->fd);
@@ -1697,7 +1730,7 @@ static void client_write_cb(uv_poll_t *req) {
 	}
 }
 
-static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+static ssize_t client_read_cb(uv_poll_t *req, ssize_t nread, const char *buf) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
@@ -1706,48 +1739,40 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct connection_t *c = (struct connection_t *)custom_poll_data->data;
-	int is_websocket = 0;
 
-	if(c != NULL && c->is_websocket == 1) {
-		is_websocket = 1;
-	}
-
-	if(*nread > 0 && is_websocket == 0) {
-		buf[*nread-1] = '\0';
-	}
-
-	if(*nread > 0) {
+	ssize_t pos = 0;
+	if(nread > 0) {
 		if(c->is_websocket == 0) {
-			http_parse_request(buf, c);
+			http_parse_request(buf, &pos, c);
 			send_websocket_handshake_if_requested(req);
 
 			if(auth_handler(req) == MG_FALSE) {
 				send_auth_request(req);
 				uv_custom_close(req);
-				return;
+				return pos;
 			}
 		} else {
 			unsigned char *p = (unsigned char *)buf;
-			if(websocket_read(req, p, *nread) == -1) {
+			if(websocket_read(req, p, nread) == -1) {
 				uv_custom_close(req);
-				return;
+				return nread;
 			}
 		}
 		int x = request_handler(req);
 		if(x == MG_TRUE) {
 			if(c->is_websocket == 1) {
 				uv_custom_read(req);
-				*nread = 0;
-				return;
+				return nread;
 			}
 
 			uv_custom_close(req);
-			return;
+			return pos;
 		}
 	}
+	return pos;
 }
 
-static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+static ssize_t server_read_cb(uv_poll_t *req, ssize_t nread, const char *buf) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
@@ -1766,13 +1791,13 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
 		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
-		return;
+		return 0;
 		/*LCOV_EXCL_STOP*/
 	}
 
 	if((client = accept(fd, (struct sockaddr *)&servaddr, (socklen_t *)&socklen)) < 0) {
 		logprintf(LOG_NOTICE, "accept: %s", strerror(errno));
-		return;
+		return 0;
 	}
 
 	memset(&buffer, '\0', INET_ADDRSTRLEN+1);
@@ -1785,7 +1810,7 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 #else
 		close(client);
 #endif
-		return;
+		return 0;
 	} else {
 		logprintf(LOG_DEBUG, "new client, ip: %s, port: %d", buffer, ntohs(servaddr.sin_port));
 		logprintf(LOG_DEBUG, "client fd: %d", client);
@@ -1830,7 +1855,7 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			poll_req->data = NULL;
 		}
 		FREE(poll_req);
-		return;
+		return 0;
 		/*LCOV_EXCL_STOP*/
 	}
 
@@ -1856,6 +1881,8 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	webserver_client_add(poll_req);
 	uv_custom_read(req);
 	uv_custom_read(poll_req);
+
+	return nread;
 }
 
 static void server_write_cb(uv_poll_t *req) {

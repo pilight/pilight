@@ -84,8 +84,6 @@ static uv_mutex_t listeners_lock;
 // static pthread_mutexattr_t listeners_attr;
 static int lockinit = 0;
 static int eventpoolinit = 0;
-static ssize_t zero = 0;
-static ssize_t one = 1;
 
 static struct eventpool_listener_t *eventpool_listeners = NULL;
 
@@ -513,16 +511,6 @@ int eventpool_gc(void) {
 	return 0;
 }
 
-void iobuf_remove(struct iobuf_t *io, size_t n) {
-	uv_mutex_lock(&io->lock);
-  if(n > 0 && n <= io->len) {
-    memmove(io->buf, io->buf + n, io->len - n);
-    io->len -= n;
-		io->buf[io->len] = 0;
-  }
-	uv_mutex_unlock(&io->lock);
-}
-
 static void eventpool_update_poll(uv_poll_t *req) {
 	struct uv_custom_poll_t *custom_poll_data = NULL;
 	struct iobuf_t *send_io = NULL;
@@ -533,11 +521,11 @@ static void eventpool_update_poll(uv_poll_t *req) {
 		return;
 	}
 
-	assert(custom_poll_data->threadid == syscall(__NR_gettid));
-
 	if(uv_is_closing((uv_handle_t *)req)) {
 		return;
 	}
+
+	assert(custom_poll_data->threadid == syscall(__NR_gettid));
 
 	send_io = &custom_poll_data->send_iobuf;
 
@@ -569,6 +557,29 @@ static void eventpool_update_poll(uv_poll_t *req) {
 	}
 }
 
+void iobuf_init(struct iobuf_t *iobuf, size_t initial_size) {
+	iobuf->len = iobuf->size = 0;
+	iobuf->buf = NULL;
+	uv_mutex_init(&iobuf->lock);
+}
+
+void iobuf_remove(struct iobuf_t *io, size_t n) {
+	uv_mutex_lock(&io->lock);
+  if(n > 0 && n <= io->len) {
+    memmove(io->buf, io->buf + n, io->len - n);
+    io->len -= n;
+		if(io->len == 0) {
+			FREE(io->buf);
+			io->buf = NULL;
+		} else {
+			io->buf = REALLOC(io->buf, io->len + 1);
+			io->buf[io->len] = 0;
+		}
+		io->size = io->len;
+  }
+	uv_mutex_unlock(&io->lock);
+}
+
 size_t iobuf_append_remove(struct iobuf_t *a, struct iobuf_t *b) {
 	char *p = NULL;
 	size_t i = -1;
@@ -586,14 +597,17 @@ size_t iobuf_append_remove(struct iobuf_t *a, struct iobuf_t *b) {
 		b->len += a->len;
 	} else if((p = REALLOC(b->buf, b->len + a->len + 1)) != NULL) {
 		b->buf = p;
+		memset(&b->buf[b->len], 0, b->len + a->len);
 		memcpy(b->buf + b->len, a->buf, a->len);
 		b->len += a->len;
 		b->size = b->len;
 	}
 
 	if(i > 0) {
-		a->len = 0;
-		a->buf[0] = 0;
+		if(a->buf != NULL) {
+			FREE(a->buf);
+		}
+		a->len = a->size = 0;
 	}
 
 	uv_mutex_unlock(&a->lock);
@@ -615,6 +629,7 @@ size_t iobuf_append(struct iobuf_t *io, const void *buf, int len) {
     io->len += len;
   } else if((p = REALLOC(io->buf, io->len + len + 1)) != NULL) {
     io->buf = p;
+		memset(&io->buf[io->len], 0, len + 1);
     memcpy(io->buf + io->len, buf, len);
     io->len += len;
     io->size = io->len;
@@ -829,7 +844,11 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 			} else if(n == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
 				custom_poll_data->doread = 0;
 				if(custom_poll_data->read_cb != NULL) {
-					custom_poll_data->read_cb(req, &custom_poll_data->recv_iobuf.len, custom_poll_data->recv_iobuf.buf);
+					ssize_t len = 0;
+					len = custom_poll_data->read_cb(req, custom_poll_data->recv_iobuf.len, (const char *)custom_poll_data->recv_iobuf.buf);
+					if(!uv_is_closing((uv_handle_t *)req)) {
+						iobuf_remove(&custom_poll_data->recv_iobuf, len);
+					}
 				}
 			}
 			if(n == MBEDTLS_ERR_SSL_WANT_READ || n == MBEDTLS_ERR_SSL_WANT_WRITE) {
@@ -839,8 +858,7 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 					 * FIXME: New client not yet accepted
 					 */
 					if(custom_poll_data->read_cb != NULL) {
-						one = 1;
-						custom_poll_data->read_cb(req, &one, NULL);
+						custom_poll_data->read_cb(req, 1, NULL);
 					}
 				} else if(n != MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
 					mbedtls_strerror(n, (char *)&buffer, BUFFER_SIZE);
@@ -870,7 +888,11 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 				iobuf_append(&custom_poll_data->recv_iobuf, buffer, n);
 				custom_poll_data->doread = 0;
 				if(custom_poll_data->read_cb != NULL) {
-					custom_poll_data->read_cb(req, &custom_poll_data->recv_iobuf.len, custom_poll_data->recv_iobuf.buf);
+					ssize_t len = 0;
+					len = custom_poll_data->read_cb(req, custom_poll_data->recv_iobuf.len, custom_poll_data->recv_iobuf.buf);
+					if(!uv_is_closing((uv_handle_t *)req)) {
+						iobuf_remove(&custom_poll_data->recv_iobuf, len);
+					}
 				}
 			} else if(n < 0 && err != EINTR) {
 #ifdef _WIN32
@@ -878,7 +900,7 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 					case WSAENOTCONN:
 						if(custom_poll_data->read_cb != NULL) {
 							one = 1;
-							custom_poll_data->read_cb(req, &one, NULL);
+							custom_poll_data->read_cb(req, 1, NULL);
 						}
 					break;
 					case WSAEWOULDBLOCK:
@@ -886,8 +908,7 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 				switch(err) {
 					case ENOTCONN:
 						if(custom_poll_data->read_cb != NULL) {
-							one = 1;
-							custom_poll_data->read_cb(req, &one, NULL);
+							custom_poll_data->read_cb(req, 1, NULL);
 						}
 					break;
 #if defined EAGAIN
@@ -913,8 +934,7 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 		} else {
 			custom_poll_data->doread = 0;
 			if(custom_poll_data->read_cb != NULL) {
-				zero = 0;
-				custom_poll_data->read_cb(req, &zero, NULL);
+				custom_poll_data->read_cb(req, 0, NULL);
 			}
 		}
 	}
@@ -951,12 +971,6 @@ void uv_custom_poll_free(struct uv_custom_poll_t *data) {
 	}
 
 	FREE(data);
-}
-
-void iobuf_init(struct iobuf_t *iobuf, size_t initial_size) {
-	iobuf->len = iobuf->size = 0;
-	iobuf->buf = NULL;
-	uv_mutex_init(&iobuf->lock);
 }
 
 void uv_custom_poll_init(struct uv_custom_poll_t **custom_poll, uv_poll_t *poll, void *data) {

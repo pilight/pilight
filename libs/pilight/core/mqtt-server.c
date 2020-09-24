@@ -281,7 +281,6 @@ static void client_close_cb(uv_poll_t *req) {
 		}
 	}
 
-
 	int fd = -1, r = 0;
 
 	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
@@ -353,7 +352,7 @@ static void do_write(uv_async_t *handle) {
 	uv_custom_write(client->poll_req);
 }
 
-static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+static ssize_t client_read_cb(uv_poll_t *req, ssize_t nread, const char *buf) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct mqtt_client_t *client = custom_poll_data->data;
 	struct iobuf_t *iobuf = NULL;
@@ -363,11 +362,9 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	unsigned char *buf1 = NULL;
 	int ret = 0;
 
-	if(*nread > 0) {
-		buf[*nread] = '\0';
-
+	if(nread > 0) {
 		iobuf = &client->recv_iobuf;
-		iobuf_append(iobuf, buf, *nread);
+		iobuf_append(iobuf, buf, nread);
 
 #ifdef PILIGHT_UNITTEST
 		uv_timer_start(client->timeout_req, timeout, (client->keepalive*1.5)*100, 0);
@@ -641,7 +638,6 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			FREE(pkt);
 		}
 	}
-	*nread = 0;
 
 	if(ret == -1) {
 		if(!uv_is_closing((uv_handle_t *)client->async_req)) {
@@ -652,9 +648,11 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		uv_custom_write(req);
 		uv_custom_read(req);
 	}
+
+	return nread;
 }
 
-static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+static ssize_t server_read_cb(uv_poll_t *req, ssize_t nread, const char *buf) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
@@ -672,14 +670,14 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
 		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
-		return;
+		return 0;
 		/*LCOV_EXCL_STOP*/
 	}
 
 	if((clientfd = accept(fd, (struct sockaddr *)&servaddr, (socklen_t *)&socklen)) < 0) {
 		/*LCOV_EXCL_START*/
 		logprintf(LOG_NOTICE, "accept: %s", strerror(errno));
-		return;
+		return 0;
 		/*LCOV_EXCL_STOP*/
 	}
 
@@ -738,6 +736,10 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	client->timeout_req->data = client;
+
+	iobuf_init(&client->recv_iobuf, 0);
+	iobuf_init(&client->send_iobuf, 0);
+
 	uv_timer_init(uv_default_loop(), client->timeout_req);
 #ifdef PILIGHT_UNITTEST
 	uv_timer_start(client->timeout_req, timeout, (client->keepalive*1.5)*100, 0);
@@ -771,7 +773,7 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			poll_req->data = NULL;
 		}
 		FREE(poll_req);
-		return;
+		return 0;
 		/*LCOV_EXCL_STOP*/
 	}
 
@@ -790,6 +792,8 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 	uv_custom_read(req);
 	uv_custom_read(poll_req);
+
+	return 0;
 }
 
 #ifdef MQTT

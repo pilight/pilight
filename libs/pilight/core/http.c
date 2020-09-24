@@ -385,25 +385,30 @@ static void append_to_header(char **header, char *data, ...) {
 	}
 }
 
-static void process_chunk(char **buf, ssize_t *size, struct request_t *request) {
-	char *p = NULL;
+static void process_chunk(const char *buf, ssize_t *bytes, ssize_t total, struct request_t *request) {
+	char *p = NULL, *tmp = NULL;
 	int pos = 0,  toread = 0;
 
-	while(1) {
-		toread = *size;
-		if(strncmp(*buf, "0\r\n\r\n", 5) == 0) {
+	while(*bytes < total) {
+		toread = total;
+
+		if(strncmp(&buf[*bytes], "0\r\n\r\n", 5) == 0) {
 			request->reading = 0;
 			break;
 		}
+
 		if(request->chunksize == request->chunkread) {
-			if((p = strstr(*buf, "\r\n")) != NULL) {
-				pos = p-*buf;
-				(*buf)[pos+1] = '\0';
-				request->chunksize = strtoul(*buf, NULL, 16);
-				memmove(&(*buf)[0], &(*buf)[pos+2], toread-(pos+2));
+			if((p = strstr(&buf[*bytes], "\r\n")) != NULL) {
+				pos = p-&buf[*bytes];
+				if((tmp = MALLOC(pos+2)) == NULL) {
+					OUT_OF_MEMORY
+				}
+				memset(tmp, 0, pos+2);
+				memmove(tmp, &buf[*bytes], pos+1);
+				request->chunksize = strtoul(tmp, NULL, 16);
+				FREE(tmp);
 				toread -= (pos+2);
-				*size -= (pos+2);
-				(*buf)[toread] = '\0';
+				*bytes += (pos+2);
 			/*
 			 * When the header and data where communicated in
 			 * separate packets, the buffer from extracted from
@@ -411,7 +416,7 @@ static void process_chunk(char **buf, ssize_t *size, struct request_t *request) 
 			 * already announced we just have to wait a little
 			 * bit more. This behavior can be seen in Tasmota.
 			 */
-			} else if(strlen(*buf) == 0) {
+			} else if(strlen(&buf[*bytes]) == 0) {
 				break;
 			}
 		}
@@ -423,8 +428,10 @@ static void process_chunk(char **buf, ssize_t *size, struct request_t *request) 
 			break;
 		}
 
-		if((request->chunksize-request->chunkread) < *size) {
-			toread = request->chunksize-request->chunkread;
+		if((total - *bytes) < (request->chunksize-request->chunkread)) {
+			toread = (total-*bytes);
+		} else {
+			toread = (request->chunksize-request->chunkread);
 		}
 
 		if((request->content = REALLOC(request->content, request->bytes_read+toread+1)) == NULL) {
@@ -435,21 +442,16 @@ static void process_chunk(char **buf, ssize_t *size, struct request_t *request) 
 		 * Prevent uninitialised values in valgrind
 		 */
 		memset(&request->content[request->bytes_read], 0, toread+1);
-		memcpy(&request->content[request->bytes_read], *buf, toread);
+		memcpy(&request->content[request->bytes_read], &buf[*bytes], toread);
 		request->bytes_read += toread;
 		request->chunkread += toread;
 
-		memmove(&(*buf)[0], &(*buf)[toread], *size-toread);
-
-		*size -= toread;
-		(*buf)[*size] = '\0';
+		*bytes += toread;
 
 		if(request->chunkread <= request->chunksize) {
-			if(strncmp(*buf, "\r\n", 2) == 0) {
-				memmove(&(*buf)[0], &(*buf)[2], *size-2);
-				*size -= 2;
+			if(strncmp(&buf[*bytes], "\r\n", 2) == 0) {
+				*bytes += 2;
 				toread -= 2;
-				(*buf)[*size] = '\0';
 			}
 			if(request->chunkread == request->chunksize) {
 				request->chunksize = 0;
@@ -457,9 +459,9 @@ static void process_chunk(char **buf, ssize_t *size, struct request_t *request) 
 			}
 		}
 
-		if(request->chunksize == 0 && strstr(*buf, "\r\n") == NULL) {
+		if(request->chunksize == 0 && strstr(&buf[*bytes], "\r\n") == NULL) {
 			break;
-		} else if(*size > 0 && strncmp(*buf, "0\r\n\r\n", 5) != 0) {
+		} else if((total-*bytes) > 4 && strncmp(&buf[*bytes], "0\r\n\r\n", 5) != 0) {
 			request->reading = 1;
 		} else {
 			break;
@@ -560,7 +562,7 @@ static void timeout(uv_timer_t *req) {
 	http_client_close(request->poll_req);
 }
 
-static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+static ssize_t read_cb(uv_poll_t *req, ssize_t nread, const char *buf) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
@@ -572,37 +574,33 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	char *header = NULL, *p = NULL;
 	const char *a = NULL, *b = NULL;
 	int pos = 0;
+	ssize_t bytes = 0;
 
-	if(*nread > 0) {
-		buf[*nread] = '\0';
-	}
-	/*
-	 * FIXME: Use io read buf instead of new buffer
-	 */
-	if(*nread > 0) {
-		if(request->gotheader == 0 && (p = strstr(buf, "\r\n\r\n")) != NULL) {
-			pos = p-buf;
+	if(nread > 0) {
+		if(request->gotheader == 0 && (p = strstr(&buf[bytes], "\r\n\r\n")) != NULL) {
+			pos = p-&buf[bytes];
 			if((header = MALLOC(pos+1)) == NULL) {
 				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
-			strncpy(header, buf, pos);
+			strncpy(header, &buf[bytes], pos);
 			header[pos] = '\0';
 			request->gotheader = 1;
-			*nread -= pos+4;
-			memmove(buf, &buf[pos+4], *nread);
-			buf[*nread] = '\0';
+
+			bytes = pos + 4;
 
 			struct connection_t c;
 			char *location = NULL;
-			http_parse_request(header, &c);
+			ssize_t foo = 0;
+			http_parse_request(header, &foo, &c);
 			if(c.status_code == 301 && (location = (char *)http_get_header(&c, "Location")) != NULL) {
 				uv_timer_stop(request->timer_req);
 				if(request->callback != NULL && request->called == 0) {
 					request->called = 1;
 					request->callback(c.status_code, location, strlen(location), NULL, request->userdata);
 				}
+				http_free_connection(&c);
 				FREE(header);
-				return;
+				return 0;
 			}
 			request->status_code = c.status_code;
 			if((a = http_get_header(&c, "Content-Type")) != NULL || (b = http_get_header(&c, "Content-type")) != NULL) {
@@ -634,6 +632,7 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 					request->has_chunked = 1;
 				}
 			}
+			http_free_connection(&c);
 			FREE(header);
 			/*
 			 * 0 bytes left is not always an indication
@@ -643,7 +642,7 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			 * when chunked data is announced, we wait
 			 * for it.
 			 */
-			if(*nread == 0 && request->chunked == 0) {
+			if(bytes == nread && request->chunked == 0) {
 				uv_timer_stop(request->timer_req);
 				if(request->callback != NULL && request->called == 0) {
 					request->called = 1;
@@ -652,22 +651,23 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 				}
 			}
 		}
+
 		if(request->chunked == 1) {
-			process_chunk(&buf, &(*nread), request);
-		} else if(*nread > 0) {
-			if((request->content = REALLOC(request->content, request->bytes_read+(*nread)+1)) == NULL) {
+			process_chunk(buf, &bytes, nread, request);
+		} else if(bytes < nread) {
+			if((request->content = REALLOC(request->content, request->bytes_read+(nread-bytes)+1)) == NULL) {
 				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			/*
 			 * Prevent uninitialised values in valgrind
 			 */
-			memset(&request->content[request->bytes_read], 0, *nread+1);
-			memcpy(&request->content[request->bytes_read], buf, *nread);
-			request->bytes_read += *nread;
-			*nread = 0;
+			memset(&request->content[request->bytes_read], 0, (nread-bytes)+1);
+			memcpy(&request->content[request->bytes_read], &buf[bytes], (nread-bytes));
+			request->bytes_read += (nread - bytes);
+			bytes = nread;
 		}
 
-		if(strcmp(buf, "0\r\n\r\n") == 0) {
+		if(strncmp(&buf[bytes], "0\r\n\r\n", 5) == 0) {
 			request->reading = 0;
 			request->chunked = 0;
 			request->content[request->bytes_read] = '\0';
@@ -691,11 +691,13 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 	if(request->reading == 1) {
 		uv_custom_read(req);
-		return;
 	}
+
+	return bytes;
 
 close:
 	uv_custom_close(req);
+	return bytes;
 }
 
 static void write_cb(uv_poll_t *req) {
