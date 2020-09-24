@@ -105,22 +105,22 @@ int socket_gc(void) {
 	return EXIT_SUCCESS;
 }
 
-ssize_t socket_recv(char *buffer, int bytes, char **data, ssize_t *ptr) {
+ssize_t socket_recv(char **buffer, int bytes, char **data, ssize_t *ptr) {
 	int len = (int)strlen(EOSS);
-	int end = strncmp(&buffer[bytes-len], EOSS, len);
+	int end = strncmp(&(*buffer)[bytes-len], EOSS, len);
 	int i = 0, nr = 0;
 
 	for(i=0;i<bytes;i++) {
-		if(strncmp(&buffer[i], EOSS, len) == 0) {
+		if(strncmp(&(*buffer)[i], EOSS, len) == 0) {
 			nr++;
 		}
 	}
 
-	str_replace(EOSS, "\n", &buffer);
+	str_replace(EOSS, "\n", buffer);
 	bytes -= (nr*(len-1));
 
 	if(end == 0) {
-		buffer[bytes-1] = '\0';
+		(*buffer)[bytes-1] = '\0';
 		bytes--;
 	}
 
@@ -131,7 +131,7 @@ ssize_t socket_recv(char *buffer, int bytes, char **data, ssize_t *ptr) {
 	}
 
 	memset(&(*data)[(*ptr-bytes)], '\0', bytes+1);
-	memcpy(&(*data)[(*ptr-bytes)], buffer, bytes);
+	memcpy(&(*data)[(*ptr-bytes)], *buffer, bytes);
 
 	if(end == 0) {
 		return *ptr;
@@ -215,7 +215,7 @@ static void close_cb(uv_handle_t *handle) {
 	FREE(handle);
 }
 
-static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+static ssize_t client_read_cb(uv_poll_t *req, ssize_t nread, const char *buf) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
@@ -231,11 +231,11 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	if(r != 0) {
 		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
-		return;
+		return 0;
 		/*LCOV_EXCL_STOP*/
 	}
 
-	if(*nread == -1) {
+	if(nread == -1) {
 		/*LCOV_EXCL_START*/
 		struct reason_socket_disconnected_t *data1 = MALLOC(sizeof(struct reason_socket_disconnected_t));
 		if(data1 == NULL) {
@@ -246,19 +246,18 @@ static void client_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 		uv_custom_close(req);
 
-		return;
+		return 0;
 		/*LCOV_EXCL_STOP*/
 	}
-	if(*nread > 0) {
-		buf[*nread] = '\0';
-
-		data->read_cb((int)fd, buf, *nread, &data->buffer, &data->len);
+	if(nread > 0) {
+		data->read_cb((int)fd, (char *)buf, nread, &data->buffer, &data->len);
 
 		if(!uv_is_closing((uv_handle_t *)req)) {
-			*nread = 0;
 			uv_custom_read(req);
 		}
+		return nread;
 	}
+	return 0;
 }
 
 static void poll_close_cb(uv_poll_t *req) {
@@ -326,7 +325,7 @@ static void poll_close_cb(uv_poll_t *req) {
 	client_remove(fd);
 }
 
-static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+static ssize_t server_read_cb(uv_poll_t *req, ssize_t nread, const char *buf) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
@@ -346,14 +345,14 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	if((r = uv_fileno((uv_handle_t *)req, (uv_os_fd_t *)&fd)) != 0) {
 		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
-		return;
+		return 0;
 		/*LCOV_EXCL_STOP*/
 	}
 
 	if((client = accept(fd, (struct sockaddr *)&servaddr, (socklen_t *)&socklen)) < 0) {
 		/*LCOV_EXCL_START*/
 		logprintf(LOG_NOTICE, "accept: %s", strerror(errno));
-		return;
+		return 0;
 		/*LCOV_EXCL_STOP*/
 	}
 
@@ -367,7 +366,7 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 #else
 		close(client);
 #endif
-		return;
+		return 0;
 	} else {
 		logprintf(LOG_DEBUG, "new client, fd: %d, ip: %s, port: %d", client, buffer, ntohs(servaddr.sin_port));
 	}
@@ -411,7 +410,7 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			poll_req->data = NULL;
 		}
 		FREE(poll_req);
-		return;
+		return 0;
 		/*LCOV_EXCL_STOP*/
 	}
 
@@ -425,6 +424,7 @@ static void server_read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	eventpool_trigger(REASON_SOCKET_CONNECTED, reason_socket_connected_free, data1);
 	uv_custom_read(req);
 	uv_custom_read(poll_req);
+	return nread;
 }
 
 static void *socket_send_thread(int reason, void *param, void *userdata) {

@@ -545,6 +545,14 @@ static void test_str_replace(CuTest *tc) {
 	CuAssertStrEquals(tc, "DATE_FORMAT(time, %%H%%M%%S)", str);
 	FREE(str);
 
+	str = MALLOC(59);
+	CuAssertPtrNotNull(tc, str);
+	strcpy(str, "{\"foo\":\"bar\",\"to\":\"client\"}\n\n{\"foo\":\"bar\",\"to\":\"client\"}\n\n");
+	n = str_replace(EOSS, "\n", &str);
+	CuAssertIntEquals(tc, 56, n);
+	CuAssertStrEquals(tc, "{\"foo\":\"bar\",\"to\":\"client\"}\n{\"foo\":\"bar\",\"to\":\"client\"}\n", str);
+	FREE(str);
+
 	CuAssertIntEquals(tc, 0, xfree());
 }
 

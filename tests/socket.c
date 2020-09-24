@@ -42,10 +42,12 @@
 #define CLIENT			0
 #define SERVER			1
 #define BIGCONTENT	2
+#define REJCLIENT		3
 
 static char sbuffer[65536+1];
 static int client_fd = 0;
 static int server_fd = 0;
+static int thread_called = 0;
 static int check = 0;
 static int reject = 0;
 static int run = CLIENT;
@@ -65,13 +67,20 @@ static void close_cb(uv_handle_t *handle) {
 }
 
 static void async_close_cb(uv_async_t *handle) {
-	socket_gc();
-	whitelist_free();
-	if(!uv_is_closing((uv_handle_t *)handle)) {
-		uv_close((uv_handle_t *)handle, close_cb);
+	if(
+		(run == SERVER && thread_called < 4) ||
+		(run == CLIENT && thread_called < 1)
+	) {
+		uv_async_send(async_close_req);
+	} else {
+		socket_gc();
+		whitelist_free();
+		if(!uv_is_closing((uv_handle_t *)handle)) {
+			uv_close((uv_handle_t *)handle, close_cb);
+		}
+		uv_timer_stop(timer_req);
+		uv_stop(uv_default_loop());
 	}
-	uv_timer_stop(timer_req);
-	uv_stop(uv_default_loop());
 }
 
 static void walk_cb(uv_handle_t *handle, void *arg) {
@@ -81,13 +90,15 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 }
 
 void read_cb(int fd, char *buffer, ssize_t len, char **buffer1, ssize_t *len1) {
-	char *foo = STRDUP(buffer);
+	char *foo = MALLOC(len+1);
 	CuAssertPtrNotNull(gtc, foo);
+	memset(foo, 0, len+1);
+	memmove(foo, buffer, len);
 	if(run == SERVER) {
-		if(socket_recv(foo, len, buffer1, len1) > 0) {
+		if(socket_recv(&foo, len, buffer1, len1) > 0) {
 			if(strstr(*buffer1, "\n") != NULL) {
 				char **array = NULL;
-				int n = explode(buffer, "\n", &array), i = 0;
+				int n = explode(foo, "\n", &array), i = 0;
 				for(i=0;i<n;i++) {
 					if(fd == client_fd) {
 						CuAssertStrEquals(gtc, "{\"foo\":\"bar\",\"to\":\"client\"}", array[i]);
@@ -111,7 +122,7 @@ void read_cb(int fd, char *buffer, ssize_t len, char **buffer1, ssize_t *len1) {
 			*len1 = 0;
 		}
 	} else if(run == BIGCONTENT) {
-		if(socket_recv(foo, len, buffer1, len1) > 0) {
+		if(socket_recv(&foo, len, buffer1, len1) > 0) {
 			char *cpy = STRDUP(gplv3);
 			str_replace(EOSS, "\n", &cpy);
 			CuAssertTrue(gtc, strcmp(cpy, *buffer1) == 0);
@@ -177,35 +188,44 @@ static void thread(uv_work_t *req) {
 }
 
 static void thread_free(uv_work_t *req, int status) {
-	FREE(req);
-}
-
-static void thread_free1(uv_work_t *req, int status) {
 	struct data_t *data = req->data;
 	FREE(data);
 	FREE(req);
+	thread_called++;
 }
 
 static void resend1(uv_timer_t *timer_req) {
 	struct data_t *data = timer_req->data;
 
+	struct data_t *data1 = MALLOC(sizeof(struct data_t));
+	CuAssertPtrNotNull(gtc, data1);
+	data1->fd = data->fd;
+
 	uv_work_t *work_req = NULL;
 	if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
-	work_req->data = data;
-	uv_queue_work_s(work_req, "socket", 1, thread, thread_free1);
+	work_req->data = data1;
+	uv_queue_work_s(work_req, "socket", 1, thread, thread_free);
+	FREE(data);
 }
 
 static void *socket_connected(int reason, void *param, void *userdata) {
 	struct reason_socket_connected_t *data = param;
 
-	uv_work_t *work_req = NULL;
-	if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	{
+		struct data_t *data1 = MALLOC(sizeof(struct data_t));
+		CuAssertPtrNotNull(gtc, data1);
+		data1->fd = data->fd;
+
+		uv_work_t *work_req = NULL;
+		if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		work_req->data = data1;
+		uv_queue_work_s(work_req, "socket", 1, thread, thread_free);
+
 	}
-	work_req->data = data;
-	uv_queue_work_s(work_req, "socket", 1, thread, thread_free);
 	usleep(100);
 
 	if(run == SERVER) {
@@ -247,7 +267,7 @@ static void on_read(uv_stream_t *server_req, ssize_t nread, const uv_buf_t *buf)
 	char *cpy = STRDUP(buf->base);
 	CuAssertPtrNotNull(gtc, cpy);
 
-	if(socket_recv(cpy, nread, &data1, &size1) > 0) {
+	if(socket_recv(&cpy, nread, &data1, &size1) > 0) {
 		if(strstr(data1, "\n") != NULL) {
 			char **array = NULL;
 			int n = explode(data1, "\n", &array), i = 0;
@@ -369,7 +389,7 @@ static void test_socket_reject_client(CuTest *tc) {
 	fflush(stdout);
 
 	check = 0;
-	run = CLIENT;
+	run = REJCLIENT;
 
 	memtrack();
 
@@ -422,6 +442,7 @@ static void test_socket_server(CuTest *tc) {
 	fflush(stdout);
 
 	check = 0;
+	thread_called = 0;
 	run = SERVER;
 
 	memtrack();

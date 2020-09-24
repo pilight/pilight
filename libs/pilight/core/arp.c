@@ -331,7 +331,7 @@ static void callback(u_char *user, const struct pcap_pkthdr *pkt_header, const u
 	}
 }
 
-static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+static ssize_t read_cb(uv_poll_t *req, ssize_t nread, const char *buf) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct data_t *data = custom_poll_data->data;
 
@@ -340,6 +340,7 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	if(data->stop == 0) {
 		uv_custom_read(data->poll_req);
 	}
+	return 0;
 }
 
 static unsigned int ipdiff(struct in_addr *min, struct in_addr *max) {
