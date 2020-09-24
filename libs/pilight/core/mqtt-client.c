@@ -209,7 +209,7 @@ static void timeout(uv_timer_t *handle) {
 	uv_custom_close(client->poll_req);
 }
 
-static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+static ssize_t read_cb(uv_poll_t *req, ssize_t nread, const char *buf) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
 	struct mqtt_client_t *client = custom_poll_data->data;
 	struct iobuf_t *iobuf = NULL;
@@ -218,13 +218,9 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	unsigned int pos = 0;
 	int ret = 0;
 
-	if(*nread > 0) {
-		buf[*nread] = '\0';
-
+	if(nread > 0) {
 		iobuf = &client->recv_iobuf;
-		iobuf_append(iobuf, buf, *nread);
-
-		*nread = 0;
+		iobuf_append(iobuf, buf, nread);
 
 		while(iobuf->len > 0 && (ret = mqtt_decode(&pkt, (unsigned char *)iobuf->buf, iobuf->len, &pos)) == 0) {
 			iobuf_remove(iobuf, pos);
@@ -305,6 +301,8 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 
 	uv_custom_write(req);
 	uv_custom_read(req);
+
+	return nread;
 }
 
 static void write_cb(uv_poll_t *req) {
@@ -405,6 +403,9 @@ static void thread(uv_work_t *req) {
 			/*LCOV_EXCL_STOP*/
 		}
 	}
+
+	iobuf_init(&client->recv_iobuf, 0);
+	iobuf_init(&client->send_iobuf, 0);
 
 	uv_poll_t *poll_req = NULL;
 	if((poll_req = MALLOC(sizeof(uv_poll_t))) == NULL) {

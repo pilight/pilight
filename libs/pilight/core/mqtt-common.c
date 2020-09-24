@@ -798,7 +798,7 @@ int mqtt_pkt_connect(struct mqtt_pkt_t *pkt, int dub, int qos, int retain, char 
 }
 
 int mqtt_ping(struct mqtt_client_t *client) {
-	if(client->step != MQTT_CONNECTED) {
+	if(client == NULL || client->step != MQTT_CONNECTED) {
 		return -1;
 	} else {
 		struct mqtt_pkt_t pkt;
@@ -816,7 +816,7 @@ int mqtt_ping(struct mqtt_client_t *client) {
 }
 
 int mqtt_subscribe(struct mqtt_client_t *client, char *topic, int qos) {
-	if(client->step != MQTT_CONNECTED) {
+	if(client == NULL || client->step != MQTT_CONNECTED) {
 		return -1;
 	} else {
 		struct mqtt_pkt_t pkt;
@@ -838,7 +838,7 @@ int mqtt_subscribe(struct mqtt_client_t *client, char *topic, int qos) {
 }
 
 int mqtt_pubrec(struct mqtt_client_t *client, int msgid) {
-	if(client->step != MQTT_CONNECTED) {
+	if(client == NULL || client->step != MQTT_CONNECTED) {
 		return -1;
 	} else {
 		struct mqtt_pkt_t pkt;
@@ -861,7 +861,7 @@ int mqtt_pubrec(struct mqtt_client_t *client, int msgid) {
 }
 
 int mqtt_pubrel(struct mqtt_client_t *client, int msgid) {
-	if(client->step != MQTT_CONNECTED) {
+	if(client == NULL || client->step != MQTT_CONNECTED) {
 		return -1;
 	} else {
 		struct mqtt_pkt_t pkt;
@@ -884,7 +884,7 @@ int mqtt_pubrel(struct mqtt_client_t *client, int msgid) {
 }
 
 int mqtt_pubcomp(struct mqtt_client_t *client, int msgid) {
-	if(client->step != MQTT_CONNECTED) {
+	if(client == NULL || client->step != MQTT_CONNECTED) {
 		return -1;
 	} else {
 		struct mqtt_pkt_t pkt;
@@ -907,7 +907,7 @@ int mqtt_pubcomp(struct mqtt_client_t *client, int msgid) {
 }
 
 int mqtt_puback(struct mqtt_client_t *client, int msgid) {
-	if(client->step != MQTT_CONNECTED) {
+	if(client == NULL || client->step != MQTT_CONNECTED) {
 		return -1;
 	} else {
 		struct mqtt_pkt_t pkt;
@@ -930,7 +930,7 @@ int mqtt_puback(struct mqtt_client_t *client, int msgid) {
 }
 
 int mqtt_suback(struct mqtt_client_t *client, int msgid, int qos) {
-	if(client->step != MQTT_CONNECTED) {
+	if(client == NULL || client->step != MQTT_CONNECTED) {
 		return -1;
 	} else {
 		struct mqtt_pkt_t pkt;
@@ -950,7 +950,7 @@ int mqtt_suback(struct mqtt_client_t *client, int msgid, int qos) {
 }
 
 int mqtt_disconnect(struct mqtt_client_t *client) {
-	if(client->step != MQTT_CONNECTED) {
+	if(client == NULL || client->step != MQTT_CONNECTED) {
 		return -1;
 	} else {
 		struct mqtt_pkt_t pkt;
@@ -968,7 +968,7 @@ int mqtt_disconnect(struct mqtt_client_t *client) {
 }
 
 int mqtt_pingresp(struct mqtt_client_t *client) {
-	if(client->step != MQTT_CONNECTED) {
+	if(client == NULL || client->step != MQTT_CONNECTED) {
 		return -1;
 	} else {
 		struct mqtt_pkt_t pkt;

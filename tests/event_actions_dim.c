@@ -1134,7 +1134,7 @@ static void test_event_actions_dim_run(CuTest *tc) {
 	run = 0;
 	steps = 0;
 	nrsteps = 1;
-	interval[0] = 3000;
+	interval[0] = 4000;
 	checktime = 1;
 
 	memtrack();

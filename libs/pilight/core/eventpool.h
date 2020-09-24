@@ -171,7 +171,7 @@ struct uv_custom_poll_t {
 
 	void (*write_cb)(uv_poll_t *);
 	void (*close_cb)(uv_poll_t *);
-	void (*read_cb)(uv_poll_t *, ssize_t *, char *);
+	ssize_t (*read_cb)(uv_poll_t *, ssize_t, const char *);
 
 	struct {
 		int init;

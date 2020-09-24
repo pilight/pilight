@@ -228,12 +228,9 @@ static void poll_close_cb(uv_poll_t *req) {
 	uv_async_send(async_close_req);
 }
 
-static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+static ssize_t read_cb(uv_poll_t *req, ssize_t nread, const char *buf) {
 	struct uv_custom_poll_t *custom_poll_data = req->data;
-
-	if(*nread > 0) {
-		buf[*nread] = '\0';
-	}
+	ssize_t bytes = 0;
 
 	switch(steps) {
 		case 1: {
@@ -247,7 +244,7 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			uv_custom_write(req);
 			uv_custom_read(req);
 
-			*nread = 0;
+			bytes = nread;
 			steps = 2;
 		} break;
 		case 2: {
@@ -261,6 +258,7 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			uv_custom_close(req);
 		} break;
 	}
+	return bytes;
 }
 
 static void write_cb(uv_poll_t *req) {

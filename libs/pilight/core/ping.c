@@ -459,7 +459,7 @@ static void write_cb(uv_poll_t *req) {
 }
 #endif
 
-static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
+static ssize_t read_cb(uv_poll_t *req, ssize_t nread, const char *buf) {
 	/*
 	 * Make sure we execute in the main thread
 	 */
@@ -473,14 +473,14 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 	struct icmp *icmp = (struct icmp *)(ip + 1);
 	char buf1[INET_ADDRSTRLEN+1];
 
-	if(*nread == -1) {
+	if(nread == -1) {
 		/*
 		 * We are disconnected
 		 */
-		return;
+		return 0;
 	}
 
-	if(*nread == 40) {
+	if(nread == 40) {
 		memcpy(&buf2, buf, 40);
 
 		/*
@@ -517,8 +517,9 @@ static void read_cb(uv_poll_t *req, ssize_t *nread, char *buf) {
 			}
 		}
 	}
-	*nread = 0;
+
 	uv_custom_read(req);
+	return nread;
 }
 
 static void thread_free(uv_work_t *req, int status) {

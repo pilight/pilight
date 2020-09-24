@@ -16,6 +16,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
+#include <valgrind/valgrind.h>
 
 #include "../libs/pilight/core/CuTest.h"
 #include "../libs/pilight/core/pilight.h"
@@ -656,6 +657,12 @@ void test_mqtt_server_client(CuTest *tc) {
 	uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	for(i=0;i<14;i++) {
+		if(RUNNING_ON_VALGRIND) {
+			if(i == 11) {
+				continue;
+			}
+		}
+
 		mqtt_activate();
 
 		timer_req1 = NULL;

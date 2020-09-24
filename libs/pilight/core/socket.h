@@ -21,7 +21,7 @@ int socket_start(unsigned short, void (*)(int, char *, ssize_t, char **, ssize_t
 int socket_connect(char *, unsigned short, void (*)(int, char *, ssize_t, char **, ssize_t *));
 void socket_close(int);
 int socket_write(int, const char *, ...);
-ssize_t socket_recv(char *, int, char **, ssize_t *);
+ssize_t socket_recv(char **, int, char **, ssize_t *);
 int socket_gc(void);
 unsigned int socket_get_port(void);
 
