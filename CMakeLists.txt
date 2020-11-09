@@ -378,6 +378,7 @@ endfunction(set_lua_version_vars)
 set_lua_version_vars()
 
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^aarch64")
+	find_path(CMAKE_LUA_INCLUDE_DIR luajit.h PATH_SUFFIXES ${_luajit_include_subdirs} include/luajit include PATHS /usr)
 	find_library(CMAKE_LUA_LIBS_INIT
 		NAME lua5.1
 		PATHS
