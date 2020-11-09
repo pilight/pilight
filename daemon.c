@@ -2913,13 +2913,13 @@ static void pilight_stats(uv_timer_t *timer_req) {
 					}
 
 					{
-						int len = snprintf(NULL, 0, "%lu", mem_u);
+						int len = snprintf(NULL, 0, "%zu", mem_u);
 						char *output = MALLOC(len+1);
 						if(output == NULL) {
 							OUT_OF_MEMORY
 						}
 						memset(output, '\0', len+1);
-						snprintf(output, len+1, "%lu", mem_u);
+						snprintf(output, len+1, "%zu", mem_u);
 						if(mqtt_global_client != NULL) {
 							mqtt_publish_r(mqtt_global_client, 0, 0, 0, "pilight/sys/mem/rss", output);
 						}
@@ -2927,13 +2927,13 @@ static void pilight_stats(uv_timer_t *timer_req) {
 					}
 
 					{
-						int len = snprintf(NULL, 0, "%lu", mem_x);
+						int len = snprintf(NULL, 0, "%zu", mem_x);
 						char *output = MALLOC(len+1);
 						if(output == NULL) {
 							OUT_OF_MEMORY
 						}
 						memset(output, '\0', len+1);
-						snprintf(output, len+1, "%lu", mem_x);
+						snprintf(output, len+1, "%zu", mem_x);
 						if(mqtt_global_client != NULL) {
 							mqtt_publish_r(mqtt_global_client, 0, 0, 0, "pilight/sys/mem/peak", output);
 						}
@@ -3517,6 +3517,25 @@ int start_pilight(int argc, char **argv) {
 
 	{
 		int mingaplen = 5100, maxgaplen = 10000, minrawlen = 1000, maxrawlen = 0;
+		int hasmingaplen = 0, hasmaxgaplen = 0, hasminrawlen = 0, hasmaxrawlen = 0;
+
+		struct plua_metatable_t *table = config_get_metatable();
+		if(plua_metatable_get_number(table, "registry.hardware.RF433.mingaplen", (double *)&mingaplen) == 0) {
+			hasmingaplen = 1;
+			mingaplen = 5100;
+		}
+		if(plua_metatable_get_number(table, "registry.hardware.RF433.maxgaplen", (double *)&maxgaplen) == 0) {
+			hasmaxgaplen = 1;
+			maxgaplen = 10000;
+		}
+		if(plua_metatable_get_number(table, "registry.hardware.RF433.minrawlen", (double *)&minrawlen) == 0) {
+			hasminrawlen = 1;
+			minrawlen = 1000;
+		}
+		if(plua_metatable_get_number(table, "registry.hardware.RF433.maxrawlen", (double *)&maxrawlen) == 0) {
+			hasmaxrawlen = 1;
+			maxrawlen = 0;
+		}
 
 		struct protocols_t *tmp = protocols;
 		while(tmp) {
@@ -3539,11 +3558,18 @@ int start_pilight(int argc, char **argv) {
 			tmp = tmp->next;
 		}
 
-		struct plua_metatable_t *table = config_get_metatable();
-		plua_metatable_set_number(table, "registry.hardware.RF433.mingaplen", mingaplen);
-		plua_metatable_set_number(table, "registry.hardware.RF433.maxgaplen", maxgaplen);
-		plua_metatable_set_number(table, "registry.hardware.RF433.minrawlen", minrawlen);
-		plua_metatable_set_number(table, "registry.hardware.RF433.maxrawlen", maxrawlen);
+		if(hasmingaplen == 0) {
+			plua_metatable_set_number(table, "registry.hardware.RF433.mingaplen", mingaplen);
+		}
+		if(hasmaxgaplen == 0) {
+			plua_metatable_set_number(table, "registry.hardware.RF433.maxgaplen", maxgaplen);
+		}
+		if(hasminrawlen == 0) {
+			plua_metatable_set_number(table, "registry.hardware.RF433.minrawlen", minrawlen);
+		}
+		if(hasmaxrawlen == 0) {
+			plua_metatable_set_number(table, "registry.hardware.RF433.maxrawlen", maxrawlen);
+		}
 	}
 
 	{
