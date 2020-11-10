@@ -93,7 +93,7 @@ typedef struct request_t {
 	int has_chunked;
 
   char *content;
-	char mimetype[255];
+	char mimetype[256];
 	int chunked;
 	int chunksize;
 	int chunkread;
@@ -284,7 +284,7 @@ static int prepare_request(struct request_t **request, int method, char *url, co
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		memset((*request)->uri, 0, 2);
-		strncpy((*request)->uri, "/", 1);
+		(*request)->uri[0] = '/';
 	}
 	if((tok = strstr((*request)->host, "@"))) {
 		size_t pglen = strlen((*request)->uri);
