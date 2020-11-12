@@ -352,19 +352,20 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 											}
 											strcpy(sptr->values->string_, vstring_);
 											sptr->values->type = JSON_STRING;
+											if(json_find_string(rval, sptr->name, &stmp) != 0) {
+												json_append_member(rval, sptr->name, json_mkstring(sptr->values->string_));
+												update = 1;
+											}
 										} else if(valueType == JSON_NUMBER &&
 										   sptr->values->type == JSON_NUMBER &&
 										   fabs(sptr->values->number_-vnumber_) >= EPSILON) {
 											sptr->values->number_ = vnumber_;
 											sptr->values->decimals = vdecimals_;
 											sptr->values->type = JSON_NUMBER;
-										}
-										if(sptr->values->type == JSON_STRING && json_find_string(rval, sptr->name, &stmp) != 0) {
-											json_append_member(rval, sptr->name, json_mkstring(sptr->values->string_));
-											update = 1;
-										} else if(sptr->values->type == JSON_NUMBER && json_find_number(rval, sptr->name, &itmp) != 0) {
-											json_append_member(rval, sptr->name, json_mknumber(sptr->values->number_, sptr->values->decimals));
-											update = 1;
+											if(json_find_number(rval, sptr->name, &itmp) != 0) {
+												json_append_member(rval, sptr->name, json_mknumber(sptr->values->number_, sptr->values->decimals));
+												update = 1;
+											}
 										}
 										dptr->timestamp = utct;
 									}
