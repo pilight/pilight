@@ -561,12 +561,10 @@ void *broadcast(void *param) {
 							json_find_number(code, "lpf", &firmware.lpf);
 							json_find_number(code, "hpf", &firmware.hpf);
 							if(firmware.version > 0 && firmware.lpf > 0 && firmware.hpf > 0) {
-								struct lua_state_t *state = plua_get_free_state();
-								config_registry_set_number(state->L, "pilight.firmware.version", firmware.version);
-								config_registry_set_number(state->L, "pilight.firmware.lpf", firmware.lpf);
-								config_registry_set_number(state->L, "pilight.firmware.hpf", firmware.hpf);
-								assert(plua_check_stack(state->L, 0) == 0);
-								plua_clear_state(state);
+								struct plua_metatable_t *table = config_get_metatable();
+								plua_metatable_set_number(table, "registry.pilight.firmware.version", firmware.version);
+								plua_metatable_set_number(table, "registry.pilight.firmware.lpf", firmware.lpf);
+								plua_metatable_set_number(table, "registry.pilight.firmware.hpf", firmware.hpf);
 
 								struct JsonNode *jmessage = json_mkobject();
 								struct JsonNode *jcode = json_mkobject();
@@ -2605,11 +2603,8 @@ void registerVersion(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	{
-		struct lua_state_t *state = plua_get_free_state();
-		config_registry_set_null(state->L, "pilight.version");
-		config_registry_set_string(state->L, "pilight.version.current", (char *)PILIGHT_VERSION);
-		assert(plua_check_stack(state->L, 0) == 0);
-		plua_clear_state(state);
+		struct plua_metatable_t *table = config_get_metatable();
+		plua_metatable_set_string(table, "registry.pilight.version", (char *)PILIGHT_VERSION);
 	}
 }
 #ifndef _WIN32
@@ -2842,10 +2837,6 @@ static void pilight_stats(uv_timer_t *timer_req) {
 		config_setting_get_number(state->L, "stats-enable", 0, &stats);
 		assert(plua_check_stack(state->L, 0) == 0);
 		plua_clear_state(state);
-	}
-
-	if(pilight.runmode == STANDALONE) {
-		registerVersion();
 	}
 
 	if(stats == 1) {
