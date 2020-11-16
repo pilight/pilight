@@ -2604,7 +2604,7 @@ void registerVersion(void) {
 
 	{
 		struct plua_metatable_t *table = config_get_metatable();
-		plua_metatable_set_string(table, "registry.pilight.version", (char *)PILIGHT_VERSION);
+		plua_metatable_set_string(table, "registry.pilight.version.current", (char *)PILIGHT_VERSION);
 	}
 }
 #ifndef _WIN32
