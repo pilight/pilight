@@ -533,6 +533,10 @@ static void http_client_close(uv_poll_t *req) {
 		uv_close((uv_handle_t *)req, close_cb);
 	}
 
+	if(!uv_is_closing((uv_handle_t *)request->timer_req)) {
+		uv_close((uv_handle_t *)request->timer_req, close_cb);
+	}
+
 	if(request != NULL) {
 		free_request(request);
 		custom_poll_data->data = NULL;
