@@ -39,7 +39,6 @@ int main_gc(void) {
 		socket_write(sockfd, "HEART");
 		socket_close(sockfd);
 	}
-	xfree();
 
 #ifdef _WIN32
 	WSACleanup();
@@ -49,8 +48,6 @@ int main_gc(void) {
 }
 
 int main(int argc, char **argv) {
-	// memtrack();
-
 	atomicinit();
 	gc_attach(main_gc);
 

@@ -38,8 +38,6 @@
 static char *lua_root = LUA_ROOT;
 
 int main(int argc, char **argv) {
-	// memtrack();
-
 	atomicinit();
 	struct options_t *options = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;
@@ -356,7 +354,6 @@ close:
 	threads_gc();
 	gc_clear();
 	FREE(progname);
-	xfree();
 
 #ifdef _WIN32
 	WSACleanup();

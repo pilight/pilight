@@ -83,7 +83,6 @@ int main_gc(void) {
 	gc_clear();
 
 	FREE(progname);
-	xfree();
 
 #ifdef _WIN32
 	WSACleanup();
@@ -204,8 +203,6 @@ static void main_loop1(int onclose) {
 int main(int argc, char **argv) {
 	const uv_thread_t pth_cur_id = uv_thread_self();
 	memcpy((void *)&pth_main_id, &pth_cur_id, sizeof(uv_thread_t));
-
-	// memtrack();
 
 	atomicinit();
 	struct options_t *options = NULL;

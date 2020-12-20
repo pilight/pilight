@@ -35,8 +35,6 @@
 static char *lua_root = LUA_ROOT;
 
 int main(int argc, char **argv) {
-	// memtrack();
-
 	atomicinit();
 	log_shell_enable();
 	log_file_disable();
@@ -195,6 +193,5 @@ close:
 	threads_gc();
 	gc_clear();
 	FREE(progname);
-	xfree();
 	return (EXIT_SUCCESS);
 }

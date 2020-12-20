@@ -21,8 +21,8 @@
 	#error "Need some more porting work here"
 #endif
 
-int xfree(void);
-void memtrack(void);
+int memanalyze(void);
+void heaptrack(void);
 
 void *__malloc(unsigned long, const char *, int);
 void *__realloc(void *, unsigned long, const char *, int);
@@ -33,22 +33,18 @@ void __free(void *, const char *, int);
  */
 char *___strdup(char *, const char *, int);
 
-// #define MALLOC(a) __malloc(a, __FILE__, __LINE__)
-// #define REALLOC(a, b) __realloc(a, b, __FILE__, __LINE__)
-// #define CALLOC(a, b) __calloc(a, b, __FILE__, __LINE__)
-// #define STRDUP(a) ___strdup(a, __FILE__, __LINE__)
-// #define FREE(a) __free((void *)(a), __FILE__, __LINE__),(a)=NULL
-
-#define MALLOC malloc
-#define REALLOC realloc
-#define CALLOC calloc
-#define STRDUP strdup
-#define FREE(a) free((void *)(a)),(a)=NULL
-
-// #define _MALLOC malloc
-// #define _REALLOC realloc
-// #define _CALLOC calloc
-// #define _STRDUP strdup
-// #define _FREE free
+#ifdef DEBUG
+	#define MALLOC(a) __malloc(a, __FILE__, __LINE__)
+	#define REALLOC(a, b) __realloc(a, b, __FILE__, __LINE__)
+	#define CALLOC(a, b) __calloc(a, b, __FILE__, __LINE__)
+	#define STRDUP(a) ___strdup(a, __FILE__, __LINE__)
+	#define FREE(a) __free((void *)(a), __FILE__, __LINE__),(a)=NULL
+#else
+	#define MALLOC malloc
+	#define REALLOC realloc
+	#define CALLOC calloc
+	#define STRDUP strdup
+	#define FREE(a) free((void *)(a)),(a)=NULL
+#endif
 
 #endif

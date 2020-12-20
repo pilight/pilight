@@ -182,10 +182,6 @@ static char *pid_file = NULL;
 #endif
 /* Daemonize or not */
 static int nodaemon = 0;
-/* Run tracktracer */
-static int stacktracer = 0;
-/* Run thread profiler */
-static int threadprofiler = 0;
 /* Are we already running */
 static int running = 1;
 /* Are we currently sending code */
@@ -207,6 +203,7 @@ static int master_port = 0;
 static int adhoc_pending = 0;
 static char *configtmp = NULL;
 static int verbosity = LOG_INFO;
+static int heaptracker = 0;
 struct socket_callback_t socket_callback;
 
 #ifdef _WIN32
@@ -2824,10 +2821,36 @@ static unsigned long long total_system_memory() {
 }
 #endif
 
+
+#ifdef DEBUG
+static void thread_free(uv_work_t *req, int status) {
+	FREE(req);
+}
+
+static void thread(uv_work_t *req) {
+	memanalyze();
+}
+#endif
+
 static void pilight_stats(uv_timer_t *timer_req) {
 	if(main_loop == 0) {
 		return;
 	}
+
+#ifdef DEBUG
+	time_t foo = time(NULL);
+	if(heaptracker == 1) {
+		heaptrack();
+		if((foo % 300) >= 0 && (foo % 300) < 3) {
+			uv_work_t *work_req = NULL;
+			if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+			}
+			work_req->data = NULL;
+			uv_queue_work_s(work_req, "3", 1, thread, thread_free);
+		}
+	}
+#endif
 
 	int watchdog = 1, stats = 1;
 	// double itmp = 0.0;
@@ -2991,7 +3014,6 @@ static void signal_cb(uv_signal_t *handle, int signum) {
 }
 
 int start_pilight(int argc, char **argv) {
-	// memtrack();
 	// uv_replace_allocator(_MALLOC, _REALLOC, _CALLOC, _FREE);
 
 	const uv_thread_t pth_cur_id = uv_thread_self();
@@ -3039,10 +3061,9 @@ int start_pilight(int argc, char **argv) {
 	options_add(&options, "Ls", "storage-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, "Ll", "lua-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, "D", "debug", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, "256", "stacktracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, "257", "threadprofiler", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, "258", "debuglevel", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-2]{1}");
-	// options_add(&options, 258, "memory-tracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+#ifdef DEBUG
+	options_add(&options, "255", "heaptrack", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+#endif
 
 	if(options_parse(options, argc, argv, 1) == -1) {
 		show_default = 1;
@@ -3087,26 +3108,11 @@ int start_pilight(int argc, char **argv) {
 		nodaemon = 1;
 	}
 
-	if(options_exists(options, "257") == 0) {
-		threadprofiler = 1;
-		verbosity = LOG_ERR;
-		verbosity_changed = 1;
-		nodaemon = 1;
+#ifdef DEBUG
+	if(options_exists(options, "255") == 0) {
+		options_get_number(options, "255", &heaptracker);
 	}
-
-	if(options_exists(options, "256") == 0) {
-		verbosity = LOG_STACK;
-		verbosity_changed = 1;
-		stacktracer = 1;
-		nodaemon = 1;
-	}
-
-	if(options_exists(options, "258") == 0) {
-		options_get_number(options, "258", &pilight.debuglevel);
-		nodaemon = 1;
-		verbosity = LOG_DEBUG;
-		verbosity_changed = 1;
-	}
+#endif
 
 	if(show_help == 1) {
 		char help[1024];
@@ -3131,10 +3137,7 @@ int start_pilight(int argc, char **argv) {
 									"\n"
 									"\t -Ls --storage-root=xxxx\tlocation of the storage lua modules\n"
 									"\t -Ll --lua-root=xxxx\t\tlocation of the plain lua modules\n"
-									"\n"
-									/*"\t     --stacktracer\t\tshow internal function calls\n"
-									"\t     --threadprofiler\t\tshow per thread cpu usage\n"
-									"\t     --debuglevel\t\tshow additional development info\n"*/,
+									"\n",
 									progname, tabs, tabs, tabs, tabs, tabs);
 #ifdef _WIN32
 		MessageBox(NULL, help, "pilight :: info", MB_OK);
