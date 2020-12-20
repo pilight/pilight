@@ -203,7 +203,9 @@ static int master_port = 0;
 static int adhoc_pending = 0;
 static char *configtmp = NULL;
 static int verbosity = LOG_INFO;
+#if defined(DEBUG) && !defined(__mips__) && !defined(__aarch64__)
 static int heaptracker = 0;
+#endif
 struct socket_callback_t socket_callback;
 
 #ifdef _WIN32
@@ -2822,7 +2824,7 @@ static unsigned long long total_system_memory() {
 #endif
 
 
-#ifdef DEBUG
+#if defined(DEBUG) && !defined(__mips__) && !defined(__aarch64__)
 static void thread_free(uv_work_t *req, int status) {
 	FREE(req);
 }
@@ -2837,7 +2839,7 @@ static void pilight_stats(uv_timer_t *timer_req) {
 		return;
 	}
 
-#ifdef DEBUG
+#if defined(DEBUG) && !defined(__mips__) && !defined(__aarch64__)
 	time_t foo = time(NULL);
 	if(heaptracker == 1) {
 		heaptrack();
@@ -3061,7 +3063,7 @@ int start_pilight(int argc, char **argv) {
 	options_add(&options, "Ls", "storage-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, "Ll", "lua-root", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, "D", "debug", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-#ifdef DEBUG
+#if defined(DEBUG) && !defined(__mips__) && !defined(__aarch64__)
 	options_add(&options, "255", "heaptrack", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 #endif
 
@@ -3108,7 +3110,7 @@ int start_pilight(int argc, char **argv) {
 		nodaemon = 1;
 	}
 
-#ifdef DEBUG
+#if defined(DEBUG) && !defined(__mips__) && !defined(__aarch64__)
 	if(options_exists(options, "255") == 0) {
 		options_get_number(options, "255", &heaptracker);
 	}

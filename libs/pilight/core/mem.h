@@ -33,7 +33,7 @@ void __free(void *, const char *, int);
  */
 char *___strdup(char *, const char *, int);
 
-#ifdef DEBUG
+#if defined(DEBUG) && !defined(__mips__) && !defined(__aarch64__)
 	#define MALLOC(a) __malloc(a, __FILE__, __LINE__)
 	#define REALLOC(a, b) __realloc(a, b, __FILE__, __LINE__)
 	#define CALLOC(a, b) __calloc(a, b, __FILE__, __LINE__)

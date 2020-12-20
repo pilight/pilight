@@ -16,6 +16,8 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
+#if defined(DEBUG) && !defined(__mips__) && !defined(__aarch64__)
+
 #ifdef _MSC_VER
 	#define _CRT_SECURE_NO_DEPRECATE
 	#define _CRT_SECURE_NO_WARNINGS
@@ -429,3 +431,5 @@ void __free(void *a, const char *file, int line) {
 		free(a);
 	}
 }
+
+#endif
