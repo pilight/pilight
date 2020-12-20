@@ -2840,16 +2840,16 @@ static void pilight_stats(uv_timer_t *timer_req) {
 	}
 
 #if defined(DEBUG) && !defined(__mips__) && !defined(__aarch64__)
-	time_t foo = time(NULL);
+	time_t t = time(NULL);
 	if(heaptracker == 1) {
 		heaptrack();
-		if((foo % 300) >= 0 && (foo % 300) < 3) {
+		if((t % 300) >= 0 && (t % 300) < 3) {
 			uv_work_t *work_req = NULL;
 			if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
 				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			work_req->data = NULL;
-			uv_queue_work_s(work_req, "3", 1, thread, thread_free);
+			uv_queue_work_s(work_req, "heaptrack", 1, thread, thread_free);
 		}
 	}
 #endif
@@ -3112,7 +3112,9 @@ int start_pilight(int argc, char **argv) {
 
 #if defined(DEBUG) && !defined(__mips__) && !defined(__aarch64__)
 	if(options_exists(options, "255") == 0) {
-		options_get_number(options, "255", &heaptracker);
+		if(options_get_number(options, "255", &heaptracker) == 0) {
+			heaptracker = 1;
+		}
 	}
 #endif
 
