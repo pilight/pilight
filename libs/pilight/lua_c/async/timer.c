@@ -33,6 +33,16 @@
 static void timer_callback(uv_timer_t *req);
 static int plua_async_timer_start(lua_State *L);
 
+static void close_cb(uv_handle_t *handle) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
+
+	FREE(handle);
+}
+
 #ifdef PILIGHT_UNITTEST
 extern void plua_async_timer_gc(void *ptr);
 #else
@@ -42,6 +52,9 @@ static void plua_async_timer_gc(void *ptr) {
 	if(lua_timer != NULL) {
 		int x = 0;
 		if((x = atomic_dec(lua_timer->ref)) == 0) {
+			if(!uv_is_closing((uv_handle_t *)lua_timer->timer_req)) {
+				uv_close((uv_handle_t *)lua_timer->timer_req, close_cb);
+			}
 			if(lua_timer->callback != NULL) {
 				FREE(lua_timer->callback);
 			}
