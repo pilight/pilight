@@ -43,18 +43,38 @@ static void close_cb(uv_handle_t *handle) {
 	FREE(handle);
 }
 
+static void thread_free(uv_work_t *req, int status) {
+	FREE(req);
+}
+
+static void thread(uv_work_t *req) {
+	if(!uv_is_closing((uv_handle_t *)req->data)) {
+		uv_close((uv_handle_t *)req->data, close_cb);
+	}
+}
+
 #ifdef PILIGHT_UNITTEST
 extern void plua_async_timer_gc(void *ptr);
 #else
 static void plua_async_timer_gc(void *ptr) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
+
 	struct lua_timer_t *lua_timer = ptr;
 
 	if(lua_timer != NULL) {
 		int x = 0;
 		if((x = atomic_dec(lua_timer->ref)) == 0) {
-			if(!uv_is_closing((uv_handle_t *)lua_timer->timer_req)) {
-				uv_close((uv_handle_t *)lua_timer->timer_req, close_cb);
+			uv_work_t *work_req = NULL;
+			if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
+			work_req->data = lua_timer->timer_req;
+			uv_queue_work_s(work_req, "plua_async_timer_gc", 1, thread, thread_free);
+
 			if(lua_timer->callback != NULL) {
 				FREE(lua_timer->callback);
 			}
