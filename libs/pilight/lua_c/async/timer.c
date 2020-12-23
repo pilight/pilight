@@ -111,6 +111,9 @@ static void timer_stop(lua_State *L, struct lua_timer_t *timer) {
 		plua_gc_unreg(NULL, timer);
 		plua_gc_unreg(L, timer);
 		if(timer->timer_req != NULL) {
+			while(timer->initialized == 0) {
+				usleep(10);
+			}
 			uv_timer_stop(timer->timer_req);
 		}
 		plua_async_timer_gc(timer);
@@ -173,6 +176,9 @@ static int plua_async_timer_set_timeout(lua_State *L) {
 	timer->timeout = timeout;
 
 	if(timer->running == 1) {
+		while(timer->initialized == 0) {
+			usleep(10);
+		}
 		uv_timer_start(timer_req, timer_callback, timer->timeout, timer->timeout);
 	}
 
@@ -219,6 +225,9 @@ static int plua_async_timer_set_repeat(lua_State *L) {
 	timer->repeat = repeat;
 
 	if(timer->running == 1) {
+		while(timer->initialized == 0) {
+			usleep(10);
+		}
 		uv_timer_start(timer_req, timer_callback, timer->timeout, timer->repeat);
 	}
 
@@ -320,6 +329,9 @@ static int plua_async_timer_start(lua_State *L) {
 	}
 	timer->running = 1;
 
+	while(timer->initialized == 0) {
+		usleep(10);
+	}
 	uv_timer_start(timer_req, timer_callback, timer->timeout, timer->repeat);
 
 	lua_pushboolean(L, 1);
@@ -446,6 +458,12 @@ static void timer_callback(uv_timer_t *req) {
 	plua_clear_state(state);
 }
 
+static void plua_async_timer_init(uv_work_t *req) {
+	struct lua_timer_t *lua_timer = req->data;
+	uv_timer_init(uv_default_loop(), (uv_timer_t *)lua_timer->timer_req);
+	lua_timer->initialized = 1;
+}
+
 int plua_async_timer(struct lua_State *L) {
 	struct lua_timer_t *lua_timer = NULL;
 
@@ -497,11 +515,18 @@ int plua_async_timer(struct lua_State *L) {
 		lua_timer->module = state->module;
 		lua_timer->timer_req = timer_req;
 		lua_timer->timeout = -1;
+		lua_timer->initialized = 0;
 		lua_timer->gc = plua_async_timer_gc;
 		lua_timer->L = L;
 		timer_req->data = lua_timer;
 
-		uv_timer_init(uv_default_loop(), timer_req);
+		uv_work_t *work_req = NULL;
+		if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		work_req->data = lua_timer;
+		uv_queue_work_s(work_req, "plua_async_timer_init", 1, plua_async_timer_init, thread_free);
+
 		plua_gc_reg(NULL, lua_timer, plua_async_timer_global_gc);
 	}
 	plua_gc_reg(L, lua_timer, plua_async_timer_gc);
@@ -512,3 +537,4 @@ int plua_async_timer(struct lua_State *L) {
 
 	return 1;
 }
+

@@ -16,6 +16,7 @@ typedef struct lua_timer_t {
 	int running;
 	int timeout;
 	int repeat;
+	volatile int initialized;
 	char *callback;
 } lua_timer_t;
 
