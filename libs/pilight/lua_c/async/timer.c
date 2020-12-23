@@ -57,12 +57,6 @@ static void thread(uv_work_t *req) {
 extern void plua_async_timer_gc(void *ptr);
 #else
 static void plua_async_timer_gc(void *ptr) {
-	/*
-	 * Make sure we execute in the main thread
-	 */
-	const uv_thread_t pth_cur_id = uv_thread_self();
-	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
-
 	struct lua_timer_t *lua_timer = ptr;
 
 	if(lua_timer != NULL) {
