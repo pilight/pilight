@@ -781,7 +781,7 @@ void uv_custom_poll_cb(uv_poll_t *req, int status, int events) {
 					/*LCOV_EXCL_STOP*/
 				}
 			} else {
-				n = (int)send((unsigned int)fd, send_io->buf, send_io->len, 0);
+				n = (int)send((unsigned int)fd, send_io->buf, send_io->len, MSG_NOSIGNAL);
 				err = errno;
 			}
 			if(n > 0) {
