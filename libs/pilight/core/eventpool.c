@@ -565,9 +565,9 @@ void iobuf_init(struct iobuf_t *iobuf, size_t initial_size) {
 
 void iobuf_remove(struct iobuf_t *io, size_t n) {
 	uv_mutex_lock(&io->lock);
-  if(n > 0 && n <= io->len) {
-    memmove(io->buf, io->buf + n, io->len - n);
-    io->len -= n;
+	if(n > 0 && n <= io->len) {
+		memmove(io->buf, io->buf + n, io->len - n);
+		io->len -= n;
 		if(io->len == 0) {
 			FREE(io->buf);
 			io->buf = NULL;
@@ -576,7 +576,7 @@ void iobuf_remove(struct iobuf_t *io, size_t n) {
 			io->buf[io->len] = 0;
 		}
 		io->size = io->len;
-  }
+	}
 	uv_mutex_unlock(&io->lock);
 }
 
@@ -617,28 +617,28 @@ size_t iobuf_append_remove(struct iobuf_t *a, struct iobuf_t *b) {
 }
 
 size_t iobuf_append(struct iobuf_t *io, const void *buf, int len) {
-  char *p = NULL;
+	char *p = NULL;
 
 	uv_mutex_lock(&io->lock);
-  assert(io != NULL);
-  assert(io->len <= io->size);
+	assert(io != NULL);
+	assert(io->len <= io->size);
 
-  if(len <= 0) {
-  } else if(io->len + len <= io->size) {
-    memcpy(io->buf + io->len, buf, len);
-    io->len += len;
-  } else if((p = REALLOC(io->buf, io->len + len + 1)) != NULL) {
-    io->buf = p;
+	if(len <= 0) {
+	} else if(io->len + len <= io->size) {
+		memcpy(io->buf + io->len, buf, len);
+		io->len += len;
+	} else if((p = REALLOC(io->buf, io->len + len + 1)) != NULL) {
+		io->buf = p;
 		memset(&io->buf[io->len], 0, len + 1);
-    memcpy(io->buf + io->len, buf, len);
-    io->len += len;
-    io->size = io->len;
-  } else {
-    len = 0;
-  }
+		memcpy(io->buf + io->len, buf, len);
+		io->len += len;
+		io->size = io->len;
+	} else {
+		len = 0;
+	}
 	uv_mutex_unlock(&io->lock);
 
-  return len;
+	return len;
 }
 
 /*LCOV_EXCL_START*/
