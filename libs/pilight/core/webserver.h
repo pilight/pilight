@@ -23,11 +23,11 @@ typedef struct connection_t {
 	char *http_version;
 	const char *query_string;
 
-  int num_headers;
-  struct headers {
+	int num_headers;
+	struct headers {
 		char *name;
 		char *value;
-  } http_headers[30];
+	} http_headers[30];
 
   char *content;
   size_t content_len;
