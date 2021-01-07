@@ -84,7 +84,7 @@ static int plua_print(lua_State* L) {
 				uv_stop(uv_default_loop());
 			break;
 		}
-	} else {
+	} else if(test == 2) {
 		switch(run) {
 			case 0:
 			case 1: {
@@ -107,6 +107,8 @@ static int plua_print(lua_State* L) {
 				run++;
 			break;
 		}
+	} else {
+		run++;
 	}
 
 	return 0;
@@ -140,6 +142,8 @@ static void walk_cb(uv_handle_t *handle, void *arg) {
 }
 
 static void stop(uv_timer_t *req) {
+	plua_gc();
+	eventpool_gc();
 	uv_stop(uv_default_loop());
 }
 
@@ -191,6 +195,9 @@ static void test_lua_async_timer_missing_parameters(CuTest *tc) {
 }
 
 static void test_lua_async_timer(CuTest *tc) {
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	memcpy((void *)&pth_main_id, &pth_cur_id, sizeof(uv_thread_t));
+
 	struct lua_state_t *state = NULL;
 	struct lua_State *L = NULL;
 	char path[1024], *p = path, name[255];
@@ -206,6 +213,8 @@ static void test_lua_async_timer(CuTest *tc) {
 
 	gtc = tc;
 	memtrack();
+
+	eventpool_init(EVENTPOOL_THREADED);
 
 	plua_init();
 	plua_override_global("print", plua_print);
@@ -260,6 +269,166 @@ static void test_lua_async_timer(CuTest *tc) {
 	plua_pause_coverage(0);
 	plua_gc();
 	CuAssertIntEquals(tc, 19, run);
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
+static void thread_free(uv_work_t *req, int status) {
+	FREE(req);
+}
+
+static void thread(uv_work_t *req) {
+	struct lua_state_t *state = NULL;
+	struct lua_State *L = NULL;
+	char name[255];
+	char *file = NULL;
+
+	memset(name, 0, 255);
+
+	state = plua_get_free_state();
+	CuAssertPtrNotNull(gtc, state);
+	CuAssertPtrNotNull(gtc, (L = state->L));
+
+	sprintf(name, "unittest.%s", "timer");
+	lua_getglobal(L, name);
+	CuAssertIntEquals(gtc, LUA_TTABLE, lua_type(L, -1));
+
+	struct plua_module_t *tmp = plua_get_modules();
+	while(tmp) {
+		if(strcmp("timer", tmp->name) == 0) {
+			file = tmp->file;
+			state->module = tmp;
+			break;
+		}
+		tmp = tmp->next;
+	}
+	CuAssertPtrNotNull(gtc, file);
+	CuAssertIntEquals(gtc, 1, call(L, file, "run"));
+
+	plua_clear_state(state);
+
+}
+
+static void test_lua_async_timer_threaded(CuTest *tc) {
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	memcpy((void *)&pth_main_id, &pth_cur_id, sizeof(uv_thread_t));
+
+	char path[1024], *p = path;
+	char *file = NULL;
+
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	run = 0;
+	test = 1;
+
+	gtc = tc;
+	memtrack();
+
+	eventpool_init(EVENTPOOL_THREADED);
+
+	plua_init();
+	plua_override_global("print", plua_print);
+	plua_pause_coverage(1);
+
+	file = STRDUP(__FILE__);
+	CuAssertPtrNotNull(gtc, file);
+
+	str_replace("lua_async_timer.c", "", &file);
+
+	memset(p, 0, 1024);
+	snprintf(p, 1024, "%stimer.lua", file);
+	FREE(file);
+	file = NULL;
+
+	plua_module_load(path, UNITTEST);
+
+	CuAssertIntEquals(gtc, 0, plua_module_exists("timer", UNITTEST));
+
+	uv_work_t *work_req = MALLOC(sizeof(uv_work_t));
+	if(work_req == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+
+	uv_queue_work(uv_default_loop(), work_req, "foo", thread, thread_free);
+
+	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	}
+
+	plua_pause_coverage(0);
+	plua_gc();
+	CuAssertIntEquals(tc, 19, run);
+	CuAssertIntEquals(tc, 0, xfree());
+}
+
+static void test_lua_async_timer_bulk(CuTest *tc) {
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	memcpy((void *)&pth_main_id, &pth_cur_id, sizeof(uv_thread_t));
+
+	char path[1024], *p = path;
+	char *file = NULL;
+
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+
+	run = 0;
+	test = 3;
+
+	gtc = tc;
+	memtrack();
+
+	eventpool_init(EVENTPOOL_THREADED);
+
+	plua_init();
+	plua_override_global("print", plua_print);
+	plua_pause_coverage(1);
+
+	file = STRDUP(__FILE__);
+	CuAssertPtrNotNull(gtc, file);
+
+	str_replace("lua_async_timer.c", "", &file);
+
+	memset(p, 0, 1024);
+	snprintf(p, 1024, "%stimer.lua", file);
+	FREE(file);
+	file = NULL;
+
+	plua_module_load(path, UNITTEST);
+
+	CuAssertIntEquals(gtc, 0, plua_module_exists("timer", UNITTEST));
+
+	if((timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+
+	uv_timer_init(uv_default_loop(), timer_req);
+
+	int i = 0;
+	for(i=0;i<1000;i++) {
+		uv_work_t *work_req = MALLOC(sizeof(uv_work_t));
+		if(work_req == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+
+		uv_queue_work(uv_default_loop(), work_req, "foo", thread, thread_free);
+	}
+	uv_timer_start(timer_req, (void (*)(uv_timer_t *))stop, 2000, 0);
+
+	uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	uv_walk(uv_default_loop(), walk_cb, NULL);
+	uv_run(uv_default_loop(), UV_RUN_ONCE);
+
+	while(uv_loop_close(uv_default_loop()) == UV_EBUSY) {
+		uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	}
+
+	plua_pause_coverage(0);
+	eventpool_gc();
+	// CuAssertIntEquals(tc, 19, run);
 	CuAssertIntEquals(tc, 0, xfree());
 }
 
@@ -430,6 +599,8 @@ CuSuite *suite_lua_async_timer(void) {
 
 	SUITE_ADD_TEST(suite, test_lua_async_timer_missing_parameters);
 	SUITE_ADD_TEST(suite, test_lua_async_timer);
+	SUITE_ADD_TEST(suite, test_lua_async_timer_threaded);
+	SUITE_ADD_TEST(suite, test_lua_async_timer_bulk);
 	SUITE_ADD_TEST(suite, test_lua_async_timer_prematurely_stopped);
 	SUITE_ADD_TEST(suite, test_lua_async_timer_nonexisting_callback);
 

@@ -589,6 +589,50 @@ void plua_async_event_global_gc(void *ptr) {
 	plua_async_event_gc(ptr);
 }
 
+static void close_cb(uv_handle_t *handle) {
+	if(handle != NULL) {
+		FREE(handle);
+	}
+}
+
+static void thread(uv_work_t *req);
+
+static void timer_thread_free(uv_work_t *req, int status) {
+	if(status == -99) {
+		thread(req);
+	}
+	FREE(req);
+}
+
+static void thread(uv_work_t *req) {
+	struct lua_timer_t *lua_timer = req->data;
+	if(lua_timer->initialized == 1) {
+		lua_timer->initialized = 0;
+		uv_timer_stop(lua_timer->timer_req);
+		if(!uv_is_closing((uv_handle_t *)lua_timer->timer_req)) {
+			uv_close((uv_handle_t *)lua_timer->timer_req, close_cb);
+		}
+
+		if(!uv_is_closing((uv_handle_t *)lua_timer->async_req)) {
+			uv_close((uv_handle_t *)lua_timer->async_req, close_cb);
+		}
+	}
+
+	if(lua_timer->callback != NULL) {
+		FREE(lua_timer->callback);
+	}
+	if(lua_timer->table != NULL) {
+		plua_metatable_free(lua_timer->table);
+	}
+	plua_gc_unreg(NULL, lua_timer);
+	if(lua_timer->sigterm == 1) {
+		lua_timer->gc = NULL;
+	}
+	uv_mutex_destroy(&lua_timer->lock);
+	FREE(lua_timer);
+	lua_timer = NULL;
+}
+
 void plua_async_timer_gc(void *ptr) {
 	if(testing_plua_reference_count == 1) {
 		CuAssertIntEquals(gtc, stopped, 0);
@@ -705,18 +749,12 @@ void plua_async_timer_gc(void *ptr) {
 		// printf("%s: %d %d\n", ((lua_timer == ptr1) ? "timer" : "timer1"), lua_timer->ref-1, run-1);
 		int x = 0;
 		if((x = atomic_dec(lua_timer->ref)) == 0) {
-			if(lua_timer->callback != NULL) {
-				FREE(lua_timer->callback);
+			uv_work_t *work_req = NULL;
+			if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
-			if(lua_timer->table != NULL) {
-				plua_metatable_free(lua_timer->table);
-			}
-			plua_gc_unreg(NULL, lua_timer);
-			if(lua_timer->sigterm == 1) {
-				lua_timer->gc = NULL;
-			}
-			FREE(lua_timer);
-			lua_timer = NULL;
+			work_req->data = lua_timer;
+			uv_queue_work_s(work_req, "plua_async_timer_gc", 1, thread, timer_thread_free);
 		} else {
 			lua_timer->running = 0;
 		}
@@ -878,12 +916,6 @@ static int call(struct lua_State *L, char *file, char *func) {
 	lua_pop(L, 1);
 
 	return 1;
-}
-
-static void close_cb(uv_handle_t *handle) {
-	if(handle != NULL) {
-		FREE(handle);
-	}
 }
 
 static void walk_cb(uv_handle_t *handle, void *arg) {

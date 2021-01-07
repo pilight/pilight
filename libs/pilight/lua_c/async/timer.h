@@ -13,9 +13,14 @@ typedef struct lua_timer_t {
 	PLUA_INTERFACE_FIELDS
 
 	uv_timer_t *timer_req;
+	uv_async_t *async_req;
+	uv_mutex_t *queue_lock;
 	int running;
 	int timeout;
 	int repeat;
+	unsigned long action;
+	int nractions;
+	int initialized;
 	char *callback;
 } lua_timer_t;
 
