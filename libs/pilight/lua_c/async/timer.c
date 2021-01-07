@@ -32,6 +32,7 @@
 
 static void timer_callback(uv_timer_t *req);
 static int plua_async_timer_start(lua_State *L);
+static void thread(uv_work_t *req);
 
 static void close_cb(uv_handle_t *handle) {
 	/*
@@ -43,6 +44,42 @@ static void close_cb(uv_handle_t *handle) {
 	FREE(handle);
 }
 
+static void thread_free(uv_work_t *req, int status) {
+	if(status == -99) {
+		thread(req);
+	}
+	FREE(req);
+}
+
+static void thread(uv_work_t *req) {
+	struct lua_timer_t *lua_timer = req->data;
+	if(lua_timer->initialized == 1) {
+		lua_timer->initialized = 0;
+		uv_timer_stop(lua_timer->timer_req);
+		if(!uv_is_closing((uv_handle_t *)lua_timer->timer_req)) {
+			uv_close((uv_handle_t *)lua_timer->timer_req, close_cb);
+		}
+
+		if(!uv_is_closing((uv_handle_t *)lua_timer->async_req)) {
+			uv_close((uv_handle_t *)lua_timer->async_req, close_cb);
+		}
+	}
+
+	if(lua_timer->callback != NULL) {
+		FREE(lua_timer->callback);
+	}
+	if(lua_timer->table != NULL) {
+		plua_metatable_free(lua_timer->table);
+	}
+	plua_gc_unreg(NULL, lua_timer);
+	if(lua_timer->sigterm == 1) {
+		lua_timer->gc = NULL;
+	}
+	uv_mutex_destroy(&lua_timer->lock);
+	FREE(lua_timer);
+	lua_timer = NULL;
+}
+
 #ifdef PILIGHT_UNITTEST
 extern void plua_async_timer_gc(void *ptr);
 #else
@@ -52,21 +89,12 @@ static void plua_async_timer_gc(void *ptr) {
 	if(lua_timer != NULL) {
 		int x = 0;
 		if((x = atomic_dec(lua_timer->ref)) == 0) {
-			if(!uv_is_closing((uv_handle_t *)lua_timer->timer_req)) {
-				uv_close((uv_handle_t *)lua_timer->timer_req, close_cb);
+			uv_work_t *work_req = NULL;
+			if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
-			if(lua_timer->callback != NULL) {
-				FREE(lua_timer->callback);
-			}
-			if(lua_timer->table != NULL) {
-				plua_metatable_free(lua_timer->table);
-			}
-			plua_gc_unreg(NULL, lua_timer);
-			if(lua_timer->sigterm == 1) {
-				lua_timer->gc = NULL;
-			}
-			FREE(lua_timer);
-			lua_timer = NULL;
+			work_req->data = lua_timer;
+			uv_queue_work_s(work_req, "plua_async_timer_gc", 1, thread, thread_free);
 		} else {
 			lua_timer->running = 0;
 		}
@@ -91,7 +119,18 @@ static void timer_stop(lua_State *L, struct lua_timer_t *timer) {
 		plua_gc_unreg(NULL, timer);
 		plua_gc_unreg(L, timer);
 		if(timer->timer_req != NULL) {
-			uv_timer_stop(timer->timer_req);
+			if(timer->nractions < 32) {
+				uv_mutex_lock(&timer->lock);
+				timer->action <<= 1;
+				timer->action &= ~(1 << 0);
+				timer->nractions++;
+				if(timer->initialized == 1) {
+					uv_async_send(timer->async_req);
+				}
+				uv_mutex_unlock(&timer->lock);
+			} else {
+				logprintf(LOG_ERR, "too many plua_async_timer actions");
+			}
 		}
 		plua_async_timer_gc(timer);
 	}
@@ -119,7 +158,6 @@ static int plua_async_timer_stop(lua_State *L) {
 
 static int plua_async_timer_set_timeout(lua_State *L) {
 	struct lua_timer_t *timer = (void *)lua_topointer(L, lua_upvalueindex(1));
-	uv_timer_t *timer_req = NULL;
 
 	if(lua_gettop(L) != 1) {
 		pluaL_error(L, "timer.setTimeout requires 1 argument, %d given", lua_gettop(L));
@@ -128,8 +166,6 @@ static int plua_async_timer_set_timeout(lua_State *L) {
 	if(timer == NULL) {
 		pluaL_error(L, "internal error: timer object not passed");
 	}
-
-	timer_req = timer->timer_req;
 
 	char buf[128] = { '\0' }, *p = buf;
 	char *error = "number expected, got %s";
@@ -153,7 +189,18 @@ static int plua_async_timer_set_timeout(lua_State *L) {
 	timer->timeout = timeout;
 
 	if(timer->running == 1) {
-		uv_timer_start(timer_req, timer_callback, timer->timeout, timer->timeout);
+		if(timer->nractions < 32) {
+			uv_mutex_lock(&timer->lock);
+			timer->action <<= 1;
+			timer->action |= (1 << 0);
+			timer->nractions++;
+			if(timer->initialized == 1) {
+				uv_async_send(timer->async_req);
+			}
+			uv_mutex_unlock(&timer->lock);
+		} else {
+			logprintf(LOG_ERR, "too many plua_async_timer actions");
+		}
 	}
 
 	lua_pushboolean(L, 1);
@@ -165,7 +212,6 @@ static int plua_async_timer_set_timeout(lua_State *L) {
 
 static int plua_async_timer_set_repeat(lua_State *L) {
 	struct lua_timer_t *timer = (void *)lua_topointer(L, lua_upvalueindex(1));
-	uv_timer_t *timer_req = NULL;
 
 	if(lua_gettop(L) != 1) {
 		pluaL_error(L, "timer.setRepeat requires 1 argument, %d given", lua_gettop(L));
@@ -174,8 +220,6 @@ static int plua_async_timer_set_repeat(lua_State *L) {
 	if(timer == NULL) {
 		pluaL_error(L, "internal error: timer object not passed");
 	}
-
-	timer_req = timer->timer_req;
 
 	char buf[128] = { '\0' }, *p = buf;
 	char *error = "number expected, got %s";
@@ -199,7 +243,18 @@ static int plua_async_timer_set_repeat(lua_State *L) {
 	timer->repeat = repeat;
 
 	if(timer->running == 1) {
-		uv_timer_start(timer_req, timer_callback, timer->timeout, timer->repeat);
+		if(timer->nractions < 32) {
+			uv_mutex_lock(&timer->lock);
+			timer->action <<= 1;
+			timer->action |= (1 << 0);
+			timer->nractions++;
+			if(timer->initialized == 1) {
+				uv_async_send(timer->async_req);
+			}
+			uv_mutex_unlock(&timer->lock);
+		} else {
+			logprintf(LOG_ERR, "too many plua_async_timer actions");
+		}
 	}
 
 	lua_pushboolean(L, 1);
@@ -272,7 +327,6 @@ static int plua_async_timer_set_callback(lua_State *L) {
 
 static int plua_async_timer_start(lua_State *L) {
 	struct lua_timer_t *timer = (void *)lua_topointer(L, lua_upvalueindex(1));
-	uv_timer_t *timer_req = NULL;
 
 	if(lua_gettop(L) != 0) {
 		pluaL_error(L, "timer.start requires 0 arguments, %d given", lua_gettop(L));
@@ -281,8 +335,6 @@ static int plua_async_timer_start(lua_State *L) {
 	if(timer == NULL) {
 		pluaL_error(L, "internal error: timer object not passed");
 	}
-
-	timer_req = timer->timer_req;
 
 	if(timer->callback == NULL) {
 		if(timer->module != NULL) {
@@ -300,7 +352,18 @@ static int plua_async_timer_start(lua_State *L) {
 	}
 	timer->running = 1;
 
-	uv_timer_start(timer_req, timer_callback, timer->timeout, timer->repeat);
+	if(timer->nractions < 32) {
+		uv_mutex_lock(&timer->lock);
+		timer->action <<= 1;
+		timer->action |= (1 << 0);
+		timer->nractions++;
+		if(timer->initialized == 1) {
+			uv_async_send(timer->async_req);
+		}
+		uv_mutex_unlock(&timer->lock);
+	} else {
+		logprintf(LOG_ERR, "too many plua_async_timer actions");
+	}
 
 	lua_pushboolean(L, 1);
 
@@ -387,10 +450,22 @@ static void timer_callback(uv_timer_t *req) {
 	char name[512], *p = name;
 	memset(name, '\0', 512);
 
+	if(timer == NULL) {
+		return;
+	}
+
+	if(timer->initialized == 0) {
+		return;
+	}
+
 	/*
 	 * Only create a new state once the timer is triggered
 	 */
 	struct lua_state_t *state = plua_get_free_state();
+	if(state == NULL) {
+		return;
+	}
+
 	state->module = timer->module;
 
 	logprintf(LOG_DEBUG, "lua timer on state #%d", state->idx);
@@ -426,6 +501,43 @@ static void timer_callback(uv_timer_t *req) {
 	plua_clear_state(state);
 }
 
+static void plua_async_timer_async_cb(uv_async_t *handle) {
+	struct lua_timer_t *timer = handle->data;
+	int i = 0;
+	uv_mutex_lock(&timer->lock);
+	for(i=0;i<timer->nractions;i++) {
+		if((timer->action & 1) == 0) {
+			uv_timer_stop(timer->timer_req);
+		} else {
+			uv_timer_start(timer->timer_req, timer_callback, timer->timeout, timer->timeout);
+		}
+		timer->action >>= 1;
+	}
+	timer->nractions = 0;
+	uv_mutex_unlock(&timer->lock);
+}
+
+static void plua_async_timer_init(uv_work_t *req) {
+	struct lua_timer_t *lua_timer = req->data;
+	if((lua_timer->async_req = MALLOC(sizeof(uv_async_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	lua_timer->async_req->data = lua_timer;
+	uv_async_init(uv_default_loop(), lua_timer->async_req, plua_async_timer_async_cb);
+
+	lua_timer->timer_req = MALLOC(sizeof(uv_timer_t));
+	if(lua_timer->timer_req == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+	}
+	lua_timer->timer_req->data = lua_timer;
+	uv_timer_init(uv_default_loop(), lua_timer->timer_req);
+
+	lua_timer->initialized = 1;
+	if(lua_timer->action > 0) {
+		uv_async_send(lua_timer->async_req);
+	}
+}
+
 int plua_async_timer(struct lua_State *L) {
 	struct lua_timer_t *lua_timer = NULL;
 
@@ -458,11 +570,6 @@ int plua_async_timer(struct lua_State *L) {
 		}
 		atomic_inc(lua_timer->ref);
 	} else {
-		uv_timer_t *timer_req = MALLOC(sizeof(uv_timer_t));
-		if(timer_req == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
-
 		lua_timer = MALLOC(sizeof(struct lua_timer_t));
 		if(lua_timer == NULL) {
 			OUT_OF_MEMORY
@@ -475,13 +582,22 @@ int plua_async_timer(struct lua_State *L) {
 		plua_metatable_init(&lua_timer->table);
 
 		lua_timer->module = state->module;
-		lua_timer->timer_req = timer_req;
 		lua_timer->timeout = -1;
+		lua_timer->initialized = 0;
+		lua_timer->action = 0;
+		lua_timer->nractions = 0;
 		lua_timer->gc = plua_async_timer_gc;
 		lua_timer->L = L;
-		timer_req->data = lua_timer;
 
-		uv_timer_init(uv_default_loop(), timer_req);
+		uv_mutex_init(&lua_timer->lock);
+
+		uv_work_t *work_req = NULL;
+		if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		work_req->data = lua_timer;
+		uv_queue_work_s(work_req, "plua_async_timer_init", 1, plua_async_timer_init, thread_free);
+
 		plua_gc_reg(NULL, lua_timer, plua_async_timer_global_gc);
 	}
 	plua_gc_reg(L, lua_timer, plua_async_timer_gc);
@@ -492,3 +608,4 @@ int plua_async_timer(struct lua_State *L) {
 
 	return 1;
 }
+
