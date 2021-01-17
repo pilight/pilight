@@ -16,6 +16,7 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,8 +33,10 @@
 
 #define PULSE_QUIGG_SHORT	500
 #define PULSE_QUIGG_LONG	1100
-#define PULSE_QUIGG_FOOTER1	3000
-#define PULSE_QUIGG_FOOTER2	7000
+// #define PULSE_QUIGG_FOOTER1	3000
+// #define PULSE_QUIGG_FOOTER2	7000
+#define PULSE_QUIGG_FOOTER1	300
+#define PULSE_QUIGG_FOOTER2	2300
 
 #define NORMAL_REPEATS		4
 #define AVG_PULSE_LENGTH	750
@@ -65,7 +68,8 @@
 	25       Footer (3000 7000)
 */
 
-char gt9000_unit_offon_map[16][2][4] = {{{8,2,11,7},{10,6,1,5}},   //unit 0 (untested)
+char gt9000_unit_offon_map[16][2][4] = {
+		 {{8,2,11,7},{10,6,1,5}},   //unit 0 (untested)
          {{8,2,11,7},{10,6,1,5}},   //unit 1 (untested)
          {{8,2,11,7},{10,6,1,5}},   //unit 2 (working)
          {{8,2,11,7},{10,6,1,5}},   //unit 3
@@ -81,7 +85,8 @@ char gt9000_unit_offon_map[16][2][4] = {{{8,2,11,7},{10,6,1,5}},   //unit 0 (unt
          {{0,3,14,15},{4,9,12,13}}, //unit 13 (untested)
          {{0,3,14,15},{4,9,12,13}}, //unit 14
          {{0,3,14,15},{4,9,12,13}}};//unit 15 (untested)
-char gt9000_unit_offon_map2[16][2][4] = {{{1,2,9,10},{3,4,7,11}},  //unit 0
+char gt9000_unit_offon_map2[16][2][4] = {
+		 {{1,2,9,10},{3,4,7,11}},   //unit 0
          {{1,2,9,10},{3,4,7,11}},   //unit 1 (untested)
          {{1,2,9,10},{3,4,7,11}},   //unit 2
          {{1,2,9,10},{3,4,7,11}},   //unit 3
@@ -104,10 +109,14 @@ int gt9000_hash2[16] = { 0x0, 0x9, 0x5, 0xF, 0x3, 0x6, 0xC, 0x7,
 			 0xE, 0xD, 0x1, 0xB, 0x2, 0xA, 0x4, 0x8 };
 
 static int isSyscodeType1(int syscodetype) {
-	if(syscodetype & 0x13)
-		return 1;
-
-	return 0;
+	// if(syscodetype & 0x13)
+	// 	return 1;
+	// return 0;
+       switch(syscodetype) {
+         case 1: return 0; break;
+         case 5: return 0; break;
+         default: return 1; break;
+       }
 }
 
 static int validate(void) {
@@ -296,6 +305,7 @@ static void initAllCodes(int systemcode, int allcodes[16]) {
 static int createCode(JsonNode *code) {
 	int syscodetype = 0;
 	double itmp = -1;
+	char *stmp = NULL;
 	int unit = -1, systemcode = -1, verifysyscode = -1, state = -1, all = 0, statecode = -1;
 	int allcodes[16], binary[RAW_LENGTH/2];
 
@@ -303,10 +313,17 @@ static int createCode(JsonNode *code) {
 		systemcode = (int)round(itmp);
 	if(json_find_number(code, "unit", &itmp) == 0)
 		unit = (int)round(itmp);
-	if(json_find_number(code, "off", &itmp) == 0)
-		state=0;
-	else if(json_find_number(code, "on", &itmp) == 0)
-		state=1;
+	
+	if(json_find_number(code, "state", &itmp) == 0) {
+		state = (int)round(itmp);
+	}
+	else if(json_find_string(code, "state", &stmp) == 0) {
+		if( strcmp(stmp, "on") == 0 ) 
+			state=1; 
+		else 
+			state=0;
+	}
+	
 
 	if((systemcode == -1) || (unit == -1 && all == 0)) {
 		logprintf(LOG_ERR, "quigg_gt9000: insufficient number of arguments");
@@ -317,13 +334,16 @@ static int createCode(JsonNode *code) {
 	} else if(unit < 0) {
 		logprintf(LOG_ERR, "quigg_gt9000: invalid unit code range");
 		return EXIT_FAILURE;
+	} else if (state == -1) {
+		logprintf(LOG_ERR, "quigg_gt9000: invalid state");
+		return EXIT_FAILURE;
 	} else {
 		quigg_gt9000->rawlen = RAW_LENGTH;
 		//create all 16 codes used by the remote
 		initAllCodes(systemcode, allcodes);
 		//it is possible to use 4 codes per state
 		//we stick to code number 1 in the on/off array
-		syscodetype = (systemcode >> 16) & 0xF;
+		//syscodetype = (systemcode >> 16) & 0xF;
 		if(isSyscodeType1(syscodetype))
 			statecode = gt9000_unit_offon_map[unit][state][1];
 		else
