@@ -100,7 +100,7 @@ Fanju 3378
 
 .. rubric:: Comments
 
-This weather station was available at AliExpress. Description for the device could be: “Fanju Wireless Digital Temperature Humidity Wireless Sensor meter In/Outdoor used with Weather Station”, and “Match 3378/74/79C/65/89 Indoor Receiver”. The sensor can be identified by the option to choose from three different channels.
+This weather station is available at AliExpress. Description for the device could be: “Fanju Wireless Digital Temperature Humidity Wireless Sensor meter In/Outdoor used with Weather Station”, and “Match 3378/74/79C/65/89 Indoor Receiver”. The sensor can be identified by the option to choose from three different channels.
 
 Humidity and Battery are assumed to be supported by this protocol, but might not be. The temperature value may be a half to one degree off and the humidity value seems to vary regularly. Note that the ID of the sensor is a rolling-code, i.e. it changes every time the device is powered off (c.q. batteries are changed).
 
