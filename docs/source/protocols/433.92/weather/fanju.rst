@@ -39,7 +39,7 @@ Fanju 3378
        "weather": {
          "protocol": [ "fanju" ],
          "id": [{
-           "id": 136
+           "id": 136,
            "channel": 1
          }],
          "temperature": 15.0,
