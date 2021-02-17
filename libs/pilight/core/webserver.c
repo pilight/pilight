@@ -1989,7 +1989,7 @@ static int webserver_init(int port, int is_ssl) {
 		return -1;
 	}
 
-	if((listen(sockfd, 3)) < 0) {
+	if((listen(sockfd, TCP_BACKLOG)) < 0) {
 		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "listen: %s", strerror(errno));
 #ifdef _WIN32
