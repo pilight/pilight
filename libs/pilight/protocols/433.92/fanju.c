@@ -137,14 +137,14 @@ static void parseCode(char **message) {
 	mask = 0xC;
 	checksum_calc = 0x0;
 	for(i=0; i < 36; i++) {
-			bit = mask & 0x1;
-			mask >>= 1;
-			if(bit == 0x1) {
-				mask ^= 0x9;
-			}
-			if(binary_cpy[i] == 1) {
-				checksum_calc ^= mask;
-			}
+		bit = mask & 0x1;
+		mask >>= 1;
+		if(bit == 0x1) {
+			mask ^= 0x9;
+		}
+		if(binary_cpy[i] == 1) {
+			checksum_calc ^= mask;
+		}
 	}
 	if(checksum != checksum_calc) {
 		logprintf(LOG_ERR, "fanju: parsecode - invalid checksum: %d  calc: %d", checksum, checksum_calc);
