@@ -136,10 +136,22 @@ static void safe_thread_loop(uv_async_t *handle) {
 	const uv_thread_t pth_cur_id = uv_thread_self();
 	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
 
-	uv_mutex_lock(&thread_lock);
-
 	struct thread_list_t *node = NULL;
-	node = thread_list;
+	uv_mutex_lock(&thread_lock);
+	if(thread_list != NULL) {
+		node = thread_list;
+
+		thread_list = thread_list->next;
+
+		if(thread_list != NULL && !uv_is_closing((uv_handle_t *)thread_async_req)) {
+			uv_async_send(thread_async_req);
+		}
+	} else {
+		uv_mutex_unlock(&thread_lock);
+		return;
+	}
+
+	uv_mutex_unlock(&thread_lock);
 
 	if(node != NULL) {
 		if(node->main == 1) {
@@ -148,32 +160,29 @@ static void safe_thread_loop(uv_async_t *handle) {
 		} else {
 			uv_queue_work(uv_default_loop(), node->work_req, node->name, node->work_cb, node->after_work_cb);
 		}
-
-		thread_list = thread_list->next;
 		FREE(node);
 	}
-
-	if(thread_list != NULL) {
-		uv_async_send(thread_async_req);
-	}
-	uv_mutex_unlock(&thread_lock);
 }
 
 void uv_queue_work_s(uv_work_t *req, char *name, int main, uv_work_cb work_cb, uv_after_work_cb after_work_cb) {
-	uv_mutex_lock(&thread_lock);
-
 	struct thread_list_t *node = MALLOC(sizeof(struct thread_list_t));
 	node->name = name;
 	node->work_cb = work_cb;
 	node->work_req = req;
 	node->after_work_cb = after_work_cb;
 	node->main = main;
+
+	uv_mutex_lock(&thread_lock);
+
 	node->next = thread_list;
 	thread_list = node;
 
-	uv_async_send(thread_async_req);
-
 	uv_mutex_unlock(&thread_lock);
+
+	if(!uv_is_closing((uv_handle_t *)thread_async_req)) {
+		uv_async_send(thread_async_req);
+	}
+
 }
 
 static void fib_free(uv_work_t *req, int status) {
@@ -497,15 +506,20 @@ int eventpool_gc(void) {
 		uv_mutex_unlock(&listeners_lock);
 	}
 
-	uv_mutex_lock(&thread_lock);
 	struct thread_list_t *node = NULL;
-	while(thread_list) {
+	while(1) {
+		uv_mutex_lock(&thread_lock);
 		node = thread_list;
+		if(node == NULL) {
+			uv_mutex_unlock(&thread_lock);
+			break;
+		}
 		thread_list = thread_list->next;
+		uv_mutex_unlock(&thread_lock);
+
 		node->after_work_cb(node->work_req, -99);
 		FREE(node);
 	}
-	uv_mutex_unlock(&thread_lock);
 
 	eventpoolinit = 0;
 	return 0;
