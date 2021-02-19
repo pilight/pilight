@@ -33,6 +33,12 @@
 static void timer_callback(uv_timer_t *req);
 static int plua_async_timer_start(lua_State *L);
 static void thread(uv_work_t *req);
+static void plua_async_timer_init(uv_work_t *req);
+#ifdef PILIGHT_UNITTEST
+extern void gc_thread_free(uv_work_t *req, int status);
+#else
+static void gc_thread_free(uv_work_t *req, int status);
+#endif
 
 static void close_cb(uv_handle_t *handle) {
 	/*
@@ -44,17 +50,22 @@ static void close_cb(uv_handle_t *handle) {
 	FREE(handle);
 }
 
-static void thread_free(uv_work_t *req, int status) {
-	if(status == -99) {
-		thread(req);
-	}
+static void init_thread_free(uv_work_t *req, int status) {
 	FREE(req);
 }
 
 static void thread(uv_work_t *req) {
+	/*
+	 * Make sure we execute in the main thread
+	 */
+	const uv_thread_t pth_cur_id = uv_thread_self();
+	assert(uv_thread_equal(&pth_main_id, &pth_cur_id));
+
 	struct lua_timer_t *lua_timer = req->data;
-	if(lua_timer->initialized == 1) {
-		lua_timer->initialized = 0;
+	if(lua_timer->initialized == 0) {
+		plua_async_timer_init((uv_work_t *)thread);
+	}
+	if(__sync_bool_compare_and_swap(&lua_timer->initialized, 1, 3)) {
 		uv_timer_stop(lua_timer->timer_req);
 		if(!uv_is_closing((uv_handle_t *)lua_timer->timer_req)) {
 			uv_close((uv_handle_t *)lua_timer->timer_req, close_cb);
@@ -81,8 +92,17 @@ static void thread(uv_work_t *req) {
 }
 
 #ifdef PILIGHT_UNITTEST
+extern void plua_async_timer_global_gc(void *ptr);
 extern void plua_async_timer_gc(void *ptr);
+extern void gc_thread_free(uv_work_t *req, int status);
 #else
+static void gc_thread_free(uv_work_t *req, int status) {
+	if(status == -99) {
+		thread(req);
+	}
+	FREE(req);
+}
+
 static void plua_async_timer_gc(void *ptr) {
 	struct lua_timer_t *lua_timer = ptr;
 
@@ -94,18 +114,14 @@ static void plua_async_timer_gc(void *ptr) {
 				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			work_req->data = lua_timer;
-			uv_queue_work_s(work_req, "plua_async_timer_gc", 1, thread, thread_free);
+			uv_queue_work_s(work_req, "plua_async_timer_gc", 1, thread, gc_thread_free);
 		} else {
 			lua_timer->running = 0;
 		}
 		assert(x >= 0);
 	}
 }
-#endif
 
-#ifdef PILIGHT_UNITTEST
-extern void plua_async_timer_global_gc(void *ptr);
-#else
 static void plua_async_timer_global_gc(void *ptr) {
 	struct lua_timer_t *lua_timer = ptr;
 	lua_timer->sigterm = 1;
@@ -517,24 +533,31 @@ static void plua_async_timer_async_cb(uv_async_t *handle) {
 	uv_mutex_unlock(&timer->lock);
 }
 
+#ifdef PILIGHT_UNITTEST
+void plua_async_timer_init(uv_work_t *req) {
+#else
 static void plua_async_timer_init(uv_work_t *req) {
+#endif
 	struct lua_timer_t *lua_timer = req->data;
-	if((lua_timer->async_req = MALLOC(sizeof(uv_async_t))) == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-	lua_timer->async_req->data = lua_timer;
-	uv_async_init(uv_default_loop(), lua_timer->async_req, plua_async_timer_async_cb);
+	if(__sync_bool_compare_and_swap(&lua_timer->initialized, 0, 2)) {
+		if((lua_timer->async_req = MALLOC(sizeof(uv_async_t))) == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		lua_timer->async_req->data = lua_timer;
+		uv_async_init(uv_default_loop(), lua_timer->async_req, plua_async_timer_async_cb);
 
-	lua_timer->timer_req = MALLOC(sizeof(uv_timer_t));
-	if(lua_timer->timer_req == NULL) {
-		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-	}
-	lua_timer->timer_req->data = lua_timer;
-	uv_timer_init(uv_default_loop(), lua_timer->timer_req);
+		lua_timer->timer_req = MALLOC(sizeof(uv_timer_t));
+		if(lua_timer->timer_req == NULL) {
+			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+		}
+		lua_timer->timer_req->data = lua_timer;
+		uv_timer_init(uv_default_loop(), lua_timer->timer_req);
 
-	lua_timer->initialized = 1;
-	if(lua_timer->action > 0) {
-		uv_async_send(lua_timer->async_req);
+		while(!__sync_bool_compare_and_swap(&lua_timer->initialized, 2, 1));
+
+		if(lua_timer->action > 0) {
+			uv_async_send(lua_timer->async_req);
+		}
 	}
 }
 
@@ -596,7 +619,7 @@ int plua_async_timer(struct lua_State *L) {
 			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 		}
 		work_req->data = lua_timer;
-		uv_queue_work_s(work_req, "plua_async_timer_init", 1, plua_async_timer_init, thread_free);
+		uv_queue_work_s(work_req, "plua_async_timer_init", 1, plua_async_timer_init, init_thread_free);
 
 		plua_gc_reg(NULL, lua_timer, plua_async_timer_global_gc);
 	}

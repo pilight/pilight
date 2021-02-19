@@ -1147,13 +1147,13 @@ static void test_event_actions_label_run_override(CuTest *tc) {
 
 	uv_thread_join(&pth);
 
+	plua_gc();
 	event_operator_gc();
 	event_action_gc();
 	event_function_gc();
 	protocol_gc();
 	eventpool_gc();
 	storage_gc();
-	plua_gc();
 
 	CuAssertIntEquals(tc, 0, steps);
 	CuAssertIntEquals(tc, 0, xfree());
