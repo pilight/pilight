@@ -98,7 +98,8 @@ typedef struct lua_state_t {
 		int nr;
 		int size;
 		int threadid;
-		uv_mutex_t lock;
+		volatile int claimed;
+//		uv_mutex_t lock;
 	} gc;
 
 	struct {
