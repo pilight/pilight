@@ -46,7 +46,7 @@ static void plua_async_event_gc(void *ptr) {
 	struct lua_event_t *lua_event = ptr;
 
 	if(lua_event != NULL) {
-		int x = 0;
+		int x = 0, i = 0;
 		if((x = atomic_dec(lua_event->ref)) == 0) {
 			plua_metatable_free(lua_event->table);
 			if(lua_event->callback != NULL) {
@@ -386,6 +386,9 @@ static int plua_async_event_set_callback(lua_State *L) {
 
 	if(had_callback == 0 && is_active == 1) {
 		int i = 0;
+		/*
+		 * CHECKME
+		 */
 		plua_gc_unreg(L, event);
 		plua_gc_unreg(event->L, event);
 		atomic_dec(event->ref);
