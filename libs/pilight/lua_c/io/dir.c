@@ -31,9 +31,7 @@
 #include "../io.h"
 
 typedef struct lua_dir_t {
-	struct plua_metatable_t *table;
-	struct plua_module_t *module;
-	lua_State *L;
+	PLUA_INTERFACE_FIELDS
 
 	char *dir;
 
