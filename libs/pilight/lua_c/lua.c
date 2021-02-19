@@ -1703,6 +1703,7 @@ void _plua_clear_state(struct lua_state_t *state, char *file, int line) {
 		state->gc.threadid = -1;
 	}
 
+	while(!__sync_bool_compare_and_swap(&state->gc.claimed, 0, 1));
 	for(i=0;i<state->gc.nr;i++) {
 		x = __sync_val_compare_and_swap1(&state->gc.list[i]->free, state->gc.list[i]->free, 2);
 		while(atomic_dec(state->gc.list[i]->ref) >= 0) {
@@ -1710,13 +1711,9 @@ void _plua_clear_state(struct lua_state_t *state, char *file, int line) {
 				state->gc.list[i]->callback(state->gc.list[i]->ptr);
 			}
 		}
-		FREE(state->gc.list[i]);
-	}
-	if(state->gc.size > 0) {
-		FREE(state->gc.list);
 	}
 	state->gc.nr = 0;
-	state->gc.size = 0;
+	while(!__sync_bool_compare_and_swap(&state->gc.claimed, 1, 0));
 
 	state->oldmod = state->module;
 	if(state->oldmod != NULL) {
@@ -2451,6 +2448,7 @@ void plua_init(void) {
 		// uv_mutex_init(&lua_state[i].lock);
 		// uv_mutex_init(&lua_state[i].gc.lock);
 		lua_state[i].gc.threadid = -1;
+		lua_state[i].gc.claimed = 0;
 
 		lua_State *L = luaL_newstate();
 
@@ -2539,7 +2537,6 @@ void plua_gc_unreg(lua_State *L, void *ptr) {
 	}
 	assert(state != NULL);
 
-	// uv_mutex_lock(&state->gc.lock);
 	if(L != NULL) {
 		__sync_bool_compare_and_swap(&state->gc.threadid, -1, syscall(__NR_gettid));
 		assert(state->gc.threadid == syscall(__NR_gettid));
@@ -2553,20 +2550,19 @@ void plua_gc_unreg(lua_State *L, void *ptr) {
 			while(!__sync_bool_compare_and_swap(&state->gc.claimed, 2, 3));
 			break;
 		}
-
-		assert(state->gc.threadid == syscall(__NR_gettid));
 	}
 
 	int i = 0;
 	for(i=0;i<state->gc.nr;i++) {
 		if(state->gc.list[i] != NULL) {
-			if(state->gc.list[i]->free == 0 &&
-				 state->gc.list[i]->ptr == ptr) {
-				if(atomic_dec(state->gc.list[i]->ref) == 0) {
-					memset(state->gc.list[i], 0, sizeof(**state->gc.list));
-					state->gc.list[i]->free = 1;
+			if(__sync_bool_compare_and_swap(&state->gc.list[i]->free, 0, 2)) {
+				if(state->gc.list[i]->ptr == ptr) {
+					if(atomic_dec(state->gc.list[i]->ref) == 0) {
+						__sync_bool_compare_and_swap(&state->gc.list[i]->free, 2, 1);
+					}
+					break;
 				}
-				break;
+				__sync_bool_compare_and_swap(&state->gc.list[i]->free, 2, 0);
 			}
 		}
 	}
@@ -2591,24 +2587,26 @@ void plua_gc_reg(lua_State *L, void *ptr, void (*callback)(void *ptr)) {
 	}
 	assert(state != NULL);
 
-	// uv_mutex_lock(&state->gc.lock);
-
 	if(L != NULL) {
-		if(state->gc.threadid == -1) {
-			state->gc.threadid = syscall(__NR_gettid);
-		}
-
+		__sync_bool_compare_and_swap(&state->gc.threadid, -1, syscall(__NR_gettid));
 		assert(state->gc.threadid == syscall(__NR_gettid));
 	}
+
+	while(!__sync_bool_compare_and_swap(&state->gc.claimed, 0, 1)) {
+		if(state->gc.claimed == 2) {
+			callback(ptr);
+			return;
+		}
+	}
+
 	int slot = -1, i = 0;
 	for(i=0;i<state->gc.nr;i++) {
 		if(state->gc.list[i]->ptr == ptr && state->gc.list[i]->callback == callback) {
 			atomic_inc(state->gc.list[i]->ref);
-			// uv_mutex_unlock(&state->gc.lock);
+			while(!__sync_bool_compare_and_swap(&state->gc.claimed, 1, 0));
 			return;
 		}
-		if(state->gc.list[i]->free == 1) {
-			state->gc.list[i]->free = 0;
+		if(__sync_bool_compare_and_swap(&state->gc.list[i]->free, 1, 0)) {
 			slot = i;
 			break;
 		}
@@ -2616,15 +2614,15 @@ void plua_gc_reg(lua_State *L, void *ptr, void (*callback)(void *ptr)) {
 
 	if(slot == -1) {
 		if(state->gc.size <= state->gc.nr) {
-			if((state->gc.list = REALLOC(state->gc.list, sizeof(**state->gc.list)*(state->gc.size+12))) == NULL) {
+			if((state->gc.list = REALLOC(state->gc.list, sizeof(*state->gc.list)*(state->gc.size+12))) == NULL) {
 				OUT_OF_MEMORY
 			}
-			memset(&state->gc.list[state->gc.size], 0, sizeof(**state->gc.list)*12);
 			state->gc.size += 12;
-		}
-		if(state->gc.list[state->gc.nr] == NULL) {
-			if((state->gc.list[state->gc.nr] = MALLOC(sizeof(**state->gc.list))) == NULL) {
-				OUT_OF_MEMORY
+
+			for(i=state->gc.nr;i<state->gc.size;i++) {
+				if((state->gc.list[i] = MALLOC(sizeof(**state->gc.list))) == NULL) {
+					OUT_OF_MEMORY
+				}
 			}
 		}
 		slot = state->gc.nr++;
@@ -2636,7 +2634,7 @@ void plua_gc_reg(lua_State *L, void *ptr, void (*callback)(void *ptr)) {
 	state->gc.list[slot]->ptr = ptr;
 	state->gc.list[slot]->callback = callback;
 
-	// uv_mutex_unlock(&state->gc.lock);
+	while(!__sync_bool_compare_and_swap(&state->gc.claimed, 1, 0));
 }
 
 static unsigned int number2bitwise(unsigned int num) {
@@ -3088,6 +3086,7 @@ int plua_gc(void) {
 		_free = 0;
 		for(i=0;i<NRLUASTATES+1;i++) {
 			if(__sync_bool_compare_and_swap(&lua_state[i].claimed, 0, 3)) {
+				while(!__sync_bool_compare_and_swap(&lua_state[i].gc.claimed, 0, 2));
 				for(x=0;x<lua_state[i].gc.nr;x++) {
 					y = __sync_val_compare_and_swap1(&lua_state[i].gc.list[x]->free, lua_state[i].gc.list[x]->free, 2);
 					//__sync_bool_compare_and_swap(&lua_state[i].gc.list[x]->free, lua_state[i].gc.list[x]->free, 3);
@@ -3096,6 +3095,9 @@ int plua_gc(void) {
 							lua_state[i].gc.list[x]->callback(lua_state[i].gc.list[x]->ptr);
 						}
 					}
+					FREE(lua_state[i].gc.list[x]);
+				}
+				for(x=lua_state[i].gc.nr;x<lua_state[i].gc.size;x++) {
 					FREE(lua_state[i].gc.list[x]);
 				}
 				if(lua_state[i].gc.size > 0) {
