@@ -1675,8 +1675,20 @@ struct lua_state_t *plua_get_current_state(lua_State *L) {
 	return NULL;
 }
 
+static int __sync_val_compare_and_swap1(int *ptr, int oldval, int newval) {
+	for(;;) {
+		int success = __sync_bool_compare_and_swap(ptr, oldval, newval);
+		if(success)
+			return oldval;
+		int tmp = *ptr;
+		__sync_synchronize();
+		if(tmp != oldval)
+			return tmp;
+	}
+}
+
 void _plua_clear_state(struct lua_state_t *state, char *file, int line) {
-	int i = 0;
+	int i = 0, x = 0;
 
 	// uv_mutex_lock(&state->gc.lock);
 
@@ -1693,9 +1705,11 @@ void _plua_clear_state(struct lua_state_t *state, char *file, int line) {
 
 	while(!__sync_bool_compare_and_swap(&state->gc.claimed, 0, 1));
 	for(i=0;i<state->gc.nr;i++) {
-		while(!__sync_bool_compare_and_swap(&state->gc.list[i]->free, 0, 2));
+		x = __sync_val_compare_and_swap1(&state->gc.list[i]->free, state->gc.list[i]->free, 2);
 		while(atomic_dec(state->gc.list[i]->ref) >= 0) {
-			state->gc.list[i]->callback(state->gc.list[i]->ptr);
+			if(x == 0) {
+				state->gc.list[i]->callback(state->gc.list[i]->ptr);
+			}
 		}
 	}
 	state->gc.nr = 0;
@@ -2529,8 +2543,12 @@ void plua_gc_unreg(lua_State *L, void *ptr) {
 	}
 
 	while(!__sync_bool_compare_and_swap(&state->gc.claimed, 0, 1)) {
+		/*
+		 * Unreg from within plua_gc
+		 */
 		if(state->gc.claimed == 2) {
-			return;
+			while(!__sync_bool_compare_and_swap(&state->gc.claimed, 2, 3));
+			break;
 		}
 	}
 
@@ -2548,7 +2566,15 @@ void plua_gc_unreg(lua_State *L, void *ptr) {
 			}
 		}
 	}
-	while(!__sync_bool_compare_and_swap(&state->gc.claimed, 1, 0));
+	while(!__sync_bool_compare_and_swap(&state->gc.claimed, 1, 0)) {
+		/*
+		 * Unreg from within plua_gc
+		 */
+		if(state->gc.claimed == 3) {
+			while(!__sync_bool_compare_and_swap(&state->gc.claimed, 3, 2));
+			break;
+		}
+	}
 }
 
 void plua_gc_reg(lua_State *L, void *ptr, void (*callback)(void *ptr)) {
@@ -2603,6 +2629,7 @@ void plua_gc_reg(lua_State *L, void *ptr, void (*callback)(void *ptr)) {
 	}
 	memset(state->gc.list[slot], 0, sizeof(**state->gc.list));
 
+	state->gc.list[slot]->free = 0;
 	state->gc.list[slot]->ref = 1;
 	state->gc.list[slot]->ptr = ptr;
 	state->gc.list[slot]->callback = callback;
@@ -3054,16 +3081,19 @@ int plua_gc(void) {
 		FREE(tmp);
 	}
 
-	int i = 0, x = 0, _free = 1;
+	int i = 0, x = 0, y = 0, _free = 1;
 	while(_free) {
 		_free = 0;
 		for(i=0;i<NRLUASTATES+1;i++) {
 			if(__sync_bool_compare_and_swap(&lua_state[i].claimed, 0, 3)) {
 				while(!__sync_bool_compare_and_swap(&lua_state[i].gc.claimed, 0, 2));
 				for(x=0;x<lua_state[i].gc.nr;x++) {
-					__sync_bool_compare_and_swap(&lua_state[i].gc.list[x]->free, lua_state[i].gc.list[x]->free, 3);
+					y = __sync_val_compare_and_swap1(&lua_state[i].gc.list[x]->free, lua_state[i].gc.list[x]->free, 2);
+					//__sync_bool_compare_and_swap(&lua_state[i].gc.list[x]->free, lua_state[i].gc.list[x]->free, 3);
 					while(atomic_dec(lua_state[i].gc.list[x]->ref) >= 0) {
-						lua_state[i].gc.list[x]->callback(lua_state[i].gc.list[x]->ptr);
+						if(y == 0) {
+							lua_state[i].gc.list[x]->callback(lua_state[i].gc.list[x]->ptr);
+						}
 					}
 					FREE(lua_state[i].gc.list[x]);
 				}

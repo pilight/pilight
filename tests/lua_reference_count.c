@@ -541,8 +541,7 @@ void plua_async_event_gc(void *ptr) {
 					} break;
 				}
 			} break;
-			case 26:
-			case 27: {
+			case 26: {
 				switch(run++) {
 					case 2: {
 						CuAssertTrue(gtc, ptr1 == lua_event);
@@ -566,12 +565,38 @@ void plua_async_event_gc(void *ptr) {
 					} break;
 				}
 			} break;
+			case 27: {
+				switch(run++) {
+					case 2: {
+						CuAssertTrue(gtc, ptr2 == lua_event);
+						CuAssertIntEquals(gtc, lua_event->ref, 1);
+						CuAssertIntEquals(gtc, stopped, 0);
+					} break;
+					case 4: {
+						CuAssertTrue(gtc, ptr1 == lua_event);
+						CuAssertIntEquals(gtc, lua_event->ref, 2);
+						CuAssertIntEquals(gtc, stopped, 0);
+					} break;
+					case 5: {
+						CuAssertTrue(gtc, ptr1 == lua_event);
+						CuAssertIntEquals(gtc, lua_event->ref, 1);
+						CuAssertIntEquals(gtc, stopped, 1);
+					} break;
+				}
+			} break;
 		}
-		int x = 0;
+		// printf("%s: %d %d\n", ((lua_event == ptr1) ? "event" : "event1"), lua_event->ref-1, run-1);
+
+		int x = 0, i = 0;
 		if((x = atomic_dec(lua_event->ref)) == 0) {
 			plua_metatable_free(lua_event->table);
 			if(lua_event->callback != NULL) {
 				FREE(lua_event->callback);
+			}
+			for(i=0;i<REASON_END+10000;i++) {
+				if(lua_event->reasons[i].node != NULL) {
+					eventpool_callback_remove(lua_event->reasons[i].node);
+				}
 			}
 			if(lua_event->sigterm == 1) {
 				lua_event->gc = NULL;
@@ -586,6 +611,7 @@ void plua_async_event_gc(void *ptr) {
 void plua_async_event_global_gc(void *ptr) {
 	struct lua_event_t *lua_event = ptr;
 	lua_event->sigterm = 1;
+
 	plua_async_event_gc(ptr);
 }
 
@@ -597,7 +623,7 @@ static void close_cb(uv_handle_t *handle) {
 
 static void thread(uv_work_t *req);
 
-static void timer_thread_free(uv_work_t *req, int status) {
+static void gc_thread_free(uv_work_t *req, int status) {
 	if(status == -99) {
 		thread(req);
 	}
@@ -606,6 +632,9 @@ static void timer_thread_free(uv_work_t *req, int status) {
 
 static void thread(uv_work_t *req) {
 	struct lua_timer_t *lua_timer = req->data;
+
+	__sync_bool_compare_and_swap(&lua_timer->initialized, 0, 2);
+
 	if(lua_timer->initialized == 1) {
 		lua_timer->initialized = 0;
 		uv_timer_stop(lua_timer->timer_req);
@@ -754,7 +783,7 @@ void plua_async_timer_gc(void *ptr) {
 				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
 			work_req->data = lua_timer;
-			uv_queue_work_s(work_req, "plua_async_timer_gc", 1, thread, timer_thread_free);
+			uv_queue_work_s(work_req, "plua_async_timer_gc", 1, thread, gc_thread_free);
 		} else {
 			lua_timer->running = 0;
 		}
@@ -1212,7 +1241,7 @@ static void test_lua_reference_count_event8(CuTest *tc) {
 
 	test_lua_reference_count(tc, "event8", 500);
 
-	CuAssertIntEquals(tc, 7, run);
+	CuAssertIntEquals(tc, 6, run);
 }
 
 static void test_lua_reference_count_mqtt1(CuTest *tc) {

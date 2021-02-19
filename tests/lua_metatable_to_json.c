@@ -108,6 +108,7 @@ static void test_metatable_to_json(CuTest *tc) {
 		lua_pop(state->L, -1);
 		plua_clear_state(state);
 	}
+	plua_gc();
 
 	run = 0;
 	test = 0;
