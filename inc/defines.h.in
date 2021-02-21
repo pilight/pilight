@@ -52,6 +52,8 @@
 	#define MQTT_ENABLE						1
 #endif
 
+#define TCP_BACKLOG							511 // comparable to apache, nginx, etc.
+
 #define MAX_CLIENTS							30
 #define BUFFER_SIZE							1025
 #define WIRINGX_BUFFER					4096
