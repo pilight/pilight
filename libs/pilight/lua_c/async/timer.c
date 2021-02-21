@@ -82,7 +82,6 @@ static void thread(uv_work_t *req) {
 	if(lua_timer->table != NULL) {
 		plua_metatable_free(lua_timer->table);
 	}
-	plua_gc_unreg(NULL, lua_timer);
 	if(lua_timer->sigterm == 1) {
 		lua_timer->gc = NULL;
 	}
@@ -109,6 +108,7 @@ static void plua_async_timer_gc(void *ptr) {
 	if(lua_timer != NULL) {
 		int x = 0;
 		if((x = atomic_dec(lua_timer->ref)) == 0) {
+			plua_gc_unreg(NULL, lua_timer);
 			uv_work_t *work_req = NULL;
 			if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
 				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
