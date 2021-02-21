@@ -522,7 +522,7 @@ int socket_start(unsigned short port, void (*read_cb)(int, char *, ssize_t, char
 		/*LCOV_EXCL_STOP*/
 	}
 
-	if((listen(sockfd, 0)) < 0) {
+	if((listen(sockfd, TCP_BACKLOG)) < 0) {
 		/*LCOV_EXCL_START*/
 		logprintf(LOG_ERR, "listen: %s", strerror(errno));
 #ifdef _WIN32
