@@ -266,7 +266,7 @@ void test_lua_hardware_tasmota_send_receive(CuTest *tc) {
 	plua_gc();
 	eventpool_gc();
 
-	CuAssertIntEquals(tc, 2, test[0]);
+	CuAssertIntEquals(tc, 1, test[0]);
 	CuAssertIntEquals(tc, 1, test[1]);
 	CuAssertIntEquals(tc, 0, xfree());
 }
