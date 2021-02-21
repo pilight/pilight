@@ -12,18 +12,17 @@
 	4x Sync: 936/936, 1x Head: 468/7956, Logical 0: 468/1872, Logical 1: 468/3744-4212, 1x Tail: 468/15912
 
 	Fanju sensor message format:
-	               1    1    2    2    2    3    3
-	0    4    8    2    6    0    4    8    2    6
+	____ ____ ____ 1___ 1___ 2___ 2___ 2___ 3___ 3___
+	0... 4... 8... 2... 6... 0... 4... 8... 2... 6...
 
 	0010 0001 1000 1100 0110 0101 1000 0011 0101 0010
-	2    1    8    12   6    5    8    3    5    2
 	AAAA AAAA BBBB xyzz CCCC CCCC CCCC DDDD DDDD EEFF
 
 	A = ID
 	B = checksum?
 	B = x 0=scheduled, 1=requested transmission
-		y 0=ok, 1=battery low
-		zz ?
+	    y 0=ok, 1=battery low
+	    zz ?
 	C = temperature in Fahrenheit (binary)
 	D = humidity (BCD format)
 	E = .. ?
@@ -148,9 +147,9 @@ static void parseCode(void) {
 		}
 	}
 	if(checksum != checksum_calc) {
-		logprintf(LOG_ERR, "fanju: parsecode - invalid checksum: %d  calc: %d", checksum, checksum_calc);
+		logprintf(LOG_ERR, "fanju: parsecode - invalid checksum: %d calc: %d", checksum, checksum_calc);
 		return;
-    }
+	}
 
 	struct settings_t *tmp = settings;
 	while(tmp) {
@@ -165,12 +164,12 @@ static void parseCode(void) {
 	humidity += humi_offset;
 
 	if(channel != 4) {
-        fanju->message = json_mkobject();
-        json_append_member(fanju->message, "id", json_mknumber(id, 0));
-        json_append_member(fanju->message, "temperature", json_mknumber(temperature, 1));
-        json_append_member(fanju->message, "humidity", json_mknumber(humidity, 1));
-        json_append_member(fanju->message, "battery", json_mknumber(battery, 0));
-        json_append_member(fanju->message, "channel", json_mknumber(channel, 0));
+		fanju->message = json_mkobject();
+		json_append_member(fanju->message, "id", json_mknumber(id, 0));
+		json_append_member(fanju->message, "temperature", json_mknumber(temperature, 1));
+		json_append_member(fanju->message, "humidity", json_mknumber(humidity, 1));
+		json_append_member(fanju->message, "battery", json_mknumber(battery, 0));
+		json_append_member(fanju->message, "channel", json_mknumber(channel, 0));
 	}
 }
 
@@ -207,8 +206,8 @@ static int checkValues(struct JsonNode *jvalues) {
 
 		if(match == 0) {
 			if((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
-                fprintf(stderr, "out of memory\n");
-                exit(EXIT_FAILURE);
+				fprintf(stderr, "out of memory\n");
+				exit(EXIT_FAILURE);
 			}
 			snode->id = id;
 			snode->humi = 0;
