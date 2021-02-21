@@ -66,9 +66,14 @@ function M.send(obj, reason, data)
 
 	if data['protocol'] == 'shelly1pm' or
 	   data['protocol'] == 'shelly1' or
+	   data['protocol'] == 'shellydimmer2' or
 		 data['protocol'] == 'shellyplug' or
 		 data['protocol'] == 'shellyplug-s' then
-		mqtt.publish("shellies/" .. devs[data['id']]['type'] .. "-" .. data['id'] .. "/relay/0/command", data['state']);
+		if data['protocol'] == 'shellydimmer2' then
+			mqtt.publish("shellies/" .. devs[data['id']]['type'] .. "-" .. data['id'] .. "/light/0/command", data['state']);
+		else
+			mqtt.publish("shellies/" .. devs[data['id']]['type'] .. "-" .. data['id'] .. "/relay/0/command", data['state']);
+		end
 
 		local tmp = devs[data['id']]['state'];
 		devs[data['id']]['state'] = string.lower(data['state']);
@@ -95,10 +100,15 @@ function M.createMessage(data, id)
 		broadcast['message'] = {};
 		if data[id]['type'] == 'shelly1pm' or
 		   data[id]['type'] == 'shelly1' or
+		   data[id]['type'] == 'shellydimmer2' or
 			 data[id]['type'] == 'shellyplug' or
 			 data[id]['type'] == 'shellyplug-s' then
 			broadcast['protocol'] = data[id]['type'];
-			broadcast['message']['state'] = lookup(data[id], 'relay', 0, 'state') or nil;
+			if data[id]['type'] == 'shellydimmer2' then
+				broadcast['message']['state'] = lookup(data[id], 'light', 0, 'state') or nil;
+			else
+				broadcast['message']['state'] = lookup(data[id], 'relay', 0, 'state') or nil;
+			end
 			broadcast['message']['power'] = lookup(data[id], 'relay', 0, 'power') or nil;
 			broadcast['message']['energy'] = lookup(data[id], 'relay', 0, 'energy') or nil;
 			broadcast['message']['overtemperature'] = lookup(data[id], 'overtemperature') or nil;
@@ -113,6 +123,7 @@ function M.createMessage(data, id)
 		 broadcast['message']['id'] ~= nil then
 		 if (broadcast['protocol'] == 'shelly1pm' or
 		     broadcast['protocol'] == 'shelly1' or
+		     broadcast['protocol'] == 'shellydimmer2' or
 		     broadcast['protocol'] == 'shellyplug' or
 		     broadcast['protocol'] == 'shellyplug-s')
 		and
@@ -130,7 +141,7 @@ end
 
 function M.callback(mqtt, data)
 	local tmp = mqtt.getUserdata();
-
+	print(dump(data));
 	if data['type'] == MQTT_CONNACK then
 		mqtt.subscribe("shellies/+/#");
 		mqtt.subscribe("pilight/mqtt/+");
@@ -165,6 +176,18 @@ function M.callback(mqtt, data)
 					end
 					if substr[3] == 'overtemperature' then
 						tmp[id]['overtemperature'] = tonumber(data['message']);
+					end
+					if substr[3] == 'light' then
+						if tmp[id]['light'] == nil then
+							tmp[id]['light'] = {};
+						end
+						if #substr == 4 then
+							if tmp[id]['light'][tonumber(substr[4])] == nil then
+								tmp[id]['light'][tonumber(substr[4])] = {};
+							end
+							tmp[id]['light'][tonumber(substr[4])]['state'] = data['message'];
+							tmp[id]['timer'] = nil;
+						end
 					end
 					if substr[3] == 'relay' then
 						if tmp[id]['relay'] == nil then
