@@ -1,20 +1,10 @@
 /*
-	Copyright (C) 2014 Bram1337 & CurlyMo
-	Copyright (C) 2021 Johan van Oostrum
+  Copyright (C) 2021 CurlyMo
+  Copyright (C) 2021 Johan van Oostrum
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 /* *********************************************************************
@@ -22,18 +12,17 @@
 	4x Sync: 936/936, 1x Head: 468/7956, Logical 0: 468/1872, Logical 1: 468/3744-4212, 1x Tail: 468/15912
 
 	Fanju sensor message format:
-                   1    1    2    2    2    3    3
-    0    4    8    2    6    0    4    8    2    6
+	____ ____ ____ 1___ 1___ 2___ 2___ 2___ 3___ 3___
+	0... 4... 8... 2... 6... 0... 4... 8... 2... 6...
 
-    0010 0001 1000 1100 0110 0101 1000 0011 0101 0010 
-    2    1    8    12   6    5    8    3    5    2   
-    AAAA AAAA BBBB xyzz CCCC CCCC CCCC DDDD DDDD EEFF
-	
+	0010 0001 1000 1100 0110 0101 1000 0011 0101 0010
+	AAAA AAAA BBBB xyzz CCCC CCCC CCCC DDDD DDDD EEFF
+
 	A = ID
 	B = checksum?
 	B = x 0=scheduled, 1=requested transmission
-		y 0=ok, 1=battery low
-		zz ?
+	    y 0=ok, 1=battery low
+	    zz ?
 	C = temperature in Fahrenheit (binary)
 	D = humidity (BCD format)
 	E = .. ?
@@ -83,15 +72,13 @@ typedef struct settings_t {
 static struct settings_t *settings = NULL;
 
 static int validate(void) {
-	if (fanju->rawlen == RAW_LENGTH) {
+	if(fanju->rawlen == RAW_LENGTH) {
 		// TAIL
-		if (fanju->raw[fanju->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		if(fanju->raw[fanju->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   fanju->raw[fanju->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
-			//logprintf(LOG_INFO, "fanju: OK rawlen: %d, pulse[rawlen-1]: %d", fanju->rawlen, fanju->raw[fanju->rawlen-1]);
 			return 0;
 		}
 	}
-	//logprintf(LOG_INFO, "fanju: NOK rawlen: %d, pulse[rawlen-1]: %d", fanju->rawlen, fanju->raw[fanju->rawlen-1]);
 	return -1;
 }
 
@@ -103,14 +90,14 @@ static void parseCode(void) {
 	double humi_offset=0.0, humidity=0.0;
 	int humidity_10;
 
-	if (fanju->rawlen > RAW_LENGTH) {
+	if(fanju->rawlen > RAW_LENGTH) {
 		logprintf(LOG_ERR, "fanju: parsecode - invalid parameter passed %d", fanju->rawlen);
 		return;
 	}
 
 	x = 0;
-	for (i=1; i < fanju->rawlen - 2; i+=2) {
-		if (fanju->raw[i] > AVG_PULSE) {
+	for(i=1; i < fanju->rawlen - 2; i+=2) {
+		if(fanju->raw[i] > AVG_PULSE) {
 			binary[x++] = 1;
 		} else {
 			binary[x++] = 0;
@@ -119,15 +106,10 @@ static void parseCode(void) {
 
 	// 4x SYNC '0' + 1x HEAD '1'
 	header = binToDecRev(binary, 0, 4);
-	if (header != 1) {
+	if(header != 1) {
 		logprintf(LOG_ERR, "fanju: parsecode - invalid header %d", header);
 		return;
 	}
-
-	//DEBUG
-	//for (i=0; i < MSG_LENGTH; i++) {
-	//	logprintf(LOG_INFO, "fanju: raw data[%d]: %d", i, binary[i]);
-	//}
 
 	id = binToDecRev(binary, OFFSET, OFFSET + 7);
 	checksum = binToDecRev(binary, OFFSET + 8, OFFSET + 11);
@@ -142,36 +124,36 @@ static void parseCode(void) {
 
 	// move channel to the checksum position
 	x = 0;
-	for (i=OFFSET + 0; i < OFFSET + 8; i++) {
+	for(i=OFFSET + 0; i < OFFSET + 8; i++) {
 		binary_cpy[x++] = binary[i];
 	}
-	for (i=OFFSET + 36; i < OFFSET + 40; i++) {
+	for(i=OFFSET + 36; i < OFFSET + 40; i++) {
 		binary_cpy[x++] = binary[i];
 	}
-	for (i=OFFSET + 12; i < OFFSET + 36; i++) {
+	for(i=OFFSET + 12; i < OFFSET + 36; i++) {
 		binary_cpy[x++] = binary[i];
 	}
 	// verify checksum
 	mask = 0xC;
 	checksum_calc = 0x0;
-	for (i=0; i < 36; i++) {
-			bit = mask & 0x1;
-			mask >>= 1;
-			if (bit == 0x1) {
-				mask ^= 0x9;
-			}
-			if (binary_cpy[i] == 1) {
-				checksum_calc ^= mask;
-			}
+	for(i=0; i < 36; i++) {
+		bit = mask & 0x1;
+		mask >>= 1;
+		if(bit == 0x1) {
+			mask ^= 0x9;
+		}
+		if(binary_cpy[i] == 1) {
+			checksum_calc ^= mask;
+		}
 	}
-	if (checksum != checksum_calc) {
-		logprintf(LOG_INFO, "fanju: parsecode - invalid checksum: %d  calc: %d", checksum, checksum_calc);
+	if(checksum != checksum_calc) {
+		logprintf(LOG_ERR, "fanju: parsecode - invalid checksum: %d calc: %d", checksum, checksum_calc);
 		return;
-    }
+	}
 
 	struct settings_t *tmp = settings;
-	while (tmp) {
-		if (fabs(tmp->id-id) < EPSILON) {
+	while(tmp) {
+		if(fabs(tmp->id-id) < EPSILON) {
 			humi_offset = tmp->humi;
 			temp_offset = tmp->temp;
 			break;
@@ -181,7 +163,7 @@ static void parseCode(void) {
 	temperature += temp_offset;
 	humidity += humi_offset;
 
-	if (channel != 4) {
+	if(channel != 4) {
 		fanju->message = json_mkobject();
 		json_append_member(fanju->message, "id", json_mknumber(id, 0));
 		json_append_member(fanju->message, "temperature", json_mknumber(temperature, 1));
@@ -194,7 +176,7 @@ static void parseCode(void) {
 static int checkValues(struct JsonNode *jvalues) {
 	struct JsonNode *jid = NULL;
 
-	if ((jid = json_find_member(jvalues, "id"))) {
+	if((jid = json_find_member(jvalues, "id"))) {
 		struct settings_t *snode = NULL;
 		struct JsonNode *jchild = NULL;
 		struct JsonNode *jchild1 = NULL;
@@ -202,10 +184,10 @@ static int checkValues(struct JsonNode *jvalues) {
 		int match = 0;
 
 		jchild = json_first_child(jid);
-		while (jchild) {
+		while(jchild) {
 			jchild1 = json_first_child(jchild);
-			while (jchild1) {
-				if (strcmp(jchild1->key, "id") == 0) {
+			while(jchild1) {
+				if(strcmp(jchild1->key, "id") == 0) {
 					id = jchild1->number_;
 				}
 				jchild1 = jchild1->next;
@@ -214,16 +196,16 @@ static int checkValues(struct JsonNode *jvalues) {
 		}
 
 		struct settings_t *tmp = settings;
-		while (tmp) {
-			if (fabs(tmp->id - id) < EPSILON) {
+		while(tmp) {
+			if(fabs(tmp->id - id) < EPSILON) {
 				match = 1;
 				break;
 			}
 			tmp = tmp->next;
 		}
 
-		if (match == 0) {
-			if ((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
+		if(match == 0) {
+			if((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
 				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
@@ -241,12 +223,12 @@ static int checkValues(struct JsonNode *jvalues) {
 
 static void gc(void) {
 	struct settings_t *tmp = NULL;
-	while (settings) {
+	while(settings) {
 		tmp = settings;
 		settings = settings->next;
 		FREE(tmp);
 	}
-	if (settings != NULL) {
+	if(settings != NULL) {
 		FREE(settings);
 	}
 }
