@@ -141,8 +141,7 @@ int socket_start(unsigned short port) {
 	}
 
 	int x = 0;
-	//try to specify maximum of 3 pending connections for the master socket
-	if((x = listen(socket_server, 3)) < 0) {
+	if((x = listen(socket_server, TCP_BACKLOG)) < 0) {
 		logprintf(LOG_ERR, "failed to listen to socket");
 		exit(EXIT_FAILURE);
 	}
