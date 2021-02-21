@@ -53,8 +53,8 @@ static void plua_async_event_gc(void *ptr) {
 				FREE(lua_event->callback);
 			}
 			for(i=0;i<REASON_END+10000;i++) {
-				if(event->reasons[i].node != NULL) {
-					eventpool_callback_remove(event->reasons[i].node);
+				if(lua_event->reasons[i].node != NULL) {
+					eventpool_callback_remove(lua_event->reasons[i].node);
 				}
 			}
 			if(lua_event->sigterm == 1) {
@@ -390,6 +390,7 @@ static int plua_async_event_set_callback(lua_State *L) {
 		 * CHECKME
 		 */
 		plua_gc_unreg(L, event);
+		plua_gc_unreg(event->L, event);
 		atomic_dec(event->ref);
 		for(i=0;i<REASON_END+10000;i++) {
 			if(event->reasons[i].active == 1) {
