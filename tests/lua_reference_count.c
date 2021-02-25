@@ -347,6 +347,30 @@ void plua_network_mqtt_gc(void *ptr) {
 					} break;
 				}
 			} break;
+			case 35: {
+				switch(run++) {
+					case 1: {
+						CuAssertTrue(gtc, ptr == lua_mqtt);
+						CuAssertIntEquals(gtc, lua_mqtt->ref, 3);
+					} break;
+					case 2: {
+						CuAssertTrue(gtc, ptr == lua_mqtt);
+						CuAssertIntEquals(gtc, lua_mqtt->ref, 2);
+					} break;
+					case 3: {
+						CuAssertTrue(gtc, ptr == lua_mqtt);
+						CuAssertIntEquals(gtc, lua_mqtt->ref, 2);
+					} break;
+					case 4: {
+						CuAssertTrue(gtc, ptr == lua_mqtt);
+						CuAssertIntEquals(gtc, lua_mqtt->ref, 1);
+					} break;
+					case 5: {
+						CuAssertTrue(gtc, ptr == lua_mqtt);
+						CuAssertIntEquals(gtc, lua_mqtt->ref, 0);
+					} break;
+				}
+			} break;
 		}
 		// printf("%s: %d %d\n", ((lua_mqtt == ptr1) ? "mqtt" : "mqtt1"), lua_mqtt->ref-1, run-1);
 		int x = 0;
@@ -1315,6 +1339,21 @@ static void test_lua_reference_count_mqtt5(CuTest *tc) {
 	CuAssertIntEquals(tc, 6, run);
 }
 
+static void test_lua_reference_count_mqtt6(CuTest *tc) {
+	printf("[ %-48s ]\n", __FUNCTION__);
+	fflush(stdout);
+	memtrack();
+
+	test = 35;
+
+	mqtt_activate();
+	mqtt_server(11883);
+
+	test_lua_reference_count(tc, "mqtt4", 750);
+
+	CuAssertIntEquals(tc, 5, run);
+}
+
 CuSuite *suite_lua_reference_count(void) {
 	CuSuite *suite = CuSuiteNew();
 
@@ -1340,6 +1379,7 @@ CuSuite *suite_lua_reference_count(void) {
 	SUITE_ADD_TEST(suite, test_lua_reference_count_mqtt3);
 	SUITE_ADD_TEST(suite, test_lua_reference_count_mqtt4);
 	SUITE_ADD_TEST(suite, test_lua_reference_count_mqtt5);
+	SUITE_ADD_TEST(suite, test_lua_reference_count_mqtt6);
 
 	return suite;
 }

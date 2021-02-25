@@ -624,6 +624,25 @@ static int plua_network_mqtt_connect(lua_State *L) {
 	return 0;
 }
 
+static int plua_network_mqtt_disconnect(lua_State *L) {
+	struct lua_mqtt_t *mqtt = (void *)lua_topointer(L, lua_upvalueindex(1));
+	int args = lua_gettop(L);
+
+	if(args != 0) {
+		pluaL_error(L, "mqtt.connect take no arguments, %d given", lua_gettop(L));
+	}
+
+	if(mqtt->client != NULL) {
+		uv_custom_close(mqtt->client->poll_req);
+
+		atomic_dec(mqtt->ref);
+
+		return 0;
+	}
+
+	return -1;
+}
+
 static int plua_network_mqtt_get_callback(lua_State *L) {
 	struct lua_mqtt_t *mqtt = (void *)lua_topointer(L, lua_upvalueindex(1));
 
@@ -706,6 +725,11 @@ static void plua_network_mqtt_object(lua_State *L, struct lua_mqtt_t *mqtt) {
 	lua_pushstring(L, "connect");
 	lua_pushlightuserdata(L, mqtt);
 	lua_pushcclosure(L, plua_network_mqtt_connect, 1);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "disconnect");
+	lua_pushlightuserdata(L, mqtt);
+	lua_pushcclosure(L, plua_network_mqtt_disconnect, 1);
 	lua_settable(L, -3);
 
 	lua_pushstring(L, "subscribe");
