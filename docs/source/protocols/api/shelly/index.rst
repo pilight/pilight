@@ -8,3 +8,4 @@ Shelly
    shelly1pm
    shellyplug
    shellyplug_s
+   shelly_dimmmer
