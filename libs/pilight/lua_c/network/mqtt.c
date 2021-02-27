@@ -624,23 +624,38 @@ static int plua_network_mqtt_connect(lua_State *L) {
 	return 0;
 }
 
+static void plua_mqtt_disconnect_cb(uv_work_t *req) {
+	struct lua_mqtt_t *mqtt = req->data;
+
+	if(mqtt->client != NULL) {
+		if(!uv_is_closing((const uv_handle_t *)mqtt->client->poll_req)) {
+			uv_custom_close(mqtt->client->poll_req);
+			atomic_dec(mqtt->ref);
+		}
+	}
+}
+
+static void plua_mqtt_disconnect_free(uv_work_t *req, int status) {
+	FREE(req);
+}
+
 static int plua_network_mqtt_disconnect(lua_State *L) {
 	struct lua_mqtt_t *mqtt = (void *)lua_topointer(L, lua_upvalueindex(1));
+
 	int args = lua_gettop(L);
 
 	if(args != 0) {
-		pluaL_error(L, "mqtt.connect take no arguments, %d given", lua_gettop(L));
+		pluaL_error(L, "mqtt.disconnect take no arguments, %d given", lua_gettop(L));
 	}
 
-	if(mqtt->client != NULL) {
-		uv_custom_close(mqtt->client->poll_req);
-
-		atomic_dec(mqtt->ref);
-
-		return 0;
+	uv_work_t *work_req = NULL;
+	if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
+	work_req->data = mqtt;
+	uv_queue_work_s(work_req, "plua_async_timer_init", 1, plua_mqtt_disconnect_cb, plua_mqtt_disconnect_free);
 
-	return -1;
+	return 0;
 }
 
 static int plua_network_mqtt_get_callback(lua_State *L) {
