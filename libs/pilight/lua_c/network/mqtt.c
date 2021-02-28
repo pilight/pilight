@@ -628,19 +628,32 @@ static int plua_network_mqtt_connect(lua_State *L) {
 	return 0;
 }
 
-static void plua_mqtt_disconnect_cb(uv_work_t *req) {
-	struct lua_mqtt_t *mqtt = req->data;
-
-	if(mqtt->client != NULL) {
-		if(!uv_is_closing((const uv_handle_t *)mqtt->client->poll_req)) {
-			uv_custom_close(mqtt->client->poll_req);
-			atomic_dec(mqtt->ref);
-		}
-	}
-}
-
 static void plua_mqtt_disconnect_free(uv_work_t *req, int status) {
 	FREE(req);
+}
+
+static void plua_mqtt_disconnect_cb(uv_work_t *req) {
+	struct lua_mqtt_t *mqtt = req->data;
+	struct iobuf_t *iosend = &mqtt->client->send_iobuf;
+
+	if(mqtt->client != NULL) {
+		uv_mutex_lock(&iosend->lock);
+		if(iosend->len > 0) {
+			uv_mutex_unlock(&iosend->lock);
+			uv_work_t *work_req = NULL;
+			if((work_req = MALLOC(sizeof(uv_work_t))) == NULL) {
+				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+			}
+			work_req->data = mqtt;
+			uv_queue_work_s(work_req, "plua_network_mqtt_disconnect", 1, plua_mqtt_disconnect_cb, plua_mqtt_disconnect_free);
+		} else {
+			uv_mutex_unlock(&iosend->lock);
+			if(!uv_is_closing((const uv_handle_t *)mqtt->client->poll_req)) {
+				uv_custom_close(mqtt->client->poll_req);
+				atomic_dec(mqtt->ref);
+			}
+		}
+	}
 }
 
 static int plua_network_mqtt_disconnect(lua_State *L) {
@@ -657,7 +670,7 @@ static int plua_network_mqtt_disconnect(lua_State *L) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
 	work_req->data = mqtt;
-	uv_queue_work_s(work_req, "plua_async_timer_init", 1, plua_mqtt_disconnect_cb, plua_mqtt_disconnect_free);
+	uv_queue_work_s(work_req, "plua_network_mqtt_disconnect", 1, plua_mqtt_disconnect_cb, plua_mqtt_disconnect_free);
 
 	return 0;
 }
