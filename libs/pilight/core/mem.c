@@ -16,7 +16,7 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#if defined(DEBUG) && !defined(__mips__) && !defined(__aarch64__)
+#if defined(DEBUG) && !defined(__mips__) && !defined(__aarch64__) && !defined(_WIN32)
 
 #ifdef _MSC_VER
 	#define _CRT_SECURE_NO_DEPRECATE
@@ -32,16 +32,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
-#ifndef _WIN32
-	#ifdef __mips__
-		#define __USE_UNIX98
-	#endif
-	#include <unistd.h>
-	#include <pthread.h>
-#else
-	#include <windows.h>
-	#define strdup(a) _strdup(a)
+#ifdef __mips__
+	#define __USE_UNIX98
 #endif
+#include <unistd.h>
+#include <pthread.h>
 #include <mbedtls/md5.h>
 
 #include "mem.h"
@@ -50,15 +45,9 @@
 #define MAX_SIZE 64
 
 static unsigned short memdbg = 0;
-static int lockinit = 0;
 static unsigned long openallocs = 0;
 static unsigned long totalnrallocs = 0;
-#ifdef _WIN32
-	HANDLE lock;
-#else
-	static pthread_mutex_t lock;
-	static pthread_mutexattr_t attr;
-#endif
+static volatile int lock;
 
 struct mallocs_t {
 	void *p;
@@ -87,17 +76,6 @@ void heaptrack(void) {
 
 	if(unw_set_caching_policy(unw_local_addr_space, UNW_CACHE_PER_THREAD)) {
 		fprintf(stderr, "WARNING: Failed to enable per-thread libunwind caching.\n");
-	}
-
-	if(lockinit == 0) {
-		lockinit = 1;
-#ifdef _WIN32
-		lock = CreateMutex(NULL, FALSE, NULL);
-#else
-		pthread_mutexattr_init(&attr);
-		pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-		pthread_mutex_init(&lock, &attr);
-#endif
 	}
 }
 
@@ -130,11 +108,7 @@ int compare(const void *c, const void *d) {
 
 int memanalyze(void) {
 	if(memdbg == 1) {
-#ifdef _WIN32
-		DWORD dwWaitResult = WaitForSingleObject(lock, INFINITE);
-#else
-		pthread_mutex_lock(&lock);
-#endif
+		while(!__sync_bool_compare_and_swap(&lock, 0, 1));
 
 		FILE *fp = NULL;
 		char buffer[255];
@@ -230,11 +204,8 @@ int memanalyze(void) {
 		}
 		free(summary);
 		fclose(fp);
-#ifdef _WIN32
-		ReleaseMutex(lock);
-#else
-		pthread_mutex_unlock(&lock);
-#endif
+
+		while(!__sync_bool_compare_and_swap(&lock, 1, 0));
 
 		totalnrallocs = 0;
 	}
@@ -250,13 +221,9 @@ void *__malloc(unsigned long a, const char *file, int line) {
 			memanalyze();
 			exit(EXIT_FAILURE);
 		}
-#ifdef _WIN32
-		InterlockedIncrement(&openallocs);
-		InterlockedIncrement(&totalnrallocs);
-#else
+
 		__sync_add_and_fetch(&openallocs, 1);
 		__sync_add_and_fetch(&totalnrallocs, 1);
-#endif
 
 		node->btsize = unw_backtrace(node->backtrace, MAX_SIZE);
 
@@ -264,18 +231,10 @@ void *__malloc(unsigned long a, const char *file, int line) {
 		node->line = line;
 		strcpy(node->file, file);
 
-#ifdef _WIN32
-		DWORD dwWaitResult = WaitForSingleObject(lock, INFINITE);
-#else
-		pthread_mutex_lock(&lock);
-#endif
+		while(!__sync_bool_compare_and_swap(&lock, 0, 1));
 		node->next = mallocs;
 		mallocs = node;
-#ifdef _WIN32
-		ReleaseMutex(lock);
-#else
-		pthread_mutex_unlock(&lock);
-#endif
+		while(!__sync_bool_compare_and_swap(&lock, 1, 0));
 
 		return node->p;
 	} else {
@@ -297,11 +256,7 @@ void *__realloc(void *a, unsigned long b, const char *file, int line) {
 		if(a == NULL) {
 			return __malloc(b, file, line);
 		} else {
-#ifdef _WIN32
-			DWORD dwWaitResult = WaitForSingleObject(lock, INFINITE);
-#else
-			pthread_mutex_lock(&lock);
-#endif
+			while(!__sync_bool_compare_and_swap(&lock, 0, 1));
 			struct mallocs_t *tmp = mallocs;
 			while(tmp) {
 				if(tmp->p == a) {
@@ -310,11 +265,7 @@ void *__realloc(void *a, unsigned long b, const char *file, int line) {
 					tmp->size = b;
 					if((a = realloc(a, b)) == NULL) {
 						fprintf(stderr, "out of memory in %s at line #%d\n", file, line);
-#ifdef _WIN32
-						ReleaseMutex(lock);
-#else
-						pthread_mutex_unlock(&lock);
-#endif
+						while(!__sync_bool_compare_and_swap(&lock, 1, 0));
 						memanalyze();
 						exit(EXIT_FAILURE);
 					}
@@ -325,11 +276,7 @@ void *__realloc(void *a, unsigned long b, const char *file, int line) {
 				}
 				tmp = tmp->next;
 			}
-#ifdef _WIN32
-			ReleaseMutex(lock);
-#else
-			pthread_mutex_unlock(&lock);
-#endif
+			while(!__sync_bool_compare_and_swap(&lock, 1, 0));
 			if(tmp == NULL) {
 				fprintf(stderr, "ERROR: calling realloc on an unknown pointer in %s at line #%d\n", file, line);
 				return __malloc(b, file, line);
@@ -353,13 +300,8 @@ void *__calloc(unsigned long a, unsigned long b, const char *file, int line) {
 			memanalyze();
 			exit(EXIT_FAILURE);
 		}
-#ifdef _WIN32
-		InterlockedIncrement(&openallocs);
-		InterlockedIncrement(&totalnrallocs);
-#else
 		__sync_add_and_fetch(&openallocs, 1);
 		__sync_add_and_fetch(&totalnrallocs, 1);
-#endif
 
 		memset(node->p, '\0', a*b);
 		node->btsize = unw_backtrace(node->backtrace, MAX_SIZE);
@@ -367,18 +309,10 @@ void *__calloc(unsigned long a, unsigned long b, const char *file, int line) {
 		node->line = line;
 		strcpy(node->file, file);
 
-#ifdef _WIN32
-		DWORD dwWaitResult = WaitForSingleObject(lock, INFINITE);
-#else
-		pthread_mutex_lock(&lock);
-#endif
+		while(!__sync_bool_compare_and_swap(&lock, 0, 1));
 		node->next = mallocs;
 		mallocs = node;
-#ifdef _WIN32
-		ReleaseMutex(lock);
-#else
-		pthread_mutex_unlock(&lock);
-#endif
+		while(!__sync_bool_compare_and_swap(&lock, 1, 0));
 
 		return node->p;
 	} else {
@@ -391,11 +325,7 @@ void __free(void *a, const char *file, int line) {
 		if(a == NULL) {
 			fprintf(stderr, "WARNING: calling free on already freed pointer in %s at line #%d\n", file, line);
 		} else {
-#ifdef _WIN32
-			DWORD dwWaitResult = WaitForSingleObject(lock, INFINITE);
-#else
-			pthread_mutex_lock(&lock);
-#endif
+			while(!__sync_bool_compare_and_swap(&lock, 0, 1));
 			struct mallocs_t *currP, *prevP;
 			int match = 0;
 
@@ -415,13 +345,9 @@ void __free(void *a, const char *file, int line) {
 					break;
 				}
 			}
-#ifdef _WIN32
-			ReleaseMutex(lock);
-			InterlockedDecrement(&openallocs);
-#else
+
 			__sync_add_and_fetch(&openallocs, -1);
-			pthread_mutex_unlock(&lock);
-#endif
+			while(!__sync_bool_compare_and_swap(&lock, 1, 0));
 
 			if(match == 0) {
 				free(a);
