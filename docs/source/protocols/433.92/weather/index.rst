@@ -11,6 +11,7 @@ Weather Stations
    auriol_h13726
    conrad
    dostmann
+   fanju
    hama_ews1500
    iboutique
    kaku
