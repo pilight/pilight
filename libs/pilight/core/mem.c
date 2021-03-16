@@ -108,7 +108,7 @@ int compare(const void *c, const void *d) {
 
 int memanalyze(void) {
 	if(memdbg == 1) {
-		while(!__sync_bool_compare_and_swap(&lock, 0, 1));
+		while(!__sync_bool_compare_and_swap(&lock, 0, 1)) { usleep(1); }
 
 		FILE *fp = NULL;
 		char buffer[255];
@@ -205,7 +205,7 @@ int memanalyze(void) {
 		free(summary);
 		fclose(fp);
 
-		while(!__sync_bool_compare_and_swap(&lock, 1, 0));
+		while(!__sync_bool_compare_and_swap(&lock, 1, 0)) { usleep(1); }
 
 		totalnrallocs = 0;
 	}
@@ -231,10 +231,10 @@ void *__malloc(unsigned long a, const char *file, int line) {
 		node->line = line;
 		strcpy(node->file, file);
 
-		while(!__sync_bool_compare_and_swap(&lock, 0, 1));
+		while(!__sync_bool_compare_and_swap(&lock, 0, 1)) { usleep(1); };
 		node->next = mallocs;
 		mallocs = node;
-		while(!__sync_bool_compare_and_swap(&lock, 1, 0));
+		while(!__sync_bool_compare_and_swap(&lock, 1, 0)) { usleep(1); }
 
 		return node->p;
 	} else {
@@ -256,7 +256,7 @@ void *__realloc(void *a, unsigned long b, const char *file, int line) {
 		if(a == NULL) {
 			return __malloc(b, file, line);
 		} else {
-			while(!__sync_bool_compare_and_swap(&lock, 0, 1));
+			while(!__sync_bool_compare_and_swap(&lock, 0, 1)) { usleep(1); }
 			struct mallocs_t *tmp = mallocs;
 			while(tmp) {
 				if(tmp->p == a) {
@@ -265,7 +265,7 @@ void *__realloc(void *a, unsigned long b, const char *file, int line) {
 					tmp->size = b;
 					if((a = realloc(a, b)) == NULL) {
 						fprintf(stderr, "out of memory in %s at line #%d\n", file, line);
-						while(!__sync_bool_compare_and_swap(&lock, 1, 0));
+						while(!__sync_bool_compare_and_swap(&lock, 1, 0)) { usleep(1); }
 						memanalyze();
 						exit(EXIT_FAILURE);
 					}
@@ -309,10 +309,10 @@ void *__calloc(unsigned long a, unsigned long b, const char *file, int line) {
 		node->line = line;
 		strcpy(node->file, file);
 
-		while(!__sync_bool_compare_and_swap(&lock, 0, 1));
+		while(!__sync_bool_compare_and_swap(&lock, 0, 1)) { usleep(1); }
 		node->next = mallocs;
 		mallocs = node;
-		while(!__sync_bool_compare_and_swap(&lock, 1, 0));
+		while(!__sync_bool_compare_and_swap(&lock, 1, 0)) { usleep(1); }
 
 		return node->p;
 	} else {
@@ -325,7 +325,7 @@ void __free(void *a, const char *file, int line) {
 		if(a == NULL) {
 			fprintf(stderr, "WARNING: calling free on already freed pointer in %s at line #%d\n", file, line);
 		} else {
-			while(!__sync_bool_compare_and_swap(&lock, 0, 1));
+			while(!__sync_bool_compare_and_swap(&lock, 0, 1)) { usleep(1); }
 			struct mallocs_t *currP, *prevP;
 			int match = 0;
 
@@ -347,7 +347,7 @@ void __free(void *a, const char *file, int line) {
 			}
 
 			__sync_add_and_fetch(&openallocs, -1);
-			while(!__sync_bool_compare_and_swap(&lock, 1, 0));
+			while(!__sync_bool_compare_and_swap(&lock, 1, 0)) { usleep(1); }
 
 			if(match == 0) {
 				free(a);
