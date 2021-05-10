@@ -8,6 +8,9 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	add_subdirectory(libuv)
 	set(${PROJECT_NAME}_files ${${PROJECT_NAME}_files} ${libuv_files} CACHE INTERNAL "")
 
+	add_subdirectory(backtrace)
+	set(${PROJECT_NAME}_files ${${PROJECT_NAME}_files} ${backtrace_files} CACHE INTERNAL "")
+
 	add_subdirectory(avrdude)
 	set(${PROJECT_NAME}_files ${${PROJECT_NAME}_files} ${avrdude_files} CACHE INTERNAL "")
 

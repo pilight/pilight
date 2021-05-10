@@ -9,6 +9,9 @@
 #ifndef _MEM_H_
 #define _MEM_H_
 
+#include "../backtrace/backtrace.h"
+#include "../backtrace/backtrace-supported.h"
+
 #define OUT_OF_MEMORY fprintf(stderr, "out of memory in %s #%d\n", __FILE__, __LINE__),exit(EXIT_FAILURE);
 
 #ifdef __GNUC__
@@ -23,6 +26,8 @@
 
 int memanalyze(void);
 void heaptrack(void);
+
+extern struct backtrace_state *btstate;
 
 void *__malloc(unsigned long, const char *, int);
 void *__realloc(void *, unsigned long, const char *, int);

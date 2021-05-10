@@ -39,10 +39,15 @@
 #include <pthread.h>
 #include <mbedtls/md5.h>
 
+#include "../backtrace/backtrace.h"
+#include "../backtrace/backtrace-supported.h"
+
 #include "mem.h"
 #include "log.h"
 
 #define MAX_SIZE 64
+
+struct backtrace_state *btstate;
 
 static unsigned short memdbg = 0;
 static unsigned long openallocs = 0;
@@ -55,7 +60,11 @@ struct mallocs_t {
 	int line;
 	char file[255];
 
-	void *backtrace[MAX_SIZE];
+	struct {
+		char filename[255];
+		char function[255];
+		int lineno;
+	} backtrace[MAX_SIZE];
 	int btsize;
 
 	struct mallocs_t *next;
@@ -70,6 +79,25 @@ struct summary_t {
 } summary_t;
 
 static struct mallocs_t *mallocs = NULL;
+
+static int full_callback(void *data, uintptr_t pc, const char *filename, int lineno, const char *function) {
+	struct mallocs_t *node = data;
+	if(node->btsize < MAX_SIZE && function != NULL && strcmp(function, "main") != 0) {
+		if(filename != NULL) {
+			strcpy(node->backtrace[node->btsize].filename, (char *)filename);
+		} else {
+			strcpy(node->backtrace[node->btsize].filename, (char *)"?");
+		}
+		if(function != NULL) {
+			strcpy(node->backtrace[node->btsize].function, (char *)function);
+		} else {
+			strcpy(node->backtrace[node->btsize].function, (char *)"?");
+		}
+		node->backtrace[node->btsize].lineno = lineno;
+		node->btsize++;
+	}
+	return 0;
+}
 
 void heaptrack(void) {
 	memdbg = 1;
@@ -183,21 +211,8 @@ int memanalyze(void) {
 		for(x=0;x<sumlen;x++) {
 			if(summary[x]->calls > 0) {
 				fprintf(fp, "%d calls in %s at line #%d allocated %d bytes\n", summary[x]->calls, summary[x]->mallocs->file, summary[x]->mallocs->line, summary[x]->allocs);
-
 				for(i=0;i<summary[x]->mallocs->btsize;i++) {
-					Dl_info info;
-
-					void *const addr = (void *)summary[x]->mallocs->backtrace[i];
-					if(dladdr(addr, &info) != 0 && info.dli_fname != NULL) {
-						if((info.dli_sname != NULL && strstr(info.dli_sname, "main") != NULL) || i > 10) {
-							break;
-						}
-						if(info.dli_sname != NULL) {
-							fprintf(fp, "%.*s [%s] %s\n", i, spaces, info.dli_fname, info.dli_sname);
-						} else {
-							fprintf(fp, "%.*s [%s] %s\n", i, spaces, info.dli_fname, "<unknown>");
-						}
-					}
+					fprintf(fp, "%.*s [%s] %s:%d\n", i, spaces, summary[x]->mallocs->backtrace[i].function, summary[x]->mallocs->backtrace[i].filename, summary[x]->mallocs->backtrace[i].lineno);
 				}
 			}
 			free(summary[x]);
@@ -224,9 +239,8 @@ void *__malloc(unsigned long a, const char *file, int line) {
 
 		__sync_add_and_fetch(&openallocs, 1);
 		__sync_add_and_fetch(&totalnrallocs, 1);
-
-		node->btsize = unw_backtrace(node->backtrace, MAX_SIZE);
-
+		node->btsize = 0;
+		backtrace_full(btstate, 0, full_callback, NULL, node);
 		node->size = a;
 		node->line = line;
 		strcpy(node->file, file);
@@ -270,7 +284,7 @@ void *__realloc(void *a, unsigned long b, const char *file, int line) {
 						exit(EXIT_FAILURE);
 					}
 					tmp->p = a;
-					tmp->btsize = unw_backtrace(tmp->backtrace, MAX_SIZE);
+					backtrace_full(btstate, 0, full_callback, NULL, tmp);
 
 					break;
 				}
@@ -304,7 +318,8 @@ void *__calloc(unsigned long a, unsigned long b, const char *file, int line) {
 		__sync_add_and_fetch(&totalnrallocs, 1);
 
 		memset(node->p, '\0', a*b);
-		node->btsize = unw_backtrace(node->backtrace, MAX_SIZE);
+		node->btsize = 0;
+		backtrace_full(btstate, 0, full_callback, NULL, node);
 		node->size = a*b;
 		node->line = line;
 		strcpy(node->file, file);
