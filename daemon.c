@@ -3514,23 +3514,23 @@ int start_pilight(int argc, char **argv) {
 #endif
 
 	{
-		int mingaplen = 5100, maxgaplen = 10000, minrawlen = 1000, maxrawlen = 0;
+		double mingaplen = 5100, maxgaplen = 10000, minrawlen = 1000, maxrawlen = 0;
 		int hasmingaplen = 0, hasmaxgaplen = 0, hasminrawlen = 0, hasmaxrawlen = 0;
 
 		struct plua_metatable_t *table = config_get_metatable();
-		if(plua_metatable_get_number(table, "registry.hardware.RF433.mingaplen", (double *)&mingaplen) == 0) {
+		if(plua_metatable_get_number(table, "registry.hardware.RF433.mingaplen", &mingaplen) == 0) {
 			hasmingaplen = 1;
 			mingaplen = 5100;
 		}
-		if(plua_metatable_get_number(table, "registry.hardware.RF433.maxgaplen", (double *)&maxgaplen) == 0) {
+		if(plua_metatable_get_number(table, "registry.hardware.RF433.maxgaplen", &maxgaplen) == 0) {
 			hasmaxgaplen = 1;
 			maxgaplen = 10000;
 		}
-		if(plua_metatable_get_number(table, "registry.hardware.RF433.minrawlen", (double *)&minrawlen) == 0) {
+		if(plua_metatable_get_number(table, "registry.hardware.RF433.minrawlen", &minrawlen) == 0) {
 			hasminrawlen = 1;
 			minrawlen = 1000;
 		}
-		if(plua_metatable_get_number(table, "registry.hardware.RF433.maxrawlen", (double *)&maxrawlen) == 0) {
+		if(plua_metatable_get_number(table, "registry.hardware.RF433.maxrawlen", &maxrawlen) == 0) {
 			hasmaxrawlen = 1;
 			maxrawlen = 0;
 		}
