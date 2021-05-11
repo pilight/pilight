@@ -1241,38 +1241,38 @@ static void *broadcast(int reason, void *param, void *userdata) {
 	if((node->out = MALLOC(1024)) == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
-
+	memset(node->out, 0, 1024);
 	int i = 0;
 	switch(reason) {
 		case REASON_CONFIG_UPDATE: {
 			struct reason_config_update_t *data = param;
-			node->len += snprintf(node->out, 1024,
+			node->len += snprintf(node->out, 1023,
 				"{\"origin\":\"update\",\"type\":%d,\"devices\":[",
 				data->type
 			);
 			for(i=0;i<data->nrdev;i++) {
-				node->len += snprintf(&node->out[node->len], 1024-node->len, "\"%s\",", data->devices[i]);
+				node->len += snprintf(&node->out[node->len], 1023-node->len, "\"%s\",", data->devices[i]);
 			}
-			node->len += snprintf(&node->out[node->len-1], 1024-node->len, "],\"values\":{");
+			node->len += snprintf(&node->out[node->len-1], 1023-node->len, "],\"values\":{");
 			node->len -= 1;
 			for(i=0;i<data->nrval;i++) {
 				if(data->values[i].type == JSON_NUMBER) {
-					node->len += snprintf(&node->out[node->len], 1024-node->len,
+					node->len += snprintf(&node->out[node->len], 1023-node->len,
 						"\"%s\":%.*f,",
 						data->values[i].name, data->values[i].decimals, data->values[i].number_
 					);
 				} else if(data->values[i].type == JSON_STRING) {
-					node->len += snprintf(&node->out[node->len], 1024-node->len,
+					node->len += snprintf(&node->out[node->len], 1023-node->len,
 						"\"%s\":\"%s\",",
 						data->values[i].name, data->values[i].string_
 					);
 				}
 			}
-			node->len += snprintf(&node->out[node->len-1], 1024-node->len, "}}");
+			node->len += snprintf(&node->out[node->len-1], 1023-node->len, "}}");
 			node->len -= 1;
 		} break;
 		case REASON_BROADCAST_CORE:
-			strncpy(node->out, (char *)param, 1024);
+			strncpy(node->out, (char *)param, 1023);
 			node->len = strlen(node->out);
 		break;
 		default:
