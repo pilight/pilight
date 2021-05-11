@@ -822,11 +822,9 @@ int mqtt_subscribe(struct mqtt_client_t *client, char *topic, int qos) {
 		struct mqtt_pkt_t pkt;
 		unsigned char *buf = NULL;
 		unsigned int len = 0;
+		client->msgid = (client->msgid + 1) % 1024;
 
-		mqtt_pkt_subscribe(&pkt, topic, client->msgid++, qos);
-		if(client->msgid > 1024) {
-			client->msgid = 0;
-		}
+		mqtt_pkt_subscribe(&pkt, topic, client->msgid, qos);
 		if(mqtt_encode(&pkt, &buf, &len) == 0) {
 			iobuf_append(&client->send_iobuf, (void *)buf, len);
 			FREE(buf);
@@ -846,9 +844,6 @@ int mqtt_pubrec(struct mqtt_client_t *client, int msgid) {
 		unsigned int len = 0;
 
 		mqtt_pkt_pubrec(&pkt, msgid);
-		if(client->msgid > 1024) {
-			client->msgid = 0;
-		}
 
 		if(mqtt_encode(&pkt, &buf, &len) == 0) {
 			iobuf_append(&client->send_iobuf, (void *)buf, len);
@@ -869,9 +864,6 @@ int mqtt_pubrel(struct mqtt_client_t *client, int msgid) {
 		unsigned int len = 0;
 
 		mqtt_pkt_pubrel(&pkt, msgid);
-		if(client->msgid > 1024) {
-			client->msgid = 0;
-		}
 
 		if(mqtt_encode(&pkt, &buf, &len) == 0) {
 			iobuf_append(&client->send_iobuf, (void *)buf, len);
@@ -892,9 +884,6 @@ int mqtt_pubcomp(struct mqtt_client_t *client, int msgid) {
 		unsigned int len = 0;
 
 		mqtt_pkt_pubcomp(&pkt, msgid);
-		if(client->msgid > 1024) {
-			client->msgid = 0;
-		}
 
 		if(mqtt_encode(&pkt, &buf, &len) == 0) {
 			iobuf_append(&client->send_iobuf, (void *)buf, len);
@@ -915,9 +904,6 @@ int mqtt_puback(struct mqtt_client_t *client, int msgid) {
 		unsigned int len = 0;
 
 		mqtt_pkt_puback(&pkt, msgid);
-		if(client->msgid > 1024) {
-			client->msgid = 0;
-		}
 
 		if(mqtt_encode(&pkt, &buf, &len) == 0) {
 			iobuf_append(&client->send_iobuf, (void *)buf, len);
@@ -1011,12 +997,12 @@ int mqtt_publish(struct mqtt_client_t *client, int dub, int qos, int retain, cha
 		struct mqtt_pkt_t pkt;
 		unsigned char *buf = NULL;
 		unsigned int len = 0;
-		int msgid = client->msgid++;
+		client->msgid = (client->msgid + 1) % 1024;
 
-		mqtt_pkt_publish(&pkt, dub, qos, retain, topic, msgid, payload);
+		mqtt_pkt_publish(&pkt, dub, qos, retain, topic, client->msgid, payload);
 
 		if(qos > 0) {
-			struct mqtt_message_t *message = &client->messages[msgid];
+			struct mqtt_message_t *message = &client->messages[client->msgid];
 
 			if((message->payload = STRDUP(payload)) == NULL) {
 				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
@@ -1024,7 +1010,7 @@ int mqtt_publish(struct mqtt_client_t *client, int dub, int qos, int retain, cha
 			if((message->topic = STRDUP(topic)) == NULL) {
 				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
-			message->msgid = msgid;
+			message->msgid = client->msgid;
 			message->qos = qos;
 			if(qos == 1) {
 				message->step = MQTT_PUBACK;
@@ -1045,10 +1031,6 @@ int mqtt_publish(struct mqtt_client_t *client, int dub, int qos, int retain, cha
 #else
 			uv_timer_start(message->timer_req, (void (*)(uv_timer_t *))mqtt_message_resend, 3000, 3000);
 #endif
-		}
-
-		if(client->msgid > 1024) {
-			client->msgid = 0;
 		}
 
 		if(mqtt_encode(&pkt, &buf, &len) == 0) {
