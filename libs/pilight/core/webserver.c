@@ -132,7 +132,9 @@ enum {
 };
 
 typedef struct webserver_clients_t {
-	uv_poll_t *req;
+	uv_poll_t *poll_req;
+	uv_timer_t *timer_req;
+
 	int is_websocket;
 
 	struct webserver_clients_t *next;
@@ -184,7 +186,7 @@ int webserver_gc(void) {
 	{
 		while(webserver_clients) {
 			node = webserver_clients->next;
-			poll_close_cb(webserver_clients->req);
+			poll_close_cb(webserver_clients->poll_req);
 			webserver_clients = node;
 		}
 	}
@@ -632,6 +634,7 @@ static int parse_rest(uv_poll_t *req) {
 // #endif
 								char *z = "{\"message\":\"failed\",\"error\":\"device does not exist\"}";
 								send_data(req, "application/json", z, strlen(z));
+								FREE(decoded);
 								goto clear;
 							}
 						} else if(strncmp(array1[0], "values", 6) == 0) {
@@ -639,6 +642,7 @@ static int parse_rest(uv_poll_t *req) {
 							if(sscanf(array1[0], "values[%254[a-z]]", ptr) != 1) {
 								char *z = "{\"message\":\"failed\",\"error\":\"values should be passed like this \'values[dimlevel]=10\'\"}";
 								send_data(req, "application/json", z, strlen(z));
+								FREE(decoded);
 								goto clear;
 							} else {
 								if(isNumeric(array1[1]) == 0) {
@@ -658,6 +662,7 @@ static int parse_rest(uv_poll_t *req) {
 					if(has_protocol == 0) {
 						char *z = "{\"message\":\"failed\",\"error\":\"no protocol was sent\"}";
 						send_data(req, "application/json", z, strlen(z));
+						FREE(decoded);
 						goto clear;
 					}
 					if(pilight.send != NULL) {
@@ -667,6 +672,7 @@ static int parse_rest(uv_poll_t *req) {
 						if(pilight.send(jobject, ORIGIN_WEBSERVER) == 0) {
 							char *z = "{\"message\":\"success\"}";
 							send_data(req, "application/json", z, strlen(z));
+							FREE(decoded);
 							goto clear;
 						}
 					}
@@ -675,6 +681,7 @@ static int parse_rest(uv_poll_t *req) {
 						if(dev == NULL) {
 							char *z = "{\"message\":\"failed\",\"error\":\"no device was sent\"}";
 							send_data(req, "application/json", z, strlen(z));
+							FREE(decoded);
 							goto clear;
 						} else {
 							if(strlen(state) > 0) {
@@ -683,6 +690,7 @@ static int parse_rest(uv_poll_t *req) {
 							if(pilight.control(dev, p, json_first_child(jvalues), ORIGIN_WEBSERVER) == 0) {
 								char *z = "{\"message\":\"success\"}";
 								send_data(req, "application/json", z, strlen(z));
+								FREE(decoded);
 								goto clear;
 							}
 						}
@@ -1027,7 +1035,7 @@ static int request_handler(uv_poll_t *req) {
 						sprintf(conn->request, "%s/%s", root, conn->uri);
 				} else {
 					if(conn->uri[0] == '/')
-						sprintf(conn->request, "%s/%s", root, conn->uri);
+						sprintf(conn->request, "%s%s", root, conn->uri);
 					else
 						sprintf(conn->request, "%s/%s", root, conn->uri);
 				}
@@ -1069,8 +1077,8 @@ static int request_handler(uv_poll_t *req) {
 				} else {
 					strcpy(conn->mimetype, "text/plain");
 				}
+				FREE(ext);
 			}
-			FREE(ext);
 
 			memset(buffer, '\0', 4096);
 			p = buffer;
@@ -1133,30 +1141,32 @@ static int request_handler(uv_poll_t *req) {
 			return MG_MORE;
 		}
 	} else if(websockets == WEBGUI_WEBSOCKETS) {
-		char *input = MALLOC(conn->content_len+1);
-		if(input == NULL) {
-			OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-		}
-		memset(input, '\0', conn->content_len+1);
-
-		strncpy(input, conn->content, conn->content_len);
-		input[conn->content_len] = '\0';
-
-		if(json_validate(input) == true) {
-			struct reason_socket_received_t *data = MALLOC(sizeof(struct reason_socket_received_t));
-			if(data == NULL) {
+		if(conn->content_len > 0) {
+			char *input = MALLOC(conn->content_len+1);
+			if(input == NULL) {
 				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 			}
-			data->fd = conn->fd;
-			if((data->buffer = MALLOC(strlen(input)+1)) == NULL) {
-				OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
-			}
-			strcpy(data->buffer, input);
-			strcpy(data->type, "websocket");
+			memset(input, '\0', conn->content_len+1);
 
-			eventpool_trigger(REASON_SOCKET_RECEIVED, reason_socket_received_free, data);
+			strncpy(input, conn->content, conn->content_len);
+			input[conn->content_len] = '\0';
+
+			if(json_validate(input) == true) {
+				struct reason_socket_received_t *data = MALLOC(sizeof(struct reason_socket_received_t));
+				if(data == NULL) {
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+				}
+				data->fd = conn->fd;
+				if((data->buffer = MALLOC(strlen(input)+1)) == NULL) {
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+				}
+				strcpy(data->buffer, input);
+				strcpy(data->type, "websocket");
+
+				eventpool_trigger(REASON_SOCKET_RECEIVED, reason_socket_received_free, data);
+			}
+			FREE(input);
 		}
-		FREE(input);
 		return MG_TRUE;
 	}
 
@@ -1192,7 +1202,7 @@ static void webserver_process(uv_async_t *handle) {
 			if(tmp->fd > 0) {
 				int fd = 0, r = 0;
 
-				if((r = uv_fileno((uv_handle_t *)clients->req, (uv_os_fd_t *)&fd)) != 0) {
+				if((r = uv_fileno((uv_handle_t *)clients->poll_req, (uv_os_fd_t *)&fd)) != 0) {
 					/*LCOV_EXCL_START*/
 					logprintf(LOG_ERR, "uv_fileno: %s", uv_strerror(r));
 					continue;
@@ -1200,16 +1210,15 @@ static void webserver_process(uv_async_t *handle) {
 				}
 
 				if(fd == tmp->fd) {
-					websocket_write(clients->req, WEBSOCKET_OPCODE_TEXT, tmp->out, tmp->len);
+					websocket_write(clients->poll_req, WEBSOCKET_OPCODE_TEXT, tmp->out, tmp->len);
 				}
 			} else if(clients->is_websocket == 1) {
-				websocket_write(clients->req, 1, tmp->out, tmp->len);
+				websocket_write(clients->poll_req, 1, tmp->out, tmp->len);
 			}
 			clients = clients->next;
 		}
-		if(tmp->len > 0) {
-			FREE(tmp->out);
-		}
+
+		FREE(tmp->out);
 		broadcast_list = broadcast_list->next;
 		FREE(tmp);
 	}
@@ -1275,9 +1284,11 @@ static void *broadcast(int reason, void *param, void *userdata) {
 			strncpy(node->out, (char *)param, 1023);
 			node->len = strlen(node->out);
 		break;
-		default:
+		default: {
+			FREE(node->out);
 			FREE(node);
-		return NULL;
+			return NULL;
+		}
 	}
 
 	struct broadcast_list_t *tmp = broadcast_list;
@@ -1446,7 +1457,8 @@ static void webserver_client_add(uv_poll_t *req) {
 	if(node == NULL) {
 		OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
 	}
-	node->req = req;
+	node->poll_req = req;
+	node->timer_req = NULL;
 	node->is_websocket = 0;
 
 	node->next = webserver_clients;
@@ -1469,7 +1481,7 @@ static void webserver_client_remove(uv_poll_t *req) {
 	prevP = NULL;
 
 	for(currP = webserver_clients; currP != NULL; prevP = currP, currP = currP->next) {
-		if(currP->req == req) {
+		if(currP->poll_req == req) {
 			if(prevP == NULL) {
 				webserver_clients = currP->next;
 			} else {
@@ -1520,6 +1532,28 @@ static void send_websocket_handshake(uv_poll_t *req, const char *key) {
 	FREE(b64_sha);
 }
 
+static void websocket_ping(uv_timer_t *handle) {
+	struct webserver_clients_t *client = handle->data;
+	uv_poll_t *poll_req = client->poll_req;
+	struct uv_custom_poll_t *custom_poll_data = poll_req->data;
+	struct connection_t *conn = custom_poll_data->data;
+	struct timespec ping;
+	unsigned int lastseen = 0;
+
+	if(conn->ping.tv_sec > 0 && conn->ping.tv_nsec > 0) {
+		clock_gettime(CLOCK_MONOTONIC, &ping);
+		lastseen = ((double)ping.tv_sec + 1.0e-9*ping.tv_nsec) - ((double)conn->ping.tv_sec + 1.0e-9*conn->ping.tv_nsec);
+	}
+
+	if(lastseen > 60) {
+		uv_timer_stop(handle);
+		uv_custom_close(poll_req);
+		return;
+	}
+
+	websocket_write(client->poll_req, WEBSOCKET_OPCODE_PING, NULL, 0);
+}
+
 static void send_websocket_handshake_if_requested(uv_poll_t *req) {
 	/*
 	 * Make sure we execute in the main thread
@@ -1537,8 +1571,17 @@ static void send_websocket_handshake_if_requested(uv_poll_t *req) {
 
 		struct webserver_clients_t *tmp = webserver_clients;
 		while(tmp) {
-			if(tmp->req == req) {
+			if(tmp->poll_req == req) {
 				tmp->is_websocket = 1;
+				if((tmp->timer_req = MALLOC(sizeof(uv_timer_t))) == NULL) {
+					OUT_OF_MEMORY /*LCOV_EXCL_LINE*/
+				}
+
+				tmp->timer_req->data = tmp;
+
+				uv_timer_init(uv_default_loop(), tmp->timer_req);
+				uv_timer_start(tmp->timer_req, (void (*)(uv_timer_t *))websocket_ping, 1000, 1000);
+
 				break;
 			}
 			tmp = tmp->next;
@@ -1581,11 +1624,12 @@ int websocket_read(uv_poll_t *req, unsigned char *buf, ssize_t buf_len) {
 	}
 	buf[packet_length] = '\0';
 
+	conn->content_len = 0;
+	conn->content = NULL;
+
 	switch(opcode) {
 		case WEBSOCKET_OPCODE_PONG: {
-			struct timeval tv;
-			gettimeofday(&tv, NULL);
-			conn->ping = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+			clock_gettime(CLOCK_MONOTONIC, &conn->ping);
 		} break;
 		case WEBSOCKET_OPCODE_PING: {
 			websocket_write(req, WEBSOCKET_OPCODE_PONG, NULL, 0);
@@ -1694,6 +1738,18 @@ static void poll_close_cb(uv_poll_t *req) {
 		if(conn->request != NULL) {
 			FREE(conn->request);
 		}
+	}
+
+	struct webserver_clients_t *tmp = webserver_clients;
+	while(tmp) {
+		if(tmp->poll_req == req) {
+			if(tmp->timer_req != NULL && !uv_is_closing((uv_handle_t *)req)) {
+				uv_timer_stop(tmp->timer_req);
+				uv_close((uv_handle_t *)tmp->timer_req, close_cb);
+			}
+			break;
+		}
+		tmp = tmp->next;
 	}
 
 	webserver_client_remove(req);
@@ -1871,7 +1927,7 @@ static ssize_t server_read_cb(uv_poll_t *req, ssize_t nread, const char *buf) {
 	c->is_websocket = 0;
 	c->fd = client;
 	c->flags = 0;
-	c->ping = 0;
+	memset(&c->ping, 0, sizeof(struct timespec));
 	c->file_fd = -1;
 #ifdef WEBSERVER_HTTPS
 	c->is_ssl = custom_poll_data->is_ssl = server_poll_data->is_ssl;

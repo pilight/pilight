@@ -16,17 +16,17 @@
 #include "../libs/libuv/uv.h"
 
 typedef struct connection_t {
-	int fd;
-	char *request;
-	char *request_method;
-	char *uri;
-	char *http_version;
-	const char *query_string;
+  int fd;
+  char *request;
+  char *request_method;
+  char *uri;
+  char *http_version;
+  const char *query_string;
 
   int num_headers;
   struct headers {
-		char *name;
-		char *value;
+    char *name;
+    char *value;
   } http_headers[30];
 
   char *content;
@@ -34,21 +34,21 @@ typedef struct connection_t {
   char mimetype[255];
 
   int is_websocket;
-	int ping;
+  struct timespec ping;
   int status_code;
-	void *connection_param;
+  void *connection_param;
   void *callback_param;
   unsigned int flags;
-	unsigned short timer;
+  unsigned short timer;
 
-	int file_fd;
+  int file_fd;
 
-	char buffer[WEBSERVER_CHUNK_SIZE];
+  char buffer[WEBSERVER_CHUNK_SIZE];
 
 #ifdef WEBSERVER_HTTPS
-	int is_ssl;
-	int handshake;
-	mbedtls_ssl_context ssl;
+  int is_ssl;
+  int handshake;
+  mbedtls_ssl_context ssl;
 #endif
 } connection_t;
 
