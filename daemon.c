@@ -2513,6 +2513,7 @@ int main_gc(void) {
 		FREE(pid_file);
 	}
 #endif
+	plua_gc();
 	eventpool_gc();
 #ifdef WEBSERVER
 	if(webserver_enable == 1) {
@@ -2555,8 +2556,6 @@ int main_gc(void) {
 	mqtt_server_gc();
 	mqtt_client_gc();
 #endif
-
-	plua_gc();
 
 	uv_stop(uv_default_loop());
 	options_delete(options);
