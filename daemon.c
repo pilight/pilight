@@ -3933,7 +3933,9 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdline, int show) {
 }
 #else
 int main(int argc, char **argv) {
+#ifdef DEBUG
 	btstate = backtrace_create_state(argv[0], BACKTRACE_SUPPORTS_THREADS, NULL, NULL);
+#endif
 	pilight.running = 0;
 	pilight.debuglevel = 0;
 
