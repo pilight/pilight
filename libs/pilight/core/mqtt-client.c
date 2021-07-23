@@ -60,6 +60,11 @@ int mqtt_client_gc(void) {
 	return 0;
 }
 
+static void *reason_mqtt_client_removed_free(void *param) {
+	FREE(param);
+	return NULL;
+}
+
 static void mqtt_client_remove(uv_poll_t *req) {
 #ifdef _WIN32
 	uv_mutex_lock(&mqtt_lock);
@@ -78,7 +83,7 @@ static void mqtt_client_remove(uv_poll_t *req) {
 				prevP->next = currP->next;
 			}
 
-			FREE(currP);
+			eventpool_trigger(REASON_MQTT_CLIENT_REMOVED, reason_mqtt_client_removed_free, currP);
 			break;
 		}
 	}
@@ -201,12 +206,19 @@ static void ping(uv_timer_t *handle) {
 	mqtt_ping(handle->data);
 }
 
+static void *reason_mqtt_client_timeout_free(void *param) {
+	struct mqtt_client_t *client = param;
+	uv_custom_close(client->poll_req);
+
+	return NULL;
+}
+
 static void timeout(uv_timer_t *handle) {
 	struct mqtt_client_t *client = handle->data;
 
 	uv_timer_stop(client->timeout_req);
 
-	uv_custom_close(client->poll_req);
+	eventpool_trigger(REASON_MQTT_CLIENT_TIMEOUT, reason_mqtt_client_timeout_free, client);
 }
 
 static ssize_t read_cb(uv_poll_t *req, ssize_t nread, const char *buf) {

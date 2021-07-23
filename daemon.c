@@ -2653,6 +2653,38 @@ static void pilight_abort(uv_timer_t *timer_req) {
 }
 
 #ifdef MQTT
+static void *mqtt_client_remove_cb(int reason, void *param, void *userdata) {
+	uv_mutex_lock(&mqtt_publish_lock);
+
+	struct mqtt_client_t *client = param;
+	struct mqtt_publish_t *currP, *prevP;
+	int removed = 1;
+	prevP = NULL;
+
+	while(removed) {
+		removed = 0;
+		for(currP = mqtt_publish_list; currP != NULL; prevP = currP, currP = currP->next) {
+			if(currP->client == client) {
+				if(prevP == NULL) {
+					mqtt_publish_list = currP->next;
+				} else {
+					prevP->next = currP->next;
+				}
+
+				FREE(currP->topic);
+				FREE(currP->payload);
+				FREE(currP);
+				mqtt_publish_nr--;
+				removed = 1;
+				break;
+			}
+		}
+	}
+	uv_mutex_unlock(&mqtt_publish_lock);
+	return NULL;
+}
+
+
 static void mqtt_safe_publish(uv_async_t *handle) {
 	uv_mutex_lock(&mqtt_publish_lock);
 
@@ -3668,6 +3700,8 @@ int start_pilight(int argc, char **argv) {
 #ifdef MQTT
 	{
 		if(mqtt_enable == 1) {
+			eventpool_callback(REASON_MQTT_CLIENT_REMOVED, mqtt_client_remove_cb, NULL);
+
 			struct lua_state_t *state = plua_get_free_state();
 			config_setting_get_number(state->L, "mqtt_port", 0, &mqtt_port);
 			assert(plua_check_stack(state->L, 0) == 0);
