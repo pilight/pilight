@@ -104,7 +104,9 @@ enum eventpool_threads_t {
 #define REASON_ARP_LOST_DEVICE				35
 #define REASON_ARP_CHANGED_DEVICE			36
 #define REASON_LOG										37
-#define REASON_END										38
+#define REASON_MQTT_CLIENT_REMOVED    38
+#define REASON_MQTT_CLIENT_TIMEOUT    39
+#define REASON_END										40
 
 typedef struct threadpool_data_t {
 	int reason;
