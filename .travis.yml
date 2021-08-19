@@ -12,6 +12,42 @@ matrix:
       compiler: gcc
       os: linux
 
+    - env: PLATFORM=Unix COMPILER=gcc-6
+      compiler: gcc
+      os: linux
+      addons:
+        apt:
+          packages: ["gcc-6", "g++-6"]
+          sources: &sources
+            - ubuntu-toolchain-r-test
+
+    - env: PLATFORM=Unix COMPILER=gcc-7
+      compiler: gcc
+      os: linux
+      addons:
+        apt:
+          packages: ["gcc-7", "g++-7"]
+          sources: &sources
+            - ubuntu-toolchain-r-test
+
+    - env: PLATFORM=Unix COMPILER=clang-3.9
+      compiler: clang
+      os: linux
+      addons:
+        apt:
+          packages: ["clang-3.9"]
+          sources: &sources
+            - llvm-toolchain-trusty-3.9
+
+    - env: PLATFORM=Unix COMPILER=clang-5.0
+      compiler: clang
+      os: linux
+      addons:
+        apt:
+          packages: ["clang-5.0"]
+          sources: &sources
+            - llvm-toolchain-trusty-5.0
+
 before_install: ./ci/travis-before-install.sh
 
 before_script: ./ci/travis-before-script.sh
