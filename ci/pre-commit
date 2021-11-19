@@ -1,0 +1,23 @@
+#!/bin/sh
+#
+# A git pre-commit hook script to verify the code style of the code
+# which is about to be committed. Called by "git commit" with no
+# arguments.
+#
+# This file should be placed under .git/hooks and should have
+# executable permissions
+
+# Redirect output to stderr.
+exec 1>&2
+
+# Check if astyle is installed
+if ! [ -x "$(command -v astyle)" ]; then
+    echo 'Error: astyle is not installed.' >&2
+    exit 1
+fi
+
+# Get path to the root of the repository
+GIT_DIR=`git rev-parse --show-toplevel`
+
+# Run the bundled astyle script
+$GIT_DIR/ci/lint.sh
