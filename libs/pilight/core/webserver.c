@@ -1602,24 +1602,33 @@ int websocket_read(uv_poll_t *req, unsigned char *buf, ssize_t buf_len) {
 
 	unsigned int i = 0, j = 0;
 	unsigned char mask[4];
-	unsigned int packet_length = 0;
-	unsigned int length_code = 0;
+	uint32_t packet_length = 0;
 	int index_first_mask = 0;
 	int index_first_data_byte = 0;
 	int opcode = buf[0] & 0xF;
 
 	memset(&mask, '\0', 4);
-	length_code = ((unsigned char)buf[1]) & 0x7F;
+	packet_length = ((unsigned char)buf[1]) & 0x7F;
+
 	index_first_mask = 2;
-	if(length_code == 126) {
+	if(packet_length == 126) {
 		index_first_mask = 4;
-	} else if(length_code == 127) {
+		packet_length = buf[2] << 8 | buf[3];
+	} else if(packet_length == 127) {
+		if(buf[2] != 0 || buf[3] != 0 || buf[4] != 0 || buf[5] != 0) {
+			/*
+			 * Packet length too big
+			 */
+			return -1;
+		} else {
+			packet_length = buf[6] << 24 | buf[7] << 16 | buf[8] << 8 | buf[9];
+		}
 		index_first_mask = 10;
 	}
 	memcpy(mask, &buf[index_first_mask], 4);
 	index_first_data_byte = index_first_mask + 4;
-	packet_length = buf_len - index_first_data_byte;
-	for(i = index_first_data_byte, j = 0; i < buf_len; i++, j++) {
+
+	for(i = index_first_data_byte, j = 0; i < buf_len && i < packet_length + index_first_data_byte; i++, j++) {
 		buf[j] = buf[i] ^ mask[j % 4];
 	}
 	buf[packet_length] = '\0';
