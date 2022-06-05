@@ -39,7 +39,7 @@ static int validate(void) {
 
 static void createMessage(int unitcode, int state, const char *tx_data) {
 	hs2241pt->message = json_mkobject();
-	json_append_member(hs2241pt->message, "unitcode", json_mknumber(unitcode, 0));
+	json_append_member(hs2241pt->message, "id", json_mknumber(unitcode, 0));
 	json_append_member(hs2241pt->message, "state", json_mknumber(state, 0));
 	json_append_member(hs2241pt->message, "txdata", json_mkstring(tx_data));
 }
@@ -83,7 +83,7 @@ void hs2241ptInit(void) {
 	hs2241pt->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	hs2241pt->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
-	options_add(&hs2241pt->options, "u", "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(104857[0-5]|10485[0-6][0-9]|1048[0-4][0-9][0-9]|104[0-7][0-9]{3}|10[0-3][0-9]{4}|0?[0-9]{1,6})$");
+	options_add(&hs2241pt->options, "id", "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(104857[0-5]|10485[0-6][0-9]|1048[0-4][0-9][0-9]|104[0-7][0-9]{3}|10[0-3][0-9]{4}|0?[0-9]{1,6})$");
 	options_add(&hs2241pt->options, "s", "state", OPTION_NO_VALUE, DEVICES_STATE, JSON_NUMBER, NULL, "^([0-9]|1[0-5])$");
 
 	hs2241pt->parseCode=&parseCode;
