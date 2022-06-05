@@ -39,7 +39,7 @@
          "protocol": [ "hs2241pt" ],
          "unitcode": 851336,
          "state": 4,
-         "txdata": "CFD886"
+         "txdata": "CFD884"
        }
      },
      "gui": {
