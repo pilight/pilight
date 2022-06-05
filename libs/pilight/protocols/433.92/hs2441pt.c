@@ -83,7 +83,7 @@ void hs2241ptInit(void) {
 	hs2241pt->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	hs2241pt->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
-	options_add(&hs2241pt->options, "id", "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]{1,5}");
+	options_add(&hs2241pt->options, "id", "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]{1,6}");
 	options_add(&hs2241pt->options, "s", "state", OPTION_NO_VALUE, DEVICES_STATE, JSON_NUMBER, NULL, "^([0-9]|1[0-5])$");
 
 	hs2241pt->parseCode=&parseCode;
