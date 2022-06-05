@@ -282,3 +282,8 @@ if(${PROTOCOL_NEXUS} MATCHES "OFF")
 	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/nexus.c")
 	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/nexus.h")
 endif()
+
+if(${PROTOCOL_HS2241PT} MATCHES "OFF")
+	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/hs2241pt.c")
+	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/hs2241pt.h")
+endif()

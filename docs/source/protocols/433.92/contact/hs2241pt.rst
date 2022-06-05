@@ -1,0 +1,66 @@
+.. |yes| image:: ../../../images/yes.png
+.. |no| image:: ../../../images/no.png
+
+.. role:: underline
+   :class: underline
+
++------------------+-------------+
+| **Feature**      | **Support** |
++------------------+-------------+
+| Sending          | |no|        |
++------------------+-------------+
+| Receiving        | |yes|       |
++------------------+-------------+
+| Config           | |yes|       |
++------------------+-------------+
+
+.. rubric:: Supported Brands
+
++----------------------+------------------+
+| **Brand**            | **Protocol**     |
++----------------------+------------------+
+| Digoo Remote         | hs2241pt         |
++----------------------+------------------+
+| Unbranded PIR        | hs2241pt         |
++----------------------+------------------+
+
+.. rubric:: Sender Arguments
+
+*None*
+
+.. rubric:: Config
+
+.. code-block:: json
+   :linenos:
+
+   {
+     "devices": {
+       "switch": {
+         "protocol": [ "hs2241pt" ],
+         "unitcode": 851336,
+         "state": 4,
+         "txdata": "CFD886"
+       }
+     },
+     "gui": {
+       "Lamp": {
+         "name": "Remote Button 3",
+         "group": [ "Living" ],
+         "media": [ "all" ]
+       }
+     }
+   }
+
++------------------+-----------------+
+| **Option**       | **Value**       |
++------------------+-----------------+
+| unitcode         | 0 - 999,999     |
++------------------+-----------------+
+| state            | 0 - 15          |
++------------------+-----------------+
+
+.. rubric:: Protocol
+
+This protocol sends 50 pulses - the first 20 bits signify the unit ID and the last 4 bits show the key being pressed.
+
+https://www.datasheet4u.com/datasheet-pdf/TangzhengElectronics/HS2241PT/pdf.php?id=1262483
