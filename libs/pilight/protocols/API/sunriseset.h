@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *sunriseset;
+extern struct protocol_t *sunriseset;
 void sunRiseSetInit(void);
 
 #endif

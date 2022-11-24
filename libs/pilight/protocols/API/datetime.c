@@ -60,6 +60,8 @@
 #include "../../core/datetime.h"
 #include "datetime.h"
 
+struct protocol_t *datetime;
+
 #ifdef PILIGHT_DEVELOPMENT
 static unsigned short loop = 1;
 static unsigned short threads = 0;

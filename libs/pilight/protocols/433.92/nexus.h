@@ -11,7 +11,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *nexus;
+extern struct protocol_t *nexus;
 void nexusInit(void);
 
 #endif

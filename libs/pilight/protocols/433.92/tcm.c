@@ -46,6 +46,8 @@
 	25-36	temperature (signed int12)
 */
 
+struct protocol_t *tcm;
+
 typedef struct settings_t {
 	double id;
 	double temp;

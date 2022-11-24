@@ -57,6 +57,8 @@
 #include "../../core/gc.h"
 #include "xbmc.h"
 
+struct protocol_t *xbmc;
+
 typedef struct data_t {
 	char *server;
 	int port;

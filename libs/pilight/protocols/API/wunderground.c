@@ -49,6 +49,8 @@
 
 #define INTERVAL	900
 
+struct protocol_t *wunderground;
+
 #ifdef PILIGHT_DEVELOPMENT
 typedef struct settings_t {
 	char *api;

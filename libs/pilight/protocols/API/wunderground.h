@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *wunderground;
+extern struct protocol_t *wunderground;
 void wundergroundInit(void);
 
 #endif

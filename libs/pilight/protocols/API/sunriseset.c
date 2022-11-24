@@ -49,6 +49,8 @@
 #define PIX 57.29578049044297 // 180 / PI
 #define ZENITH 90.83333333333333
 
+struct protocol_t *sunriseset;
+
 #ifdef PILIGHT_DEVELOPMENT
 static unsigned short loop = 1;
 static unsigned short threads = 0;

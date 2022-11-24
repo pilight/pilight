@@ -11,7 +11,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *tasmotaSwitch;
+extern struct protocol_t *tasmotaSwitch;
 void tasmotaSwitchInit(void);
 
 #endif

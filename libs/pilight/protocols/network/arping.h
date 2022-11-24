@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *arping;
+extern struct protocol_t *arping;
 void arpingInit(void);
 
 #endif

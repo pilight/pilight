@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *xbmc;
+extern struct protocol_t *xbmc;
 void xbmcInit(void);
 
 #endif

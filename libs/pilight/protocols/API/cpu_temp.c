@@ -45,6 +45,8 @@
 #include "../../core/gc.h"
 #include "cpu_temp.h"
 
+struct protocol_t *cpuTemp;
+
 #ifndef _WIN32
 #ifdef PILIGHT_DEVELOPMENT
 static unsigned short loop = 1;

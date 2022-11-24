@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *openweathermap;
+extern struct protocol_t *openweathermap;
 void openweathermapInit(void);
 
 #endif

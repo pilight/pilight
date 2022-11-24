@@ -36,6 +36,8 @@
 #define AVG_PULSE_LENGTH	269
 #define RAW_LENGTH				66
 
+struct protocol_t *auriol;
+
 typedef struct settings_t {
 	double id;
 	double temp;

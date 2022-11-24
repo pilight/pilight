@@ -37,6 +37,8 @@
 #define AVG_PULSE_LENGTH	280
 #define RAW_LENGTH				50
 
+struct protocol_t *heitech;
+
 static int validate(void) {
 	if(heitech->rawlen == RAW_LENGTH) {
 		if(heitech->raw[heitech->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

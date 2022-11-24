@@ -45,6 +45,8 @@
 #define RAW_LENGTH (MESSAGE_BITS * 2 + 2)
 #define MAXBITS (RAW_LENGTH / 2)
 
+struct protocol_t *nexus;
+
 enum PulseType {
     START_P = 500,
     ZERO_P = 1000,

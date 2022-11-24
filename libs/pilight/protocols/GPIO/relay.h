@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *relay;
+extern struct protocol_t *relay;
 void relayInit(void);
 
 #endif

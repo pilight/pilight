@@ -36,6 +36,8 @@
 #define AVG_PULSE_LENGTH        284
 #define RAW_LENGTH              50
 
+struct protocol_t *daycom;
+
 static int validate(void) {
 	if(daycom->rawlen == RAW_LENGTH) {
 		if(daycom->raw[daycom->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

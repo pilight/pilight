@@ -55,6 +55,8 @@
 #include "../../core/gc.h"
 #include "arping.h"
 
+struct protocol_t *arping;
+
 static unsigned short loop = 1;
 static unsigned short threads = 0;
 

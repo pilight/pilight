@@ -29,6 +29,8 @@
 #include "log.h"
 #include "gc.h"
 
+struct fcache_t *fcache;
+
 int fcache_gc(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 

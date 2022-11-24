@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *pping;
+extern struct protocol_t *pping;
 void pingInit(void);
 
 #endif

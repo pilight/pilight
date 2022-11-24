@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *lirc;
+extern struct protocol_t *lirc;
 void lircInit(void);
 
 #endif

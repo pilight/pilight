@@ -34,6 +34,8 @@
 #include "../../lua_c/table.h"
 #include "shellyplug_s.h"
 
+struct protocol_t *shellyPlugS;
+
 static void *reason_send_code_free(void *param) {
 	plua_metatable_free(param);
 	return NULL;

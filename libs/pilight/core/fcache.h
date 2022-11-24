@@ -27,7 +27,7 @@ typedef struct fcache_t {
 	struct fcache_t *next;
 } fcaches_t;
 
-struct fcache_t *fcache;
+extern struct fcache_t *fcache;
 
 int fcache_gc(void);
 int fcache_add(char *filename);

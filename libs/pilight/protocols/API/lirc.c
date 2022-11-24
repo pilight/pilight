@@ -54,6 +54,8 @@
 #include "../../core/gc.h"
 #include "lirc.h"
 
+struct protocol_t *lirc;
+
 #ifndef _WIN32
 static char socket_path[BUFFER_SIZE];
 static int sockfd = -1;

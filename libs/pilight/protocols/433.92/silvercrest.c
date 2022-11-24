@@ -36,6 +36,8 @@
 #define AVG_PULSE_LENGTH	312
 #define RAW_LENGTH				50
 
+struct protocol_t *silvercrest;
+
 static int validate(void) {
 	if(silvercrest->rawlen == RAW_LENGTH) {
 		if(silvercrest->raw[silvercrest->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

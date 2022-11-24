@@ -62,6 +62,8 @@
 #define MSG_LENGTH       RAW_LENGTH / 2
 #define OFFSET           5
 
+struct protocol_t *fanju;
+
 typedef struct settings_t {
 	double id;
 	double temp;

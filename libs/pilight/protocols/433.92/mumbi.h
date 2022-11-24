@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *mumbi;
+extern struct protocol_t *mumbi;
 void mumbiInit(void);
 
 #endif

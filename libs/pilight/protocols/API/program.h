@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *program;
+extern struct protocol_t *program;
 void programInit(void);
 
 #endif

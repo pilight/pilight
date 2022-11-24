@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *cpuTemp;
+extern struct protocol_t *cpuTemp;
 void cpuTempInit(void);
 
 #endif

@@ -28,6 +28,8 @@
 #include "log.h"
 #include "dso.h"
 
+struct dso_t *dso;
+
 void *dso_load(char *object) {
 #ifndef _WIN32
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);

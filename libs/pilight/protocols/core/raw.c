@@ -29,6 +29,8 @@
 #include "../../core/gc.h"
 #include "raw.h"
 
+struct protocol_t *raw;
+
 static int createCode(JsonNode *code) {
 	char *rcode = NULL;
 	double repeats = 10;

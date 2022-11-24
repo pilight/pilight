@@ -39,6 +39,8 @@
 #define MED_RAW_LENGTH		86	// TFA
 #define MAX_RAW_LENGTH		88	// DOSTMAN 32.3200
 
+struct protocol_t *tfa;
+
 typedef struct settings_t {
 	double id;
 	double channel;

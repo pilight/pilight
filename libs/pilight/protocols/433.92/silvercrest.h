@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *silvercrest;
+extern struct protocol_t *silvercrest;
 void silvercrestInit(void);
 
 #endif

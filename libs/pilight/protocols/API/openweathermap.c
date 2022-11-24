@@ -52,6 +52,8 @@
 
 #define INTERVAL 	600
 
+struct protocol_t *openweathermap;
+
 #ifdef PILIGHT_DEVELOPMENT
 typedef struct settings_t {
 	char *country;

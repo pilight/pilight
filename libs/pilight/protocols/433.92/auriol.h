@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *auriol;
+extern struct protocol_t *auriol;
 void auriolInit(void);
 
 #endif

@@ -46,6 +46,8 @@
 #include "../../core/gc.h"
 #include "program.h"
 
+struct protocol_t *program;
+
 #ifndef _WIN32
 static unsigned short loop = 1;
 static unsigned short threads = 0;

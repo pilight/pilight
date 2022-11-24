@@ -36,6 +36,8 @@
 #define AVG_PULSE_LENGTH	266
 #define RAW_LENGTH				76
 
+struct protocol_t *teknihall;
+
 typedef struct settings_t {
 	double id;
 	double temp;

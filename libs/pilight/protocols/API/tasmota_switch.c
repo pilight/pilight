@@ -36,6 +36,8 @@
 #include "../../lua_c/table.h"
 #include "tasmota_switch.h"
 
+struct protocol_t *tasmotaSwitch;
+
 static void *reason_send_code_free(void *param) {
 	plua_metatable_free(param);
 	return NULL;

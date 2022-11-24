@@ -36,6 +36,8 @@
 #define AVG_PULSE_LENGTH	269
 #define RAW_LENGTH				50
 
+struct protocol_t *cleverwatts;
+
 static int validate(void) {
 	if(cleverwatts->rawlen == RAW_LENGTH) {
 		if(cleverwatts->raw[cleverwatts->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

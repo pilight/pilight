@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *cleverwatts;
+extern struct protocol_t *cleverwatts;
 void cleverwattsInit(void);
 
 #endif

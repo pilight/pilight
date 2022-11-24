@@ -12,7 +12,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *fanju;
+extern struct protocol_t *fanju;
 void fanjuInit(void);
 
 #endif

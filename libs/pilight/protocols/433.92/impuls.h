@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *impuls;
+extern struct protocol_t *impuls;
 void impulsInit(void);
 
 #endif

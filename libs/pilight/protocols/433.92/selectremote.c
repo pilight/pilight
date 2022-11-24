@@ -36,6 +36,8 @@
 #define AVG_PULSE_LENGTH	396
 #define RAW_LENGTH				50
 
+struct protocol_t *selectremote;
+
 static int validate(void) {
 	if(selectremote->rawlen == RAW_LENGTH) {
 		if(selectremote->raw[selectremote->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

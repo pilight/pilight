@@ -38,6 +38,8 @@
 
 #include "defines.h"
 
+struct protocol_t *relay;
+
 static char *state = NULL;
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 

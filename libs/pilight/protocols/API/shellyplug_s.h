@@ -11,7 +11,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *shellyPlugS;
+extern struct protocol_t *shellyPlugS;
 void shellyPlugSInit(void);
 
 #endif

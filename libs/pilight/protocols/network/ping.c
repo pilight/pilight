@@ -44,6 +44,8 @@
 #include "../../core/gc.h"
 #include "ping.h"
 
+struct protocol_t *pping;
+
 static unsigned short loop = 1;
 static unsigned short threads = 0;
 

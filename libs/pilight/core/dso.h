@@ -33,7 +33,7 @@ typedef struct module_t {
 	const char *reqcommit;
 } module_t;
 
-struct dso_t *dso;
+extern struct dso_t *dso;
 
 void *dso_load(char *object);
 int dso_gc(void);

@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *teknihall;
+extern struct protocol_t *teknihall;
 void teknihallInit(void);
 
 #endif

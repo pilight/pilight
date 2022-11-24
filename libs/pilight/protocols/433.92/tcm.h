@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *tcm;
+extern struct protocol_t *tcm;
 void tcmInit(void);
 
 #endif

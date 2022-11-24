@@ -11,7 +11,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *shellySwitch;
+extern struct protocol_t *shellySwitch;
 void shellySwitchInit(void);
 
 #endif

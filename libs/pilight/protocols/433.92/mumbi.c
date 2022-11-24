@@ -36,6 +36,8 @@
 #define AVG_PULSE_LENGTH	312
 #define RAW_LENGTH				50
 
+struct protocol_t *mumbi;
+
 static int validate(void) {
 	if(mumbi->rawlen == RAW_LENGTH) {
 		if(mumbi->raw[mumbi->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
