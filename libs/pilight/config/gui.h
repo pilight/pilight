@@ -46,7 +46,7 @@ struct gui_elements_t {
 	struct gui_elements_t *next;
 };
 
-struct config_t *config_gui;
+extern struct config_t *config_gui;
 
 struct gui_values_t *gui_media(char *name);
 void gui_init(void);

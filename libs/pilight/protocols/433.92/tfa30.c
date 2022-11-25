@@ -45,6 +45,8 @@
 #define MAX_RAW_LENGTH		88
 #define RAW_LENGTH				88
 
+struct protocol_t *tfa30;
+
 typedef struct settings_t {
 	double id;
 	double temp;

@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *arctech_contact;
+extern struct protocol_t *arctech_contact;
 void arctechContactInit(void);
 
 #endif

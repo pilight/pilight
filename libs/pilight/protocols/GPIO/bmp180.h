@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *bmp180;
+extern struct protocol_t *bmp180;
 void bmp180Init(void);
 
 #endif

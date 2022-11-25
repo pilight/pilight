@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *lm76;
+extern struct protocol_t *lm76;
 void lm76Init(void);
 
 #endif

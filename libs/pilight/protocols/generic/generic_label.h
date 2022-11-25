@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *generic_label;
+extern struct protocol_t *generic_label;
 void genericLabelInit(void);
 
 #endif

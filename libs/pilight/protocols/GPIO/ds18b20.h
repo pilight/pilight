@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *ds18b20;
+extern struct protocol_t *ds18b20;
 void ds18b20Init(void);
 
 #endif

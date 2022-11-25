@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *quigg_gt7000;
+extern struct protocol_t *quigg_gt7000;
 void quiggGT7000Init(void);
 
 #endif

@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *elro_300_switch;
+extern struct protocol_t *elro_300_switch;
 void elro300SwitchInit(void);
 
 #endif

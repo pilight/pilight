@@ -11,7 +11,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *tfa2017;
+extern struct protocol_t *tfa2017;
 void tfa2017Init(void);
 
 #endif

@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *rsl366;
+extern struct protocol_t *rsl366;
 void rsl366Init(void);
 
 #endif

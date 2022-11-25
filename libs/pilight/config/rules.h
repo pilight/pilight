@@ -60,7 +60,7 @@ typedef struct rules_t {
 	struct rules_t *next;
 } rules_t;
 
-struct config_t *config_rules;
+extern struct config_t *config_rules;
 
 void rules_init(void);
 int rules_gc(void);

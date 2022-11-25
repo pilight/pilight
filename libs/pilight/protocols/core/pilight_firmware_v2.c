@@ -35,6 +35,8 @@
 #define AVG_PULSE_LENGTH	183
 #define RAW_LENGTH				196
 
+struct protocol_t *pilight_firmware_v2;
+
 static int validate(void) {
 	if(pilight_firmware_v2->rawlen == RAW_LENGTH) {
 		if(pilight_firmware_v2->raw[pilight_firmware_v2->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

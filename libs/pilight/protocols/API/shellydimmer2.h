@@ -11,7 +11,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *shellyDimmer2;
+extern struct protocol_t *shellyDimmer2;
 void shellyDimmer2Init(void);
 
 #endif

@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *generic_dimmer;
+extern struct protocol_t *generic_dimmer;
 void genericDimmerInit(void);
 
 #endif

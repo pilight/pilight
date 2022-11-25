@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *conrad_rsl_contact;
+extern struct protocol_t *conrad_rsl_contact;
 void conradRSLContactInit(void);
 
 #endif

@@ -36,6 +36,8 @@
 #include "../../lua_c/table.h"
 #include "shellydimmer2.h"
 
+struct protocol_t *shellyDimmer2;
+
 static void *reason_send_code_free(void *param) {
 	plua_metatable_free(param);
 	return NULL;

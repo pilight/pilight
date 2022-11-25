@@ -39,6 +39,8 @@
 #define AVG_PULSE_LENGTH	750
 #define RAW_LENGTH		50
 
+struct protocol_t *quigg_gt9000;
+
 /* Encoding details:
 	Bit
 	0-3      First part of systemcode

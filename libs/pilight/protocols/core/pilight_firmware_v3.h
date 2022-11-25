@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *pilight_firmware_v3;
+extern struct protocol_t *pilight_firmware_v3;
 void pilightFirmwareV3Init(void);
 
 #endif

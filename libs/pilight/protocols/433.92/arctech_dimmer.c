@@ -39,6 +39,8 @@
 #define MAX_RAW_LENGTH		148
 #define MIN_RAW_LENGTH		132
 
+struct protocol_t *arctech_dimmer;
+
 static int validate(void) {
 	if(arctech_dimmer->rawlen == MAX_RAW_LENGTH || arctech_dimmer->rawlen == MIN_RAW_LENGTH) {
 		if(arctech_dimmer->raw[arctech_dimmer->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

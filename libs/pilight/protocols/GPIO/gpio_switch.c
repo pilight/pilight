@@ -37,6 +37,8 @@
 #include "../protocol.h"
 #include "gpio_switch.h"
 
+struct protocol_t *gpio_switch;
+
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 
 static unsigned short loop = 1;

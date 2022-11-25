@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *dht22;
+extern struct protocol_t *dht22;
 void dht22Init(void);
 
 #endif

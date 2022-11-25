@@ -28,6 +28,8 @@
 #define AVG_PULSE_LENGTH	300
 #define RAW_LENGTH				132
 
+struct protocol_t *smartwares_switch;
+
 static int validate(void) {
 	if(smartwares_switch->rawlen == RAW_LENGTH) {
 		if(smartwares_switch->raw[smartwares_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

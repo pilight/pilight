@@ -25,6 +25,8 @@
 #define MAX_RAW_LENGTH		400
 #define MESSAGE_LENGTH		48
 
+struct protocol_t *tfa2017;
+
 typedef struct settings_t {
 	double id;
 	double temp;

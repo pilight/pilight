@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *generic_screen;
+extern struct protocol_t *generic_screen;
 void genericScreenInit(void);
 
 #endif

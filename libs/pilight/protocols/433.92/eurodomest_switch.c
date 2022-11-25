@@ -60,6 +60,8 @@
 #define LEARN_REPEATS		40
 #define NORMAL_REPEATS		10
 
+struct protocol_t *eurodomest_switch;
+
 static int validate(void) {
 	if (eurodomest_switch->rawlen == RAW_LENGTH) {
 		if (eurodomest_switch->raw[eurodomest_switch->rawlen - 1] >= MIN_LONG_PULSE_LENGTH &&

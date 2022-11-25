@@ -78,6 +78,9 @@
 #define AVG_PULSE_LENGTH	330
 #define RAW_LENGTH				151
 #define BIN_LENGTH				24
+
+struct protocol_t *quigg_gt1000;
+
 /*
 // Support Rx
 static int validate(void) {

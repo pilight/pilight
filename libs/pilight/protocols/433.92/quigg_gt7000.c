@@ -43,6 +43,8 @@
 #define MAX_PULSE_LENGTH	AVG_PULSE_LENGTH+260
 #define RAW_LENGTH				42
 
+struct protocol_t *quigg_gt7000;
+
 static int validate(void) {
 	if(quigg_gt7000->rawlen == RAW_LENGTH) {
 		if(quigg_gt7000->raw[quigg_gt7000->rawlen-1] >= (int)(PULSE_QUIGG_FOOTER*0.9) &&

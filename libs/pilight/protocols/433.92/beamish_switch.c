@@ -39,6 +39,8 @@
 
 static int map[7] = {0, 192, 48, 12, 3, 15, 195};
 
+struct protocol_t *beamish_switch;
+
 static int validate(void) {
 	if(beamish_switch->rawlen == RAW_LENGTH) {
 		if(beamish_switch->raw[beamish_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

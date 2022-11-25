@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *arctech_motion;
+extern struct protocol_t *arctech_motion;
 void arctechMotionInit(void);
 
 #endif

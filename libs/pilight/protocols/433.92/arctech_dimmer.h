@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *arctech_dimmer;
+extern struct protocol_t *arctech_dimmer;
 void arctechDimmerInit(void);
 
 #endif

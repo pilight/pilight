@@ -38,6 +38,8 @@
 #include "../protocol.h"
 #include "bme280.h"
 
+struct protocol_t *bme280;
+
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 
 typedef struct settings_t {

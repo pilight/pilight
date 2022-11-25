@@ -36,6 +36,8 @@
 #define AVG_PULSE_LENGTH	284
 #define RAW_LENGTH				50
 
+struct protocol_t *logilink_switch;
+
 static int validate(void) {
 	if(logilink_switch->rawlen == RAW_LENGTH) {
 		if(logilink_switch->raw[logilink_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

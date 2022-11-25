@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *dht11;
+extern struct protocol_t *dht11;
 void dht11Init(void);
 
 #endif

@@ -30,6 +30,8 @@
 #include "../../core/gc.h"
 #include "generic_label.h"
 
+struct protocol_t *generic_label;
+
 static void createMessage(int id, char *label, char *color) {
 	generic_label->message = json_mkobject();
 	json_append_member(generic_label->message, "id", json_mknumber(id, 0));

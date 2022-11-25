@@ -43,6 +43,8 @@ typedef struct settings_t {
 	struct settings_t *next;
 } settings_t;
 
+struct protocol_t *alecto_ws1700;
+
 static struct settings_t *settings = NULL;
 
 static int validate(void) {

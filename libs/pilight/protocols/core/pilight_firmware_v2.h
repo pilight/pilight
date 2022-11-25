@@ -19,7 +19,7 @@
 #ifndef _PROTOCOL_PILIGHT_FIRMWARE_V2_H_
 #define _PROTOCOL_PILIGHT_FIRMWARE_V2_H_
 
-struct protocol_t *pilight_firmware_v2;
+extern struct protocol_t *pilight_firmware_v2;
 void pilightFirmwareV2Init(void);
 
 #endif

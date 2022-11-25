@@ -30,6 +30,8 @@
 #include "../../core/gc.h"
 #include "generic_weather.h"
 
+struct protocol_t *generic_weather;
+
 static void createMessage(int id, double temperature, double humidity, int battery) {
 	generic_weather->message = json_mkobject();
 	json_append_member(generic_weather->message, "id", json_mknumber(id, 0));

@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *generic_switch;
+extern struct protocol_t *generic_switch;
 void genericSwitchInit(void);
 
 #endif

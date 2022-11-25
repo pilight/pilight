@@ -44,6 +44,8 @@
 #include "../../core/gc.h"
 #include "ds18b20.h"
 
+struct protocol_t *ds18b20;
+
 static unsigned short loop = 1;
 static unsigned short threads = 0;
 static char source_path[21];

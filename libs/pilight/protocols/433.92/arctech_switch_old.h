@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *arctech_switch_old;
+extern struct protocol_t *arctech_switch_old;
 void arctechSwitchOldInit(void);
 
 #endif

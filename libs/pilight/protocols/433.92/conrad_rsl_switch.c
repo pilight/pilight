@@ -40,6 +40,8 @@
 
 static int codes[5][4][2];
 
+struct protocol_t *conrad_rsl_switch;
+
 static int validate(void) {
 	if(conrad_rsl_switch->rawlen == RAW_LENGTH) {
 		if(conrad_rsl_switch->raw[conrad_rsl_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

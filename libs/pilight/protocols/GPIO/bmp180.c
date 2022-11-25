@@ -48,6 +48,8 @@
 #include "../protocol.h"
 #include "bmp180.h"
 
+struct protocol_t *bmp180;
+
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 
 typedef struct settings_t {

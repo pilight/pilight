@@ -38,6 +38,8 @@
 
 static char letters[18] = {"MNOPCDABEFGHKL IJ"};
 
+struct protocol_t *x10;
+
 static int validate(void) {
 	if(x10->rawlen == RAW_LENGTH) {
 		if(x10->raw[x10->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

@@ -36,6 +36,8 @@
 #define AVG_PULSE_LENGTH	180
 #define RAW_LENGTH				50
 
+struct protocol_t *clarus_switch;
+
 static int validate(void) {
 	if(clarus_switch->rawlen == RAW_LENGTH) {
 		if(clarus_switch->raw[clarus_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

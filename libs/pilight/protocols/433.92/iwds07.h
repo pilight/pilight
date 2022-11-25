@@ -11,7 +11,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *iwds07;
+extern struct protocol_t *iwds07;
 void iwds07Init(void);
 
 #endif

@@ -36,6 +36,8 @@
 #define AVG_PULSE_LENGTH	256
 #define RAW_LENGTH				50
 
+struct protocol_t *ev1527;
+
 static int validate(void) {
 	if(ev1527->rawlen == RAW_LENGTH) {
 		if(ev1527->raw[ev1527->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

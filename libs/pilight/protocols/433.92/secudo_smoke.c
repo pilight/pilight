@@ -36,6 +36,8 @@
 #define AVG_PULSE_LENGTH	312
 #define RAW_LENGTH			26
 
+struct protocol_t *secudo_smoke;
+
 static int validate(void) {
 	if(secudo_smoke->rawlen == RAW_LENGTH) {
 		if(secudo_smoke->raw[secudo_smoke->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

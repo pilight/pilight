@@ -48,6 +48,8 @@
 #include "../protocol.h"
 #include "lm75.h"
 
+struct protocol_t *lm75;
+
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 typedef struct settings_t {
 	char **id;

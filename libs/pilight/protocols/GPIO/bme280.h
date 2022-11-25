@@ -11,7 +11,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *bme280;
+extern struct protocol_t *bme280;
 void bme280Init(void);
 
 #endif

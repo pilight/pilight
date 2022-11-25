@@ -38,6 +38,8 @@
 #include "rules.h"
 #include "gui.h"
 
+struct config_t *config_rules;
+
 static struct rules_t *rules = NULL;
 
 static pthread_mutex_t mutex_lock;

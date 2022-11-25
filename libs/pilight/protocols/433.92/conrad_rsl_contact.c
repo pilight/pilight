@@ -35,6 +35,8 @@
 #define AVG_PULSE_LENGTH	190
 #define RAW_LENGTH				66
 
+struct protocol_t *conrad_rsl_contact;
+
 static int validate(void) {
 	if(conrad_rsl_contact->rawlen == RAW_LENGTH) {
 		if(conrad_rsl_contact->raw[conrad_rsl_contact->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

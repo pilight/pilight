@@ -38,6 +38,8 @@
 #define AVG_PULSE_LENGTH	300
 #define RAW_LENGTH				132
 
+struct protocol_t *arctech_screen;
+
 static int validate(void) {
 	if(arctech_screen->rawlen == RAW_LENGTH) {
 		if(arctech_screen->raw[arctech_screen->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

@@ -26,6 +26,8 @@
 #define AVG_PULSE_LENGTH	280
 #define RAW_LENGTH		50
 
+struct protocol_t *kerui_D026;
+
 static int validate(void) {
 	if(kerui_D026->rawlen == RAW_LENGTH) {
 		if(kerui_D026->raw[kerui_D026->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

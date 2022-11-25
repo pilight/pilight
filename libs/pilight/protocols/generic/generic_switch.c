@@ -30,6 +30,8 @@
 #include "../../core/gc.h"
 #include "generic_switch.h"
 
+struct protocol_t *generic_switch;
+
 static void createMessage(int id, int state) {
 	generic_switch->message = json_mkobject();
 	json_append_member(generic_switch->message, "id", json_mknumber(id, 0));

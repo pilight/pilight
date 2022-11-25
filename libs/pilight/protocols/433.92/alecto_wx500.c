@@ -41,6 +41,8 @@
 #define AVG_PULSE					(ZERO_PULSE+ONE_PULSE)/2
 #define RAW_LENGTH				74
 
+struct protocol_t *alecto_wx500;
+
 typedef struct settings_t {
 	double id;
 	double temp;

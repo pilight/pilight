@@ -54,6 +54,8 @@ typedef struct settings_t {
 
 static struct settings_t *settings = NULL;
 
+struct protocol_t *ninjablocks_weather;
+
 static int validate(void) {
 	if(ninjablocks_weather->rawlen >= MIN_RAW_LENGTH && ninjablocks_weather->rawlen <= MAX_RAW_LENGTH) {
 		if(ninjablocks_weather->raw[ninjablocks_weather->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

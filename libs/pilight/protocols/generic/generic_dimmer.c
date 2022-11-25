@@ -19,6 +19,8 @@
 #include "../../core/binary.h"
 #include "generic_dimmer.h"
 
+struct protocol_t *generic_dimmer;
+
 static void createMessage(int id, int state, int dimlevel) {
 	generic_dimmer->message = json_mkobject();
 	json_append_member(generic_dimmer->message, "id", json_mknumber(id, 0));

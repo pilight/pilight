@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *clarus_switch;
+extern struct protocol_t *clarus_switch;
 void clarusSwitchInit(void);
 
 #endif

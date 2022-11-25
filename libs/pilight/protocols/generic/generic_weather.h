@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *generic_weather;
+extern struct protocol_t *generic_weather;
 void genericWeatherInit(void);
 
 #endif

@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *gpio_switch;
+extern struct protocol_t *gpio_switch;
 void gpioSwitchInit(void);
 
 #endif

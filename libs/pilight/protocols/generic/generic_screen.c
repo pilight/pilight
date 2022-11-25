@@ -30,6 +30,8 @@
 #include "../../core/gc.h"
 #include "generic_screen.h"
 
+struct protocol_t *generic_screen;
+
 static void createMessage(int id, int state) {
 	generic_screen->message = json_mkobject();
 	json_append_member(generic_screen->message, "id", json_mknumber(id, 1));

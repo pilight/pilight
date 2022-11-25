@@ -11,7 +11,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *kerui_D026;
+extern struct protocol_t *kerui_D026;
 void keruiD026Init(void);
 
 #endif

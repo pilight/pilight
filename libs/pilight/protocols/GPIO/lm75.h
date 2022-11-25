@@ -21,7 +21,7 @@
 
 #include "../protocol.h"
 
-struct protocol_t *lm75;
+extern struct protocol_t *lm75;
 void lm75Init(void);
 
 #endif

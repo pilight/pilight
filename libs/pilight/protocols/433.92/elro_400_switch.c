@@ -36,6 +36,8 @@
 #define AVG_PULSE_LENGTH	296
 #define RAW_LENGTH				50
 
+struct protocol_t *elro_400_switch;
+
 static int validate(void) {
 	if(elro_400_switch->rawlen == RAW_LENGTH) {
 		if(elro_400_switch->raw[elro_400_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

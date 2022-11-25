@@ -43,6 +43,8 @@
 #define MAX_PULSE_LENGTH	AVG_PULSE_LENGTH+260
 #define RAW_LENGTH				42
 
+struct protocol_t *quigg_screen;
+
 static int validate(void) {
 	if(quigg_screen->rawlen == RAW_LENGTH) {
 		if(quigg_screen->raw[quigg_screen->rawlen-1] >= (int)(PULSE_QUIGG_SCREEN_FOOTER*0.9) &&

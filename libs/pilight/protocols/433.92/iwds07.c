@@ -27,6 +27,8 @@
 #define FOOTER				14110
 #define RAW_LENGTH			50
 
+struct protocol_t *iwds07;
+
 static int validate(void) {
 	if(iwds07->rawlen == RAW_LENGTH) {
 		if(iwds07->raw[iwds07->rawlen-1] >= (FOOTER*0.9) &&

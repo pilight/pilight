@@ -36,6 +36,8 @@
 #define AVG_PULSE_LENGTH	300
 #define RAW_LENGTH				50
 
+struct protocol_t *elro_800_contact;
+
 static int validate(void) {
 	if(elro_800_contact->rawlen == RAW_LENGTH) {
 		if(elro_800_contact->raw[elro_800_contact->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&

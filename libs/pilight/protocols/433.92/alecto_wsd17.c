@@ -36,6 +36,8 @@
 #define MAX_PULSE_LENGTH	275
 #define RAW_LENGTH				74
 
+struct protocol_t *alecto_wsd17;
+
 typedef struct settings_t {
 	double id;
 	double temp;

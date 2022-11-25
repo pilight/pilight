@@ -50,6 +50,8 @@
 
 #define MAXTIMINGS 100
 
+struct protocol_t *dht11;
+
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 
 static unsigned short loop = 1;
