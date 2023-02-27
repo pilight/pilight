@@ -198,7 +198,7 @@ static void parseCode(void) {
 		char *result = malloc(tfa303221->rawlen * 5);
 		char *where = result;
 		for (size_t i = 0; i < tfa303221->rawlen; i++) {
-			size_t printed = sprintf(where, "%d ", tfa303221->raw[i]);
+			size_t printed = snprintf(where, "%d ", tfa303221->raw[i]);
 			where += printed;
 		}
 		json_append_member(tfa303221->message, "raw", json_mkstring(result));
@@ -207,7 +207,7 @@ static void parseCode(void) {
 		*result = malloc(40 * 3);
 		*where = result;
 		for (size_t i = 0; i < 40; i++) {
-			size_t printed = sprintf(where, "%d ", buffer[i]);
+			size_t printed = snprintf(where, "%d ", buffer[i]);
 			where += printed;
 		}
 		json_append_member(tfa303221->message, "bytes", json_mkstring(result));
