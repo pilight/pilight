@@ -162,16 +162,17 @@ static void parseCode(void) {
 			}
 		}
 
-		// compare message checksum with computed checksum...
+		// the sent message checksum
 		int checksum = binToDecRev(buffer, 32, 39);
 
-		uint8_t raw[4];
-		raw[0] = binToDecRev(buffer, 0, 7);	   // 4 bytes checksum
-		raw[1] = binToDecRev(buffer, 8, 15);   // 4 bytes checksum
-		raw[2] = binToDecRev(buffer, 16, 23);  // 4 bytes checksum
-		raw[3] = binToDecRev(buffer, 24, 31);  // 4 bytes checksum
-
-		int crc = lfsr_digest8_reflect(raw, 4, 0x31, 0xf4);	 // 4 bytes checksum
+		uint8_t raw[4];  // 4 bytes checksum payload
+		raw[0] = binToDecRev(buffer, 0, 7);
+		raw[1] = binToDecRev(buffer, 8, 15);
+		raw[2] = binToDecRev(buffer, 16, 23);
+		raw[3] = binToDecRev(buffer, 24, 31);
+		
+		// compare message checksum with computed checksum...
+		int crc = lfsr_digest8_reflect(raw, 4, 0x31, 0xf4);
 
 		if (crc != checksum) {
 			return;
