@@ -137,12 +137,12 @@ static int findPayloadStartIndex(void) {
 				if (headerFound == HEADER_PULSE_COUNT) {
 					return i;  // this is the first pulse/gap pair that didn't look like a header
 				} else {
-					return -headerFound;  // header not yet complete - broken transmission
+					return -1;  // header not yet complete - broken transmission
 				}
 			}
 		}
 	}
-	return -999;
+	return -1;
 }
 
 static void parseCode(void) {
