@@ -65,7 +65,7 @@ C
 
 #define PULSE_MULTIPLIER 16
 #define MIN_PULSE_LENGTH 208   // min zero signal after sequence (..x 34)us
-#define AVG_PULSE_LENGTH 882   //
+#define AVG_PULSE_LENGTH 357   //
 #define MAX_PULSE_LENGTH 1000  // max zero signal after sequence(..x 34)us
 #define ZERO_PULSE 1300
 #define ONE_PULSE 300
@@ -153,7 +153,7 @@ static void parseCode(void) {
 		for (int i = 0; i < 40; i++) {	// read 40 value-pairs from raw data
 			int v0 = tfa303221->raw[payloadStartIndex + (i * 2)];
 			int v1 = tfa303221->raw[payloadStartIndex + (i * 2) + 1];
-			if (v0 < 357 && v1 > 357) {
+			if (v0 < AVG_PULSE_LENGTH && v1 > AVG_PULSE_LENGTH) {
 				buffer[i] = 0;
 			} else if (v0 > 357 && v1 < 357) {
 				buffer[i] = 1;
