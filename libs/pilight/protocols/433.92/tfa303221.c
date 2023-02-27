@@ -204,14 +204,14 @@ static void parseCode(void) {
 		json_append_member(tfa303221->message, "raw", json_mkstring(result));
 		free(result);
 
-		char *result1 = malloc(40 * 3);
-		char *where1 = result1;
+		*result = malloc(40 * 3);
+		*where = result;
 		for (size_t i = 0; i < 40; i++) {
-			size_t printed1 = sprintf(where1, "%d ", buffer[i]);
-			where1 += printed1;
+			size_t printed = sprintf(where, "%d ", buffer[i]);
+			where += printed;
 		}
-		json_append_member(tfa303221->message, "bytes", json_mkstring(result1));
-		free(result1);
+		json_append_member(tfa303221->message, "bytes", json_mkstring(result));
+		free(result);
 
 		json_append_member(tfa303221->message, "checksum", json_mknumber(checksum, 0));
 		json_append_member(tfa303221->message, "checksum_calculated", json_mknumber(crc, 0));
