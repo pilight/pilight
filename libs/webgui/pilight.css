@@ -124,7 +124,7 @@
 	left: 10px;
 }
 
-div.ui-slider-switch, div.screen {
+div.ui-slider-switch, div.screen, div.contact {
 	position: absolute;
 	right: 10px;
 }
@@ -155,6 +155,12 @@ div.screen {
 	right: -20px;
 	top: -10px;
 	width: 205px;
+}
+
+div.contact {
+	right: -20px;
+	top: -10px;
+	width: 265px;
 }
 
 .ui-li .ui-btn-inner a.ui-link-inherit, .ui-li-static.ui-li {
@@ -327,6 +333,14 @@ div.action_icon.screen_active {
 
 div.action_icon.screen_inactive {
 	background: url('screen_inactive.png') 0px 0px no-repeat;
+}
+
+div.action_icon.contact_active {
+	background: url('contact_active.png') 0px 0px no-repeat;
+}
+
+div.action_icon.contact_inactive {
+	background: url('contact_inactive.png') 0px 0px no-repeat;
 }
 
 div.action_icon.shutdown {
