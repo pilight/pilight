@@ -1,10 +1,14 @@
 /*
-	This file is part of pilight.
+  Copyright (C) jtheuer
 
-	- Ported to pilight 2023 by <jtheuer>
-	- Changes done by Andrew Rivett <veggiefrog@gmail.com>. Copyright is
-	  retained by Robert Fraczkiewicz.
-	- Copyright (C) 2017 Robert Fraczkiewicz <aromring@gmail.com>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+  - Ported to pilight 2023 by <jtheuer>
+  - Changes done by Andrew Rivett <veggiefrog@gmail.com>. Copyright is retained by Robert Fraczkiewicz.
+  - Copyright (C) 2017 Robert Fraczkiewicz <aromring@gmail.com>
+  
 */
 
 #include "tfa303221.h"
