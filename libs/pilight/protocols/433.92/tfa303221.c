@@ -1,23 +1,10 @@
 /*
 	This file is part of pilight.
 
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
-
 	- Ported to pilight 2023 by <jtheuer>
 	- Changes done by Andrew Rivett <veggiefrog@gmail.com>. Copyright is
 	  retained by Robert Fraczkiewicz.
 	- Copyright (C) 2017 Robert Fraczkiewicz <aromring@gmail.com>
-
 */
 
 #include "tfa303221.h"
@@ -36,36 +23,13 @@
 #include "../protocol.h"
 
 /*
-Implementation based on previous work from
-https://github.com/NorthernMan54/rtl_433_ESP/blob/master/contrib/lacrosse_tx141x.c
-
-A single data packet looks as follows:
-1) preamble - 833 us high followed by 833 us low, repeated 4 times:
-	 ----      ----      ----      ----
-	|    |    |    |    |    |    |    |
-		  ----      ----      ----      ----
-2) a train of 40 data pulses with fixed 625 us period follows immediately:
-	 ---    --     --     ---    ---    --     ---
-	|   |  |  |   |  |   |   |  |   |  |  |   |   |
-		 --    ---    ---     --     --    ---     -- ....
-A logical 1 is 417 us of high followed by 208 us of low.
-A logical 0 is 208 us of high followed by 417 us of low.
-Thus, in the example pictured above the bits are 1 0 0 1 1 0 1 ....
-
-The data is grouped in 5 bytes / 10 nybbles
-	[id] [id] [flags] [temp] [temp] [temp] [humi] [humi] [chk] [chk]
-- id:    8 bit random integer generated at each powers up
-- flags: 4 bit for battery low indicator, test button press, and channel
-- temp: 12 bit unsigned temperature in degrees Celsius, scaled by 10, offset 500, range -40 C to 60
-C
-- humi:  8 bit integer indicating relative humidity in %.
-- chk:   8 bit checksum is a digest, 0x31, 0xf4, reflected
-
-*/
+ Implementation based on previous work from
+ https://github.com/NorthernMan54/rtl_433_ESP/blob/master/contrib/lacrosse_tx141x.c
+ */
 
 #define PULSE_MULTIPLIER 16
 #define MIN_PULSE_LENGTH 208   // min zero signal after sequence (..x 34)us
-#define AVG_PULSE_LENGTH 357   //
+#define AVG_PULSE_LENGTH 882   //
 #define MAX_PULSE_LENGTH 1000  // max zero signal after sequence(..x 34)us
 #define ZERO_PULSE 1300
 #define ONE_PULSE 300
@@ -108,8 +72,7 @@ static uint8_t lfsr_digest8_reflect(uint8_t const message[], int bytes, uint8_t 
 }
 
 static int validate(void) {
-	if (tfa303221->rawlen >= MIN_RAW_LENGTH && tfa303221->rawlen <= MAX_RAW_LENGTH &&
-		tfa303221->raw[tfa303221->rawlen - 2] > FINAL_PULSE_MIN_LENGTH) {
+	if (tfa303221->rawlen >= MIN_RAW_LENGTH && tfa303221->rawlen <= MAX_RAW_LENGTH) {
 		return 0;
 	}
 	return -1;
@@ -198,7 +161,7 @@ static void parseCode(void) {
 		char *result = malloc(tfa303221->rawlen * 5);
 		char *where = result;
 		for (size_t i = 0; i < tfa303221->rawlen; i++) {
-			size_t printed = snprintf(where, "%d ", tfa303221->raw[i]);
+			size_t printed = snprintf(where, tfa303221->rawlen * 5, "%d ", tfa303221->raw[i]);
 			where += printed;
 		}
 		json_append_member(tfa303221->message, "raw", json_mkstring(result));
@@ -207,7 +170,7 @@ static void parseCode(void) {
 		*result = malloc(40 * 3);
 		*where = result;
 		for (size_t i = 0; i < 40; i++) {
-			size_t printed = snprintf(where, "%d ", buffer[i]);
+			size_t printed = snprintf(where, 40 * 3, "%d ", buffer[i]);
 			where += printed;
 		}
 		json_append_member(tfa303221->message, "bytes", json_mkstring(result));
@@ -223,19 +186,7 @@ static void parseCode(void) {
 		json_append_member(tfa303221->message, "battery", json_mknumber(battery, 0));
 		json_append_member(tfa303221->message, "temperature", json_mknumber(tempCelsius, 1));
 		json_append_member(tfa303221->message, "humidity", json_mknumber(humidity, 0));
-	}
-}
-
-static void gc(void) {
-	struct settings_t *tmp = NULL;
-	while (settings) {
-		tmp = settings;
-		settings = settings->next;
-		FREE(tmp);
-	}
-	if (settings != NULL) {
-		FREE(settings);
-	}
+	} 
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -245,7 +196,7 @@ void tfa303221Init(void) {
 
 	protocol_register(&tfa303221);
 	protocol_set_id(tfa303221, "tfa303221");
-	protocol_device_add(tfa303221, "tfa30", "TFA 30.3221 Temp Hum Sensor");
+	protocol_device_add(tfa303221, "tfa303221", "TFA 30.3221 Temp Hum Sensor");
 	tfa303221->devtype = WEATHER;
 	tfa303221->hwtype = RF433;
 	tfa303221->minrawlen = MIN_RAW_LENGTH;
@@ -254,7 +205,6 @@ void tfa303221Init(void) {
 	tfa303221->mingaplen = MIN_PULSE_LENGTH * PULSE_DIV;
 	tfa303221->parseCode = &parseCode;
 	tfa303221->validate = &validate;
-	tfa303221->gc = &gc;
 }
 
 #ifdef MODULAR
