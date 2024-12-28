@@ -109,7 +109,7 @@ else
 		fi
 		mkdir build
 		cd build
-		cmake ..
+		cmake -DCMAKE_C_FLAGS=-fcommon ..
 		make install
 	fi
 fi
