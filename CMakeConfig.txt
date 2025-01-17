@@ -42,6 +42,7 @@ set(PROTOCOL_GENERIC_WEATHER ON CACHE BOOL "support for the generic weather prot
 set(PROTOCOL_GENERIC_WEBCAM ON CACHE BOOL "support for the generic webcam protocol")
 set(PROTOCOL_GPIO_SWITCH ON CACHE BOOL "support for the GPIO switch protocol")
 set(PROTOCOL_HEITECH ON CACHE BOOL "support for the Heitech switch protocol")
+set(PROTOCOL_HIDEKI ON CACHE BOOL "support for the HIDEKI weather sensors protocol")
 set(PROTOCOL_IMPULS ON CACHE BOOL "support for the Impuls switch protocol")
 set(PROTOCOL_INTERTECHNO_SWITCH ON CACHE BOOL "support for the new Intertechno switch protocol")
 set(PROTOCOL_INTERTECHNO_OLD ON CACHE BOOL "support for the old Intertecho switch protocol")
