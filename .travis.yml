@@ -12,6 +12,8 @@ matrix:
       compiler: gcc
       os: linux
 
+    - env: LINT=1
+
 before_install: ./ci/travis-before-install.sh
 
 before_script: ./ci/travis-before-script.sh
