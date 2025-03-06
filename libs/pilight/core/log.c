@@ -149,17 +149,17 @@ void _logprintf(int prio, char *file, int line, const char *str, ...) {
 			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
 #endif
 		}
-		len = snprintf(NULL, 0, "(%s #%d) [%s:%03u]", file, line, fmt, (unsigned int)tv.tv_usec);
-		
+
 		/* len + loglevel */
-		// if(len+9 > bufsize) {
+		//len = snprintf(NULL, 0, "(%s #%d) [%s:%03u]", file, line, fmt, (unsigned int)tv.tv_usec);
+        // if(len+9 > bufsize) {
 			// if((buffer = REALLOC(buffer, len+10)) == NULL) {
 				// printf("out of memory\n");
 				// exit(EXIT_FAILURE);
 			// }
 			// bufsize = len+10+1;
 		// }
-		pos += snprintf(buffer, bufsize, "(%s #%d) [%s:%03u] ", file, line, fmt, (unsigned int)tv.tv_usec);
+		pos += snprintf(buffer, bufsize, "(%s #%d) [%s:%06ld] ", file, line, fmt, tv.tv_usec);
 
 		switch(prio) {
 			case LOG_WARNING:
@@ -501,7 +501,7 @@ void logerror(char *str) {
 		if((localtime_r(&tv.tv_sec, &tm)) != 0) {
 #endif
 		strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
-		snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
+		snprintf(buf, sizeof(buf), "%s:%06ld", fmt, tv.tv_usec);
 	}
 
 	sprintf(date, "[%22.22s] %s: ", buf, progname);
